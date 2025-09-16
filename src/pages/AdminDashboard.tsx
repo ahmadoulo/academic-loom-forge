@@ -6,52 +6,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, School, TrendingUp, Users, BookOpen } from "lucide-react";
-
-// Mock data - will be replaced with real database calls
-const mockSchools = [
-  {
-    id: "1",
-    name: "Lycée Victor Hugo",
-    identifier: "LVH001",
-    studentsCount: 450,
-    teachersCount: 35,
-    classesCount: 18,
-    createdAt: "2024-01-15T10:00:00Z"
-  },
-  {
-    id: "2", 
-    name: "Collège Marie Curie",
-    identifier: "CMC002",
-    studentsCount: 320,
-    teachersCount: 28,
-    classesCount: 12,
-    createdAt: "2024-02-10T10:00:00Z"
-  }
-];
+import { Plus, School, TrendingUp, Users, BookOpen, Loader2 } from "lucide-react";
+import { useSchools } from "@/hooks/useSchools";
 
 const AdminDashboard = () => {
-  const [schools, setSchools] = useState(mockSchools);
+  const { schools, loading, createSchool } = useSchools();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreateSchool = () => {
+  const handleCreateSchool = async () => {
     if (!newSchoolName.trim()) return;
     
-    const identifier = `SCH${String(schools.length + 1).padStart(3, '0')}`;
-    const newSchool = {
-      id: String(Date.now()),
-      name: newSchoolName,
-      identifier,
-      studentsCount: 0,
-      teachersCount: 0,
-      classesCount: 0,
-      createdAt: new Date().toISOString()
-    };
-    
-    setSchools([...schools, newSchool]);
-    setNewSchoolName("");
-    setIsCreateDialogOpen(false);
+    setIsCreating(true);
+    try {
+      const identifier = `SCH${String(schools.length + 1).padStart(3, '0')}`;
+      await createSchool({
+        name: newSchoolName,
+        identifier
+      });
+      setNewSchoolName("");
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      // Error is handled by the hook
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleViewSchool = (schoolId: string) => {
@@ -66,9 +46,16 @@ const AdminDashboard = () => {
     console.log("Edit school:", schoolId);
   };
 
-  const totalStudents = schools.reduce((sum, school) => sum + school.studentsCount, 0);
-  const totalTeachers = schools.reduce((sum, school) => sum + school.teachersCount, 0);
-  const totalClasses = schools.reduce((sum, school) => sum + school.classesCount, 0);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Chargement des écoles...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,7 +81,7 @@ const AdminDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{totalStudents}</div>
+              <div className="text-2xl font-bold text-primary">-</div>
               <p className="text-xs text-muted-foreground">Total réseau</p>
             </CardContent>
           </Card>
@@ -105,7 +92,7 @@ const AdminDashboard = () => {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{totalTeachers}</div>
+              <div className="text-2xl font-bold text-primary">-</div>
               <p className="text-xs text-muted-foreground">Enseignants actifs</p>
             </CardContent>
           </Card>
@@ -116,7 +103,7 @@ const AdminDashboard = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{totalClasses}</div>
+              <div className="text-2xl font-bold text-primary">-</div>
               <p className="text-xs text-muted-foreground">Classes gérées</p>
             </CardContent>
           </Card>
@@ -154,7 +141,8 @@ const AdminDashboard = () => {
                   >
                     Annuler
                   </Button>
-                  <Button onClick={handleCreateSchool}>
+                  <Button onClick={handleCreateSchool} disabled={isCreating}>
+                    {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Créer l'École
                   </Button>
                 </div>
@@ -168,7 +156,15 @@ const AdminDashboard = () => {
           {schools.map((school) => (
             <SchoolCard
               key={school.id}
-              school={school}
+              school={{
+                id: school.id,
+                name: school.name,
+                identifier: school.identifier,
+                studentsCount: 0, // Will be calculated from actual student count later
+                teachersCount: 0, // Will be calculated from actual teacher count later
+                classesCount: 0, // Will be calculated from actual class count later
+                createdAt: school.created_at
+              }}
               onView={handleViewSchool}
               onEdit={handleEditSchool}
             />
