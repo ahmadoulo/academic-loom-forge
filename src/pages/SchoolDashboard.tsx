@@ -255,10 +255,38 @@ const SchoolDashboard = () => {
           <TabsContent value="classes" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Gestion des Classes</h2>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle Classe
-              </Button>
+              <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle Classe
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer une nouvelle classe</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="className">Nom de la classe</Label>
+                      <Input
+                        id="className"
+                        value={newClassName}
+                        onChange={(e) => setNewClassName(e.target.value)}
+                        placeholder="Ex: 3ème A, Terminale S1..."
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsClassDialogOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button onClick={handleCreateClass}>
+                        Créer
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -282,10 +310,68 @@ const SchoolDashboard = () => {
           <TabsContent value="subjects" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Matières Enseignées</h2>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle Matière
-              </Button>
+              <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle Matière
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer une nouvelle matière</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="subjectName">Nom de la matière</Label>
+                      <Input
+                        id="subjectName"
+                        value={newSubject.name}
+                        onChange={(e) => setNewSubject({...newSubject, name: e.target.value})}
+                        placeholder="Ex: Mathématiques, Histoire..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="subjectClass">Classe</Label>
+                      <select
+                        id="subjectClass"
+                        className="w-full p-2 border rounded-md"
+                        value={newSubject.class_id}
+                        onChange={(e) => setNewSubject({...newSubject, class_id: e.target.value})}
+                      >
+                        <option value="">Sélectionner une classe</option>
+                        {classes.map((cls) => (
+                          <option key={cls.id} value={cls.id}>{cls.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="subjectTeacher">Professeur (optionnel)</Label>
+                      <select
+                        id="subjectTeacher"
+                        className="w-full p-2 border rounded-md"
+                        value={newSubject.teacher_id}
+                        onChange={(e) => setNewSubject({...newSubject, teacher_id: e.target.value})}
+                      >
+                        <option value="">Aucun professeur assigné</option>
+                        {teachers.map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.firstname} {teacher.lastname}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button onClick={handleCreateSubject}>
+                        Créer
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="space-y-4">
@@ -312,10 +398,57 @@ const SchoolDashboard = () => {
           <TabsContent value="teachers" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Corps Enseignant</h2>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau Professeur
-              </Button>
+              <Dialog open={isTeacherDialogOpen} onOpenChange={setIsTeacherDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Professeur
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Ajouter un professeur</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="teacherFirstname">Prénom</Label>
+                      <Input
+                        id="teacherFirstname"
+                        value={newTeacher.firstname}
+                        onChange={(e) => setNewTeacher({...newTeacher, firstname: e.target.value})}
+                        placeholder="Prénom du professeur"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="teacherLastname">Nom</Label>
+                      <Input
+                        id="teacherLastname"
+                        value={newTeacher.lastname}
+                        onChange={(e) => setNewTeacher({...newTeacher, lastname: e.target.value})}
+                        placeholder="Nom du professeur"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="teacherEmail">Email (optionnel)</Label>
+                      <Input
+                        id="teacherEmail"
+                        type="email"
+                        value={newTeacher.email}
+                        onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})}
+                        placeholder="email@exemple.com"
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsTeacherDialogOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button onClick={handleCreateTeacher}>
+                        Créer
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
