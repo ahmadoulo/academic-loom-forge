@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 interface StudentImportProps {
   onImportComplete: (students: any[]) => void;
+  classes: { id: string; name: string; }[];
 }
 
-export const StudentImport = ({ onImportComplete }: StudentImportProps) => {
+export const StudentImport = ({ onImportComplete, classes }: StudentImportProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,34 +56,77 @@ export const StudentImport = ({ onImportComplete }: StudentImportProps) => {
 
     setImporting(true);
     
-    // Simulate file processing
-    setTimeout(() => {
-      const mockStudents = [
-        { firstname: "Jean", lastname: "Dupont", class: "Terminale S" },
-        { firstname: "Marie", lastname: "Martin", class: "Terminale S" },
-        { firstname: "Pierre", lastname: "Durand", class: "Première ES" }
-      ];
-      
-      onImportComplete(mockStudents);
-      setImporting(false);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      if (jsonData.length === 0) {
+        throw new Error("Le fichier est vide");
+      }
+
+      // Map the imported data to the expected format
+      const students = jsonData.map((row: any, index: number) => {
+        const firstName = row['Prénom'] || row['Prenom'] || row['firstname'] || row['FirstName'] || '';
+        const lastName = row['Nom'] || row['lastname'] || row['LastName'] || '';
+        const className = row['Classe'] || row['classe'] || row['class'] || row['Class'] || '';
+        const email = row['Email'] || row['email'] || '';
+
+        if (!firstName || !lastName) {
+          throw new Error(`Ligne ${index + 2}: Prénom et nom requis`);
+        }
+
+        // Find matching class
+        const matchingClass = classes.find(cls => 
+          cls.name.toLowerCase().includes(className.toLowerCase()) || 
+          className.toLowerCase().includes(cls.name.toLowerCase())
+        );
+
+        if (!matchingClass && className) {
+          console.warn(`Classe non trouvée pour: ${className}`);
+        }
+
+        return {
+          firstname: firstName.toString().trim(),
+          lastname: lastName.toString().trim(),
+          email: email.toString().trim(),
+          class_id: matchingClass?.id || classes[0]?.id || '', // Use first class as fallback
+          class_name: className || matchingClass?.name || ''
+        };
+      });
+
+      onImportComplete(students);
       
       toast({
         title: "Import réussi",
-        description: `${mockStudents.length} étudiants importés avec succès`,
+        description: `${students.length} étudiants importés avec succès`,
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Error importing file:', error);
+      toast({
+        title: "Erreur d'import",
+        description: error instanceof Error ? error.message : "Erreur lors de la lecture du fichier",
+        variant: "destructive"
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const downloadTemplate = () => {
-    // In a real app, this would generate and download a template file
-    const csvContent = "Prénom,Nom,Classe\nJean,Dupont,Terminale S\nMarie,Martin,Première ES";
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'template_etudiants.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Create template with actual class names
+    const templateData = [
+      { Prénom: "Jean", Nom: "Dupont", Classe: classes[0]?.name || "Exemple", Email: "jean.dupont@email.com" },
+      { Prénom: "Marie", Nom: "Martin", Classe: classes[1]?.name || classes[0]?.name || "Exemple", Email: "marie.martin@email.com" }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Étudiants");
+    
+    XLSX.writeFile(wb, 'template_etudiants.xlsx');
   };
 
   return (

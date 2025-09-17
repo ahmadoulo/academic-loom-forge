@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { StudentImport } from "@/components/school/StudentImport";
+import { StudentForm } from "@/components/school/StudentForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,12 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, BookOpen, School, GraduationCap, Plus, Loader2 } from "lucide-react";
+import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useSubjects } from "@/hooks/useSubjects";
+import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -24,6 +26,7 @@ const SchoolDashboard = () => {
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
   const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
+  const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "" });
   const [newSubject, setNewSubject] = useState({ name: "", class_id: "", teacher_id: "" });
@@ -49,7 +52,7 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
-  const { students, loading: studentsLoading, importStudents } = useStudents(school?.id);
+  const { students, loading: studentsLoading, importStudents, createStudent } = useStudents(school?.id);
   const { classes, loading: classesLoading, createClass } = useClasses(school?.id);
   const { teachers, loading: teachersLoading, createTeacher } = useTeachers(school?.id);
   const { subjects, loading: subjectsLoading, createSubject } = useSubjects(school?.id);
@@ -114,6 +117,24 @@ const SchoolDashboard = () => {
     
     try {
       await importStudents(studentsData);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleCreateStudent = async (studentData: {
+    firstname: string;
+    lastname: string;
+    email?: string;
+    class_id: string;
+  }) => {
+    if (!school?.id) return;
+    
+    try {
+      await createStudent({
+        ...studentData,
+        school_id: school.id
+      });
     } catch (error) {
       // Error handled by hook
     }
@@ -203,17 +224,31 @@ const SchoolDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="students">Étudiants</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="subjects">Matières</TabsTrigger>
             <TabsTrigger value="teachers">Professeurs</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <AnalyticsDashboard schoolId={school.id} />
+          </TabsContent>
           
           <TabsContent value="students" className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Gestion des Étudiants</h2>
+              <Button onClick={() => setIsStudentDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Ajouter un Étudiant
+              </Button>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <StudentImport 
                 onImportComplete={handleImportStudents}
+                classes={classes}
               />
               
               <Card>
@@ -250,6 +285,13 @@ const SchoolDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+            
+            <StudentForm
+              isOpen={isStudentDialogOpen}
+              onClose={() => setIsStudentDialogOpen(false)}
+              onSubmit={handleCreateStudent}
+              classes={classes}
+            />
           </TabsContent>
           
           <TabsContent value="classes" className="space-y-6">
