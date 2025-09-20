@@ -182,6 +182,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          school_id: string | null
           teacher_id: string | null
           updated_at: string
         }
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          school_id?: string | null
           teacher_id?: string | null
           updated_at?: string
         }
@@ -198,10 +200,18 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          school_id?: string | null
           teacher_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_subjects_school_id"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subjects_class_id_fkey"
             columns: ["class_id"]
@@ -211,6 +221,45 @@ export type Database = {
           },
           {
             foreignKeyName: "subjects_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_classes: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_teacher_classes_class_id"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_teacher_classes_teacher_id"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
