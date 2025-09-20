@@ -88,9 +88,7 @@ export const useTeachers = (schoolId?: string) => {
   };
 
   useEffect(() => {
-    if (schoolId) {
-      fetchTeachers();
-    }
+    fetchTeachers();
   }, [schoolId]);
 
   return {

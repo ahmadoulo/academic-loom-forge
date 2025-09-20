@@ -21,15 +21,21 @@ const TeacherDashboard = () => {
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
   
+  // Get current teacher first to get school_id
   const { teachers } = useTeachers();
-  const { students, loading: studentsLoading } = useStudents();
+  const currentTeacher = teachers.find(t => t.id === teacherId);
+  
+  const { students, loading: studentsLoading } = useStudents(currentTeacher?.school_id);
   const { grades, loading: gradesLoading, createGrade } = useGrades();
-  const { subjects } = useSubjects();
+  const { subjects } = useSubjects(undefined, teacherId, currentTeacher?.school_id);
 
   useEffect(() => {
     if (teacherId && teachers.length > 0) {
       const foundTeacher = teachers.find(t => t.id === teacherId);
       setTeacher(foundTeacher);
+      setTeacherLoading(false);
+    } else if (teachers.length > 0 && teacherId) {
+      // If no teacher found, stop loading
       setTeacherLoading(false);
     }
   }, [teacherId, teachers]);
@@ -150,7 +156,7 @@ const TeacherDashboard = () => {
     return acc;
   }, {} as { [key: string]: any[] });
 
-  if (teacherLoading || studentsLoading || gradesLoading) {
+  if (teacherLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">

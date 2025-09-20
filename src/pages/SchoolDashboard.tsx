@@ -501,10 +501,20 @@ const SchoolDashboard = () => {
                       <GraduationCap className="h-5 w-5" />
                       {teacher.firstname} {teacher.lastname}
                     </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Badge variant="secondary">Professeur</Badge>
-                    </CardContent>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="space-y-3">
+                         <Badge variant="secondary">Professeur</Badge>
+                         <p className="text-sm text-muted-foreground">{teacher.email}</p>
+                         <Button
+                           size="sm"
+                           className="w-full"
+                           onClick={() => window.open(`/teacher/${teacher.id}`, '_blank')}
+                         >
+                           Ouvrir l'interface professeur
+                         </Button>
+                       </div>
+                     </CardContent>
                 </Card>
               ))}
             </div>
