@@ -34,7 +34,7 @@ const TeacherDashboard = () => {
   );
   
   // Get subjects assigned to this teacher
-  const { subjects } = useSubjects(undefined, teacherId, currentTeacher?.school_id);
+  const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
   const { grades, createGrade } = useGrades(undefined, undefined, teacherId);
 
   useEffect(() => {

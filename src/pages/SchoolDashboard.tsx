@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { StudentImport } from "@/components/school/StudentImport";
 import { StudentForm } from "@/components/school/StudentForm";
+import { TeacherClassAssignment } from "@/components/admin/TeacherClassAssignment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,17 +11,22 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus } from "lucide-react";
+import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useSubjects } from "@/hooks/useSubjects";
+import { useGrades } from "@/hooks/useGrades";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
+import { StatsCard } from "@/components/analytics/StatsCard";
+import { QuickActions } from "@/components/analytics/QuickActions";
+import { RecentActivity } from "@/components/analytics/RecentActivity";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
-  const [activeTab, setActiveTab] = useState("students");
+  const [activeTab, setActiveTab] = useState("analytics");
   
   // Dialog states
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
@@ -30,6 +36,14 @@ const SchoolDashboard = () => {
   const [newClassName, setNewClassName] = useState("");
   const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "" });
   const [newSubject, setNewSubject] = useState({ name: "", class_id: "", teacher_id: "" });
+  
+  // Delete dialog states
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    type?: 'student' | 'teacher' | 'class' | 'subject';
+    id?: string;
+    name?: string;
+  }>({ open: false });
   
   const { getSchoolByIdentifier } = useSchools();
   const [school, setSchool] = useState<any>(null);
@@ -52,10 +66,103 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
-  const { students, loading: studentsLoading, importStudents, createStudent } = useStudents(school?.id);
-  const { classes, loading: classesLoading, createClass } = useClasses(school?.id);
-  const { teachers, loading: teachersLoading, createTeacher } = useTeachers(school?.id);
-  const { subjects, loading: subjectsLoading, createSubject } = useSubjects(school?.id);
+  const { students, loading: studentsLoading, importStudents, createStudent, deleteStudent } = useStudents(school?.id);
+  const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id);
+  const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
+  const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
+  const { grades } = useGrades();
+
+  // Calculate enhanced stats
+  const stats = useMemo(() => {
+    const schoolStudents = students.filter(s => s.school_id === school?.id);
+    const schoolTeachers = teachers.filter(t => t.school_id === school?.id);
+    const schoolClasses = classes.filter(c => c.school_id === school?.id);
+    const schoolSubjects = subjects.filter(s => s.school_id === school?.id);
+    const schoolGrades = grades.filter(g => {
+      const student = students.find(s => s.id === g.student_id);
+      return student?.school_id === school?.id;
+    });
+
+    const avgGrade = schoolGrades.length > 0 
+      ? schoolGrades.reduce((sum, g) => sum + Number(g.grade), 0) / schoolGrades.length 
+      : 0;
+
+    return {
+      totalStudents: schoolStudents.length,
+      totalTeachers: schoolTeachers.length,
+      totalClasses: schoolClasses.length,
+      totalSubjects: schoolSubjects.length,
+      totalGrades: schoolGrades.length,
+      avgGrade: avgGrade.toFixed(1),
+      avgStudentsPerClass: schoolClasses.length > 0 ? Math.round(schoolStudents.length / schoolClasses.length) : 0
+    };
+  }, [students, teachers, classes, subjects, grades, school?.id]);
+
+  // Generate recent activities
+  const recentActivities = useMemo(() => {
+    const activities: any[] = [];
+    
+    // Recent students
+    students.slice(0, 2).forEach(student => {
+      const studentClass = classes.find(c => c.id === student.class_id);
+      activities.push({
+        id: `student-${student.id}`,
+        type: 'student' as const,
+        title: `Étudiant inscrit: ${student.firstname} ${student.lastname}`,
+        description: studentClass ? `Classe: ${studentClass.name}` : 'Classe non assignée',
+        timestamp: student.created_at,
+        status: 'success' as const
+      });
+    });
+
+    // Recent grades
+    grades.slice(0, 2).forEach(grade => {
+      const student = students.find(s => s.id === grade.student_id);
+      if (student?.school_id === school?.id) {
+        activities.push({
+          id: `grade-${grade.id}`,
+          type: 'grade' as const,
+          title: `Note ajoutée: ${grade.grade}/20`,
+          description: `Étudiant: ${student.firstname} ${student.lastname}`,
+          timestamp: grade.created_at,
+          status: Number(grade.grade) >= 10 ? 'success' as const : 'warning' as const
+        });
+      }
+    });
+
+    return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [students, grades, classes, school?.id]);
+
+  const quickActions = [
+    {
+      title: "Nouvel Étudiant",
+      description: "Inscrire un étudiant",
+      icon: UserPlus,
+      onClick: () => setIsStudentDialogOpen(true),
+      variant: "default" as const
+    },
+    {
+      title: "Nouvelle Classe",
+      description: "Créer une classe",
+      icon: School,
+      onClick: () => setIsClassDialogOpen(true),
+      variant: "outline" as const
+    },
+    {
+      title: "Nouveau Professeur",
+      description: "Ajouter un enseignant",
+      icon: GraduationCap,
+      onClick: () => setIsTeacherDialogOpen(true),
+      variant: "outline" as const
+    },
+    {
+      title: "Nouvelle Matière",
+      description: "Créer une matière",
+      icon: BookOpen,
+      onClick: () => setIsSubjectDialogOpen(true),
+      variant: "outline" as const
+    }
+  ];
 
   const handleCreateClass = async () => {
     if (!newClassName.trim() || !school?.id) return;
@@ -104,10 +211,33 @@ const SchoolDashboard = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteDialog.id || !deleteDialog.type) return;
+    
+    try {
+      switch (deleteDialog.type) {
+        case 'student':
+          await deleteStudent(deleteDialog.id);
+          break;
+        case 'teacher':
+          await deleteTeacher(deleteDialog.id);
+          break;
+        case 'class':
+          await deleteClass(deleteDialog.id);
+          break;
+        case 'subject':
+          await deleteSubject(deleteDialog.id);
+          break;
+      }
+      setDeleteDialog({ open: false });
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+    }
+  };
+
   const handleImportStudents = async (importedStudents: any[]) => {
     if (!school?.id) return;
     
-    // Convert imported students to the format expected by Supabase
     const studentsData = importedStudents.map(student => ({
       firstname: student.firstname,
       lastname: student.lastname,
@@ -168,59 +298,50 @@ const SchoolDashboard = () => {
       <Header title={school.name} userRole="school" schoolName={school.name} />
       
       <main className="container mx-auto px-6 py-8">
-        {/* Stats Cards */}
+        {/* Enhanced Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Étudiants</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {studentsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : students.length}
-              </div>
-              <p className="text-xs text-muted-foreground">Inscrits</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Classes</CardTitle>
-              <School className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {classesLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : classes.length}
-              </div>
-              <p className="text-xs text-muted-foreground">Actives</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Matières</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {subjectsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : subjects.length}
-              </div>
-              <p className="text-xs text-muted-foreground">Enseignées</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Professeurs</CardTitle>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {teachersLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : teachers.length}
-              </div>
-              <p className="text-xs text-muted-foreground">Actifs</p>
-            </CardContent>
-          </Card>
+          <StatsCard 
+            title="Étudiants"
+            value={stats.totalStudents}
+            icon={Users}
+            description="Inscrits dans l'école"
+            change={`Moyenne ${stats.avgStudentsPerClass} par classe`}
+            changeType="positive"
+          />
+          <StatsCard 
+            title="Classes"
+            value={stats.totalClasses}
+            icon={School}
+            description="Classes actives"
+            change={`${stats.totalSubjects} matières total`}
+            changeType="neutral"
+          />
+          <StatsCard 
+            title="Professeurs"
+            value={stats.totalTeachers}
+            icon={GraduationCap}
+            description="Enseignants actifs"
+            change={`${stats.totalSubjects} matières assignées`}
+            changeType="positive"
+          />
+          <StatsCard 
+            title="Moyenne Générale"
+            value={`${stats.avgGrade}/20`}
+            icon={TrendingUp}
+            description="Performance globale"
+            change={`${stats.totalGrades} notes saisies`}
+            changeType={Number(stats.avgGrade) >= 10 ? "positive" : "negative"}
+          />
+        </div>
+
+        {/* Dashboard Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1">
+            <QuickActions actions={quickActions} />
+          </div>
+          <div className="lg:col-span-2">
+            <RecentActivity activities={recentActivities} />
+          </div>
         </div>
 
         {/* Main Content Tabs */}
@@ -254,7 +375,7 @@ const SchoolDashboard = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Liste des Étudiants</CardTitle>
+                  <CardTitle>Liste des Étudiants ({students.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {studentsLoading ? (
@@ -263,14 +384,29 @@ const SchoolDashboard = () => {
                       <span className="ml-2">Chargement...</span>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
                       {students.map((student) => (
                         <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium">{student.firstname} {student.lastname}</p>
                             <p className="text-sm text-muted-foreground">{student.classes?.name}</p>
                           </div>
-                          <Badge variant="outline">{student.classes?.name}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{student.classes?.name}</Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                              onClick={() => setDeleteDialog({
+                                open: true,
+                                type: 'student',
+                                id: student.id,
+                                name: `${student.firstname} ${student.lastname}`
+                              })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       
@@ -286,55 +422,22 @@ const SchoolDashboard = () => {
                 </CardContent>
               </Card>
             </div>
-            
-            <StudentForm
-              isOpen={isStudentDialogOpen}
-              onClose={() => setIsStudentDialogOpen(false)}
-              onSubmit={handleCreateStudent}
-              classes={classes}
-            />
           </TabsContent>
           
           <TabsContent value="classes" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Gestion des Classes</h2>
-              <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouvelle Classe
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Créer une nouvelle classe</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="className">Nom de la classe</Label>
-                      <Input
-                        id="className"
-                        value={newClassName}
-                        onChange={(e) => setNewClassName(e.target.value)}
-                        placeholder="Ex: 3ème A, Terminale S1..."
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsClassDialogOpen(false)}>
-                        Annuler
-                      </Button>
-                      <Button onClick={handleCreateClass}>
-                        Créer
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsClassDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle Classe
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {classes.map((classItem) => (
-                  <Card key={classItem.id}>
+              {classes.map((classItem) => {
+                const classStudents = students.filter(s => s.class_id === classItem.id);
+                return (
+                  <Card key={classItem.id} className="relative">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <School className="h-5 w-5" />
@@ -342,96 +445,63 @@ const SchoolDashboard = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold text-primary">-</p>
+                      <p className="text-2xl font-bold text-primary">{classStudents.length}</p>
                       <p className="text-sm text-muted-foreground">étudiants</p>
                     </CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => setDeleteDialog({
+                        open: true,
+                        type: 'class',
+                        id: classItem.id,
+                        name: classItem.name
+                      })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </Card>
-              ))}
+                );
+              })}
             </div>
           </TabsContent>
           
           <TabsContent value="subjects" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Matières Enseignées</h2>
-              <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouvelle Matière
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Créer une nouvelle matière</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="subjectName">Nom de la matière</Label>
-                      <Input
-                        id="subjectName"
-                        value={newSubject.name}
-                        onChange={(e) => setNewSubject({...newSubject, name: e.target.value})}
-                        placeholder="Ex: Mathématiques, Histoire..."
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="subjectClass">Classe</Label>
-                      <select
-                        id="subjectClass"
-                        className="w-full p-2 border rounded-md"
-                        value={newSubject.class_id}
-                        onChange={(e) => setNewSubject({...newSubject, class_id: e.target.value})}
-                      >
-                        <option value="">Sélectionner une classe</option>
-                        {classes.map((cls) => (
-                          <option key={cls.id} value={cls.id}>{cls.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="subjectTeacher">Professeur (optionnel)</Label>
-                      <select
-                        id="subjectTeacher"
-                        className="w-full p-2 border rounded-md"
-                        value={newSubject.teacher_id}
-                        onChange={(e) => setNewSubject({...newSubject, teacher_id: e.target.value})}
-                      >
-                        <option value="">Aucun professeur assigné</option>
-                        {teachers.map((teacher) => (
-                          <option key={teacher.id} value={teacher.id}>
-                            {teacher.firstname} {teacher.lastname}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
-                        Annuler
-                      </Button>
-                      <Button onClick={handleCreateSubject}>
-                        Créer
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsSubjectDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle Matière
+              </Button>
             </div>
             
             <div className="space-y-4">
               {subjects.map((subject) => (
-                <Card key={subject.id}>
+                <Card key={subject.id} className="relative">
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                       <BookOpen className="h-5 w-5 text-primary" />
                       <div>
                         <p className="font-medium">{subject.name}</p>
-                        <p className="text-sm text-muted-foreground">{subject.classes?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {subject.classes?.name} • {subject.teachers ? `${subject.teachers.firstname} ${subject.teachers.lastname}` : 'Aucun professeur assigné'}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">{subject.teachers ? `${subject.teachers.firstname} ${subject.teachers.lastname}` : 'Non assigné'}</p>
-                      <p className="text-sm text-muted-foreground">Professeur</p>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => setDeleteDialog({
+                        open: true,
+                        type: 'subject',
+                        id: subject.id,
+                        name: subject.name
+                      })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -441,87 +511,216 @@ const SchoolDashboard = () => {
           <TabsContent value="teachers" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Corps Enseignant</h2>
-              <Dialog open={isTeacherDialogOpen} onOpenChange={setIsTeacherDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouveau Professeur
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Ajouter un professeur</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="teacherFirstname">Prénom</Label>
-                      <Input
-                        id="teacherFirstname"
-                        value={newTeacher.firstname}
-                        onChange={(e) => setNewTeacher({...newTeacher, firstname: e.target.value})}
-                        placeholder="Prénom du professeur"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="teacherLastname">Nom</Label>
-                      <Input
-                        id="teacherLastname"
-                        value={newTeacher.lastname}
-                        onChange={(e) => setNewTeacher({...newTeacher, lastname: e.target.value})}
-                        placeholder="Nom du professeur"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="teacherEmail">Email (optionnel)</Label>
-                      <Input
-                        id="teacherEmail"
-                        type="email"
-                        value={newTeacher.email}
-                        onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})}
-                        placeholder="email@exemple.com"
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsTeacherDialogOpen(false)}>
-                        Annuler
-                      </Button>
-                      <Button onClick={handleCreateTeacher}>
-                        Créer
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsTeacherDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau Professeur
+              </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {teachers.map((teacher) => (
-                <Card key={teacher.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5" />
-                      {teacher.firstname} {teacher.lastname}
-                    </CardTitle>
-                     </CardHeader>
-                     <CardContent>
-                       <div className="space-y-3">
-                         <Badge variant="secondary">Professeur</Badge>
-                         <p className="text-sm text-muted-foreground">{teacher.email}</p>
-                         <Button
-                           size="sm"
-                           className="w-full"
-                           onClick={() => window.open(`/teacher/${teacher.id}`, '_blank')}
-                         >
-                           Ouvrir l'interface professeur
-                         </Button>
-                       </div>
-                     </CardContent>
-                </Card>
-              ))}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {teachers.map((teacher) => (
+                  <Card key={teacher.id} className="relative">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5" />
+                        {teacher.firstname} {teacher.lastname}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {teacher.email || 'Aucun email'}
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Accès direct:</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`/teacher/${teacher.id}`, '_blank')}
+                          >
+                            Interface Professeur
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => setDeleteDialog({
+                        open: true,
+                        type: 'teacher',
+                        id: teacher.id,
+                        name: `${teacher.firstname} ${teacher.lastname}`
+                      })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Teacher Class Assignment */}
+              <TeacherClassAssignment
+                teachers={teachers}
+                classes={classes}
+                schoolId={school.id}
+              />
             </div>
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Student Form Dialog */}
+      <StudentForm
+        isOpen={isStudentDialogOpen}
+        onClose={() => setIsStudentDialogOpen(false)}
+        onSubmit={handleCreateStudent}
+        classes={classes}
+      />
+
+      {/* Create Class Dialog */}
+      <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Créer une nouvelle classe</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="className">Nom de la classe</Label>
+              <Input
+                id="className"
+                value={newClassName}
+                onChange={(e) => setNewClassName(e.target.value)}
+                placeholder="Ex: 3ème A, Terminale S1..."
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsClassDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleCreateClass}>
+                Créer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Teacher Dialog */}
+      <Dialog open={isTeacherDialogOpen} onOpenChange={setIsTeacherDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un nouveau professeur</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="teacherFirstname">Prénom</Label>
+              <Input
+                id="teacherFirstname"
+                value={newTeacher.firstname}
+                onChange={(e) => setNewTeacher({...newTeacher, firstname: e.target.value})}
+                placeholder="Prénom du professeur"
+              />
+            </div>
+            <div>
+              <Label htmlFor="teacherLastname">Nom</Label>
+              <Input
+                id="teacherLastname"
+                value={newTeacher.lastname}
+                onChange={(e) => setNewTeacher({...newTeacher, lastname: e.target.value})}
+                placeholder="Nom du professeur"
+              />
+            </div>
+            <div>
+              <Label htmlFor="teacherEmail">Email (optionnel)</Label>
+              <Input
+                id="teacherEmail"
+                type="email"
+                value={newTeacher.email}
+                onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})}
+                placeholder="email@exemple.com"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsTeacherDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleCreateTeacher}>
+                Ajouter
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Subject Dialog */}
+      <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Créer une nouvelle matière</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="subjectName">Nom de la matière</Label>
+              <Input
+                id="subjectName"
+                value={newSubject.name}
+                onChange={(e) => setNewSubject({...newSubject, name: e.target.value})}
+                placeholder="Ex: Mathématiques, Histoire..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="subjectClass">Classe</Label>
+              <select
+                id="subjectClass"
+                className="w-full p-2 border rounded-md"
+                value={newSubject.class_id}
+                onChange={(e) => setNewSubject({...newSubject, class_id: e.target.value})}
+              >
+                <option value="">Sélectionner une classe</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="subjectTeacher">Professeur (optionnel)</Label>
+              <select
+                id="subjectTeacher"
+                className="w-full p-2 border rounded-md"
+                value={newSubject.teacher_id}
+                onChange={(e) => setNewSubject({...newSubject, teacher_id: e.target.value})}
+              >
+                <option value="">Aucun professeur assigné</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.firstname} {teacher.lastname}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleCreateSubject}>
+                Créer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title={`Supprimer ${deleteDialog.type}`}
+        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.name}" ? Cette action est irréversible.`}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };
