@@ -6,6 +6,7 @@ export interface Subject {
   id: string;
   name: string;
   class_id: string;
+  school_id: string;
   teacher_id?: string;
   created_at: string;
   updated_at: string;
@@ -25,6 +26,7 @@ export interface SubjectWithDetails extends Subject {
 export interface CreateSubjectData {
   name: string;
   class_id: string;
+  school_id: string;
   teacher_id?: string;
 }
 
@@ -57,17 +59,16 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
       if (teacherId) {
         query = query.eq('teacher_id', teacherId);
       }
+      
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
 
       const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
       
-      let filteredData = data || [];
-      if (schoolId && !classId) {
-        filteredData = filteredData.filter(subject => subject.classes?.school_id === schoolId);
-      }
-      
-      setSubjects(filteredData);
+      setSubjects(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des matières');
       toast.error('Erreur lors du chargement des matières');

@@ -24,7 +24,7 @@ const Index = () => {
               </div>
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-white">
-              Academic<span className="text-accent">Pro</span>
+              Edu<span className="text-accent">vate</span>
             </h1>
           </div>
           <p className="text-xl md:text-2xl mb-6 text-white/90 max-w-3xl mx-auto font-medium">

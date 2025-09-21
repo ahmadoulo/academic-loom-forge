@@ -94,6 +94,7 @@ const SchoolDashboard = () => {
       await createSubject({
         name: newSubject.name,
         class_id: newSubject.class_id,
+        school_id: school.id,
         teacher_id: newSubject.teacher_id || undefined
       });
       setNewSubject({ name: "", class_id: "", teacher_id: "" });

@@ -41,7 +41,7 @@ export const Header = ({ title, userRole, schoolName }: HeaderProps) => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-primary">
               <GraduationCap className="h-8 w-8" />
-              <span className="text-xl font-bold">AcademicPro</span>
+              <span className="text-xl font-bold">Eduvate</span>
             </div>
             <div className="hidden md:block h-6 w-px bg-border" />
             <h1 className="hidden md:block text-xl font-semibold text-foreground">
