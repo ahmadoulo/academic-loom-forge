@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import SchoolDashboard from "./pages/SchoolDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import AttendanceScan from "./pages/AttendanceScan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/school/:schoolId" element={<SchoolDashboard />} />
           <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
+          <Route path="/attendance/scan/:sessionCode" element={<AttendanceScan />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

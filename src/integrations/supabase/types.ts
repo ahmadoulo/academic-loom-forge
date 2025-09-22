@@ -14,6 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          class_id: string
+          created_at: string
+          date: string
+          id: string
+          marked_at: string | null
+          method: string
+          status: string
+          student_id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          marked_at?: string | null
+          method?: string
+          status?: string
+          student_id: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          marked_at?: string | null
+          method?: string
+          status?: string
+          student_id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      attendance_sessions: {
+        Row: {
+          class_id: string
+          created_at: string
+          date: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          session_code: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          date?: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          session_code: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          date?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          session_code?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       class_subjects: {
         Row: {
           class_id: string

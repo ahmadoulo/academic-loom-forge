@@ -13,13 +13,14 @@ import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
+import { AttendanceManager } from "@/components/teacher/AttendanceManager";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'overview' | 'grading'>('overview');
+  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance'>('overview');
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   
@@ -56,6 +57,14 @@ const TeacherDashboard = () => {
     setCurrentView('overview');
     setSelectedClass(null);
     setSelectedSubject(null);
+  };
+
+  const handleTakeAttendance = (classId: string) => {
+    const classData = teacherClasses.find(tc => tc.class_id === classId);
+    if (classData) {
+      setSelectedClass(classData.classes);
+      setCurrentView('attendance');
+    }
   };
 
   const handleDeleteGrade = async (gradeId: string) => {
@@ -172,6 +181,13 @@ const TeacherDashboard = () => {
             onSaveGrade={handleSaveGrade}
             onDeleteGrade={handleDeleteGrade}
           />
+        ) : currentView === 'attendance' && selectedClass ? (
+          <AttendanceManager
+            classData={selectedClass}
+            students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
+            teacherId={teacherId || ''}
+            onBack={handleBackToOverview}
+          />
         ) : (
           <Tabs defaultValue="classes" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
@@ -200,6 +216,7 @@ const TeacherDashboard = () => {
                         studentCount={classStudents.length}
                         subjects={classSubjects}
                         onViewStudents={handleViewStudents}
+                        onTakeAttendance={handleTakeAttendance}
                       />
                     );
                   })}
