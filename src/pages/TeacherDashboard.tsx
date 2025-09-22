@@ -11,13 +11,17 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GradeInput } from "@/components/teacher/GradeInput";
+import { ClassCard } from "@/components/teacher/ClassCard";
+import { StudentsGrading } from "@/components/teacher/StudentsGrading";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<'overview' | 'grading'>('overview');
+  const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [selectedSubject, setSelectedSubject] = useState<any>(null);
   
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
@@ -35,7 +39,28 @@ const TeacherDashboard = () => {
   
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
-  const { grades, createGrade } = useGrades(undefined, undefined, teacherId);
+  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId);
+
+  const handleViewStudents = (classId: string, subjectId: string) => {
+    const classData = teacherClasses.find(tc => tc.class_id === classId);
+    const subjectData = subjects.find(s => s.id === subjectId);
+    
+    if (classData && subjectData) {
+      setSelectedClass(classData.classes);
+      setSelectedSubject(subjectData);
+      setCurrentView('grading');
+    }
+  };
+
+  const handleBackToOverview = () => {
+    setCurrentView('overview');
+    setSelectedClass(null);
+    setSelectedSubject(null);
+  };
+
+  const handleDeleteGrade = async (gradeId: string) => {
+    await deleteGrade(gradeId);
+  };
 
   useEffect(() => {
     if (teacherId && teachers.length > 0) {
@@ -47,7 +72,7 @@ const TeacherDashboard = () => {
     }
   }, [teacherId, teachers]);
 
-  const handleSaveGrade = async (studentId: string, subjectId: string, grade: number) => {
+  const handleSaveGrade = async (studentId: string, subjectId: string, grade: number, gradeType: string = 'controle', comment?: string) => {
     if (!teacherId) return;
     
     await createGrade({
@@ -55,8 +80,9 @@ const TeacherDashboard = () => {
       teacher_id: teacherId,
       subject_id: subjectId,
       grade: grade,
+      grade_type: gradeType,
       exam_date: new Date().toISOString().split('T')[0],
-      comment: `Note ajoutée le ${new Date().toLocaleDateString()}`
+      comment: comment || `Note ${gradeType} ajoutée le ${new Date().toLocaleDateString()}`
     });
   };
 
@@ -136,108 +162,103 @@ const TeacherDashboard = () => {
         </Card>
 
         {/* Main Content */}
-        <Tabs defaultValue="classes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="classes">Mes Classes</TabsTrigger>
-            <TabsTrigger value="subjects">Mes Matières</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+        {currentView === 'grading' && selectedClass && selectedSubject ? (
+          <StudentsGrading
+            classData={selectedClass}
+            subjectData={selectedSubject}
+            students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
+            grades={grades}
+            onBack={handleBackToOverview}
+            onSaveGrade={handleSaveGrade}
+            onDeleteGrade={handleDeleteGrade}
+          />
+        ) : (
+          <Tabs defaultValue="classes" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="classes">Mes Classes</TabsTrigger>
+              <TabsTrigger value="subjects">Mes Matières</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="classes" className="space-y-6">
-            {teacherClasses.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Aucune classe assignée pour le moment.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-6">
-                {teacherClasses.map((teacherClass) => {
-                  const classStudents = teacherStudents.filter(s => s.class_id === teacherClass.class_id);
-                  return (
-                    <Card key={teacherClass.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Users className="h-5 w-5" />
-                          {teacherClass.classes.name} ({classStudents.length} étudiants)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {classStudents.map((student) => (
-                            <GradeInput
-                              key={student.id}
-                              student={student}
-                              subjects={subjects}
-                              grades={grades.filter(g => g.student_id === student.id)}
-                              onSaveGrade={handleSaveGrade}
-                            />
-                          ))}
-                          {classStudents.length === 0 && (
-                            <p className="text-muted-foreground text-center py-4">
-                              Aucun étudiant dans cette classe.
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="classes" className="space-y-6">
+              {teacherClasses.length === 0 ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-muted-foreground">Aucune classe assignée pour le moment.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {teacherClasses.map((teacherClass) => {
+                    const classStudents = teacherStudents.filter(s => s.class_id === teacherClass.class_id);
+                    const classSubjects = subjects.filter(s => s.class_id === teacherClass.class_id);
+                    
+                    return (
+                      <ClassCard
+                        key={teacherClass.id}
+                        classData={teacherClass.classes}
+                        studentCount={classStudents.length}
+                        subjects={classSubjects}
+                        onViewStudents={handleViewStudents}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="subjects" className="space-y-6">
-            {subjects.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Aucune matière assignée pour le moment.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {subjects.map((subject) => {
-                  const subjectGrades = grades.filter(g => g.subject_id === subject.id);
-                  const uniqueStudents = [...new Set(subjectGrades.map(g => g.student_id))].length;
-                  const averageGrade = subjectGrades.length > 0 
-                    ? (subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length).toFixed(1)
-                    : "N/A";
+            <TabsContent value="subjects" className="space-y-6">
+              {subjects.length === 0 ? (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-muted-foreground">Aucune matière assignée pour le moment.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {subjects.map((subject) => {
+                    const subjectGrades = grades.filter(g => g.subject_id === subject.id);
+                    const uniqueStudents = [...new Set(subjectGrades.map(g => g.student_id))].length;
+                    const averageGrade = subjectGrades.length > 0 
+                      ? (subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length).toFixed(1)
+                      : "N/A";
 
-                  return (
-                    <Card key={subject.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <BookOpen className="h-5 w-5" />
-                          {subject.name}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Étudiants évalués:</span>
-                            <Badge variant="secondary">{uniqueStudents}</Badge>
+                    return (
+                      <Card key={subject.id}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5" />
+                            {subject.name}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Étudiants évalués:</span>
+                              <Badge variant="secondary">{uniqueStudents}</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Notes saisies:</span>
+                              <Badge variant="outline">{subjectGrades.length}</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Moyenne générale:</span>
+                              <Badge variant="default">{averageGrade}/20</Badge>
+                            </div>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Notes saisies:</span>
-                            <Badge variant="outline">{subjectGrades.length}</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Moyenne générale:</span>
-                            <Badge variant="default">{averageGrade}/20</Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <AnalyticsDashboard teacherId={teacherId} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="analytics" className="space-y-6">
+              <AnalyticsDashboard teacherId={teacherId} />
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
     </div>
   );

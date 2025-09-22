@@ -8,6 +8,7 @@ export interface Grade {
   subject_id: string;
   teacher_id: string;
   grade: number;
+  grade_type: string;
   comment?: string;
   exam_date?: string;
   created_at: string;
@@ -33,6 +34,7 @@ export interface CreateGradeData {
   subject_id: string;
   teacher_id: string;
   grade: number;
+  grade_type: string;
   comment?: string;
   exam_date?: string;
 }

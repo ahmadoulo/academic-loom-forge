@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_subjects: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
@@ -52,6 +88,7 @@ export type Database = {
           created_at: string
           exam_date: string | null
           grade: number
+          grade_type: string
           id: string
           student_id: string
           subject_id: string
@@ -63,6 +100,7 @@ export type Database = {
           created_at?: string
           exam_date?: string | null
           grade: number
+          grade_type?: string
           id?: string
           student_id: string
           subject_id: string
@@ -74,6 +112,7 @@ export type Database = {
           created_at?: string
           exam_date?: string | null
           grade?: number
+          grade_type?: string
           id?: string
           student_id?: string
           subject_id?: string
