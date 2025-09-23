@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -59,7 +59,7 @@ export const useSchools = () => {
     }
   };
 
-  const getSchoolById = async (id: string) => {
+  const getSchoolById = useCallback(async (id: string) => {
     try {
       const { data, error } = await supabase
         .from('schools')
@@ -73,9 +73,9 @@ export const useSchools = () => {
       toast.error('École non trouvée');
       throw err;
     }
-  };
+  }, []);
 
-  const getSchoolByIdentifier = async (identifier: string) => {
+  const getSchoolByIdentifier = useCallback(async (identifier: string) => {
     try {
       const { data, error } = await supabase
         .from('schools')
@@ -89,7 +89,7 @@ export const useSchools = () => {
       toast.error('École non trouvée');
       throw err;
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSchools();
