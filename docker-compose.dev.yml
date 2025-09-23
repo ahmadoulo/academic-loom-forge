@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database pour développement
+  db:
+    image: postgres:15-alpine
+    container_name: eduvate_dev_db
+    environment:
+      POSTGRES_DB: eduvate_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - eduvate_dev_network
+
+  # Adminer pour la gestion de la base de données
+  adminer:
+    image: adminer:latest
+    container_name: eduvate_dev_adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+    networks:
+      - eduvate_dev_network
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  eduvate_dev_network:
+    driver: bridge

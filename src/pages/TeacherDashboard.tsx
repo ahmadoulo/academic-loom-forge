@@ -14,13 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
 import { AttendanceManager } from "@/components/teacher/AttendanceManager";
+import { AttendanceHistory } from "@/components/teacher/AttendanceHistory";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance'>('overview');
+  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance' | 'attendance-history'>('overview');
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   
@@ -64,6 +65,14 @@ const TeacherDashboard = () => {
     if (classData) {
       setSelectedClass(classData.classes);
       setCurrentView('attendance');
+    }
+  };
+
+  const handleViewAttendanceHistory = (classId: string) => {
+    const classData = teacherClasses.find(tc => tc.class_id === classId);
+    if (classData) {
+      setSelectedClass(classData.classes);
+      setCurrentView('attendance-history');
     }
   };
 
@@ -188,6 +197,13 @@ const TeacherDashboard = () => {
             teacherId={teacherId || ''}
             onBack={handleBackToOverview}
           />
+        ) : currentView === 'attendance-history' && selectedClass ? (
+          <AttendanceHistory
+            classData={selectedClass}
+            students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
+            teacherId={teacherId || ''}
+            onBack={handleBackToOverview}
+          />
         ) : (
           <Tabs defaultValue="classes" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
@@ -217,6 +233,7 @@ const TeacherDashboard = () => {
                         subjects={classSubjects}
                         onViewStudents={handleViewStudents}
                         onTakeAttendance={handleTakeAttendance}
+                        onViewAttendanceHistory={handleViewAttendanceHistory}
                       />
                     );
                   })}

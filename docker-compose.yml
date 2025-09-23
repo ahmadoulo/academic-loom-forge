@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: eduvate_db
+    environment:
+      POSTGRES_DB: eduvate
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - eduvate_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Supabase Local (API Gateway)
+  supabase:
+    image: supabase/supabase:latest
+    container_name: eduvate_supabase
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: eduvate
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters
+      SITE_URL: http://localhost:3000
+      API_EXTERNAL_URL: http://localhost:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - eduvate_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eduvate_frontend
+    environment:
+      VITE_SUPABASE_URL: http://localhost:8000
+      VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsaG9zdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNjQ1MTkyMDAwLCJleHAiOjE5NjA3NjgwMDB9.M3K4V-Q4OJ_5R4Ow7K-Q4OJ_5R4Ow7K-Q4OJ_5R4Ow7
+    ports:
+      - "3000:80"
+    depends_on:
+      supabase:
+        condition: service_healthy
+    networks:
+      - eduvate_network
+
+  # Adminer (Database Management)
+  adminer:
+    image: adminer:latest
+    container_name: eduvate_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - eduvate_network
+
+volumes:
+  postgres_data:
+
+networks:
+  eduvate_network:
+    driver: bridge
