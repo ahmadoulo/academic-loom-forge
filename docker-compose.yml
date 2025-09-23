@@ -32,7 +32,8 @@ services:
       POSTGRES_DB: eduvate
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters
+      JWT_SECRET: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsaG9zdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNjQ1MTkyMDAwLCJleHAiOjE5NjA3NjgwMDB9.M3K4V-Q4OJ_5R4Ow7K-Q4OJ_5R4Ow7K-Q4OJ_5R4Ow7
+    ports:
       SITE_URL: http://localhost:3000
       API_EXTERNAL_URL: http://localhost:8000
     ports:
