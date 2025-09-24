@@ -1,39 +1,39 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Loader2 } from "lucide-react";
+import { useHybridAuth } from "@/hooks/useHybridAuth";
 
-export default function AuthPage() {
-  const { loginWithCredentials, user, loading, checkAuthStatus } = useCustomAuth();
-  const navigate = useNavigate();
+const AuthPage = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-
-  // Check authentication status on component mount
-  React.useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const isAuthenticated = !!user;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { user, loading, loginWithCredentials } = useHybridAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Vérification de l'authentification...</span>
+        </div>
       </div>
     );
   }
 
-  if (isAuthenticated && user) {
+  if (user) {
+    console.log('DEBUG AuthPage - Redirection pour utilisateur:', user);
+    
     // Rediriger vers le dashboard approprié selon le rôle
     switch (user.role) {
       case 'global_admin':
+      case 'admin':
         return <Navigate to="/admin" replace />;
       case 'school_admin':
         if (user.school_id) {
@@ -58,13 +58,18 @@ export default function AuthPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       await loginWithCredentials({
         email: formData.email,
         password: formData.password,
       });
     } catch (error) {
-      // Error already handled in useCustomAuth
+      // Error already handled in useHybridAuth
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -87,59 +92,68 @@ export default function AuthPage() {
 
         <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
-            <CardDescription>
-              Saisissez vos identifiants pour accéder à votre espace
+            <CardTitle className="text-2xl font-bold text-center">
+              Connexion
+            </CardTitle>
+            <CardDescription className="text-center text-muted-foreground">
+              Entrez vos identifiants pour accéder à votre espace
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signin-email">Email</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="signin-email"
+                  id="email"
                   type="email"
                   placeholder="votre@email.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  className="h-11"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signin-password">Mot de passe</Label>
+                <Label htmlFor="password">Mot de passe</Label>
                 <Input
-                  id="signin-password"
+                  id="password"
                   type="password"
+                  placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="h-11"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                 />
               </div>
-              <Button type="submit" className="w-full h-11 bg-gradient-primary hover:opacity-90 shadow-medium">
-                Se connecter
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-primary hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Connexion...</span>
+                  </div>
+                ) : (
+                  "Se connecter"
+                )}
               </Button>
             </form>
-
-            <div className="mt-6 p-4 bg-primary-light/50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2">Comptes de démonstration :</h4>
-              <div className="text-xs space-y-1 text-muted-foreground">
-                <p><strong>Admin Global:</strong> admin@eduvate.com</p>
-                <p><strong>Admin École:</strong> school@eduvate.com</p>
-                <p><strong>Professeur:</strong> teacher@eduvate.com</p>
-                <p><strong>Étudiant:</strong> student@eduvate.com</p>
-                <p><strong>Parent:</strong> parent@eduvate.com</p>
-                <p className="pt-1"><em>Mot de passe: password123</em></p>
-              </div>
+            
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Système d'authentification hybride
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Compatible Supabase et système personnalisé
+              </p>
             </div>
-
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Vous n'avez pas de compte ? Contactez votre administrateur.
-            </p>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-}
+};
+
+export default AuthPage;
