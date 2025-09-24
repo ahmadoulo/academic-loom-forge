@@ -67,164 +67,57 @@ export default function AuthPage() {
         </div>
 
         <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm">
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="signin" className="flex items-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Connexion
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Inscription
-              </TabsTrigger>
-            </TabsList>
+          <div className="w-full">
 
-            <TabsContent value="signin">
-              <CardHeader className="space-y-1 pb-4">
-                <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
-                <CardDescription>
-                  Connectez-vous à votre compte EduVate
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="votre@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Mot de passe</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required
-                      className="h-11"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full h-11 bg-gradient-primary hover:opacity-90 shadow-medium">
-                    Se connecter
-                  </Button>
-                </form>
-
-                <div className="mt-6 p-4 bg-primary-light/50 rounded-lg">
-                  <h4 className="font-semibold text-sm mb-2">Comptes de démonstration :</h4>
-                  <div className="text-xs space-y-1 text-muted-foreground">
-                    <p><strong>Admin Global:</strong> admin@eduvate.com</p>
-                    <p><strong>Admin École:</strong> school@eduvate.com</p>
-                    <p><strong>Professeur:</strong> teacher@eduvate.com</p>
-                    <p><strong>Étudiant:</strong> student@eduvate.com</p>
-                    <p><strong>Parent:</strong> parent@eduvate.com</p>
-                    <p className="pt-1"><em>Mot de passe: password123</em></p>
-                  </div>
+            <CardHeader className="space-y-1 pb-4">
+              <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
+              <CardDescription>
+                Connectez-vous à votre compte EduVate
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input
+                    id="signin-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    className="h-11"
+                  />
                 </div>
-              </CardContent>
-            </TabsContent>
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Mot de passe</Label>
+                  <Input
+                    id="signin-password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <Button type="submit" className="w-full h-11 bg-gradient-primary hover:opacity-90 shadow-medium">
+                  Se connecter
+                </Button>
+              </form>
 
-            <TabsContent value="signup">
-              <CardHeader className="space-y-1 pb-4">
-                <CardTitle className="text-2xl font-bold">Inscription</CardTitle>
-                <CardDescription>
-                  Créez votre compte EduVate
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">Prénom</Label>
-                      <Input
-                        id="first_name"
-                        value={formData.first_name}
-                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Nom</Label>
-                      <Input
-                        id="last_name"
-                        value={formData.last_name}
-                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="votre@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Mot de passe</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rôle</Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Étudiant</SelectItem>
-                        <SelectItem value="teacher">Professeur</SelectItem>
-                        <SelectItem value="parent">Parent</SelectItem>
-                        <SelectItem value="school_admin">Admin École</SelectItem>
-                        <SelectItem value="global_admin">Admin Global</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {(formData.role !== 'global_admin') && (
-                    <div className="space-y-2">
-                      <Label htmlFor="school">École</Label>
-                      <Select
-                        value={formData.school_id}
-                        onValueChange={(value) => setFormData({ ...formData, school_id: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionnez une école" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {schools.map((school) => (
-                            <SelectItem key={school.id} value={school.id}>
-                              {school.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 shadow-medium">
-                    Créer le compte
-                  </Button>
-                </form>
-              </CardContent>
-            </TabsContent>
-          </Tabs>
+              <div className="mt-6 p-4 bg-primary-light/50 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2">Comptes de démonstration :</h4>
+                <div className="text-xs space-y-1 text-muted-foreground">
+                  <p><strong>Admin Global:</strong> admin@eduvate.com</p>
+                  <p><strong>Admin École:</strong> school@eduvate.com</p>
+                  <p><strong>Professeur:</strong> teacher@eduvate.com</p>
+                  <p><strong>Étudiant:</strong> student@eduvate.com</p>
+                  <p><strong>Parent:</strong> parent@eduvate.com</p>
+                  <p className="pt-1"><em>Mot de passe: password123</em></p>
+                </div>
+              </div>
+            </CardContent>
+          </div>
         </Card>
       </div>
     </div>

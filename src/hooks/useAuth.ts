@@ -30,18 +30,44 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Create mock profile from user data for now
-          setTimeout(() => {
-            const mockProfile: UserProfile = {
-              id: session.user.id,
-              email: session.user.email || '',
-              first_name: session.user.user_metadata?.first_name || 'Utilisateur',
-              last_name: session.user.user_metadata?.last_name || '',
-              role: session.user.user_metadata?.role || 'student',
-              school_id: session.user.user_metadata?.school_id,
-              is_active: true,
-            };
-            setProfile(mockProfile);
+          // Fetch real profile from database
+          setTimeout(async () => {
+            try {
+              const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+
+              if (error) {
+                // If no profile found, create mock profile from user metadata
+                const mockProfile: UserProfile = {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  first_name: session.user.user_metadata?.first_name || 'Utilisateur',
+                  last_name: session.user.user_metadata?.last_name || '',
+                  role: session.user.user_metadata?.role || 'student',
+                  school_id: session.user.user_metadata?.school_id,
+                  is_active: true,
+                };
+                setProfile(mockProfile);
+              } else {
+                setProfile(profileData);
+              }
+            } catch (err) {
+              console.error('Error fetching profile:', err);
+              // Fallback to mock profile
+              const mockProfile: UserProfile = {
+                id: session.user.id,
+                email: session.user.email || '',
+                first_name: session.user.user_metadata?.first_name || 'Utilisateur',
+                last_name: session.user.user_metadata?.last_name || '',
+                role: session.user.user_metadata?.role || 'student',
+                school_id: session.user.user_metadata?.school_id,
+                is_active: true,
+              };
+              setProfile(mockProfile);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -55,7 +81,9 @@ export const useAuth = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (!session) {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -149,6 +177,36 @@ export const useAuth = () => {
     }
   };
 
+  // Fonction pour rediriger selon le rôle
+  const redirectByRole = (role: UserRole) => {
+    switch (role) {
+      case 'global_admin':
+        window.location.href = '/admin';
+        break;
+      case 'school_admin':
+        window.location.href = '/school';
+        break;
+      case 'teacher':
+        window.location.href = '/teacher';
+        break;
+      case 'student':
+        window.location.href = '/student';
+        break;
+      case 'parent':
+        window.location.href = '/parent';
+        break;
+      default:
+        window.location.href = '/';
+    }
+  };
+
+  // Redirection automatique après connexion
+  useEffect(() => {
+    if (profile && !loading) {
+      redirectByRole(profile.role);
+    }
+  }, [profile, loading]);
+
   return {
     user,
     session,
@@ -157,6 +215,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
+    redirectByRole,
     isAuthenticated: !!user,
     isGlobalAdmin: profile?.role === 'global_admin',
     isSchoolAdmin: profile?.role === 'school_admin',
