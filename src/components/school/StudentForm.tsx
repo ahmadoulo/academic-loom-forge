@@ -32,7 +32,7 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstname.trim() || !formData.lastname.trim() || !formData.class_id) return;
+    if (!formData.firstname.trim() || !formData.lastname.trim() || !formData.class_id || !formData.cin_number.trim()) return;
     
     onSubmit({
       firstname: formData.firstname.trim(),
@@ -40,7 +40,7 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
       email: formData.email.trim() || undefined,
       class_id: formData.class_id,
       birth_date: formData.birth_date || undefined,
-      cin_number: formData.cin_number.trim() || undefined,
+      cin_number: formData.cin_number.trim(),
       student_phone: formData.student_phone.trim() || undefined,
       parent_phone: formData.parent_phone.trim() || undefined,
     });
@@ -109,7 +109,7 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
           id="cin_number"
           value={formData.cin_number}
           onChange={(e) => setFormData({ ...formData, cin_number: e.target.value })}
-          placeholder="Numéro de carte d'identité"
+          placeholder="Numéro de carte d'identité (utilisé comme mot de passe)"
           required
         />
       </div>
