@@ -98,6 +98,8 @@ export const useCustomAuth = () => {
     try {
       setLoading(true);
       
+      console.log('DEBUG: Tentative de connexion avec email:', email);
+      
       const { data: userData, error } = await supabase
         .from('user_credentials')
         .select('*')
@@ -105,12 +107,24 @@ export const useCustomAuth = () => {
         .eq('is_active', true)
         .single();
 
+      console.log('DEBUG: Données utilisateur trouvées:', userData);
+      console.log('DEBUG: Erreur requête:', error);
+
       if (error || !userData) {
+        console.log('DEBUG: Utilisateur non trouvé ou erreur');
         throw new Error('Identifiants incorrects');
       }
 
-      const isValidPassword = await verifyPassword(password, userData.password_hash);
+      console.log('DEBUG: Hash en base:', userData.password_hash);
+      
+      const computedHash = await hashPassword(password);
+      console.log('DEBUG: Hash calculé:', computedHash);
+      
+      const isValidPassword = computedHash === userData.password_hash;
+      console.log('DEBUG: Mot de passe valide:', isValidPassword);
+      
       if (!isValidPassword) {
+        console.log('DEBUG: Mot de passe incorrect');
         throw new Error('Identifiants incorrects');
       }
 
@@ -154,6 +168,7 @@ export const useCustomAuth = () => {
       return userProfile;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
+      console.error('DEBUG: Erreur de connexion:', message);
       toast.error(message);
       throw err;
     } finally {
