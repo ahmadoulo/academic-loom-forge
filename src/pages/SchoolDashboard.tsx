@@ -633,6 +633,7 @@ const SchoolDashboard = () => {
           </DialogHeader>
           <ClassForm 
             onSubmit={handleCreateClass}
+            subjects={subjects}
           />
         </DialogContent>
       </Dialog>

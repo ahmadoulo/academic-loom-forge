@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,16 +12,14 @@ interface Subject {
 }
 
 interface ClassFormProps {
-  isOpen: boolean;
-  onClose: () => void;
   onSubmit: (classData: {
     name: string;
     selectedSubjects: string[];
   }) => void;
-  subjects: Subject[];
+  subjects?: Subject[];
 }
 
-export const ClassForm = ({ isOpen, onClose, onSubmit, subjects }: ClassFormProps) => {
+export const ClassForm = ({ onSubmit, subjects = [] }: ClassFormProps) => {
   const [formData, setFormData] = useState({
     name: "",
     selectedSubjects: [] as string[]
@@ -39,13 +36,8 @@ export const ClassForm = ({ isOpen, onClose, onSubmit, subjects }: ClassFormProp
     
     // Reset form
     setFormData({ name: "", selectedSubjects: [] });
-    onClose();
   };
 
-  const handleClose = () => {
-    setFormData({ name: "", selectedSubjects: [] });
-    onClose();
-  };
 
   const handleSubjectToggle = (subjectId: string) => {
     setFormData(prev => ({
@@ -57,12 +49,7 @@ export const ClassForm = ({ isOpen, onClose, onSubmit, subjects }: ClassFormProp
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Créer une nouvelle classe</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="name">Nom de la classe *</Label>
             <Input
@@ -112,15 +99,10 @@ export const ClassForm = ({ isOpen, onClose, onSubmit, subjects }: ClassFormProp
           </Card>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Annuler
-            </Button>
             <Button type="submit">
               Créer la classe
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
   );
 };
