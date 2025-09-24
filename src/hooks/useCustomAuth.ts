@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 interface LoginCredentials {
@@ -30,6 +30,7 @@ interface UserCredential {
 export const useCustomAuth = () => {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<UserCredential | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   // Hachage simple côté client (pour démo - en prod utiliser un service backend)
   const hashPassword = async (password: string): Promise<string> => {
@@ -98,8 +99,6 @@ export const useCustomAuth = () => {
     try {
       setLoading(true);
       
-      console.log('DEBUG: Tentative de connexion avec email:', email);
-      
       const { data: userData, error } = await supabase
         .from('user_credentials')
         .select('*')
@@ -107,24 +106,14 @@ export const useCustomAuth = () => {
         .eq('is_active', true)
         .single();
 
-      console.log('DEBUG: Données utilisateur trouvées:', userData);
-      console.log('DEBUG: Erreur requête:', error);
-
       if (error || !userData) {
-        console.log('DEBUG: Utilisateur non trouvé ou erreur');
         throw new Error('Identifiants incorrects');
       }
-
-      console.log('DEBUG: Hash en base:', userData.password_hash);
       
       const computedHash = await hashPassword(password);
-      console.log('DEBUG: Hash calculé:', computedHash);
-      
       const isValidPassword = computedHash === userData.password_hash;
-      console.log('DEBUG: Mot de passe valide:', isValidPassword);
       
       if (!isValidPassword) {
-        console.log('DEBUG: Mot de passe incorrect');
         throw new Error('Identifiants incorrects');
       }
 
@@ -158,19 +147,13 @@ export const useCustomAuth = () => {
         last_login: userData.last_login,
         teacher_id: teacherId,
       };
-
-      console.log('DEBUG: Profil utilisateur créé:', userProfile);
       
       setUser(userProfile);
-      
-      // Stocker dans localStorage pour persistance
       localStorage.setItem('customAuthUser', JSON.stringify(userProfile));
-      
-      console.log('DEBUG: Utilisateur stocké dans localStorage');
       
       toast.success('Connexion réussie');
       
-      // Forcer la redirection immédiatement
+      // Redirection immédiate
       setTimeout(() => {
         if (userProfile.role === 'global_admin' || userProfile.role === 'admin') {
           window.location.href = '/admin';
@@ -186,7 +169,6 @@ export const useCustomAuth = () => {
       return userProfile;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
-      console.error('DEBUG: Erreur de connexion:', message);
       toast.error(message);
       throw err;
     } finally {
@@ -194,38 +176,48 @@ export const useCustomAuth = () => {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
+    // Nettoyer complètement le localStorage
     localStorage.removeItem('customAuthUser');
+    localStorage.clear(); // Nettoyer toutes les sessions en cache
+    
     toast.success('Déconnexion réussie');
-    // Rediriger vers la page d'authentification
-    window.location.href = '/auth';
-  };
+    
+    // Forcer le rechargement complet pour vider le cache React
+    window.location.replace('/auth');
+  }, []);
 
-  const checkAuthStatus = () => {
-    console.log('DEBUG: Vérification du statut d\'authentification');
+  const checkAuthStatus = useCallback(() => {
+    if (initialized) return; // Éviter les appels multiples
+    
     const storedUser = localStorage.getItem('customAuthUser');
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        console.log('DEBUG: Utilisateur trouvé dans localStorage:', userData);
         setUser(userData);
       } catch (error) {
-        console.error('DEBUG: Erreur parsing localStorage:', error);
         localStorage.removeItem('customAuthUser');
+        setUser(null);
       }
-    } else {
-      console.log('DEBUG: Aucun utilisateur dans localStorage');
     }
-  };
+    setInitialized(true);
+  }, [initialized]);
+
+  // Initialiser l'état une seule fois au montage du hook
+  useEffect(() => {
+    if (!initialized) {
+      checkAuthStatus();
+    }
+  }, [checkAuthStatus, initialized]);
 
   return {
     user,
-    loading,
+    loading: loading || !initialized,
     createUserCredential,
     loginWithCredentials,
     logout,
     checkAuthStatus,
-    hashPassword, // Expose hashPassword function
+    hashPassword,
   };
 };

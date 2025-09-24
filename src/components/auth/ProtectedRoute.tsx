@@ -14,11 +14,7 @@ export function ProtectedRoute({
   requiredRoles = [], 
   fallbackPath = '/auth' 
 }: ProtectedRouteProps) {
-  const { user, loading, checkAuthStatus } = useCustomAuth();
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, [checkAuthStatus]);
+  const { user, loading } = useCustomAuth();
 
   if (loading) {
     return (

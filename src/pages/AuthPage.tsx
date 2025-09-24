@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +14,7 @@ const AuthPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   
-  const { user, loading, loginWithCredentials, checkAuthStatus } = useCustomAuth();
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, [checkAuthStatus]);
+  const { user, loading, loginWithCredentials } = useCustomAuth();
 
   if (loading) {
     return (
@@ -32,25 +27,26 @@ const AuthPage = () => {
     );
   }
 
-  if (user && user.is_active && !redirecting) {
-    console.log('DEBUG AuthPage - Redirection pour utilisateur:', user);
-    setRedirecting(true);
-    
-    // Redirection forcée pour éviter les boucles
-    if (user.role === 'global_admin' || user.role === 'admin') {
-      console.log('DEBUG: Redirection vers /admin');
-      setTimeout(() => window.location.replace('/admin'), 100);
-    } else if (user.role === 'school_admin' && user.school_id) {
-      console.log('DEBUG: Redirection vers /school');
-      setTimeout(() => window.location.replace(`/school/${user.school_id}`), 100);
-    } else if (user.role === 'teacher' && user.teacher_id) {
-      console.log('DEBUG: Redirection vers /teacher');
-      setTimeout(() => window.location.replace(`/teacher/${user.teacher_id}`), 100);
-    } else {
-      console.log('DEBUG: Redirection vers /dashboard');
-      setTimeout(() => window.location.replace('/dashboard'), 100);
+  // Rediriger si l'utilisateur est déjà connecté
+  useEffect(() => {
+    if (user && user.is_active && !redirecting) {
+      setRedirecting(true);
+      
+      setTimeout(() => {
+        if (user.role === 'global_admin' || user.role === 'admin') {
+          window.location.replace('/admin');
+        } else if (user.role === 'school_admin' && user.school_id) {
+          window.location.replace(`/school/${user.school_id}`);
+        } else if (user.role === 'teacher' && user.teacher_id) {
+          window.location.replace(`/teacher/${user.teacher_id}`);
+        } else {
+          window.location.replace('/dashboard');
+        }
+      }, 100);
     }
-    
+  }, [user, redirecting]);
+
+  if (redirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -67,16 +63,12 @@ const AuthPage = () => {
     
     setIsSubmitting(true);
     try {
-      console.log('DEBUG: Tentative de connexion avec:', formData.email);
-      const result = await loginWithCredentials({
+      await loginWithCredentials({
         email: formData.email,
         password: formData.password,
       });
-      
-      // La redirection est gérée dans loginWithCredentials
-      console.log('DEBUG: Connexion réussie, redirection en cours...');
     } catch (error) {
-      console.error('DEBUG: Erreur de connexion:', error);
+      // L'erreur est déjà gérée dans le hook
     } finally {
       setIsSubmitting(false);
     }
