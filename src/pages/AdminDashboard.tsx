@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMockAuth } from "@/hooks/useMockAuth";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -13,7 +13,7 @@ import { RoleManagement } from "@/components/settings/RoleManagement";
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("schools");
   const [settingsTab, setSettingsTab] = useState("users");
-  const { user } = useMockAuth();
+  const { user } = useCustomAuth();
 
   useEffect(() => {
     console.log('DEBUG AdminDashboard - Utilisateur connecté:', user);
@@ -72,7 +72,21 @@ const AdminDashboard = () => {
             onTabChange={setActiveTab}
           />
           <main className="flex-1 p-4 lg:p-6">
-            {renderContent()}
+            {user?.role === 'global_admin' || user?.role === 'admin' ? (
+              renderContent()
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold mb-2">Accès non autorisé</h2>
+                  <p className="text-muted-foreground">
+                    Vous devez être administrateur global pour accéder à cette section.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Rôle actuel: {user?.role || 'non défini'}
+                  </p>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>

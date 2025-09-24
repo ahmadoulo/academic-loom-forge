@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const AuthPage = () => {
   
   const { user, loading, loginWithCredentials, checkAuthStatus } = useCustomAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
@@ -31,7 +31,7 @@ const AuthPage = () => {
     );
   }
 
-  if (user) {
+  if (user && user.is_active) {
     console.log('DEBUG AuthPage - Redirection pour utilisateur:', user);
     
     // Rediriger vers le dashboard approprié selon le rôle
@@ -43,20 +43,20 @@ const AuthPage = () => {
         if (user.school_id) {
           return <Navigate to={`/school/${user.school_id}`} replace />;
         } else {
-          return <Navigate to="/" replace />;
+          return <Navigate to="/admin" replace />;
         }
       case 'teacher':
         if (user.teacher_id) {
           return <Navigate to={`/teacher/${user.teacher_id}`} replace />;
         } else {
-          return <Navigate to="/" replace />;
+          return <Navigate to="/admin" replace />;
         }
       case 'student':
-        return <Navigate to="/student" replace />;
+        return <Navigate to="/dashboard" replace />;
       case 'parent':
-        return <Navigate to="/parent" replace />;
+        return <Navigate to="/dashboard" replace />;
       default:
-        return <Navigate to="/" replace />;
+        return <Navigate to="/admin" replace />;
     }
   }
 
@@ -148,10 +148,10 @@ const AuthPage = () => {
             
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Système d'authentification hybride
+                Authentification avec base de données interne
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Compatible Supabase et système personnalisé
+                Table: user_credentials
               </p>
             </div>
           </CardContent>
