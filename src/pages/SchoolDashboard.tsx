@@ -272,16 +272,28 @@ const SchoolDashboard = () => {
     lastname: string;
     email?: string;
     class_id: string;
+    birth_date?: string;
+    cin_number?: string;
+    student_phone?: string;
+    parent_phone?: string;
   }) => {
-    if (!school?.id) return;
+    if (!school?.id) {
+      console.error('School ID is missing');
+      return;
+    }
+    
+    console.log('Creating student with data:', studentData);
+    console.log('School ID:', school.id);
     
     try {
-      await createStudent({
+      const result = await createStudent({
         ...studentData,
         school_id: school.id
       });
+      console.log('Student created successfully:', result);
+      setIsStudentDialogOpen(false);
     } catch (error) {
-      // Error handled by hook
+      console.error('Error creating student:', error);
     }
   };
 
@@ -714,6 +726,19 @@ const SchoolDashboard = () => {
         description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.name}" ? Cette action est irréversible.`}
         onConfirm={handleDelete}
       />
+
+      {/* Student Dialog */}
+      <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ajouter un Étudiant</DialogTitle>
+          </DialogHeader>
+          <StudentForm
+            onSubmit={handleCreateStudent}
+            classes={classes}
+          />
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };

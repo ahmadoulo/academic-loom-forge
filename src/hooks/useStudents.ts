@@ -74,9 +74,21 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   const createStudent = async (studentData: CreateStudentData) => {
     try {
+      console.log('useStudents createStudent called with:', studentData);
+      
       // Validation : CIN requis
       if (!studentData.cin_number) {
         throw new Error('Le numéro CIN est requis');
+      }
+
+      // Validation : school_id requis
+      if (!studentData.school_id) {
+        throw new Error('L\'identifiant de l\'école est requis');
+      }
+
+      // Validation : class_id requis
+      if (!studentData.class_id) {
+        throw new Error('La classe est requise');
       }
 
       const { data, error } = await supabase
@@ -90,14 +102,19 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         `)
         .single();
 
-      if (error) throw error;
+      console.log('Supabase insert result:', { data, error });
 
-      // Pour l'instant, ne pas créer automatiquement le compte utilisateur
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
       toast.success('Étudiant créé avec succès');
       
       setStudents(prev => [...prev, data]);
       return data;
     } catch (err) {
+      console.error('Error in createStudent:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'étudiant';
       setError(message);
       toast.error(message);
