@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -23,56 +22,14 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<AuthPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute requiredRoles={['global_admin', 'admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/school" 
-              element={
-                <ProtectedRoute requiredRoles={['school_admin']}>
-                  <SchoolDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/school/:schoolId" 
-              element={
-                <ProtectedRoute requiredRoles={['school_admin']}>
-                  <SchoolDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/teacher" 
-              element={
-                <ProtectedRoute requiredRoles={['teacher']}>
-                  <TeacherDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/teacher/:teacherId" 
-              element={
-                <ProtectedRoute requiredRoles={['teacher']}>
-                  <TeacherDashboard />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/" element={<AdminDashboard />} />
+            <Route path="/auth" element={<AdminDashboard />} />
+            <Route path="/dashboard" element={<Index />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/school" element={<SchoolDashboard />} />
+            <Route path="/school/:schoolId" element={<SchoolDashboard />} />
+            <Route path="/teacher" element={<TeacherDashboard />} />
+            <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
             <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

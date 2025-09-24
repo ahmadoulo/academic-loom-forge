@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
+import { useMockAuth } from "@/hooks/useMockAuth";
 import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
 
 interface AuthenticatedHeaderProps {
@@ -22,7 +22,7 @@ export function AuthenticatedHeader({
   activeTab, 
   onTabChange 
 }: AuthenticatedHeaderProps) {
-  const { user, logout } = useCustomAuth();
+  const { user, logout } = useMockAuth();
   const profile = user;
 
   const menuItems = [
