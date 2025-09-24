@@ -4,7 +4,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
 
 interface AuthenticatedHeaderProps {
@@ -22,8 +21,13 @@ export function AuthenticatedHeader({
   activeTab, 
   onTabChange 
 }: AuthenticatedHeaderProps) {
-  const { user, logout } = useCustomAuth();
-  const profile = user;
+  // Mock user pour l'accès libre
+  const profile = {
+    first_name: "Admin",
+    last_name: "Global",
+    email: "admin@eduvate.com",
+    role: "global_admin"
+  };
 
   const menuItems = [
     { 
@@ -162,7 +166,7 @@ export function AuthenticatedHeader({
                 <span>Profil</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
+              <DropdownMenuItem onClick={() => console.log('Déconnexion simulée')}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Déconnexion</span>
               </DropdownMenuItem>
