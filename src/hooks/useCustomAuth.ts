@@ -149,5 +149,6 @@ export const useCustomAuth = () => {
     loginWithCredentials,
     logout,
     checkAuthStatus,
+    hashPassword, // Expose hashPassword function
   };
 };

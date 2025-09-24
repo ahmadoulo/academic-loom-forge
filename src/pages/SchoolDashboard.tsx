@@ -30,6 +30,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { StudentsListSection } from "@/components/school/StudentsListSection";
 import { ClassesListSection } from "@/components/school/ClassesListSection";
+import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 
 const SchoolDashboard = () => {
@@ -640,6 +641,10 @@ const SchoolDashboard = () => {
                     })}
                   </div>
                 </div>
+              )}
+              
+              {activeTab === "users" && (
+                <SchoolUserManagement schoolId={school?.id || ""} />
               )}
               
               {activeTab === "settings" && (

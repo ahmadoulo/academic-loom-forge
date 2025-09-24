@@ -9,16 +9,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useAuth, UserRole } from "@/hooks/useAuth";
-import { useSchools } from "@/hooks/useSchools";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key, Copy } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
-export function UserManagement() {
-  const { profile } = useAuth();
-  const { schools } = useSchools();
+interface SchoolUserManagementProps {
+  schoolId: string;
+}
+
+export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const { createUserCredential, loading, hashPassword } = useCustomAuth();
   
   const [users, setUsers] = useState([]);
@@ -29,18 +29,18 @@ export function UserManagement() {
     email: "",
     first_name: "",
     last_name: "",
-    role: "student" as UserRole,
-    school_id: "",
+    role: "student",
     password: "",
   });
 
-  // Fetch users from user_credentials table
+  // Fetch users for this school
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
       const { data, error } = await supabase
         .from('user_credentials')
         .select('*')
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -55,7 +55,7 @@ export function UserManagement() {
   // Use effect to fetch users on component mount
   React.useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [schoolId]);
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,7 +80,7 @@ export function UserManagement() {
         first_name: newUser.first_name,
         last_name: newUser.last_name,
         role: newUser.role,
-        school_id: newUser.school_id || undefined,
+        school_id: schoolId,
         password: generatedPassword,
       });
 
@@ -103,7 +103,6 @@ export function UserManagement() {
           first_name: "",
           last_name: "",
           role: "student",
-          school_id: "",
           password: "",
         });
         
@@ -142,25 +141,6 @@ export function UserManagement() {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-      school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      parent: { label: "Parent", className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
-    };
-    
-    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
-    return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
-  };
-
-  const getSchoolName = (schoolId: string | null) => {
-    if (!schoolId) return "Toutes les écoles";
-    const school = schools.find(s => s.id === schoolId);
-    return school?.name || "École inconnue";
-  };
-
   const deleteUser = async (userId: string) => {
     try {
       const { error } = await supabase
@@ -177,7 +157,16 @@ export function UserManagement() {
     }
   };
 
-  const canManageUsers = profile?.role === 'global_admin' || profile?.role === 'school_admin';
+  const getRoleBadge = (role: string) => {
+    const roleConfig = {
+      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+      student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+      parent: { label: "Parent", className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+    };
+    
+    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
+    return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
+  };
 
   if (usersLoading || loading) {
     return (
@@ -188,24 +177,13 @@ export function UserManagement() {
     );
   }
 
-  if (!canManageUsers) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-semibold mb-2">Accès restreint</h3>
-        <p className="text-muted-foreground">
-          Vous n'avez pas les permissions nécessaires pour gérer les utilisateurs.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col gap-4 items-start">
         <div className="w-full">
           <h2 className="text-xl lg:text-2xl font-bold">Gestion des utilisateurs</h2>
           <p className="text-muted-foreground text-sm lg:text-base">
-            Gérez les comptes utilisateurs et leurs permissions
+            Gérez les comptes utilisateurs de votre école
           </p>
         </div>
         
@@ -220,7 +198,7 @@ export function UserManagement() {
             <DialogHeader>
               <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel utilisateur à la plateforme
+                Ajoutez un nouvel utilisateur à votre école
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -255,7 +233,7 @@ export function UserManagement() {
                 <Label htmlFor="new-role">Rôle</Label>
                 <Select
                   value={newUser.role}
-                  onValueChange={(value: UserRole) => setNewUser({ ...newUser, role: value })}
+                  onValueChange={(value) => setNewUser({ ...newUser, role: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -264,35 +242,9 @@ export function UserManagement() {
                     <SelectItem value="student">Étudiant</SelectItem>
                     <SelectItem value="teacher">Professeur</SelectItem>
                     <SelectItem value="parent">Parent</SelectItem>
-                    {profile?.role === 'global_admin' && (
-                      <>
-                        <SelectItem value="school_admin">Admin École</SelectItem>
-                        <SelectItem value="global_admin">Admin Global</SelectItem>
-                      </>
-                    )}
                   </SelectContent>
                 </Select>
               </div>
-              {newUser.role !== 'global_admin' && (
-                <div className="space-y-2">
-                  <Label htmlFor="new-school">École</Label>
-                  <Select
-                    value={newUser.school_id}
-                    onValueChange={(value) => setNewUser({ ...newUser, school_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez une école" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {schools.map((school) => (
-                        <SelectItem key={school.id} value={school.id}>
-                          {school.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
                   Annuler
@@ -332,7 +284,6 @@ export function UserManagement() {
                 <TableRow>
                   <TableHead className="min-w-[200px]">Utilisateur</TableHead>
                   <TableHead className="hidden sm:table-cell">Rôle</TableHead>
-                  <TableHead className="hidden md:table-cell">École</TableHead>
                   <TableHead className="hidden lg:table-cell">Statut</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -360,9 +311,6 @@ export function UserManagement() {
                      <TableCell className="hidden sm:table-cell">
                        {getRoleBadge(user.role)}
                      </TableCell>
-                     <TableCell className="hidden md:table-cell">
-                       <div className="text-sm truncate max-w-[150px]">{getSchoolName(user.school_id)}</div>
-                     </TableCell>
                      <TableCell className="hidden lg:table-cell">
                        <Badge variant={user.is_active ? "default" : "secondary"}>
                          {user.is_active ? "Actif" : "Inactif"}
@@ -380,18 +328,18 @@ export function UserManagement() {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
-                             <Key className="h-4 w-4 mr-2" />
-                             Réinitialiser mot de passe
-                           </DropdownMenuItem>
-                           <DropdownMenuItem>
-                             <Mail className="h-4 w-4 mr-2" />
-                             Envoyer un email
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             className="text-destructive"
-                             onClick={() => deleteUser(user.id)}
-                           >
+                          <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
+                            <Key className="h-4 w-4 mr-2" />
+                            Réinitialiser mot de passe
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Envoyer un email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => deleteUser(user.id)}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer
                           </DropdownMenuItem>

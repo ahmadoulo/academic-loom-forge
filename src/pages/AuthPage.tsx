@@ -1,19 +1,26 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { GraduationCap } from "lucide-react";
 
 export default function AuthPage() {
-  const { signIn, isAuthenticated, loading, profile } = useAuth();
+  const { loginWithCredentials, user, loading, checkAuthStatus } = useCustomAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  // Check authentication status on component mount
+  React.useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const isAuthenticated = !!user;
 
   if (loading) {
     return (
@@ -23,9 +30,9 @@ export default function AuthPage() {
     );
   }
 
-  if (isAuthenticated && profile) {
+  if (isAuthenticated && user) {
     // Rediriger vers le dashboard approprié selon le rôle
-    switch (profile.role) {
+    switch (user.role) {
       case 'global_admin':
         return <Navigate to="/admin" replace />;
       case 'school_admin':
@@ -43,7 +50,14 @@ export default function AuthPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn(formData.email, formData.password);
+    try {
+      await loginWithCredentials({
+        email: formData.email,
+        password: formData.password,
+      });
+    } catch (error) {
+      // Error already handled in useCustomAuth
+    }
   };
 
   return (

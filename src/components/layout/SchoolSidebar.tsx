@@ -54,6 +54,11 @@ const menuItems = [
     icon: GraduationCap 
   },
   { 
+    title: "Utilisateurs", 
+    value: "users",
+    icon: Users 
+  },
+  { 
     title: "Paramètres", 
     value: "settings",
     icon: Settings 
