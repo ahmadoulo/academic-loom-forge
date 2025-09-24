@@ -57,14 +57,7 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
     };
 
     generateQR();
-    
-    // Rafraîchir les données toutes les 10 secondes pour voir les nouveaux étudiants
-    const interval = setInterval(() => {
-      refetch();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [scanUrl, refetch]);
+  }, [scanUrl]);
 
   useEffect(() => {
     // Mettre à jour le temps restant
@@ -75,6 +68,11 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
 
       if (diff <= 0) {
         setTimeRemaining('Expiré');
+        // Fermer automatiquement la session expirée
+        deactivateAttendanceSession(session.id);
+        setTimeout(() => {
+          onBack();
+        }, 2000);
         return;
       }
 
@@ -82,14 +80,18 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      if (hours > 0) {
+        setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      } else {
+        setTimeRemaining(`${minutes}m ${seconds}s`);
+      }
     };
 
     updateTimeRemaining();
     const interval = setInterval(updateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [session.expires_at]);
+  }, [session.expires_at, deactivateAttendanceSession, session.id, onBack]);
 
   const handleCopyCode = async () => {
     try {

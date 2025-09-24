@@ -13,6 +13,8 @@ import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
 import { AttendanceManager } from "@/components/teacher/AttendanceManager";
 import { AttendanceHistory } from "@/components/teacher/AttendanceHistory";
+import { ActiveSessionsPanel } from "@/components/teacher/ActiveSessionsPanel";
+import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -22,9 +24,10 @@ const TeacherDashboard = () => {
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance' | 'attendance-history'>('overview');
+  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance' | 'attendance-history' | 'qr-session'>('overview');
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("classes");
   
   // Get current teacher first to get school_id
@@ -60,6 +63,13 @@ const TeacherDashboard = () => {
     setCurrentView('overview');
     setSelectedClass(null);
     setSelectedSubject(null);
+    setSelectedSession(null);
+  };
+
+  const handleViewSession = (session: any, classData: any) => {
+    setSelectedSession(session);
+    setSelectedClass(classData);
+    setCurrentView('qr-session');
   };
 
   const handleTakeAttendance = (classId: string) => {
@@ -216,8 +226,20 @@ const TeacherDashboard = () => {
             teacherId={teacherId || ''}
             onBack={handleBackToOverview}
           />
+        ) : currentView === 'qr-session' && selectedSession && selectedClass ? (
+          <QRCodeGenerator
+            session={selectedSession}
+            classData={selectedClass}
+            onBack={handleBackToOverview}
+          />
         ) : (
           <div className="space-y-6">
+            {/* Active Sessions Panel */}
+            <ActiveSessionsPanel
+              teacherId={teacherId || ''}
+              classes={teacherClasses.map(tc => tc.classes).filter(Boolean)}
+              onViewSession={handleViewSession}
+            />
 
             {activeTab === "classes" && (
               <div className="space-y-6">

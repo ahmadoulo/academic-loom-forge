@@ -156,7 +156,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
     try {
       const sessionCode = Math.random().toString(36).substring(2, 10).toUpperCase();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 2); // Expire dans 2 heures
+      expiresAt.setMinutes(expiresAt.getMinutes() + 30); // Expire dans 30 minutes
 
       const { data, error } = await supabase
         .from('attendance_sessions')
@@ -258,6 +258,45 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
   useEffect(() => {
     fetchAttendance();
     fetchAttendanceSessions();
+
+    // Setup realtime subscription for attendance changes
+    const attendanceChannel = supabase
+      .channel('attendance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance'
+        },
+        (payload) => {
+          console.log('Attendance change:', payload);
+          fetchAttendance();
+        }
+      )
+      .subscribe();
+
+    // Setup realtime subscription for attendance sessions changes
+    const sessionsChannel = supabase
+      .channel('sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance_sessions'
+        },
+        (payload) => {
+          console.log('Session change:', payload);
+          fetchAttendanceSessions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(attendanceChannel);
+      supabase.removeChannel(sessionsChannel);
+    };
   }, [classId, teacherId, date]);
 
   return {
