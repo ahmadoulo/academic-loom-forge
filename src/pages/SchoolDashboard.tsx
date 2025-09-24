@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { StudentImport } from "@/components/school/StudentImport";
 import { StudentForm } from "@/components/school/StudentForm";
 import { ClassForm } from "@/components/school/ClassForm";
@@ -277,23 +278,37 @@ const SchoolDashboard = () => {
     student_phone?: string;
     parent_phone?: string;
   }) => {
+    console.log('=== handleCreateStudent DÉBUT ===');
+    
     if (!school?.id) {
-      console.error('School ID is missing');
+      console.error('ERREUR CRITIQUE: School ID manquant');
+      console.log('school object:', school);
+      toast.error('Erreur: ID de l\'école manquant');
       return;
     }
     
-    console.log('Creating student with data:', studentData);
-    console.log('School ID:', school.id);
+    console.log('Données reçues du formulaire:', studentData);
+    console.log('ID de l\'école:', school.id);
+    console.log('Classes disponibles:', classes);
+    
+    const dataToSubmit = {
+      ...studentData,
+      school_id: school.id
+    };
+    
+    console.log('Données complètes à soumettre:', dataToSubmit);
     
     try {
-      const result = await createStudent({
-        ...studentData,
-        school_id: school.id
-      });
-      console.log('Student created successfully:', result);
+      console.log('Appel de createStudent...');
+      const result = await createStudent(dataToSubmit);
+      console.log('Étudiant créé avec succès dans handleCreateStudent:', result);
+      console.log('Fermeture du dialog...');
       setIsStudentDialogOpen(false);
+      console.log('=== handleCreateStudent FIN SUCCÈS ===');
     } catch (error) {
-      console.error('Error creating student:', error);
+      console.error('=== ERREUR dans handleCreateStudent ===');
+      console.error('Erreur complète:', error);
+      console.log('=== FIN ERREUR handleCreateStudent ===');
     }
   };
 
@@ -585,18 +600,7 @@ const SchoolDashboard = () => {
         </div>
       </div>
 
-      {/* Student Dialog */}
-      <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ajouter un Étudiant</DialogTitle>
-          </DialogHeader>
-          <StudentForm 
-            onSubmit={handleCreateStudent}
-            classes={classes}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Removed duplicate Student Dialog - only one is kept at the end of the file */}
 
       {/* Class Dialog */}
       <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>

@@ -74,23 +74,29 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   const createStudent = async (studentData: CreateStudentData) => {
     try {
-      console.log('useStudents createStudent called with:', studentData);
+      console.log('=== useStudents createStudent DÉBUT ===');
+      console.log('Données reçues:', studentData);
       
       // Validation : CIN requis
       if (!studentData.cin_number) {
+        console.error('Erreur: CIN manquant');
         throw new Error('Le numéro CIN est requis');
       }
 
       // Validation : school_id requis
       if (!studentData.school_id) {
+        console.error('Erreur: school_id manquant');
         throw new Error('L\'identifiant de l\'école est requis');
       }
 
       // Validation : class_id requis
       if (!studentData.class_id) {
+        console.error('Erreur: class_id manquant');
         throw new Error('La classe est requise');
       }
 
+      console.log('Validations passées, insertion dans Supabase...');
+      
       const { data, error } = await supabase
         .from('students')
         .insert([studentData])
@@ -102,22 +108,36 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         `)
         .single();
 
-      console.log('Supabase insert result:', { data, error });
+      console.log('Résultat Supabase:', { data, error });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Erreur Supabase:', error);
         throw error;
       }
 
+      if (!data) {
+        console.error('Aucune donnée retournée de Supabase');
+        throw new Error('Aucune donnée retournée après insertion');
+      }
+
+      console.log('Étudiant créé avec succès:', data);
       toast.success('Étudiant créé avec succès');
       
-      setStudents(prev => [...prev, data]);
+      setStudents(prev => {
+        console.log('Mise à jour de la liste des étudiants');
+        return [...prev, data];
+      });
+      
+      console.log('=== useStudents createStudent FIN ===');
       return data;
     } catch (err) {
-      console.error('Error in createStudent:', err);
+      console.error('=== ERREUR dans createStudent ===');
+      console.error('Type d\'erreur:', typeof err);
+      console.error('Message d\'erreur:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'étudiant';
       setError(message);
       toast.error(message);
+      console.log('=== FIN GESTION ERREUR ===');
       throw err;
     }
   };
