@@ -27,10 +27,15 @@ import { SchoolSettings } from "@/components/settings/SchoolSettings";
 import { SchoolSidebar } from "@/components/layout/SchoolSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import { StudentsListSection } from "@/components/school/StudentsListSection";
+import { ClassesListSection } from "@/components/school/ClassesListSection";
+import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
   const [activeTab, setActiveTab] = useState("analytics");
+  const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [showClassDetails, setShowClassDetails] = useState(false);
   
   // Dialog states
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
@@ -284,6 +289,16 @@ const SchoolDashboard = () => {
     setActiveTab("settings");
   };
 
+  const handleViewClassDetails = (classItem: any) => {
+    setSelectedClass(classItem);
+    setShowClassDetails(true);
+  };
+
+  const handleBackFromClassDetails = () => {
+    setShowClassDetails(false);
+    setSelectedClass(null);
+  };
+
   if (schoolLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -358,135 +373,81 @@ const SchoolDashboard = () => {
               />
             </div>
 
-            {/* Dashboard Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              <div className="lg:col-span-1">
-                <QuickActions actions={quickActions} />
-              </div>
-              <div className="lg:col-span-2">
-                <RecentActivity activities={recentActivities} />
-              </div>
-            </div>
-
             {/* Main Content */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               {activeTab === "analytics" && (
-                <div className="space-y-6">
+                <div className="space-y-8">
+                  {/* Dashboard Content Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    <div className="lg:col-span-1">
+                      <QuickActions actions={quickActions} />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <RecentActivity activities={recentActivities} />
+                    </div>
+                  </div>
+                  
                   <AnalyticsDashboard schoolId={school.id} />
                 </div>
               )}
               
               {activeTab === "students" && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold">Gestion des Étudiants</h2>
-                    <Button onClick={() => setIsStudentDialogOpen(true)}>
-                      <UserPlus className="h-4 w-4 mr-2" />
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Gestion des Étudiants</h2>
+                      <p className="text-gray-600 mt-1">Gérez les inscriptions et informations des étudiants</p>
+                    </div>
+                    <Button onClick={() => setIsStudentDialogOpen(true)} size="lg" className="gap-2">
+                      <UserPlus className="h-5 w-5" />
                       Ajouter un Étudiant
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <StudentImport 
                       onImportComplete={handleImportStudents}
                       classes={classes}
                     />
                     
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Liste des Étudiants ({students.length})</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {studentsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                            <span className="ml-2">Chargement...</span>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 max-h-96 overflow-y-auto">
-                            {students.map((student) => (
-                              <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div>
-                                  <p className="font-medium">{student.firstname} {student.lastname}</p>
-                                  <p className="text-sm text-muted-foreground">{student.classes?.name}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">{student.classes?.name}</Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                    onClick={() => setDeleteDialog({
-                                      open: true,
-                                      type: 'student',
-                                      id: student.id,
-                                      name: `${student.firstname} ${student.lastname}`
-                                    })}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                            
-                            {students.length === 0 && (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <Users className="h-8 w-8 mx-auto mb-2" />
-                                <p>Aucun étudiant inscrit</p>
-                                <p className="text-sm">Utilisez l'import pour ajouter des étudiants</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <StudentsListSection 
+                      students={students}
+                      classes={classes}
+                      loading={studentsLoading}
+                      onDeleteStudent={(id, name) => setDeleteDialog({
+                        open: true,
+                        type: 'student',
+                        id,
+                        name
+                      })}
+                    />
                   </div>
                 </div>
               )}
               
-              {activeTab === "classes" && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Gestion des Classes</h2>
-                    <Button onClick={() => setIsClassDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nouvelle Classe
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {classes.map((classItem) => {
-                      const classStudents = students.filter(s => s.class_id === classItem.id);
-                      return (
-                        <Card key={classItem.id} className="relative">
-                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                              <School className="h-5 w-5" />
-                              {classItem.name}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-2xl font-bold text-primary">{classStudents.length}</p>
-                            <p className="text-sm text-muted-foreground">étudiants</p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => setDeleteDialog({
-                                open: true,
-                                type: 'class',
-                                id: classItem.id,
-                                name: classItem.name
-                              })}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
+              {activeTab === "classes" && !showClassDetails && (
+                <ClassesListSection
+                  classes={classes}
+                  students={students}
+                  loading={classesLoading}
+                  onDeleteClass={(id, name) => setDeleteDialog({
+                    open: true,
+                    type: 'class',
+                    id,
+                    name
+                  })}
+                  onViewClassDetails={handleViewClassDetails}
+                  onCreateClass={() => setIsClassDialogOpen(true)}
+                />
+              )}
+
+              {activeTab === "classes" && showClassDetails && selectedClass && (
+                <ClassDetailsView
+                  classItem={selectedClass}
+                  students={students}
+                  onBack={handleBackFromClassDetails}
+                  onAddStudent={() => setIsStudentDialogOpen(true)}
+                />
               )}
               
               {activeTab === "subjects" && (
