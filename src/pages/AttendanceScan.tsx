@@ -23,7 +23,7 @@ const AttendanceScan = () => {
   const [success, setSuccess] = useState(false);
   
   const { scanQRCode } = useAttendance();
-  const { students, loading: studentsLoading } = useStudents();
+  const { students, loading: studentsLoading } = useStudents(undefined, undefined);
 
   useEffect(() => {
     if (!sessionCode) {

@@ -20,12 +20,12 @@ interface RecentActivityProps {
 export function RecentActivity({ activities, title = "Activité récente" }: RecentActivityProps) {
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
-      case "grade": return "📝";
-      case "student": return "👨‍🎓";
-      case "class": return "🏫";
-      case "teacher": return "👨‍🏫";
-      case "subject": return "📚";
-      default: return "📋";
+      case "grade": return "Grade";
+      case "student": return "Étudiant";
+      case "class": return "Classe";
+      case "teacher": return "Professeur";
+      case "subject": return "Matière";
+      default: return "Activité";
     }
   };
 

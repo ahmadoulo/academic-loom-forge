@@ -135,9 +135,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
   };
 
   useEffect(() => {
-    if (schoolId || classId) {
-      fetchStudents();
-    }
+    fetchStudents();
   }, [schoolId, classId]);
 
   return {

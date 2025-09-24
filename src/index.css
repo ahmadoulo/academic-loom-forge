@@ -7,8 +7,8 @@ Modern Blue & White Theme - All colors MUST be HSL */
 
 @layer base {
   :root {
-    /* Base colors - Modern SaaS with darker whites */
-    --background: 220 14% 96%;
+    /* Base colors - Modern SaaS avec blanc foncé */
+    --background: 220 14% 93%;
     --foreground: 215 20% 15%;
 
     /* Card system with subtle elevation */
@@ -19,12 +19,12 @@ Modern Blue & White Theme - All colors MUST be HSL */
     --popover: 0 0% 100%;
     --popover-foreground: 215 20% 15%;
 
-    /* Primary - SaaS Blue (Darker) */
-    --primary: 213 94% 50%;
+    /* Primary - SaaS Blue (Foncé) */
+    --primary: 213 94% 36%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 213 94% 92%;
-    --primary-dark: 213 94% 40%;
-    --primary-accent: 213 94% 60%;
+    --primary-light: 213 94% 85%;
+    --primary-dark: 213 94% 30%;
+    --primary-accent: 213 94% 50%;
 
     /* Secondary - Clean Neutral */
     --secondary: 220 16% 92%;

@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
-import { GraduationCap, Settings, LogOut, User, Shield } from "lucide-react";
+import { GraduationCap, Settings, LogOut, User } from "lucide-react";
 
 interface AuthenticatedHeaderProps {
   title: string;
@@ -15,11 +16,11 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-      school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      parent: { label: "Parent", className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+      global_admin: { label: "Admin Global", className: "bg-primary/10 text-primary" },
+      school_admin: { label: "Admin École", className: "bg-blue-500/10 text-blue-600" },
+      teacher: { label: "Professeur", className: "bg-green-500/10 text-green-600" },
+      student: { label: "Étudiant", className: "bg-orange-500/10 text-orange-600" },
+      parent: { label: "Parent", className: "bg-indigo-500/10 text-indigo-600" },
     };
     
     const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
@@ -27,14 +28,14 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
   };
 
   return (
-    <header className="border-b border-border/50 bg-gradient-card backdrop-blur-sm">
+    <header className="border-b border-border bg-card">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center space-x-4">
-          <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-white" />
+          <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
+            <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold text-foreground">
               {title}
             </h1>
           </div>
@@ -42,13 +43,14 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
 
         <div className="flex items-center space-x-4">
           {profile?.role && getRoleBadge(profile.role)}
+          <ThemeToggle />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="" />
-                  <AvatarFallback className="bg-gradient-primary text-white text-sm">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                     {profile?.first_name?.[0]}{profile?.last_name?.[0]}
                   </AvatarFallback>
                 </Avatar>

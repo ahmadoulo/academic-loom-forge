@@ -139,7 +139,7 @@ export default function Index() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-background">
       <AuthenticatedHeader 
         title="EduVate Dashboard" 
         onSettingsClick={() => setShowSettings(true)} 
@@ -152,7 +152,7 @@ export default function Index() {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold text-foreground">
                   Bienvenue, {profile?.first_name} !
                 </h1>
                 <p className="text-muted-foreground mt-2">
@@ -182,13 +182,13 @@ export default function Index() {
 
           {/* Quick Access Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
-            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+            <Card className="shadow-lg border-0 bg-card hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 bg-gradient-to-r from-primary to-primary-dark rounded-xl flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  <Badge className="bg-primary/10 text-primary">
                     Admin
                   </Badge>
                 </div>
@@ -200,22 +200,21 @@ export default function Index() {
               <CardContent>
                 <Button 
                   onClick={() => navigate("/admin")}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="w-full bg-gradient-to-r from-primary to-primary-dark hover:opacity-90"
                   disabled={profile?.role !== 'global_admin'}
                 >
-                  <ArrowRight className="mr-2 h-4 w-4" />
                   Accéder
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+            <Card className="shadow-lg border-0 bg-card hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                  <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                     <Building className="h-6 w-6 text-white" />
                   </div>
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  <Badge className="bg-blue-500/10 text-blue-600">
                     École
                   </Badge>
                 </div>
@@ -225,52 +224,23 @@ export default function Index() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-                      disabled={!['global_admin', 'school_admin'].includes(profile?.role || '')}
-                    >
-                      <ArrowRight className="mr-2 h-4 w-4" />
-                      Accéder
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Accès École</DialogTitle>
-                      <DialogDescription>
-                        Entrez l'identifiant de votre établissement
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="school-id">Identifiant École</Label>
-                        <Input
-                          id="school-id"
-                          value={schoolId}
-                          onChange={(e) => setSchoolId(e.target.value)}
-                          placeholder="Ex: MUNDIA01"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleSchoolAccess} 
-                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500"
-                      >
-                        Accéder
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  onClick={() => navigate("/school")}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90"
+                  disabled={!['global_admin', 'school_admin'].includes(profile?.role || '')}
+                >
+                  Accéder
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+            <Card className="shadow-lg border-0 bg-card hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                  <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
                     <Users className="h-6 w-6 text-white" />
                   </div>
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Badge className="bg-green-500/10 text-green-600">
                     Prof
                   </Badge>
                 </div>
@@ -280,42 +250,13 @@ export default function Index() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                      disabled={!['global_admin', 'school_admin', 'teacher'].includes(profile?.role || '')}
-                    >
-                      <ArrowRight className="mr-2 h-4 w-4" />
-                      Accéder
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Interface Professeur</DialogTitle>
-                      <DialogDescription>
-                        Entrez votre identifiant professeur
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="teacher-id">Identifiant Professeur</Label>
-                        <Input
-                          id="teacher-id"
-                          value={teacherId}
-                          onChange={(e) => setTeacherId(e.target.value)}
-                          placeholder="Ex: PROF001"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleTeacherAccess} 
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
-                      >
-                        Accéder
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  onClick={() => navigate("/teacher")}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90"
+                  disabled={!['global_admin', 'school_admin', 'teacher'].includes(profile?.role || '')}
+                >
+                  Accéder
+                </Button>
               </CardContent>
             </Card>
           </div>
