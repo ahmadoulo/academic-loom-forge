@@ -17,6 +17,7 @@ import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useTeachers } from "@/hooks/useTeachers";
+import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useGrades } from "@/hooks/useGrades";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
@@ -45,7 +46,7 @@ const SchoolDashboard = () => {
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
-  const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "" });
+  const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "", class_id: "" });
   const [newSubject, setNewSubject] = useState({ name: "", class_id: "", teacher_id: "" });
   
   // Delete dialog states
@@ -80,6 +81,7 @@ const SchoolDashboard = () => {
   const { students, loading: studentsLoading, importStudents, createStudent, deleteStudent } = useStudents(school?.id);
   const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id);
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
+  const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
   const { grades } = useGrades();
 
@@ -199,11 +201,22 @@ const SchoolDashboard = () => {
     if (!newTeacher.firstname.trim() || !newTeacher.lastname.trim() || !school?.id) return;
     
     try {
-      await createTeacher({
-        ...newTeacher,
+      const createdTeacher = await createTeacher({
+        firstname: newTeacher.firstname,
+        lastname: newTeacher.lastname,
+        email: newTeacher.email,
         school_id: school.id
       });
-      setNewTeacher({ firstname: "", lastname: "", email: "" });
+      
+      // Si une classe est sélectionnée, assigner le professeur à cette classe
+      if (newTeacher.class_id && createdTeacher) {
+        await assignTeacherToClass({
+          teacher_id: createdTeacher.id,
+          class_id: newTeacher.class_id
+        });
+      }
+      
+      setNewTeacher({ firstname: "", lastname: "", email: "", class_id: "" });
       setIsTeacherDialogOpen(false);
     } catch (error) {
       // Error handled by hook
@@ -601,7 +614,7 @@ const SchoolDashboard = () => {
                     {teachers.map((teacher) => {
                       const teacherSubjects = subjects.filter(s => s.teacher_id === teacher.id);
                       return (
-                        <Card key={teacher.id} className="relative">
+                         <Card key={teacher.id} className="relative">
                           <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                               <GraduationCap className="h-5 w-5" />
@@ -621,6 +634,13 @@ const SchoolDashboard = () => {
                               {teacherSubjects.length === 0 && (
                                 <p className="text-xs text-muted-foreground">Aucune matière assignée</p>
                               )}
+                              <Button 
+                                size="sm" 
+                                className="w-full mt-2"
+                                onClick={() => window.location.href = `/teacher/${teacher.id}`}
+                              >
+                                Accéder à l'interface professeur
+                              </Button>
                             </div>
                             <Button
                               variant="outline"
@@ -706,6 +726,22 @@ const SchoolDashboard = () => {
                 onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
                 placeholder="email@exemple.com"
               />
+            </div>
+            <div>
+              <Label htmlFor="teacher-class">Classe à assigner (optionnel)</Label>
+              <select
+                id="teacher-class"
+                className="w-full p-2 border rounded-md"
+                value={newTeacher.class_id}
+                onChange={(e) => setNewTeacher({ ...newTeacher, class_id: e.target.value })}
+              >
+                <option value="">Aucune classe assignée</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsTeacherDialogOpen(false)}>
