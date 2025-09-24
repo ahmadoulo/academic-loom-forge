@@ -13,6 +13,7 @@ const AuthPage = () => {
     password: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   
   const { user, loading, loginWithCredentials, checkAuthStatus } = useCustomAuth();
 
@@ -31,33 +32,33 @@ const AuthPage = () => {
     );
   }
 
-  if (user && user.is_active) {
+  if (user && user.is_active && !redirecting) {
     console.log('DEBUG AuthPage - Redirection pour utilisateur:', user);
+    setRedirecting(true);
     
-    // Rediriger vers le dashboard approprié selon le rôle
-    switch (user.role) {
-      case 'global_admin':
-      case 'admin':
-        return <Navigate to="/admin" replace />;
-      case 'school_admin':
-        if (user.school_id) {
-          return <Navigate to={`/school/${user.school_id}`} replace />;
-        } else {
-          return <Navigate to="/admin" replace />;
-        }
-      case 'teacher':
-        if (user.teacher_id) {
-          return <Navigate to={`/teacher/${user.teacher_id}`} replace />;
-        } else {
-          return <Navigate to="/admin" replace />;
-        }
-      case 'student':
-        return <Navigate to="/dashboard" replace />;
-      case 'parent':
-        return <Navigate to="/dashboard" replace />;
-      default:
-        return <Navigate to="/admin" replace />;
+    // Redirection forcée pour éviter les boucles
+    if (user.role === 'global_admin' || user.role === 'admin') {
+      console.log('DEBUG: Redirection vers /admin');
+      setTimeout(() => window.location.replace('/admin'), 100);
+    } else if (user.role === 'school_admin' && user.school_id) {
+      console.log('DEBUG: Redirection vers /school');
+      setTimeout(() => window.location.replace(`/school/${user.school_id}`), 100);
+    } else if (user.role === 'teacher' && user.teacher_id) {
+      console.log('DEBUG: Redirection vers /teacher');
+      setTimeout(() => window.location.replace(`/teacher/${user.teacher_id}`), 100);
+    } else {
+      console.log('DEBUG: Redirection vers /dashboard');
+      setTimeout(() => window.location.replace('/dashboard'), 100);
     }
+    
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Redirection en cours...</span>
+        </div>
+      </div>
+    );
   }
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -67,10 +68,13 @@ const AuthPage = () => {
     setIsSubmitting(true);
     try {
       console.log('DEBUG: Tentative de connexion avec:', formData.email);
-      await loginWithCredentials({
+      const result = await loginWithCredentials({
         email: formData.email,
         password: formData.password,
       });
+      
+      // La redirection est gérée dans loginWithCredentials
+      console.log('DEBUG: Connexion réussie, redirection en cours...');
     } catch (error) {
       console.error('DEBUG: Erreur de connexion:', error);
     } finally {

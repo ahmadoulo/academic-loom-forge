@@ -156,14 +156,32 @@ export const useCustomAuth = () => {
         school_id: userData.school_id,
         is_active: userData.is_active,
         last_login: userData.last_login,
-        teacher_id: teacherId, // Ajouter l'ID du professeur
+        teacher_id: teacherId,
       };
 
+      console.log('DEBUG: Profil utilisateur créé:', userProfile);
+      
       setUser(userProfile);
-      toast.success('Connexion réussie');
       
       // Stocker dans localStorage pour persistance
       localStorage.setItem('customAuthUser', JSON.stringify(userProfile));
+      
+      console.log('DEBUG: Utilisateur stocké dans localStorage');
+      
+      toast.success('Connexion réussie');
+      
+      // Forcer la redirection immédiatement
+      setTimeout(() => {
+        if (userProfile.role === 'global_admin' || userProfile.role === 'admin') {
+          window.location.href = '/admin';
+        } else if (userProfile.role === 'school_admin' && userProfile.school_id) {
+          window.location.href = `/school/${userProfile.school_id}`;
+        } else if (userProfile.role === 'teacher' && userProfile.teacher_id) {
+          window.location.href = `/teacher/${userProfile.teacher_id}`;
+        } else {
+          window.location.href = '/dashboard';
+        }
+      }, 100);
       
       return userProfile;
     } catch (err) {
@@ -185,9 +203,19 @@ export const useCustomAuth = () => {
   };
 
   const checkAuthStatus = () => {
+    console.log('DEBUG: Vérification du statut d\'authentification');
     const storedUser = localStorage.getItem('customAuthUser');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const userData = JSON.parse(storedUser);
+        console.log('DEBUG: Utilisateur trouvé dans localStorage:', userData);
+        setUser(userData);
+      } catch (error) {
+        console.error('DEBUG: Erreur parsing localStorage:', error);
+        localStorage.removeItem('customAuthUser');
+      }
+    } else {
+      console.log('DEBUG: Aucun utilisateur dans localStorage');
     }
   };
 
