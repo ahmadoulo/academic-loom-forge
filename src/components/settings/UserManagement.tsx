@@ -8,97 +8,89 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth, UserRole } from "@/hooks/useAuth";
 import { useSchools } from "@/hooks/useSchools";
-import { useUsers } from "@/hooks/useUsers";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Copy, Eye, EyeOff, Shield } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 export function UserManagement() {
-  const { profile } = useAuth();
+  const { profile, signUp } = useAuth();
   const { schools } = useSchools();
   const { toast } = useToast();
-  const { users, loading, createUser, deleteUser, generatePassword } = useUsers(
-    profile?.role === 'school_admin' ? profile?.school_id : undefined
-  );
-  
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState("");
-  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; userId?: string; userName?: string }>({
-    isOpen: false
-  });
-  
   const [newUser, setNewUser] = useState({
     email: "",
     password: "",
     first_name: "",
     last_name: "",
-    role: "teacher" as UserRole,
+    role: "student" as UserRole,
     school_id: "",
   });
+
+  // Mock users data - in real app, this would come from API
+  const users = [
+    {
+      id: "1",
+      email: "admin@eduvate.com",
+      first_name: "Admin",
+      last_name: "Global",
+      role: "global_admin",
+      school_id: null,
+      is_active: true,
+      created_at: "2024-01-15",
+    },
+    {
+      id: "2",
+      email: "school@eduvate.com",
+      first_name: "Admin",
+      last_name: "École",
+      role: "school_admin",
+      school_id: schools[0]?.id,
+      is_active: true,
+      created_at: "2024-01-16",
+    },
+    {
+      id: "3",
+      email: "teacher@eduvate.com",
+      first_name: "Prof",
+      last_name: "Exemple",
+      role: "teacher",
+      school_id: schools[0]?.id,
+      is_active: true,
+      created_at: "2024-01-17",
+    },
+  ];
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleGeneratePassword = () => {
-    const password = generatePassword();
-    setGeneratedPassword(password);
-    setNewUser({ ...newUser, password });
-    setShowPassword(true);
-  };
-
-  const copyPasswordToClipboard = () => {
-    navigator.clipboard.writeText(generatedPassword);
-    toast({
-      title: "Mot de passe copié",
-      description: "Le mot de passe a été copié dans le presse-papier.",
-    });
-  };
-
   const handleCreateUser = async () => {
-    if (!newUser.email || !newUser.password || !newUser.first_name || !newUser.last_name) {
-      toast({
-        variant: "destructive",
-        title: "Champs requis manquants",
-        description: "Veuillez remplir tous les champs obligatoires.",
-      });
-      return;
-    }
-
-    const result = await createUser({
-      email: newUser.email,
-      password: newUser.password,
+    const result = await signUp(newUser.email, newUser.password, {
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       role: newUser.role,
-      school_id: newUser.school_id || profile?.school_id,
+      school_id: newUser.school_id || undefined,
     });
 
-    if (result.success) {
+    if (!result.error) {
       setIsCreateDialogOpen(false);
       setNewUser({
         email: "",
         password: "",
         first_name: "",
         last_name: "",
-        role: "teacher",
+        role: "student",
         school_id: "",
       });
-      setGeneratedPassword("");
-      setShowPassword(false);
+      toast({
+        title: "Utilisateur créé",
+        description: "Le nouvel utilisateur a été créé avec succès.",
+      });
     }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    await deleteUser(userId);
-    setDeleteDialog({ isOpen: false });
   };
 
   const getRoleBadge = (role: string) => {
@@ -187,57 +179,12 @@ export function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-password">Mot de passe temporaire</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="new-password"
-                      type={showPassword ? "text" : "password"}
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      placeholder="Générer un mot de passe sécurisé"
-                    />
-                    {newUser.password && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleGeneratePassword}
-                    className="shrink-0"
-                  >
-                    Générer
-                  </Button>
-                  {generatedPassword && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={copyPasswordToClipboard}
-                      className="shrink-0"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                {generatedPassword && (
-                  <Alert>
-                    <Shield className="h-4 w-4" />
-                    <AlertDescription>
-                      Mot de passe généré : <code className="font-mono">{generatedPassword}</code>
-                      <br />
-                      Assurez-vous de le communiquer à l'utilisateur de manière sécurisée.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-role">Rôle</Label>
@@ -249,8 +196,8 @@ export function UserManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="teacher">Professeur</SelectItem>
                     <SelectItem value="student">Étudiant</SelectItem>
+                    <SelectItem value="teacher">Professeur</SelectItem>
                     <SelectItem value="parent">Parent</SelectItem>
                     {profile?.role === 'global_admin' && (
                       <>
@@ -298,7 +245,7 @@ export function UserManagement() {
         <CardHeader>
           <CardTitle>Liste des utilisateurs</CardTitle>
           <CardDescription>
-            {loading ? "Chargement..." : `${filteredUsers.length} utilisateur${filteredUsers.length > 1 ? 's' : ''} trouvé${filteredUsers.length > 1 ? 's' : ''}`}
+            {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -314,94 +261,73 @@ export function UserManagement() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Utilisateur</TableHead>
-                    <TableHead>Rôle</TableHead>
-                    <TableHead>École</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Rôle</TableHead>
+                  <TableHead>École</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="flex items-center space-x-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="" />
+                        <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                          {user.first_name[0]}{user.last_name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{user.first_name} {user.last_name}</div>
+                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getRoleBadge(user.role)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{getSchoolName(user.school_id)}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.is_active ? "default" : "secondary"}>
+                        {user.is_active ? "Actif" : "Inactif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Envoyer un email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src="" />
-                          <AvatarFallback className="text-xs bg-gradient-primary text-white">
-                            {user.first_name[0]}{user.last_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{user.first_name} {user.last_name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getRoleBadge(user.role)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{getSchoolName(user.school_id)}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_active ? "default" : "secondary"}>
-                          {user.is_active ? "Actif" : "Inactif"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Modifier
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Envoyer un email
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => setDeleteDialog({
-                                isOpen: true,
-                                userId: user.id,
-                                userName: `${user.first_name} ${user.last_name}`
-                              })}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
-
-      <ConfirmationDialog
-        open={deleteDialog.isOpen}
-        onOpenChange={(open) => setDeleteDialog({ isOpen: open })}
-        title="Supprimer l'utilisateur"
-        description={`Êtes-vous sûr de vouloir supprimer ${deleteDialog.userName} ? Cette action est irréversible.`}
-        onConfirm={() => deleteDialog.userId && handleDeleteUser(deleteDialog.userId)}
-      />
     </div>
   );
 }

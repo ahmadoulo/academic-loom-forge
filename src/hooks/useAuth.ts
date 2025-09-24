@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +21,6 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const hasRedirected = useRef(false); // Pour éviter les redirections multiples
 
   useEffect(() => {
     // Set up auth state listener
@@ -31,55 +30,21 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch real profile from database
-          setTimeout(async () => {
-            try {
-              const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .single();
-
-              if (error) {
-                // If no profile found, create mock profile from user metadata
-                const mockProfile: UserProfile = {
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  first_name: session.user.user_metadata?.first_name || 'Utilisateur',
-                  last_name: session.user.user_metadata?.last_name || '',
-                  role: session.user.user_metadata?.role || 'student',
-                  school_id: session.user.user_metadata?.school_id,
-                  is_active: true,
-                };
-                setProfile(mockProfile);
-              } else {
-                setProfile(profileData);
-              }
-
-              // Rediriger seulement lors de la connexion, pas à chaque chargement
-              if (event === 'SIGNED_IN' && !hasRedirected.current) {
-                hasRedirected.current = true;
-                const role = profileData?.role || session.user.user_metadata?.role || 'student';
-                redirectByRole(role);
-              }
-            } catch (err) {
-              console.error('Error fetching profile:', err);
-              // Fallback to mock profile
-              const mockProfile: UserProfile = {
-                id: session.user.id,
-                email: session.user.email || '',
-                first_name: session.user.user_metadata?.first_name || 'Utilisateur',
-                last_name: session.user.user_metadata?.last_name || '',
-                role: session.user.user_metadata?.role || 'student',
-                school_id: session.user.user_metadata?.school_id,
-                is_active: true,
-              };
-              setProfile(mockProfile);
-            }
+          // Create mock profile from user data for now
+          setTimeout(() => {
+            const mockProfile: UserProfile = {
+              id: session.user.id,
+              email: session.user.email || '',
+              first_name: session.user.user_metadata?.first_name || 'Utilisateur',
+              last_name: session.user.user_metadata?.last_name || '',
+              role: session.user.user_metadata?.role || 'student',
+              school_id: session.user.user_metadata?.school_id,
+              is_active: true,
+            };
+            setProfile(mockProfile);
           }, 0);
         } else {
           setProfile(null);
-          hasRedirected.current = false; // Reset redirection flag on sign out
         }
         
         setLoading(false);
@@ -90,9 +55,7 @@ export const useAuth = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (!session) {
-        setLoading(false);
-      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -141,8 +104,6 @@ export const useAuth = () => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      hasRedirected.current = false; // Reset avant la connexion
-      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -174,44 +135,17 @@ export const useAuth = () => {
       setUser(null);
       setSession(null);
       setProfile(null);
-      hasRedirected.current = false; // Reset redirection flag
       
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
-      
-      // Rediriger vers la page d'accueil après déconnexion
-      window.location.href = '/';
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erreur lors de la déconnexion",
         description: error.message,
       });
-    }
-  };
-
-  // Fonction pour rediriger selon le rôle
-  const redirectByRole = (role: UserRole) => {
-    switch (role) {
-      case 'global_admin':
-        window.location.href = '/admin';
-        break;
-      case 'school_admin':
-        window.location.href = '/school';
-        break;
-      case 'teacher':
-        window.location.href = '/teacher';
-        break;
-      case 'student':
-        window.location.href = '/student';
-        break;
-      case 'parent':
-        window.location.href = '/parent';
-        break;
-      default:
-        window.location.href = '/';
     }
   };
 
@@ -223,7 +157,6 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
-    redirectByRole,
     isAuthenticated: !!user,
     isGlobalAdmin: profile?.role === 'global_admin',
     isSchoolAdmin: profile?.role === 'school_admin',
