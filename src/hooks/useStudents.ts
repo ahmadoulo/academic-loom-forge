@@ -92,33 +92,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
       if (error) throw error;
 
-      // Créer un compte utilisateur si email fourni
-      if (data.email && data.cin_number) {
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .insert([{
-              user_id: crypto.randomUUID(),
-              email: data.email,
-              first_name: data.firstname,
-              last_name: data.lastname,
-              role: 'student',
-              school_id: data.school_id,
-              is_active: true
-            }])
-            .select()
-            .single();
-
-          if (profileData) {
-            toast.success(`Étudiant et compte créés avec succès. Mot de passe: ${data.cin_number}`);
-          }
-        } catch (profileError) {
-          console.warn('Erreur lors de la création du profil utilisateur:', profileError);
-          toast.success('Étudiant créé avec succès (compte utilisateur non créé)');
-        }
-      } else {
-        toast.success('Étudiant créé avec succès');
-      }
+      // Pour l'instant, ne pas créer automatiquement le compte utilisateur
+      toast.success('Étudiant créé avec succès');
       
       setStudents(prev => [...prev, data]);
       return data;

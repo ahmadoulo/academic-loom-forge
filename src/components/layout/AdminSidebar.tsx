@@ -105,30 +105,11 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
 }
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
-  const { open } = useSidebar();
-
   return (
-    <>
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
-        <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
-          <SidebarContentComponent activeTab={activeTab} onTabChange={onTabChange} />
-        </Sidebar>
-      </div>
-
-      {/* Mobile Sidebar */}
-      <div className="md:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="m-4">
-              <Menu className="h-4 w-4" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <SidebarContentComponent activeTab={activeTab} onTabChange={onTabChange} isMobile />
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+    <div className="hidden md:block">
+      <Sidebar collapsible="icon">
+        <SidebarContentComponent activeTab={activeTab} onTabChange={onTabChange} />
+      </Sidebar>
+    </div>
   );
 }

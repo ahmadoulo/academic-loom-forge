@@ -91,6 +91,50 @@ export const useSchools = () => {
     }
   }, []);
 
+  const updateSchool = async (id: string, updates: Partial<CreateSchoolData>) => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSchools(prev => prev.map(school => 
+        school.id === id ? { ...school, ...data } : school
+      ));
+      
+      toast.success('École mise à jour avec succès');
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de l\'école';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const deleteSchool = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSchools(prev => prev.filter(school => school.id !== id));
+      toast.success('École supprimée avec succès');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'école';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchSchools();
   }, []);
@@ -100,6 +144,8 @@ export const useSchools = () => {
     loading,
     error,
     createSchool,
+    updateSchool,
+    deleteSchool,
     getSchoolById,
     getSchoolByIdentifier,
     refetch: fetchSchools

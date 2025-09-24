@@ -3,16 +3,47 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
-import { GraduationCap, Settings, LogOut, User } from "lucide-react";
+import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
 
 interface AuthenticatedHeaderProps {
   title: string;
   onSettingsClick: () => void;
+  showMobileMenu?: boolean;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHeaderProps) {
+export function AuthenticatedHeader({ 
+  title, 
+  onSettingsClick, 
+  showMobileMenu = false, 
+  activeTab, 
+  onTabChange 
+}: AuthenticatedHeaderProps) {
   const { profile, signOut } = useAuth();
+
+  const menuItems = [
+    { 
+      title: "Écoles", 
+      value: "schools",
+      icon: School,
+      description: "Gérer les établissements"
+    },
+    { 
+      title: "Paramètres", 
+      value: "settings",
+      icon: Settings,
+      description: "Utilisateurs et rôles"
+    },
+    { 
+      title: "Support Écoles", 
+      value: "support",
+      icon: HelpCircle,
+      description: "Assistance utilisateurs"
+    },
+  ];
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
@@ -31,6 +62,54 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
     <header className="border-b border-border bg-card">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <div className="flex items-center space-x-2 lg:space-x-4">
+          {showMobileMenu && activeTab && onTabChange && (
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <div className="flex flex-col h-full">
+                    <div className="p-4 border-b">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
+                          <School className="h-5 w-5 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-lg">Admin Panel</span>
+                          <p className="text-xs text-muted-foreground">Gestion système</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 p-4">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-4">Navigation</h3>
+                      <div className="space-y-2">
+                        {menuItems.map((item) => (
+                          <button
+                            key={item.value}
+                            onClick={() => onTabChange(item.value)}
+                            className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                              activeTab === item.value 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <div className="flex-1">
+                              <span className="block font-medium">{item.title}</span>
+                              <span className="text-xs opacity-75">{item.description}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+          )}
           <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>

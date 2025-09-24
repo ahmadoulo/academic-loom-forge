@@ -18,7 +18,7 @@ export function SchoolsSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; schoolId?: string; schoolName?: string }>({ open: false });
 
-  const { schools, loading, createSchool } = useSchools();
+  const { schools, loading, createSchool, updateSchool, deleteSchool } = useSchools();
   const { teachers } = useTeachers();
   const { students } = useStudents();
   const { classes } = useClasses();
@@ -47,8 +47,7 @@ export function SchoolsSection() {
     if (!deleteDialog.schoolId) return;
     
     try {
-      // TODO: Implement delete school functionality
-      console.log("Suppression de l'école:", deleteDialog.schoolId);
+      await deleteSchool(deleteDialog.schoolId);
       setDeleteDialog({ open: false });
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
@@ -63,7 +62,12 @@ export function SchoolsSection() {
   };
 
   const handleEditSchool = (schoolId: string) => {
-    console.log("Edit school:", schoolId);
+    // Implement edit functionality - for now just show the school info
+    const school = schools.find(s => s.id === schoolId);
+    if (school) {
+      setNewSchool({ name: school.name, identifier: school.identifier });
+      setIsDialogOpen(true);
+    }
   };
 
   if (loading) {

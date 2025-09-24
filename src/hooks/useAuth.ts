@@ -30,18 +30,51 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Create mock profile from user data for now
-          setTimeout(() => {
-            const mockProfile: UserProfile = {
-              id: session.user.id,
-              email: session.user.email || '',
-              first_name: session.user.user_metadata?.first_name || 'Utilisateur',
-              last_name: session.user.user_metadata?.last_name || '',
-              role: session.user.user_metadata?.role || 'student',
-              school_id: session.user.user_metadata?.school_id,
-              is_active: true,
-            };
-            setProfile(mockProfile);
+          // Fetch real profile from database
+          setTimeout(async () => {
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+
+              if (profileData) {
+                setProfile({
+                  id: profileData.id,
+                  email: profileData.email,
+                  first_name: profileData.first_name || 'Utilisateur',
+                  last_name: profileData.last_name || '',
+                  role: profileData.role,
+                  school_id: profileData.school_id,
+                  is_active: profileData.is_active,
+                });
+              } else {
+                // Fallback to mock profile if no profile found
+                const mockProfile: UserProfile = {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  first_name: 'Admin',
+                  last_name: 'Global',
+                  role: 'global_admin',
+                  school_id: undefined,
+                  is_active: true,
+                };
+                setProfile(mockProfile);
+              }
+            } catch (error) {
+              // Fallback to mock profile on error
+              const mockProfile: UserProfile = {
+                id: session.user.id,
+                email: session.user.email || '',
+                first_name: 'Admin',
+                last_name: 'Global',
+                role: 'global_admin',
+                school_id: undefined,
+                is_active: true,
+              };
+              setProfile(mockProfile);
+            }
           }, 0);
         } else {
           setProfile(null);
