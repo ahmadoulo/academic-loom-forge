@@ -31,11 +31,12 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
   const { toast } = useToast();
   const { 
     attendance, 
-    deactivateAttendanceSession 
+    deactivateAttendanceSession,
+    refetch
   } = useAttendance(classData.id, session.teacher_id, new Date().toISOString().split('T')[0]);
 
   // URL pour le scan QR (pourrait être une page dédiée dans votre app)
-  const scanUrl = `${window.location.origin}/attendance/scan/${session.session_code}`;
+  const scanUrl = `${window.location.origin}/attendance/${session.session_code}`;
 
   useEffect(() => {
     // Générer le QR code
@@ -56,7 +57,14 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
     };
 
     generateQR();
-  }, [scanUrl]);
+    
+    // Rafraîchir les données toutes les 10 secondes pour voir les nouveaux étudiants
+    const interval = setInterval(() => {
+      refetch();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [scanUrl, refetch]);
 
   useEffect(() => {
     // Mettre à jour le temps restant

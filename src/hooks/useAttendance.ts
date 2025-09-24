@@ -95,12 +95,14 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
     if (!classId || !teacherId) return;
 
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('attendance_sessions')
         .select('*')
         .eq('class_id', classId)
         .eq('teacher_id', teacherId)
         .eq('is_active', true)
+        .gt('expires_at', now)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -131,6 +133,12 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       });
 
       await fetchAttendance();
+      
+      // Déclencher une mise à jour des sessions pour rafraîchir l'affichage
+      if (attendanceData.method === 'qr_scan') {
+        await fetchAttendanceSessions();
+      }
+      
       return { data, error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la présence';
