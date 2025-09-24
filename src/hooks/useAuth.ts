@@ -140,6 +140,9 @@ export const useAuth = () => {
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
+      
+      // Rediriger vers la page d'authentification
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -336,9 +336,9 @@ const SchoolDashboard = () => {
             onSettingsClick={handleSettingsClick}
           />
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4 lg:p-6">
             {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
               <StatsCard 
                 title="Étudiants"
                 value={stats.totalStudents}
@@ -374,15 +374,15 @@ const SchoolDashboard = () => {
             </div>
 
             {/* Main Content */}
-            <div className="space-y-8">
+            <div className="space-y-6 lg:space-y-8">
               {activeTab === "analytics" && (
-                <div className="space-y-8">
+                <div className="space-y-6 lg:space-y-8">
                   {/* Dashboard Content Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                    <div className="lg:col-span-1">
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8 mb-6 lg:mb-8">
+                    <div className="xl:col-span-1">
                       <QuickActions actions={quickActions} />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div className="xl:col-span-2">
                       <RecentActivity activities={recentActivities} />
                     </div>
                   </div>
@@ -392,19 +392,19 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "students" && (
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Gestion des Étudiants</h2>
-                      <p className="text-gray-600 mt-1">Gérez les inscriptions et informations des étudiants</p>
+                <div className="space-y-4 lg:space-y-6">
+                  <div className="flex flex-col gap-4 items-start">
+                    <div className="w-full">
+                      <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gestion des Étudiants</h2>
+                      <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les inscriptions et informations des étudiants</p>
                     </div>
-                    <Button onClick={() => setIsStudentDialogOpen(true)} size="lg" className="gap-2">
+                    <Button onClick={() => setIsStudentDialogOpen(true)} size="lg" className="gap-2 w-full sm:w-auto">
                       <UserPlus className="h-5 w-5" />
                       Ajouter un Étudiant
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
                     <StudentImport 
                       onImportComplete={handleImportStudents}
                       classes={classes}
@@ -451,26 +451,26 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "subjects" && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
+                <div className="space-y-4 lg:space-y-6">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                     <h2 className="text-xl font-semibold">Matières Enseignées</h2>
-                    <Button onClick={() => setIsSubjectDialogOpen(true)}>
+                    <Button onClick={() => setIsSubjectDialogOpen(true)} className="w-full sm:w-auto">
                       <Plus className="h-4 w-4 mr-2" />
                       Nouvelle Matière
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {subjects.map((subject) => {
                       const subjectClass = classes.find(c => c.id === subject.class_id);
                       const assignedTeacher = teachers.find(t => t.id === subject.teacher_id);
                       
                       return (
                         <Card key={subject.id} className="relative">
-                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-lg">
                               <BookOpen className="h-5 w-5" />
-                              {subject.name}
+                              <span className="truncate">{subject.name}</span>
                             </CardTitle>
                           </CardHeader>
                           <CardContent>

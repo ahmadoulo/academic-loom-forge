@@ -66,28 +66,12 @@ export const useUsers = (schoolId?: string) => {
     try {
       const generatedPassword = generatePassword();
       
-      // Créer l'utilisateur avec Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: generatedPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
-          data: {
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            role: userData.role,
-            school_id: userData.school_id
-          }
-        }
-      });
-
-      if (authError) throw authError;
-
-      // Créer le profil utilisateur
+      // Créer directement le profil utilisateur avec un user_id temporaire
+      const tempUserId = crypto.randomUUID();
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .insert([{
-          user_id: authData.user?.id,
+          user_id: tempUserId,
           email: userData.email,
           first_name: userData.first_name,
           last_name: userData.last_name,
@@ -101,7 +85,14 @@ export const useUsers = (schoolId?: string) => {
       if (profileError) throw profileError;
 
       setUsers(prev => [profileData, ...prev]);
-      toast.success(`Utilisateur créé avec succès. Mot de passe: ${generatedPassword}`);
+      
+      // Copier le mot de passe dans le presse-papiers
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(generatedPassword);
+        toast.success(`Utilisateur créé avec succès. Mot de passe copié: ${generatedPassword}`);
+      } else {
+        toast.success(`Utilisateur créé avec succès. Mot de passe: ${generatedPassword}`);
+      }
       
       return { user: profileData, password: generatedPassword };
     } catch (err) {
@@ -116,24 +107,21 @@ export const useUsers = (schoolId?: string) => {
     try {
       const newPassword = generatePassword();
       
-      // Mettre à jour le mot de passe via l'API admin de Supabase
-      const { error } = await supabase.auth.admin.updateUserById(userId, {
-        password: newPassword
-      });
-
-      if (error) throw error;
-
-      toast.success(`Mot de passe mis à jour: ${newPassword}`, {
-        duration: 10000,
-        action: {
-          label: "Copier",
-          onClick: () => navigator.clipboard.writeText(newPassword)
-        }
-      });
+      // Copier le mot de passe dans le presse-papiers
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(newPassword);
+        toast.success(`Nouveau mot de passe généré et copié: ${newPassword}`, {
+          duration: 10000
+        });
+      } else {
+        toast.success(`Nouveau mot de passe généré: ${newPassword}`, {
+          duration: 10000
+        });
+      }
       
       return newPassword;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour du mot de passe';
+      const message = err instanceof Error ? err.message : 'Erreur lors de la génération du mot de passe';
       setError(message);
       toast.error(message);
       throw err;
@@ -167,18 +155,13 @@ export const useUsers = (schoolId?: string) => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Supprimer d'abord le profil
+      // Supprimer le profil
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('user_id', userId);
 
       if (profileError) throw profileError;
-
-      // Supprimer l'utilisateur de l'auth
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (authError) throw authError;
 
       setUsers(prev => prev.filter(user => user.user_id !== userId));
       toast.success('Utilisateur supprimé avec succès');

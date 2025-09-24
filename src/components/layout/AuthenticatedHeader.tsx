@@ -29,20 +29,22 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
 
   return (
     <header className="border-b border-border bg-card">
-      <div className="flex h-16 items-center justify-between px-6">
-        <div className="flex items-center space-x-4">
+      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
+        <div className="flex items-center space-x-2 lg:space-x-4">
           <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">
               {title}
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {profile?.role && getRoleBadge(profile.role)}
+        <div className="flex items-center space-x-2 lg:space-x-4">
+          <div className="hidden sm:block">
+            {profile?.role && getRoleBadge(profile.role)}
+          </div>
           <ThemeToggle />
           
           <DropdownMenu>
@@ -62,10 +64,13 @@ export function AuthenticatedHeader({ title, onSettingsClick }: AuthenticatedHea
                   <p className="font-medium text-sm">
                     {profile?.first_name} {profile?.last_name}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {profile?.email}
                   </p>
                 </div>
+              </div>
+              <div className="sm:hidden px-2 pb-2">
+                {profile?.role && getRoleBadge(profile.role)}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSettingsClick}>

@@ -38,7 +38,7 @@ const AdminDashboard = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 lg:p-6">
           {renderContent()}
         </main>
       </div>

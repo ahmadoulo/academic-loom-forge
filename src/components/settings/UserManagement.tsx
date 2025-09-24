@@ -111,23 +111,23 @@ export function UserManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 lg:space-y-6">
+      <div className="flex flex-col gap-4 items-start">
+        <div className="w-full">
+          <h2 className="text-xl lg:text-2xl font-bold">Gestion des utilisateurs</h2>
+          <p className="text-muted-foreground text-sm lg:text-base">
             Gérez les comptes utilisateurs et leurs permissions
           </p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90">
+            <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
               <UserPlus className="h-4 w-4" />
               Nouvel utilisateur
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md mx-4">
             <DialogHeader>
               <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
               <DialogDescription>
@@ -135,7 +135,7 @@ export function UserManagement() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-first-name">Prénom</Label>
                   <Input
@@ -204,11 +204,11 @@ export function UserManagement() {
                   </Select>
                 </div>
               )}
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
                   Annuler
                 </Button>
-                <Button onClick={handleCreateUser} className="bg-gradient-primary hover:opacity-90">
+                <Button onClick={handleCreateUser} className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
                   Créer
                 </Button>
               </div>
@@ -218,8 +218,8 @@ export function UserManagement() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Liste des utilisateurs</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg lg:text-xl">Liste des utilisateurs</CardTitle>
           <CardDescription>
             {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''}
           </CardDescription>
@@ -237,39 +237,44 @@ export function UserManagement() {
             </div>
           </div>
 
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Utilisateur</TableHead>
-                  <TableHead>Rôle</TableHead>
-                  <TableHead>École</TableHead>
-                  <TableHead>Statut</TableHead>
+                  <TableHead className="min-w-[200px]">Utilisateur</TableHead>
+                  <TableHead className="hidden sm:table-cell">Rôle</TableHead>
+                  <TableHead className="hidden md:table-cell">École</TableHead>
+                  <TableHead className="hidden lg:table-cell">Statut</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                  {filteredUsers.map((user) => (
                    <TableRow key={user.id}>
-                     <TableCell className="flex items-center space-x-3">
-                       <Avatar className="h-8 w-8">
-                         <AvatarImage src="" />
-                         <AvatarFallback className="text-xs bg-gradient-primary text-white">
-                           {user.first_name[0]}{user.last_name[0]}
-                         </AvatarFallback>
-                       </Avatar>
-                       <div>
-                         <div className="font-medium">{user.first_name} {user.last_name}</div>
-                         <div className="text-sm text-muted-foreground">{user.email}</div>
+                     <TableCell className="min-w-0">
+                       <div className="flex items-center space-x-3">
+                         <Avatar className="h-8 w-8 flex-shrink-0">
+                           <AvatarImage src="" />
+                           <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                             {user.first_name[0]}{user.last_name[0]}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div className="min-w-0 flex-1">
+                           <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
+                           <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                           <div className="sm:hidden mt-1">
+                             {getRoleBadge(user.role)}
+                           </div>
+                         </div>
                        </div>
                      </TableCell>
-                     <TableCell>
+                     <TableCell className="hidden sm:table-cell">
                        {getRoleBadge(user.role)}
                      </TableCell>
-                     <TableCell>
-                       <div className="text-sm">{getSchoolName(user.school_id)}</div>
+                     <TableCell className="hidden md:table-cell">
+                       <div className="text-sm truncate max-w-[150px]">{getSchoolName(user.school_id)}</div>
                      </TableCell>
-                     <TableCell>
+                     <TableCell className="hidden lg:table-cell">
                        <Badge variant={user.is_active ? "default" : "secondary"}>
                          {user.is_active ? "Actif" : "Inactif"}
                        </Badge>
