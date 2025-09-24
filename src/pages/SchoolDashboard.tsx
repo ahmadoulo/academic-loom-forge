@@ -278,37 +278,89 @@ const SchoolDashboard = () => {
     student_phone?: string;
     parent_phone?: string;
   }) => {
-    console.log('=== handleCreateStudent DÉBUT ===');
+    console.log('=== SchoolDashboard handleCreateStudent DÉBUT ===');
+    console.log('Données reçues du formulaire:', studentData);
+    console.log('schoolId disponible:', schoolId);
+    console.log('school object:', school);
+    console.log('school.id:', school?.id);
+    console.log('createStudent function disponible:', typeof createStudent);
+    console.log('classes disponibles:', classes);
+    console.log('nombre de classes:', classes?.length);
     
     if (!school?.id) {
-      console.error('ERREUR CRITIQUE: School ID manquant');
-      console.log('school object:', school);
-      toast.error('Erreur: ID de l\'école manquant');
+      console.error('❌ schoolId manquant');
+      console.log('school object complet:', JSON.stringify(school, null, 2));
+      toast.error('Erreur: École non identifiée');
       return;
     }
-    
-    console.log('Données reçues du formulaire:', studentData);
-    console.log('ID de l\'école:', school.id);
-    console.log('Classes disponibles:', classes);
-    
-    const dataToSubmit = {
-      ...studentData,
-      school_id: school.id
-    };
-    
-    console.log('Données complètes à soumettre:', dataToSubmit);
-    
+
+    if (!createStudent || typeof createStudent !== 'function') {
+      console.error('❌ createStudent function non disponible');
+      console.log('createStudent type:', typeof createStudent);
+      toast.error('Erreur: Function de création non disponible');
+      return;
+    }
+
+    // Validation supplémentaire des données
+    if (!studentData.firstname?.trim()) {
+      console.error('❌ Prénom manquant');
+      toast.error('Le prénom est requis');
+      return;
+    }
+
+    if (!studentData.lastname?.trim()) {
+      console.error('❌ Nom manquant');
+      toast.error('Le nom est requis');
+      return;
+    }
+
+    if (!studentData.class_id) {
+      console.error('❌ Classe non sélectionnée');
+      toast.error('La classe est requise');
+      return;
+    }
+
+    if (!studentData.cin_number?.trim()) {
+      console.error('❌ CIN manquant');
+      toast.error('Le numéro CIN est requis');
+      return;
+    }
+
+    console.log('✅ Toutes les validations passées');
+
     try {
-      console.log('Appel de createStudent...');
-      const result = await createStudent(dataToSubmit);
-      console.log('Étudiant créé avec succès dans handleCreateStudent:', result);
-      console.log('Fermeture du dialog...');
+      const completeStudentData = {
+        ...studentData,
+        school_id: school.id,
+      };
+      
+      console.log('Données complètes pour createStudent:', completeStudentData);
+      console.log('🚀 Appel de createStudent...');
+      
+      const result = await createStudent(completeStudentData);
+      console.log('✅ Résultat createStudent:', result);
+      console.log('✅ Étudiant créé avec succès');
+      
+      console.log('🔒 Fermeture du dialog...');
       setIsStudentDialogOpen(false);
-      console.log('=== handleCreateStudent FIN SUCCÈS ===');
+      console.log('✅ Dialog fermé');
+      
+      console.log('=== SchoolDashboard handleCreateStudent FIN SUCCESS ===');
     } catch (error) {
-      console.error('=== ERREUR dans handleCreateStudent ===');
-      console.error('Erreur complète:', error);
-      console.log('=== FIN ERREUR handleCreateStudent ===');
+      console.error('❌ Erreur dans handleCreateStudent:', error);
+      console.error('❌ Type d\'erreur:', typeof error);
+      console.error('❌ Message d\'erreur:', error instanceof Error ? error.message : String(error));
+      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
+      
+      // Log détaillé de l'erreur
+      if (error && typeof error === 'object') {
+        console.error('❌ Propriétés de l\'erreur:');
+        Object.keys(error).forEach(key => {
+          console.error(`   ${key}:`, (error as any)[key]);
+        });
+      }
+      
+      console.log('=== SchoolDashboard handleCreateStudent FIN ERREUR ===');
     }
   };
 

@@ -31,10 +31,32 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
   });
 
   const handleSubmit = (e: React.FormEvent) => {
+    console.log('=== StudentForm handleSubmit DÉBUT ===');
     e.preventDefault();
-    if (!formData.firstname.trim() || !formData.lastname.trim() || !formData.class_id || !formData.cin_number.trim()) return;
     
-    onSubmit({
+    console.log('Données du formulaire:', formData);
+    
+    // Validation
+    if (!formData.firstname.trim()) {
+      console.log('❌ Validation échouée: Prénom manquant');
+      return;
+    }
+    if (!formData.lastname.trim()) {
+      console.log('❌ Validation échouée: Nom manquant');
+      return;
+    }
+    if (!formData.class_id) {
+      console.log('❌ Validation échouée: Classe manquante');
+      return;
+    }
+    if (!formData.cin_number.trim()) {
+      console.log('❌ Validation échouée: CIN manquant');
+      return;
+    }
+    
+    console.log('✅ Validation réussie, préparation des données...');
+    
+    const studentData = {
       firstname: formData.firstname.trim(),
       lastname: formData.lastname.trim(),
       email: formData.email.trim() || undefined,
@@ -43,19 +65,32 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
       cin_number: formData.cin_number.trim(),
       student_phone: formData.student_phone.trim() || undefined,
       parent_phone: formData.parent_phone.trim() || undefined,
-    });
+    };
     
-    // Reset form
-    setFormData({ 
-      firstname: "", 
-      lastname: "", 
-      email: "", 
-      class_id: "",
-      birth_date: "",
-      cin_number: "",
-      student_phone: "",
-      parent_phone: ""
-    });
+    console.log('Données préparées pour onSubmit:', studentData);
+    console.log('Appel de onSubmit...');
+    
+    try {
+      onSubmit(studentData);
+      console.log('✅ onSubmit appelé avec succès');
+      
+      // Reset form
+      setFormData({ 
+        firstname: "", 
+        lastname: "", 
+        email: "", 
+        class_id: "",
+        birth_date: "",
+        cin_number: "",
+        student_phone: "",
+        parent_phone: ""
+      });
+      console.log('✅ Formulaire réinitialisé');
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'appel onSubmit:', error);
+    }
+    
+    console.log('=== StudentForm handleSubmit FIN ===');
   };
 
   return (

@@ -76,30 +76,57 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     try {
       console.log('=== useStudents createStudent DÉBUT ===');
       console.log('Données reçues:', studentData);
+      console.log('supabase client disponible:', !!supabase);
       
       // Validation : CIN requis
       if (!studentData.cin_number) {
-        console.error('Erreur: CIN manquant');
+        console.error('❌ Validation échouée: CIN manquant');
         throw new Error('Le numéro CIN est requis');
       }
 
       // Validation : school_id requis
       if (!studentData.school_id) {
-        console.error('Erreur: school_id manquant');
+        console.error('❌ Validation échouée: school_id manquant');
         throw new Error('L\'identifiant de l\'école est requis');
       }
 
       // Validation : class_id requis
       if (!studentData.class_id) {
-        console.error('Erreur: class_id manquant');
+        console.error('❌ Validation échouée: class_id manquant');
         throw new Error('La classe est requise');
       }
 
-      console.log('Validations passées, insertion dans Supabase...');
+      // Validation : prénom et nom requis
+      if (!studentData.firstname?.trim()) {
+        console.error('❌ Validation échouée: Prénom manquant');
+        throw new Error('Le prénom est requis');
+      }
+
+      if (!studentData.lastname?.trim()) {
+        console.error('❌ Validation échouée: Nom manquant');
+        throw new Error('Le nom est requis');
+      }
+
+      console.log('✅ Toutes les validations passées');
+      console.log('📤 Insertion dans Supabase...');
+      
+      const insertData = {
+        firstname: studentData.firstname.trim(),
+        lastname: studentData.lastname.trim(),
+        email: studentData.email?.trim() || null,
+        class_id: studentData.class_id,
+        school_id: studentData.school_id,
+        birth_date: studentData.birth_date || null,
+        cin_number: studentData.cin_number.trim(),
+        student_phone: studentData.student_phone?.trim() || null,
+        parent_phone: studentData.parent_phone?.trim() || null,
+      };
+      
+      console.log('Données à insérer:', insertData);
       
       const { data, error } = await supabase
         .from('students')
-        .insert([studentData])
+        .insert([insertData])
         .select(`
           *,
           classes (
@@ -108,33 +135,53 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         `)
         .single();
 
-      console.log('Résultat Supabase:', { data, error });
+      console.log('📥 Résultat Supabase:');
+      console.log('  - data:', data);
+      console.log('  - error:', error);
 
       if (error) {
-        console.error('Erreur Supabase:', error);
+        console.error('❌ Erreur Supabase détaillée:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
       if (!data) {
-        console.error('Aucune donnée retournée de Supabase');
+        console.error('❌ Aucune donnée retournée de Supabase');
         throw new Error('Aucune donnée retournée après insertion');
       }
 
-      console.log('Étudiant créé avec succès:', data);
+      console.log('✅ Étudiant créé avec succès dans la base:', data);
       toast.success('Étudiant créé avec succès');
       
+      console.log('📝 Mise à jour de la liste locale des étudiants...');
       setStudents(prev => {
-        console.log('Mise à jour de la liste des étudiants');
-        return [...prev, data];
+        const newList = [...prev, data];
+        console.log('  - Ancienne liste:', prev.length, 'étudiants');
+        console.log('  - Nouvelle liste:', newList.length, 'étudiants');
+        return newList;
       });
       
-      console.log('=== useStudents createStudent FIN ===');
+      console.log('=== useStudents createStudent FIN SUCCESS ===');
       return data;
     } catch (err) {
-      console.error('=== ERREUR dans createStudent ===');
+      console.error('=== ❌ ERREUR dans createStudent ===');
       console.error('Type d\'erreur:', typeof err);
-      console.error('Message d\'erreur:', err);
+      console.error('Erreur complète:', err);
+      
+      if (err && typeof err === 'object') {
+        console.error('Propriétés de l\'erreur:');
+        Object.keys(err).forEach(key => {
+          console.error(`  ${key}:`, (err as any)[key]);
+        });
+      }
+      
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'étudiant';
+      console.error('Message d\'erreur final:', message);
+      
       setError(message);
       toast.error(message);
       console.log('=== FIN GESTION ERREUR ===');
