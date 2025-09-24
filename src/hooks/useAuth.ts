@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,7 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const hasRedirected = useRef(false); // Pour éviter les redirections multiples
 
   useEffect(() => {
     // Set up auth state listener
@@ -54,6 +55,13 @@ export const useAuth = () => {
               } else {
                 setProfile(profileData);
               }
+
+              // Rediriger seulement lors de la connexion, pas à chaque chargement
+              if (event === 'SIGNED_IN' && !hasRedirected.current) {
+                hasRedirected.current = true;
+                const role = profileData?.role || session.user.user_metadata?.role || 'student';
+                redirectByRole(role);
+              }
             } catch (err) {
               console.error('Error fetching profile:', err);
               // Fallback to mock profile
@@ -71,6 +79,7 @@ export const useAuth = () => {
           }, 0);
         } else {
           setProfile(null);
+          hasRedirected.current = false; // Reset redirection flag on sign out
         }
         
         setLoading(false);
@@ -132,6 +141,8 @@ export const useAuth = () => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      hasRedirected.current = false; // Reset avant la connexion
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -163,11 +174,15 @@ export const useAuth = () => {
       setUser(null);
       setSession(null);
       setProfile(null);
+      hasRedirected.current = false; // Reset redirection flag
       
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
+      
+      // Rediriger vers la page d'accueil après déconnexion
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -199,13 +214,6 @@ export const useAuth = () => {
         window.location.href = '/';
     }
   };
-
-  // Redirection automatique après connexion
-  useEffect(() => {
-    if (profile && !loading) {
-      redirectByRole(profile.role);
-    }
-  }, [profile, loading]);
 
   return {
     user,

@@ -54,7 +54,22 @@ export default function Index() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Bienvenue sur EduVate</h1>
+          <p className="text-muted-foreground mb-6">
+            Connectez-vous pour accéder à votre tableau de bord
+          </p>
+          <Button 
+            onClick={() => navigate("/auth")}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            Se connecter
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Get available settings tabs based on user role

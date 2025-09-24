@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { GraduationCap, LogIn, UserPlus } from "lucide-react";
 export default function AuthPage() {
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const { schools } = useSchools();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -31,7 +32,32 @@ export default function AuthPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    // L'utilisateur est déjà connecté, le laisser naviguer librement
+    // La redirection sera gérée par le hook useAuth seulement lors de la connexion
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Vous êtes déjà connecté</h1>
+          <p className="text-muted-foreground mb-6">
+            Vous pouvez retourner au tableau de bord ou vous connecter avec un autre compte.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button 
+              onClick={() => navigate("/")}
+              variant="outline"
+            >
+              Tableau de bord
+            </Button>
+            <Button 
+              onClick={() => navigate("/auth")}
+              className="bg-gradient-primary hover:opacity-90"
+            >
+              Autre compte
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleSignIn = async (e: React.FormEvent) => {
