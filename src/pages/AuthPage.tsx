@@ -16,18 +16,7 @@ const AuthPage = () => {
   
   const { user, loading, loginWithCredentials } = useCustomAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Vérification de l'authentification...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Rediriger si l'utilisateur est déjà connecté
+  // Rediriger si l'utilisateur est déjà connecté (hooks must be before any early returns)
   useEffect(() => {
     if (user && user.is_active && !redirecting) {
       setRedirecting(true);
@@ -45,6 +34,17 @@ const AuthPage = () => {
       }, 100);
     }
   }, [user, redirecting]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Vérification de l'authentification...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (redirecting) {
     return (
