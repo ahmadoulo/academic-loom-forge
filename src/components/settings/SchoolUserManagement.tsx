@@ -25,6 +25,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
     first_name: "",
@@ -71,10 +73,19 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     return result;
   };
 
+  const handleGeneratePassword = () => {
+    const password = generatePassword();
+    setGeneratedPassword(password);
+    setShowPassword(true);
+  };
+
   const handleCreateUser = async () => {
+    if (!generatedPassword) {
+      toast.error('Veuillez générer un mot de passe d\'abord');
+      return;
+    }
+
     try {
-      const generatedPassword = generatePassword();
-      
       const result = await createUserCredential({
         email: newUser.email,
         first_name: newUser.first_name,
@@ -85,18 +96,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       });
 
       if (result) {
-        // Copy password to clipboard
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(generatedPassword);
-          toast.success(`Utilisateur créé! Mot de passe copié: ${generatedPassword}`, {
-            duration: 10000
-          });
-        } else {
-          toast.success(`Utilisateur créé! Mot de passe: ${generatedPassword}`, {
-            duration: 10000
-          });
-        }
-
+        toast.success('Utilisateur créé avec succès!');
         setIsCreateDialogOpen(false);
         setNewUser({
           email: "",
@@ -245,12 +245,58 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Génération et affichage du mot de passe */}
+              <div className="space-y-3">
+                <Label>Mot de passe</Label>
+                {!showPassword ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGeneratePassword}
+                    className="w-full"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Générer un mot de passe
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                      <code className="flex-1 text-sm font-mono">{generatedPassword}</code>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigator.clipboard.writeText(generatedPassword)}
+                      >
+                        Copier
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      ⚠️ Copiez ce mot de passe maintenant, il ne sera plus affiché après la création.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsCreateDialogOpen(false);
+                    setGeneratedPassword("");
+                    setShowPassword(false);
+                  }} 
+                  className="w-full sm:w-auto"
+                >
                   Annuler
                 </Button>
-                <Button onClick={handleCreateUser} className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
-                  Créer
+                <Button 
+                  onClick={handleCreateUser} 
+                  disabled={loading || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword}
+                  className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
+                >
+                  {loading ? "Création..." : "Créer l'utilisateur"}
                 </Button>
               </div>
             </div>

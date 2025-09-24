@@ -24,6 +24,7 @@ interface UserCredential {
   school_id?: string;
   is_active: boolean;
   last_login?: string;
+  teacher_id?: string; // Ajouter l'ID du professeur
 }
 
 export const useCustomAuth = () => {
@@ -64,6 +65,23 @@ export const useCustomAuth = () => {
         .single();
 
       if (error) throw error;
+
+      // Si c'est un professeur, créer aussi un enregistrement dans la table teachers
+      if (userData.role === 'teacher' && userData.school_id) {
+        const { error: teacherError } = await supabase
+          .from('teachers')
+          .insert([{
+            firstname: userData.first_name,
+            lastname: userData.last_name,
+            email: userData.email,
+            school_id: userData.school_id,
+          }]);
+
+        if (teacherError) {
+          console.error('Erreur lors de la création du professeur:', teacherError);
+          // Ne pas faire échouer la création de l'utilisateur pour cette erreur
+        }
+      }
       
       toast.success('Utilisateur créé avec succès');
       return data;
@@ -102,6 +120,19 @@ export const useCustomAuth = () => {
         .update({ last_login: new Date().toISOString() })
         .eq('id', userData.id);
 
+      // Si c'est un professeur, récupérer son ID depuis la table teachers
+      let teacherId = null;
+      if (userData.role === 'teacher') {
+        const { data: teacherData } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('email', userData.email)
+          .eq('school_id', userData.school_id)
+          .single();
+        
+        teacherId = teacherData?.id;
+      }
+
       const userProfile: UserCredential = {
         id: userData.id,
         email: userData.email,
@@ -111,6 +142,7 @@ export const useCustomAuth = () => {
         school_id: userData.school_id,
         is_active: userData.is_active,
         last_login: userData.last_login,
+        teacher_id: teacherId, // Ajouter l'ID du professeur
       };
 
       setUser(userProfile);

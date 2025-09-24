@@ -36,9 +36,17 @@ export default function AuthPage() {
       case 'global_admin':
         return <Navigate to="/admin" replace />;
       case 'school_admin':
-        return <Navigate to="/school" replace />;
+        if (user.school_id) {
+          return <Navigate to={`/school/${user.school_id}`} replace />;
+        } else {
+          return <Navigate to="/" replace />;
+        }
       case 'teacher':
-        return <Navigate to="/teacher" replace />;
+        if (user.teacher_id) {
+          return <Navigate to={`/teacher/${user.teacher_id}`} replace />;
+        } else {
+          return <Navigate to="/" replace />;
+        }
       case 'student':
         return <Navigate to="/student" replace />;
       case 'parent':
