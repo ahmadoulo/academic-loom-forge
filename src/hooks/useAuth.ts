@@ -30,20 +30,18 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
-          setTimeout(async () => {
-            try {
-              const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .single();
-              
-              if (error) throw error;
-              setProfile(data);
-            } catch (error) {
-              console.error('Error fetching profile:', error);
-            }
+          // Create mock profile from user data for now
+          setTimeout(() => {
+            const mockProfile: UserProfile = {
+              id: session.user.id,
+              email: session.user.email || '',
+              first_name: session.user.user_metadata?.first_name || 'Utilisateur',
+              last_name: session.user.user_metadata?.last_name || '',
+              role: session.user.user_metadata?.role || 'student',
+              school_id: session.user.user_metadata?.school_id,
+              is_active: true,
+            };
+            setProfile(mockProfile);
           }, 0);
         } else {
           setProfile(null);

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, QrCode, Clock, Users, Copy, CheckCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, QrCode, Clock, Users, Copy, CheckCircle, ChevronDown, Link, Share } from "lucide-react";
 import QRCode from 'qrcode';
 import { useAttendance } from "@/hooks/useAttendance";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,7 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
   const { 
     attendance, 
@@ -94,6 +96,24 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
       toast({
         title: "Erreur",
         description: "Impossible de copier le code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(scanUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+      toast({
+        title: "Lien copié !",
+        description: "Le lien de la session a été copié dans le presse-papiers.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de copier le lien",
         variant: "destructive",
       });
     }
@@ -189,14 +209,46 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>Instructions pour les étudiants:</p>
-              <ol className="text-left list-decimal list-inside space-y-1">
-                <li>Scannez le QR code avec votre téléphone</li>
-                <li>Ou saisissez le code manuellement</li>
-                <li>Authentifiez-vous avec vos identifiants</li>
-                <li>Votre présence sera automatiquement marquée</li>
-              </ol>
+            {/* Actions dropdown */}
+            <div className="flex justify-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Share className="h-4 w-4" />
+                    Partager la session
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-56">
+                  <DropdownMenuItem onClick={handleCopyCode}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copier le code de session
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <Link className="mr-2 h-4 w-4" />
+                    {linkCopied ? "Lien copié !" : "Copier le lien de la session"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p className="font-medium">Instructions pour les étudiants:</p>
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="mb-2"><strong>Option 1 - QR Code:</strong></p>
+                <ol className="text-left list-decimal list-inside space-y-1 ml-2">
+                  <li>Scannez le QR code avec votre téléphone</li>
+                  <li>Authentifiez-vous avec votre email</li>
+                  <li>Votre présence sera automatiquement marquée</li>
+                </ol>
+                
+                <p className="mb-2 mt-3"><strong>Option 2 - Lien direct:</strong></p>
+                <ol className="text-left list-decimal list-inside space-y-1 ml-2">
+                  <li>Utilisez le lien partagé par le professeur</li>
+                  <li>Saisissez le code de session: <span className="font-mono bg-background px-1 rounded">{session.session_code}</span></li>
+                  <li>Authentifiez-vous avec votre email</li>
+                </ol>
+              </div>
             </div>
           </CardContent>
         </Card>

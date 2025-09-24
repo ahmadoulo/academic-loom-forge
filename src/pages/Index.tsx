@@ -1,278 +1,478 @@
 import { useState } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { GraduationCap, Users, School, BookOpen, LogIn, ArrowRight, Star, Zap, Shield, BarChart } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  GraduationCap, 
+  Shield, 
+  Clock, 
+  Brain, 
+  Users, 
+  BarChart3, 
+  BookOpen, 
+  Building, 
+  Lock, 
+  Zap,
+  Database,
+  Globe,
+  Settings,
+  LogIn,
+  Sparkles,
+  ArrowRight
+} from "lucide-react";
+import { useSchools } from "@/hooks/useSchools";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import { UserManagement } from "@/components/settings/UserManagement";
+import { RoleManagement } from "@/components/settings/RoleManagement";
+import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 
-const Index = () => {
+export default function Index() {
+  const { isAuthenticated, profile, loading } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+
+  const navigate = useNavigate();
+  const { schools, getSchoolByIdentifier } = useSchools();
+  const { toast } = useToast();
   const [schoolId, setSchoolId] = useState("");
   const [teacherId, setTeacherId] = useState("");
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Get available settings tabs based on user role
+  const getAvailableSettingsTabs = () => {
+    const baseTabs = ["profile"];
+    if (profile?.role === 'global_admin') {
+      return [...baseTabs, "users", "roles", "system"];
+    }
+    if (profile?.role === 'school_admin') {
+      return [...baseTabs, "users", "notifications"];
+    }
+    return baseTabs;
+  };
+
+  const handleSchoolAccess = async () => {
+    if (schoolId) {
+      try {
+        const school = await getSchoolByIdentifier(schoolId);
+        if (school) {
+          navigate(`/school/${school.id}`);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "École non trouvée",
+            description: "L'identifiant saisi ne correspond à aucune école."
+          });
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible de récupérer les informations de l'école."
+        });
+      }
+    }
+  };
+
+  const handleTeacherAccess = () => {
+    if (teacherId) {
+      navigate(`/teacher/${teacherId}`);
+    }
+  };
+
+  if (showSettings) {
+    const availableTabs = getAvailableSettingsTabs();
+    return (
+      <SettingsLayout 
+        activeTab={activeSettingsTab} 
+        onTabChange={setActiveSettingsTab}
+        availableTabs={availableTabs}
+      >
+        <Tabs value={activeSettingsTab} onValueChange={setActiveSettingsTab}>
+          <TabsContent value="profile">
+            <ProfileSettings />
+          </TabsContent>
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+          <TabsContent value="roles">
+            <RoleManagement />
+          </TabsContent>
+          <TabsContent value="notifications">
+            <div className="text-center py-12">
+              <h3 className="text-lg font-semibold mb-2">Notifications</h3>
+              <p className="text-muted-foreground">Fonctionnalité à venir...</p>
+            </div>
+          </TabsContent>
+          <TabsContent value="system">
+            <div className="text-center py-12">
+              <h3 className="text-lg font-semibold mb-2">Paramètres système</h3>
+              <p className="text-muted-foreground">Fonctionnalité à venir...</p>
+            </div>
+          </TabsContent>
+        </Tabs>
+        <div className="mt-8 flex justify-start">
+          <Button variant="outline" onClick={() => setShowSettings(false)}>
+            ← Retour au tableau de bord
+          </Button>
+        </div>
+      </SettingsLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-primary via-primary-dark to-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]"></div>
-        <div className="relative container mx-auto px-6 py-24 text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="relative">
-              <GraduationCap className="h-16 w-16 text-white" />
-              <div className="absolute -top-2 -right-2 h-6 w-6 bg-accent rounded-full flex items-center justify-center">
-                <Star className="h-3 w-3 text-accent-foreground" />
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <AuthenticatedHeader 
+        title="EduVate Dashboard" 
+        onSettingsClick={() => setShowSettings(true)} 
+      />
+      
+      {/* Dashboard Content */}
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Bienvenue, {profile?.first_name} !
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Voici votre tableau de bord EduVate
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Paramètres
+                </Button>
+                <Button
+                  onClick={() => navigate("/auth")}
+                  className="flex items-center gap-2 bg-gradient-primary hover:opacity-90"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Autres comptes
+                </Button>
               </div>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white">
-              Edu<span className="text-accent">vate</span>
-            </h1>
           </div>
-          <p className="text-xl md:text-2xl mb-6 text-white/90 max-w-3xl mx-auto font-medium">
-            La plateforme SaaS de gestion académique nouvelle génération
-          </p>
-          <p className="text-lg mb-8 text-white/80 max-w-2xl mx-auto">
-            IA intégrée • Analytics avancés • Interface moderne • Multi-établissements
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Button 
-              size="lg" 
-              variant="secondary"
-              onClick={() => window.location.href = '/admin'}
-              className="text-lg px-8 py-4 shadow-lg hover:shadow-xl transition-shadow"
-            >
-              <Users className="h-5 w-5 mr-2" />
-              Administration Globale
-            </Button>
+
+          {/* Quick Access Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
+            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    Admin
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl">Administration Globale</CardTitle>
+                <CardDescription>
+                  Gestion complète de toutes les écoles et utilisateurs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => navigate("/admin")}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  disabled={profile?.role !== 'global_admin'}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Accéder
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                    <Building className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    École
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl">Gestion École</CardTitle>
+                <CardDescription>
+                  Administrez votre établissement scolaire
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                      disabled={!['global_admin', 'school_admin'].includes(profile?.role || '')}
+                    >
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      Accéder
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Accès École</DialogTitle>
+                      <DialogDescription>
+                        Entrez l'identifiant de votre établissement
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="school-id">Identifiant École</Label>
+                        <Input
+                          id="school-id"
+                          value={schoolId}
+                          onChange={(e) => setSchoolId(e.target.value)}
+                          placeholder="Ex: MUNDIA01"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleSchoolAccess} 
+                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500"
+                      >
+                        Accéder
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-large border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Prof
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl">Interface Professeur</CardTitle>
+                <CardDescription>
+                  Gérez vos classes et vos élèves
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                      disabled={!['global_admin', 'school_admin', 'teacher'].includes(profile?.role || '')}
+                    >
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      Accéder
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Interface Professeur</DialogTitle>
+                      <DialogDescription>
+                        Entrez votre identifiant professeur
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="teacher-id">Identifiant Professeur</Label>
+                        <Input
+                          id="teacher-id"
+                          value={teacherId}
+                          onChange={(e) => setTeacherId(e.target.value)}
+                          placeholder="Ex: PROF001"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleTeacherAccess} 
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
+                      >
+                        Accéder
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Advanced SaaS Features Section */}
+          <div className="mb-12">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
+                Fonctionnalités Avancées
+              </h2>
+              <p className="text-muted-foreground">
+                Découvrez les capacités révolutionnaires d'EduVate
+              </p>
+            </div>
             
-            <Dialog>
-              <DialogTrigger asChild>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="shadow-medium border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300 group">
+                <CardHeader className="pb-3">
+                  <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <Brain className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-lg">Gestion IA Utilisateurs</CardTitle>
+                  <CardDescription>
+                    Intelligence artificielle pour la gestion automatique et les recommandations personnalisées
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary">ML</Badge>
+                    <Badge variant="secondary" className="bg-accent/10 text-accent">Auto</Badge>
+                    <Badge variant="secondary" className="bg-success/10 text-success">Prédictif</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-medium border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300 group">
+                <CardHeader className="pb-3">
+                  <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <BarChart3 className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-lg">Analytics Temps Réel</CardTitle>
+                  <CardDescription>
+                    Tableaux de bord dynamiques avec métriques en temps réel
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="bg-accent/10 text-accent">Real-time</Badge>
+                    <Badge variant="secondary" className="bg-warning/10 text-warning">Dashboard</Badge>
+                    <Badge variant="secondary" className="bg-destructive/10 text-destructive">Insights</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-medium border-0 bg-gradient-card backdrop-blur-sm hover:shadow-glow transition-all duration-300 group">
+                <CardHeader className="pb-3">
+                  <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <Lock className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-lg">Sécurité Entreprise</CardTitle>
+                  <CardDescription>
+                    Chiffrement bout-en-bout, authentification multi-facteurs, conformité RGPD
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="bg-destructive/10 text-destructive">Enterprise</Badge>
+                    <Badge variant="secondary" className="bg-success/10 text-success">RGPD</Badge>
+                    <Badge variant="secondary" className="bg-warning/10 text-warning">Audit</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <Card className="shadow-medium border-0 bg-gradient-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Écoles connectées</p>
+                    <p className="text-2xl font-bold">12</p>
+                  </div>
+                  <Building className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-medium border-0 bg-gradient-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Utilisateurs actifs</p>
+                    <p className="text-2xl font-bold">1,247</p>
+                  </div>
+                  <Users className="h-8 w-8 text-accent" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-medium border-0 bg-gradient-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Classes actives</p>
+                    <p className="text-2xl font-bold">86</p>
+                  </div>
+                  <BookOpen className="h-8 w-8 text-success" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-medium border-0 bg-gradient-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Temps de disponibilité</p>
+                    <p className="text-2xl font-bold">99.9%</p>
+                  </div>
+                  <Zap className="h-8 w-8 text-warning" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* CTA Section */}
+          <Card className="shadow-large border-0 bg-gradient-hero text-white">
+            <CardContent className="p-8 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                  <Sparkles className="h-8 w-8 text-white" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold mb-4">
+                Découvrez la puissance d'EduVate
+              </h2>
+              <p className="text-xl text-white/90 mb-6 max-w-2xl mx-auto">
+                Plateforme SaaS complète pour la gestion académique moderne
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg" 
+                  className="bg-white text-primary hover:bg-white/90 px-8 py-3 text-lg font-semibold shadow-xl"
+                >
+                  <Zap className="mr-2 h-5 w-5" />
+                  Essai Gratuit
+                </Button>
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="text-lg px-8 py-4 border-white/20 text-white hover:bg-white/10 shadow-lg"
+                  className="border-white text-white hover:bg-white hover:text-primary px-8 py-3 text-lg font-semibold"
                 >
-                  <School className="h-5 w-5 mr-2" />
-                  Accès École
+                  En savoir plus
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Accès École</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input
-                    placeholder="Identifiant de votre école"
-                    value={schoolId}
-                    onChange={(e) => setSchoolId(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => schoolId && (window.location.href = `/school/${schoolId}`)}
-                    disabled={!schoolId}
-                    className="w-full"
-                  >
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Accéder au tableau de bord
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="text-lg px-8 py-4 border-white/20 text-white hover:bg-white/10 shadow-lg"
-                >
-                  <BookOpen className="h-5 w-5 mr-2" />
-                  Interface Professeur
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Accès Professeur</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input
-                    placeholder="Votre identifiant professeur"
-                    value={teacherId}
-                    onChange={(e) => setTeacherId(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => teacherId && (window.location.href = `/teacher/${teacherId}`)}
-                    disabled={!teacherId}
-                    className="w-full"
-                  >
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Accéder à l'interface
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="flex items-center justify-center gap-6 text-white/70">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="text-sm">Sécurisé</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              <span className="text-sm">Temps réel</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              <span className="text-sm">IA intégrée</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Section */}
-      <div className="container mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-foreground mb-6">
-            Fonctionnalités SaaS Avancées
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Une solution complète avec intelligence artificielle intégrée pour révolutionner la gestion académique
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">Gestion IA des Utilisateurs</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Création automatique de comptes avec suggestions IA et détection de doublons intelligente
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">Auto-import</Badge>
-                <Badge variant="secondary" className="text-xs">Détection IA</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <BarChart className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">Analytics Temps Réel</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Tableaux de bord interactifs avec prédictions IA et insights automatiques
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">Temps réel</Badge>
-                <Badge variant="secondary" className="text-xs">Prédictif</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <BookOpen className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">Notes Intelligentes</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Saisie vocale, auto-complétion et suggestions basées sur l'historique des élèves
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">Vocal</Badge>
-                <Badge variant="secondary" className="text-xs">Auto-ML</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <School className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">Multi-Établissements SaaS</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Architecture cloud native avec isolation des données et facturation automatisée
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">Cloud</Badge>
-                <Badge variant="secondary" className="text-xs">Isolé</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">Sécurité Enterprise</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                Chiffrement end-to-end, audit trails et conformité RGPD automatique
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">RGPD</Badge>
-                <Badge variant="secondary" className="text-xs">Audit</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-background to-muted/30">
-            <CardHeader className="text-center pb-4">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">API & Intégrations</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-4">
-                API REST complète avec webhooks et intégrations natives (Office 365, Google Workspace)
-              </p>
-              <div className="flex justify-center gap-2">
-                <Badge variant="secondary" className="text-xs">REST API</Badge>
-                <Badge variant="secondary" className="text-xs">Webhooks</Badge>
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-muted/30 py-20">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Prêt à transformer votre établissement ?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Rejoignez plus de 1000+ établissements qui font confiance à AcademicPro pour leur gestion académique
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8 py-4">
-              Démarrer l'essai gratuit
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-4">
-              Planifier une démo
-            </Button>
-          </div>
-        </div>
-      </div>
+      </main>
     </div>
   );
-};
-
-export default Index;
+}
