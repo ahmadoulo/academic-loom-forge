@@ -10,19 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useAuth, UserRole } from "@/hooks/useAuth";
 import { useSchools } from "@/hooks/useSchools";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail } from "lucide-react";
+import { useUsers } from "@/hooks/useUsers";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key, Copy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
 export function UserManagement() {
-  const { profile, signUp } = useAuth();
+  const { profile } = useAuth();
   const { schools } = useSchools();
+  const { users, loading, createUser, updateUserPassword, deleteUser } = useUsers(profile?.school_id);
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
-    password: "",
     first_name: "",
     last_name: "",
     role: "student" as UserRole,
@@ -30,66 +31,41 @@ export function UserManagement() {
   });
 
   // Mock users data - in real app, this would come from API
-  const users = [
-    {
-      id: "1",
-      email: "admin@eduvate.com",
-      first_name: "Admin",
-      last_name: "Global",
-      role: "global_admin",
-      school_id: null,
-      is_active: true,
-      created_at: "2024-01-15",
-    },
-    {
-      id: "2",
-      email: "school@eduvate.com",
-      first_name: "Admin",
-      last_name: "École",
-      role: "school_admin",
-      school_id: schools[0]?.id,
-      is_active: true,
-      created_at: "2024-01-16",
-    },
-    {
-      id: "3",
-      email: "teacher@eduvate.com",
-      first_name: "Prof",
-      last_name: "Exemple",
-      role: "teacher",
-      school_id: schools[0]?.id,
-      is_active: true,
-      created_at: "2024-01-17",
-    },
-  ];
-
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCreateUser = async () => {
-    const result = await signUp(newUser.email, newUser.password, {
-      first_name: newUser.first_name,
-      last_name: newUser.last_name,
-      role: newUser.role,
-      school_id: newUser.school_id || undefined,
-    });
+    try {
+      const result = await createUser({
+        email: newUser.email,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
+        role: newUser.role,
+        school_id: newUser.school_id || undefined,
+      });
 
-    if (!result.error) {
-      setIsCreateDialogOpen(false);
-      setNewUser({
-        email: "",
-        password: "",
-        first_name: "",
-        last_name: "",
-        role: "student",
-        school_id: "",
-      });
-      toast({
-        title: "Utilisateur créé",
-        description: "Le nouvel utilisateur a été créé avec succès.",
-      });
+      if (result) {
+        setIsCreateDialogOpen(false);
+        setNewUser({
+          email: "",
+          first_name: "",
+          last_name: "",
+          role: "student",
+          school_id: "",
+        });
+      }
+    } catch (error) {
+      // Error already handled in useUsers hook
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    try {
+      await updateUserPassword(userId);
+    } catch (error) {
+      // Error already handled in useUsers hook
     }
   };
 
@@ -113,6 +89,15 @@ export function UserManagement() {
   };
 
   const canManageUsers = profile?.role === 'global_admin' || profile?.role === 'school_admin';
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Chargement des utilisateurs...</p>
+      </div>
+    );
+  }
 
   if (!canManageUsers) {
     return (
@@ -175,15 +160,6 @@ export function UserManagement() {
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Mot de passe temporaire</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -273,48 +249,55 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="flex items-center space-x-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src="" />
-                        <AvatarFallback className="text-xs bg-gradient-primary text-white">
-                          {user.first_name[0]}{user.last_name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{user.first_name} {user.last_name}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getRoleBadge(user.role)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{getSchoolName(user.school_id)}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.is_active ? "default" : "secondary"}>
-                        {user.is_active ? "Actif" : "Inactif"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
+                 {filteredUsers.map((user) => (
+                   <TableRow key={user.id}>
+                     <TableCell className="flex items-center space-x-3">
+                       <Avatar className="h-8 w-8">
+                         <AvatarImage src="" />
+                         <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                           {user.first_name[0]}{user.last_name[0]}
+                         </AvatarFallback>
+                       </Avatar>
+                       <div>
+                         <div className="font-medium">{user.first_name} {user.last_name}</div>
+                         <div className="text-sm text-muted-foreground">{user.email}</div>
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       {getRoleBadge(user.role)}
+                     </TableCell>
+                     <TableCell>
+                       <div className="text-sm">{getSchoolName(user.school_id)}</div>
+                     </TableCell>
+                     <TableCell>
+                       <Badge variant={user.is_active ? "default" : "secondary"}>
+                         {user.is_active ? "Actif" : "Inactif"}
+                       </Badge>
+                     </TableCell>
+                     <TableCell>
+                       <DropdownMenu>
+                         <DropdownMenuTrigger asChild>
+                           <Button variant="ghost" size="sm">
+                             <MoreVertical className="h-4 w-4" />
+                           </Button>
+                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleResetPassword(user.user_id)}>
+                            <Key className="h-4 w-4 mr-2" />
+                            Réinitialiser mot de passe
+                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Mail className="h-4 w-4 mr-2" />
                             Envoyer un email
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => deleteUser(user.user_id)}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer
                           </DropdownMenuItem>

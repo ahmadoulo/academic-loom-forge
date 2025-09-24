@@ -297,33 +297,45 @@ export type Database = {
       }
       students: {
         Row: {
+          birth_date: string | null
+          cin_number: string | null
           class_id: string
           created_at: string
           email: string | null
           firstname: string
           id: string
           lastname: string
+          parent_phone: string | null
           school_id: string
+          student_phone: string | null
           updated_at: string
         }
         Insert: {
+          birth_date?: string | null
+          cin_number?: string | null
           class_id: string
           created_at?: string
           email?: string | null
           firstname: string
           id?: string
           lastname: string
+          parent_phone?: string | null
           school_id: string
+          student_phone?: string | null
           updated_at?: string
         }
         Update: {
+          birth_date?: string | null
+          cin_number?: string | null
           class_id?: string
           created_at?: string
           email?: string | null
           firstname?: string
           id?: string
           lastname?: string
+          parent_phone?: string | null
           school_id?: string
+          student_phone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -512,6 +524,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_random_password: {
+        Args: { length?: number }
+        Returns: string
+      }
       get_user_profile: {
         Args: { _user_id: string }
         Returns: {

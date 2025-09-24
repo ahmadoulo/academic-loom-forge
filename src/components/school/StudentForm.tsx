@@ -10,6 +10,10 @@ interface StudentFormProps {
     lastname: string;
     email?: string;
     class_id: string;
+    birth_date?: string;
+    cin_number?: string;
+    student_phone?: string;
+    parent_phone?: string;
   }) => void;
   classes: { id: string; name: string; }[];
 }
@@ -19,7 +23,11 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
     firstname: "",
     lastname: "",
     email: "",
-    class_id: ""
+    class_id: "",
+    birth_date: "",
+    cin_number: "",
+    student_phone: "",
+    parent_phone: ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,11 +38,24 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
       firstname: formData.firstname.trim(),
       lastname: formData.lastname.trim(),
       email: formData.email.trim() || undefined,
-      class_id: formData.class_id
+      class_id: formData.class_id,
+      birth_date: formData.birth_date || undefined,
+      cin_number: formData.cin_number.trim() || undefined,
+      student_phone: formData.student_phone.trim() || undefined,
+      parent_phone: formData.parent_phone.trim() || undefined,
     });
     
     // Reset form
-    setFormData({ firstname: "", lastname: "", email: "", class_id: "" });
+    setFormData({ 
+      firstname: "", 
+      lastname: "", 
+      email: "", 
+      class_id: "",
+      birth_date: "",
+      cin_number: "",
+      student_phone: "",
+      parent_phone: ""
+    });
   };
 
   return (
@@ -69,6 +90,49 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           placeholder="email@exemple.com (optionnel)"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="birth_date">Date de naissance</Label>
+        <Input
+          id="birth_date"
+          type="date"
+          value={formData.birth_date}
+          onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="cin_number">Numéro CIN *</Label>
+        <Input
+          id="cin_number"
+          value={formData.cin_number}
+          onChange={(e) => setFormData({ ...formData, cin_number: e.target.value })}
+          placeholder="Numéro de carte d'identité"
+          required
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="student_phone">Téléphone étudiant</Label>
+        <Input
+          id="student_phone"
+          type="tel"
+          value={formData.student_phone}
+          onChange={(e) => setFormData({ ...formData, student_phone: e.target.value })}
+          placeholder="+33 1 23 45 67 89"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="parent_phone">Téléphone parent</Label>
+        <Input
+          id="parent_phone"
+          type="tel"
+          value={formData.parent_phone}
+          onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+          placeholder="+33 1 23 45 67 89"
         />
       </div>
       

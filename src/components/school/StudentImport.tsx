@@ -73,6 +73,10 @@ export const StudentImport = ({ onImportComplete, classes }: StudentImportProps)
         const lastName = row['Nom'] || row['lastname'] || row['LastName'] || '';
         const className = row['Classe'] || row['classe'] || row['class'] || row['Class'] || '';
         const email = row['Email'] || row['email'] || '';
+        const birthDate = row['Date de naissance'] || row['birth_date'] || row['DateNaissance'] || '';
+        const cinNumber = row['CIN'] || row['cin'] || row['cin_number'] || '';
+        const studentPhone = row['Téléphone étudiant'] || row['student_phone'] || row['TelEtudiant'] || '';
+        const parentPhone = row['Téléphone parent'] || row['parent_phone'] || row['TelParent'] || '';
 
         if (!firstName || !lastName) {
           throw new Error(`Ligne ${index + 2}: Prénom et nom requis`);
@@ -93,7 +97,11 @@ export const StudentImport = ({ onImportComplete, classes }: StudentImportProps)
           lastname: lastName.toString().trim(),
           email: email.toString().trim(),
           class_id: matchingClass?.id || classes[0]?.id || '', // Use first class as fallback
-          class_name: className || matchingClass?.name || ''
+          class_name: className || matchingClass?.name || '',
+          birth_date: birthDate ? birthDate.toString().trim() : undefined,
+          cin_number: cinNumber ? cinNumber.toString().trim() : undefined,
+          student_phone: studentPhone ? studentPhone.toString().trim() : undefined,
+          parent_phone: parentPhone ? parentPhone.toString().trim() : undefined,
         };
       });
 
@@ -118,8 +126,26 @@ export const StudentImport = ({ onImportComplete, classes }: StudentImportProps)
   const downloadTemplate = () => {
     // Create template with actual class names
     const templateData = [
-      { Prénom: "Jean", Nom: "Dupont", Classe: classes[0]?.name || "Exemple", Email: "jean.dupont@email.com" },
-      { Prénom: "Marie", Nom: "Martin", Classe: classes[1]?.name || classes[0]?.name || "Exemple", Email: "marie.martin@email.com" }
+      { 
+        Prénom: "Jean", 
+        Nom: "Dupont", 
+        Classe: classes[0]?.name || "Exemple", 
+        Email: "jean.dupont@email.com",
+        "Date de naissance": "2000-01-15",
+        CIN: "AB123456",
+        "Téléphone étudiant": "+33123456789",
+        "Téléphone parent": "+33987654321"
+      },
+      { 
+        Prénom: "Marie", 
+        Nom: "Martin", 
+        Classe: classes[1]?.name || classes[0]?.name || "Exemple", 
+        Email: "marie.martin@email.com",
+        "Date de naissance": "2001-05-20",
+        CIN: "CD789012",
+        "Téléphone étudiant": "+33111222333",
+        "Téléphone parent": "+33444555666"
+      }
     ];
 
     const ws = XLSX.utils.json_to_sheet(templateData);
@@ -186,7 +212,7 @@ export const StudentImport = ({ onImportComplete, classes }: StudentImportProps)
         <div className="bg-muted/30 rounded-lg p-4 space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <CheckCircle className="h-4 w-4 text-success" />
-            <span>Colonnes attendues: Prénom, Nom, Classe</span>
+            <span>Colonnes attendues: Prénom, Nom, Classe, Email, Date de naissance, CIN, Téléphone étudiant, Téléphone parent</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <AlertCircle className="h-4 w-4 text-warning" />
