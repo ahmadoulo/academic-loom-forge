@@ -36,7 +36,7 @@ const App = () => (
             <Route 
               path="/admin" 
               element={
-                <ProtectedRoute requiredRole="global_admin">
+                <ProtectedRoute requiredRoles={['global_admin', 'admin']}>
                   <AdminDashboard />
                 </ProtectedRoute>
               } 
@@ -44,7 +44,7 @@ const App = () => (
             <Route 
               path="/school" 
               element={
-                <ProtectedRoute requiredRole="school_admin">
+                <ProtectedRoute requiredRoles={['school_admin']}>
                   <SchoolDashboard />
                 </ProtectedRoute>
               } 
@@ -52,7 +52,7 @@ const App = () => (
             <Route 
               path="/school/:schoolId" 
               element={
-                <ProtectedRoute requiredRole="school_admin">
+                <ProtectedRoute requiredRoles={['school_admin']}>
                   <SchoolDashboard />
                 </ProtectedRoute>
               } 
@@ -60,7 +60,7 @@ const App = () => (
             <Route 
               path="/teacher" 
               element={
-                <ProtectedRoute requiredRole="teacher">
+                <ProtectedRoute requiredRoles={['teacher']}>
                   <TeacherDashboard />
                 </ProtectedRoute>
               } 
@@ -68,7 +68,7 @@ const App = () => (
             <Route 
               path="/teacher/:teacherId" 
               element={
-                <ProtectedRoute requiredRole="teacher">
+                <ProtectedRoute requiredRoles={['teacher']}>
                   <TeacherDashboard />
                 </ProtectedRoute>
               } 

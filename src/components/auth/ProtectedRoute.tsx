@@ -5,13 +5,13 @@ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: string;
+  requiredRoles?: string[];
   fallbackPath?: string;
 }
 
 export function ProtectedRoute({ 
   children, 
-  requiredRole, 
+  requiredRoles = [], 
   fallbackPath = '/auth' 
 }: ProtectedRouteProps) {
   const { user, loading, checkAuthStatus } = useCustomAuth();
@@ -35,9 +35,9 @@ export function ProtectedRoute({
     return <Navigate to={fallbackPath} replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
+  if (requiredRoles.length > 0 && !requiredRoles.includes(user.role)) {
     // Rediriger vers la page appropriée selon le rôle
-    if (user.role === 'global_admin') {
+    if (user.role === 'global_admin' || user.role === 'admin') {
       return <Navigate to="/admin" replace />;
     } else if (user.role === 'school_admin') {
       return <Navigate to={`/school/${user.school_id}`} replace />;

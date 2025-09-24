@@ -72,7 +72,7 @@ const AdminDashboard = () => {
             onTabChange={setActiveTab}
           />
           <main className="flex-1 p-4 lg:p-6">
-            {user?.role === 'global_admin' ? (
+            {user?.role === 'global_admin' || user?.role === 'admin' ? (
               renderContent()
             ) : (
               <div className="flex items-center justify-center h-64">
@@ -80,6 +80,9 @@ const AdminDashboard = () => {
                   <h2 className="text-xl font-semibold mb-2">Accès non autorisé</h2>
                   <p className="text-muted-foreground">
                     Vous devez être administrateur global pour accéder à cette section.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    DEBUG: Rôle actuel: {user?.role || 'non défini'}
                   </p>
                 </div>
               </div>
