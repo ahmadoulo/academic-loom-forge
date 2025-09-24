@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
 
 interface AuthenticatedHeaderProps {
@@ -22,7 +22,8 @@ export function AuthenticatedHeader({
   activeTab, 
   onTabChange 
 }: AuthenticatedHeaderProps) {
-  const { profile, signOut } = useAuth();
+  const { user, logout } = useCustomAuth();
+  const profile = user;
 
   const menuItems = [
     { 
@@ -161,7 +162,7 @@ export function AuthenticatedHeader({
                 <span>Profil</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>
+              <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Déconnexion</span>
               </DropdownMenuItem>

@@ -27,17 +27,23 @@ export function SchoolsSection() {
     e.preventDefault();
     if (!newSchool.name.trim()) return;
 
+    console.log('DEBUG: Formulaire soumis avec:', newSchool);
+    
     setIsSubmitting(true);
     try {
       const identifier = newSchool.identifier.trim() || `SCH${String(schools.length + 1).padStart(3, '0')}`;
+      
+      console.log('DEBUG: Identifier généré:', identifier);
+      
       await createSchool({
         name: newSchool.name,
         identifier
       });
+      
       setNewSchool({ name: "", identifier: "" });
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("Erreur lors de la création de l'école:", error);
+      console.error("DEBUG: Erreur lors de la création de l'école:", error);
     } finally {
       setIsSubmitting(false);
     }

@@ -23,14 +23,19 @@ export const useSchools = () => {
   const fetchSchools = async () => {
     try {
       setLoading(true);
+      console.log('DEBUG: Tentative de chargement des écoles...');
+      
       const { data, error } = await supabase
         .from('schools')
         .select('*')
         .order('created_at', { ascending: false });
 
+      console.log('DEBUG: Réponse chargement écoles - data:', data, 'error:', error);
+
       if (error) throw error;
       setSchools(data || []);
     } catch (err) {
+      console.error('DEBUG: Erreur lors du chargement des écoles:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des écoles');
       toast.error('Erreur lors du chargement des écoles');
     } finally {
@@ -40,18 +45,26 @@ export const useSchools = () => {
 
   const createSchool = async (schoolData: CreateSchoolData) => {
     try {
+      console.log('DEBUG: Tentative de création d\'école avec les données:', schoolData);
+      
       const { data, error } = await supabase
         .from('schools')
         .insert([schoolData])
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('DEBUG: Réponse Supabase - data:', data, 'error:', error);
+
+      if (error) {
+        console.error('DEBUG: Erreur détaillée:', error);
+        throw error;
+      }
       
       setSchools(prev => [data, ...prev]);
       toast.success('École créée avec succès');
       return data;
     } catch (err) {
+      console.error('DEBUG: Exception capturée:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'école';
       setError(message);
       toast.error(message);

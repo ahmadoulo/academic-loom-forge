@@ -165,6 +165,8 @@ export const useCustomAuth = () => {
     setUser(null);
     localStorage.removeItem('customAuthUser');
     toast.success('Déconnexion réussie');
+    // Rediriger vers la page d'authentification
+    window.location.href = '/auth';
   };
 
   const checkAuthStatus = () => {
