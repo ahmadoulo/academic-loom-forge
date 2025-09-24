@@ -19,12 +19,12 @@ Modern Blue & White Theme - All colors MUST be HSL */
     --popover: 0 0% 100%;
     --popover-foreground: 215 20% 15%;
 
-    /* Primary - SaaS Blue (Foncé) */
-    --primary: 213 94% 36%;
+    /* Primary - SaaS Blue (Plus Foncé) */
+    --primary: 213 94% 25%;
     --primary-foreground: 0 0% 100%;
     --primary-light: 213 94% 85%;
-    --primary-dark: 213 94% 30%;
-    --primary-accent: 213 94% 50%;
+    --primary-dark: 213 94% 18%;
+    --primary-accent: 213 94% 35%;
 
     /* Secondary - Clean Neutral */
     --secondary: 220 16% 92%;
