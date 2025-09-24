@@ -25,6 +25,7 @@ import { StatsCard } from "@/components/analytics/StatsCard";
 import { QuickActions } from "@/components/analytics/QuickActions";
 import { RecentActivity } from "@/components/analytics/RecentActivity";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { SchoolSettings } from "@/components/settings/SchoolSettings";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -357,12 +358,13 @@ const SchoolDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="students">Étudiants</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="subjects">Matières</TabsTrigger>
             <TabsTrigger value="teachers">Professeurs</TabsTrigger>
+            <TabsTrigger value="settings">Paramètres</TabsTrigger>
           </TabsList>
 
           <TabsContent value="analytics" className="space-y-6">
@@ -577,6 +579,10 @@ const SchoolDashboard = () => {
                 schoolId={school.id}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <SchoolSettings schoolId={school.id} />
           </TabsContent>
         </Tabs>
       </main>

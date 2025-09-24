@@ -12,19 +12,19 @@ Modern Blue & White Theme - All colors MUST be HSL */
     --foreground: 215 20% 15%;
 
     /* Card system with subtle elevation */
-    --card: 220 20% 94%;
+    --card: 0 0% 100%;
     --card-foreground: 215 20% 15%;
 
     /* Popover system */
-    --popover: 220 20% 94%;
+    --popover: 0 0% 100%;
     --popover-foreground: 215 20% 15%;
 
-    /* Primary - SaaS Blue */
-    --primary: 213 94% 68%;
+    /* Primary - SaaS Blue (Darker) */
+    --primary: 213 94% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 213 100% 96%;
-    --primary-dark: 213 94% 58%;
-    --primary-accent: 213 94% 78%;
+    --primary-light: 213 94% 92%;
+    --primary-dark: 213 94% 40%;
+    --primary-accent: 213 94% 60%;
 
     /* Secondary - Clean Neutral */
     --secondary: 220 16% 92%;

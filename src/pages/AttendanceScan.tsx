@@ -23,7 +23,7 @@ const AttendanceScan = () => {
   const [success, setSuccess] = useState(false);
   
   const { scanQRCode } = useAttendance();
-  const { students } = useStudents();
+  const { students, loading: studentsLoading } = useStudents();
 
   useEffect(() => {
     if (!sessionCode) {
@@ -37,9 +37,17 @@ const AttendanceScan = () => {
     setError(null);
 
     try {
+      // Attendre que les étudiants soient chargés
+      if (studentsLoading) {
+        throw new Error("Chargement des données en cours...");
+      }
+
+      console.log("Looking for student with email:", studentEmail);
+      console.log("Available students:", students);
+      
       // Trouver l'étudiant par email
       const student = students.find(s => 
-        s.email?.toLowerCase() === studentEmail.toLowerCase()
+        s.email?.toLowerCase().trim() === studentEmail.toLowerCase().trim()
       );
 
       if (!student) {
