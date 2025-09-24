@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useHybridAuth } from "@/hooks/useHybridAuth";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -13,12 +13,11 @@ import { RoleManagement } from "@/components/settings/RoleManagement";
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("schools");
   const [settingsTab, setSettingsTab] = useState("users");
-  const { user } = useHybridAuth();
+  const { user } = useCustomAuth();
 
   useEffect(() => {
     console.log('DEBUG AdminDashboard - Utilisateur connecté:', user);
     console.log('DEBUG AdminDashboard - Rôle utilisateur:', user?.role);
-    console.log('DEBUG AdminDashboard - Type d\'auth:', user?.auth_type);
   }, [user]);
 
   const getPageTitle = () => {

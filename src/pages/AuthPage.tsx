@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Loader2 } from "lucide-react";
-import { useHybridAuth } from "@/hooks/useHybridAuth";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 
 const AuthPage = () => {
   const [formData, setFormData] = useState({
@@ -14,7 +14,11 @@ const AuthPage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { user, loading, loginWithCredentials } = useHybridAuth();
+  const { user, loading, loginWithCredentials, checkAuthStatus } = useCustomAuth();
+
+  React.useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   if (loading) {
     return (
@@ -62,12 +66,13 @@ const AuthPage = () => {
     
     setIsSubmitting(true);
     try {
+      console.log('DEBUG: Tentative de connexion avec:', formData.email);
       await loginWithCredentials({
         email: formData.email,
         password: formData.password,
       });
     } catch (error) {
-      // Error already handled in useHybridAuth
+      console.error('DEBUG: Erreur de connexion:', error);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useHybridAuth } from "@/hooks/useHybridAuth";
+import { useCustomAuth } from '@/hooks/useCustomAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -14,7 +14,7 @@ export function ProtectedRoute({
   requiredRoles = [], 
   fallbackPath = '/auth' 
 }: ProtectedRouteProps) {
-  const { user, loading, checkAuthStatus } = useHybridAuth();
+  const { user, loading, checkAuthStatus } = useCustomAuth();
 
   useEffect(() => {
     checkAuthStatus();
