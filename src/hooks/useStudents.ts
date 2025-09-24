@@ -113,13 +113,13 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       const insertData = {
         firstname: studentData.firstname.trim(),
         lastname: studentData.lastname.trim(),
-        email: studentData.email?.trim() || null,
+        email: studentData.email?.trim() ? studentData.email.trim() : null,
         class_id: studentData.class_id,
         school_id: studentData.school_id,
-        birth_date: studentData.birth_date || null,
+        birth_date: studentData.birth_date?.trim() ? studentData.birth_date.trim() : null,
         cin_number: studentData.cin_number.trim(),
-        student_phone: studentData.student_phone?.trim() || null,
-        parent_phone: studentData.parent_phone?.trim() || null,
+        student_phone: studentData.student_phone?.trim() ? studentData.student_phone.trim() : null,
+        parent_phone: studentData.parent_phone?.trim() ? studentData.parent_phone.trim() : null,
       };
       
       console.log('Données à insérer:', insertData);
