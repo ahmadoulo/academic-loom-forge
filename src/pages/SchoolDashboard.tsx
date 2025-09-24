@@ -639,7 +639,7 @@ const SchoolDashboard = () => {
                                 className="w-full mt-2"
                                 onClick={() => window.location.href = `/teacher/${teacher.id}`}
                               >
-                                Accéder à l'interface professeur
+                                Interface Professeur
                               </Button>
                             </div>
                             <Button
@@ -659,7 +659,14 @@ const SchoolDashboard = () => {
                         </Card>
                       );
                     })}
-                  </div>
+                   </div>
+                  
+                  {/* Assignation Professeurs - Classes */}
+                  {school?.id && (
+                    <div className="mt-8">
+                      <TeacherClassAssignment schoolId={school.id} />
+                    </div>
+                  )}
                 </div>
               )}
               
