@@ -234,6 +234,33 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
         throw new Error('La session a expiré');
       }
 
+      // SÉCURITÉ: Vérifier que l'étudiant appartient bien à la classe de la session
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('class_id, school_id')
+        .eq('id', studentId)
+        .single();
+
+      if (studentError || !student) {
+        throw new Error('Étudiant non trouvé');
+      }
+
+      // Vérifier que l'étudiant est bien dans la classe de la session
+      if (student.class_id !== session.class_id) {
+        throw new Error('Vous n\'êtes pas autorisé à marquer votre présence pour cette classe');
+      }
+
+      // Optionnel: Vérifier aussi l'école pour plus de sécurité
+      const { data: sessionClass, error: classError } = await supabase
+        .from('classes')
+        .select('school_id')
+        .eq('id', session.class_id)
+        .single();
+
+      if (classError || !sessionClass || student.school_id !== sessionClass.school_id) {
+        throw new Error('Accès non autorisé - école différente');
+      }
+
       // Marquer la présence
       const result = await markAttendance({
         student_id: studentId,

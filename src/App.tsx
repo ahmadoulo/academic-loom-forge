@@ -9,6 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import SchoolDashboard from "./pages/SchoolDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import StudentDashboard from "./pages/StudentDashboard";
 import AttendanceScan from "./pages/AttendanceScan";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,8 @@ const App = () => (
             <Route path="/school/:schoolId" element={<SchoolDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
+            <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/student/:studentId" element={<StudentDashboard />} />
             <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

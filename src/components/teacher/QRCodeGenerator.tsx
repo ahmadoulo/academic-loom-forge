@@ -95,7 +95,23 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
 
   const handleCopyCode = async () => {
     try {
-      await navigator.clipboard.writeText(session.session_code);
+      // Fallback pour les environnements où navigator.clipboard n'est pas disponible
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(session.session_code);
+      } else {
+        // Fallback pour les environnements non-HTTPS
+        const textArea = document.createElement('textarea');
+        textArea.value = session.session_code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({
@@ -103,17 +119,34 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
         description: "Le code de session a été copié dans le presse-papiers",
       });
     } catch (err) {
+      // Fallback final: afficher le code dans une alerte
+      alert(`Code de session: ${session.session_code}`);
       toast({
-        title: "Erreur",
-        description: "Impossible de copier le code",
-        variant: "destructive",
+        title: "Code affiché",
+        description: "Le code a été affiché dans une alerte",
       });
     }
   };
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(scanUrl);
+      // Fallback pour les environnements où navigator.clipboard n'est pas disponible
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(scanUrl);
+      } else {
+        // Fallback pour les environnements non-HTTPS
+        const textArea = document.createElement('textarea');
+        textArea.value = scanUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
       toast({
@@ -121,10 +154,11 @@ export const QRCodeGenerator = ({ session, classData, onBack }: QRCodeGeneratorP
         description: "Le lien de la session a été copié dans le presse-papiers.",
       });
     } catch (err) {
+      // Fallback final: afficher le lien dans une alerte
+      alert(`Lien de session: ${scanUrl}`);
       toast({
-        title: "Erreur",
-        description: "Impossible de copier le lien",
-        variant: "destructive",
+        title: "Lien affiché",
+        description: "Le lien a été affiché dans une alerte",
       });
     }
   };

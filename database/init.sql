@@ -214,3 +214,75 @@ UNION ALL
 SELECT 'CM2-B', s.id FROM public.schools s WHERE s.identifier = 'EPV001'
 UNION ALL
 SELECT '6ème-1', s.id FROM public.schools s WHERE s.identifier = 'CJM002';
+
+-- Create app_role enum
+CREATE TYPE public.app_role AS ENUM (
+    'global_admin',
+    'school_admin', 
+    'teacher',
+    'student',
+    'parent'
+);
+
+-- Create profiles table
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL UNIQUE,
+    email TEXT NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    phone TEXT,
+    avatar_url TEXT,
+    role public.app_role NOT NULL DEFAULT 'student',
+    school_id UUID REFERENCES public.schools(id),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Create user_roles table
+CREATE TABLE IF NOT EXISTS public.user_roles (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL,
+    role public.app_role NOT NULL,
+    school_id UUID REFERENCES public.schools(id),
+    granted_by UUID REFERENCES public.profiles(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    UNIQUE(user_id, role)
+);
+
+-- Create user_credentials table (for custom auth system)
+CREATE TABLE IF NOT EXISTS public.user_credentials (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'student',
+    school_id UUID REFERENCES public.schools(id),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    last_login TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on new tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_credentials ENABLE ROW LEVEL SECURITY;
+
+-- Add triggers for new tables
+CREATE TRIGGER update_profiles_updated_at
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_user_credentials_updated_at
+    BEFORE UPDATE ON public.user_credentials
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Create permissive policies for new tables (for development)
+CREATE POLICY "Allow all operations on profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on user_roles" ON public.user_roles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on user_credentials" ON public.user_credentials FOR ALL USING (true) WITH CHECK (true);
