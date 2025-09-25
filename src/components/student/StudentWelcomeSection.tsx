@@ -1,18 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Calendar, Clock, TrendingUp } from "lucide-react";
+import { useCurrentStudent } from "@/hooks/useCurrentStudent";
+import { useGrades } from "@/hooks/useGrades";
 
 export const StudentWelcomeSection = () => {
-  // Mock data pour l'étudiant connecté
-  const studentData = {
-    name: "Marie Dubois",
-    class: "CM1-A",
-    school: "École Primaire Victor Hugo",
-    totalSubjects: 6,
-    averageGrade: 15.2,
-    attendanceRate: 96,
-    lastActivity: "Hier à 14:30"
-  };
+  const { student, loading: studentLoading } = useCurrentStudent();
+  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
+
+  // Calculate stats from real data
+  const totalSubjects = [...new Set(grades.map(g => g.subject_id))].length;
+  const averageGrade = grades.length > 0 
+    ? grades.reduce((sum, grade) => sum + grade.grade, 0) / grades.length 
+    : 0;
+  
+  // Mock data for attendance and last activity (would need real implementation)
+  const attendanceRate = 96;
+  const lastActivity = "Hier à 14:30";
 
   const recentGrades = [
     { subject: "Mathématiques", grade: 18, date: "2024-01-15", teacher: "Mme Martin" },
@@ -25,15 +30,50 @@ export const StudentWelcomeSection = () => {
     { subject: "Géographie", date: "2024-01-22", teacher: "Mme Petit" },
   ];
 
+  if (studentLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!student) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Bienvenue ! 👋
+          </h1>
+          <p className="text-muted-foreground">
+            Aucune information d'étudiant trouvée
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          Bonjour, {studentData.name}! 👋
+          Bonjour, {student.firstname} {student.lastname}! 👋
         </h1>
         <p className="text-muted-foreground">
-          Classe {studentData.class} - {studentData.school}
+          Classe {student.classes.name} - {student.schools.name}
         </p>
       </div>
 
@@ -44,7 +84,7 @@ export const StudentWelcomeSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Matières</p>
-                <p className="text-2xl font-bold">{studentData.totalSubjects}</p>
+                <p className="text-2xl font-bold">{totalSubjects}</p>
               </div>
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
@@ -56,7 +96,9 @@ export const StudentWelcomeSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Moyenne générale</p>
-                <p className="text-2xl font-bold text-green-600">{studentData.averageGrade}/20</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {averageGrade > 0 ? `${averageGrade.toFixed(1)}/20` : 'N/A'}
+                </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -68,7 +110,7 @@ export const StudentWelcomeSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Assiduité</p>
-                <p className="text-2xl font-bold text-blue-600">{studentData.attendanceRate}%</p>
+                <p className="text-2xl font-bold text-blue-600">{attendanceRate}%</p>
               </div>
               <Calendar className="h-8 w-8 text-blue-600" />
             </div>
@@ -80,7 +122,7 @@ export const StudentWelcomeSection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Dernière activité</p>
-                <p className="text-sm font-medium">{studentData.lastActivity}</p>
+                <p className="text-sm font-medium">{lastActivity}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
             </div>
@@ -99,21 +141,34 @@ export const StudentWelcomeSection = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentGrades.map((grade, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">{grade.subject}</p>
-                    <p className="text-sm text-muted-foreground">{grade.teacher}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(grade.date).toLocaleDateString()}</p>
-                  </div>
-                  <Badge 
-                    variant={grade.grade >= 16 ? "default" : grade.grade >= 12 ? "secondary" : "destructive"}
-                    className="text-lg font-bold"
-                  >
-                    {grade.grade}/20
-                  </Badge>
+              {gradesLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))
+              ) : grades.length === 0 ? (
+                <div className="text-center py-8">
+                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">Aucune note disponible</p>
                 </div>
-              ))}
+              ) : (
+                grades.slice(0, 3).map((grade) => (
+                  <div key={grade.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium">{grade.subjects.name}</p>
+                      <p className="text-sm text-muted-foreground">{grade.teachers.firstname} {grade.teachers.lastname}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {grade.exam_date ? new Date(grade.exam_date).toLocaleDateString() : new Date(grade.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge 
+                      variant={grade.grade >= 16 ? "default" : grade.grade >= 12 ? "secondary" : "destructive"}
+                      className="text-lg font-bold"
+                    >
+                      {grade.grade}/20
+                    </Badge>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
