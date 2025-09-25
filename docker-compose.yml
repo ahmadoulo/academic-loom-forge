@@ -32,7 +32,7 @@ services:
       # JWT secret must be at least 32 characters long
       PGRST_JWT_SECRET: "mysuperlongsecretkey_1234567890abcdef"
     ports:
-      - "8000:3000"
+      - "8095:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
     image: adminer:latest
     container_name: eduvate_adminer
     ports:
-      - "8090:8080"
+      - "8094:8080"
     depends_on:
       - db
     networks:
