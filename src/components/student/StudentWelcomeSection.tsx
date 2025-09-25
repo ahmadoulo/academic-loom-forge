@@ -6,8 +6,12 @@ import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
 import { useAssignments } from "@/hooks/useAssignments";
 
-export const StudentWelcomeSection = () => {
-  const { student, loading: studentLoading } = useCurrentStudent();
+interface StudentWelcomeSectionProps {
+  studentId?: string;
+}
+
+export const StudentWelcomeSection = ({ studentId }: StudentWelcomeSectionProps) => {
+  const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
   const { assignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
 

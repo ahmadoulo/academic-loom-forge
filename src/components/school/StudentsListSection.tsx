@@ -116,14 +116,24 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
                     </p>
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 w-9 p-0 hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                    onClick={() => onDeleteStudent(student.id, `${student.firstname} ${student.lastname}`)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="px-3 hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => window.open(`/student-dashboard?studentId=${student.id}`, '_blank')}
+                    >
+                      Interface Étudiant
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-9 p-0 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      onClick={() => onDeleteStudent(student.id, `${student.firstname} ${student.lastname}`)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}

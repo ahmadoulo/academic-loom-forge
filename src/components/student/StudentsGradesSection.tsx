@@ -7,10 +7,14 @@ import { BookOpen, TrendingUp, Calendar, User } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
 
-export const StudentsGradesSection = () => {
+interface StudentsGradesSectionProps {
+  studentId?: string;
+}
+
+export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps) => {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   
-  const { student, loading: studentLoading } = useCurrentStudent();
+  const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
 
   // Filtrer les notes par matière sélectionnée

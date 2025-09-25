@@ -15,7 +15,7 @@ export const AssignmentForm = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const { createAssignment } = useAssignments();
-  const { teacherClasses } = useTeacherClasses();
+  const { teacherClasses } = useTeacherClasses(profile?.id);
   
   const [formData, setFormData] = useState({
     title: '',

@@ -21,20 +21,45 @@ export interface CurrentStudentData {
   };
 }
 
-export const useCurrentStudent = () => {
+export const useCurrentStudent = (studentId?: string) => {
   const [student, setStudent] = useState<CurrentStudentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, profile } = useAuth();
 
   const fetchCurrentStudent = async () => {
-    if (!user || !profile || profile.role !== 'student') {
+    if (!user || !profile) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      
+      // If studentId is provided, fetch specific student
+      if (studentId) {
+        const { data: studentData, error: studentError } = await supabase
+          .from('students')
+          .select(`
+            *,
+            classes (
+              name
+            ), 
+            schools (
+              name
+            )
+          `)
+          .eq('id', studentId)
+          .maybeSingle();
+          
+        if (studentData && !studentError) {
+          setStudent(studentData);
+          return;
+        }
+        if (studentError) {
+          throw studentError;
+        }
+      }
       
       // First try to find student by email in students table
       let { data, error } = await supabase
@@ -87,7 +112,7 @@ export const useCurrentStudent = () => {
 
   useEffect(() => {
     fetchCurrentStudent();
-  }, [user, profile]);
+  }, [user, profile, studentId]);
 
   return {
     student,
