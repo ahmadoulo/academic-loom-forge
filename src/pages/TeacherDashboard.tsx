@@ -15,6 +15,7 @@ import { AttendanceManager } from "@/components/teacher/AttendanceManager";
 import { AttendanceHistory } from "@/components/teacher/AttendanceHistory";
 import { ActiveSessionsPanel } from "@/components/teacher/ActiveSessionsPanel";
 import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
+import { AssignmentForm } from "@/components/teacher/AssignmentForm";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -28,7 +29,7 @@ const TeacherDashboard = () => {
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("classes");
+  const [activeTab, setActiveTab] = useState("dashboard");
   
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
@@ -242,6 +243,33 @@ const TeacherDashboard = () => {
               classes={teacherClasses.map(tc => tc.classes).filter(Boolean)}
               onViewSession={handleViewSession}
             />
+
+            {activeTab === "dashboard" && (
+              <div className="space-y-4 lg:space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                  {teacherClasses.map((teacherClass) => {
+                    const classStudents = teacherStudents.filter(s => s.class_id === teacherClass.class_id);
+                    const classSubjects = subjects.filter(s => s.class_id === teacherClass.class_id);
+                    
+                    return (
+                      <ClassCard
+                        key={teacherClass.id}
+                        classData={teacherClass.classes}
+                        studentCount={classStudents.length}
+                        subjects={classSubjects}
+                        onViewStudents={handleViewStudents}
+                        onTakeAttendance={handleTakeAttendance}
+                        onViewAttendanceHistory={handleViewAttendanceHistory}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "assignments" && (
+              <AssignmentForm />
+            )}
 
             {activeTab === "classes" && (
               <div className="space-y-4 lg:space-y-6">

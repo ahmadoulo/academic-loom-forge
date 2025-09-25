@@ -4,7 +4,10 @@ import {
   BookOpen, 
   Users, 
   BarChart3,
-  GraduationCap
+  GraduationCap,
+  Home,
+  UserCheck,
+  FileText
 } from "lucide-react";
 
 import {
@@ -22,9 +25,29 @@ import {
 
 const menuItems = [
   { 
+    title: "Tableau de bord", 
+    value: "dashboard",
+    icon: Home 
+  },
+  { 
     title: "Mes Classes", 
     value: "classes",
     icon: Users 
+  },
+  { 
+    title: "Présence", 
+    value: "attendance",
+    icon: UserCheck 
+  },
+  { 
+    title: "Noter", 
+    value: "grading",
+    icon: BookOpen 
+  },
+  { 
+    title: "Publier un Devoir", 
+    value: "assignments",
+    icon: FileText 
   },
   { 
     title: "Mes Matières", 

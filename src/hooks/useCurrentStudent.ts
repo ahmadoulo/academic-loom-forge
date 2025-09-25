@@ -36,26 +36,47 @@ export const useCurrentStudent = () => {
     try {
       setLoading(true);
       
-      // Find student by email matching the authenticated user's email
-      const { data, error } = await supabase
+      // First try to find student by email in students table
+      let { data, error } = await supabase
         .from('students')
         .select(`
           *,
           classes (
             name
-          ),
+          ), 
           schools (
             name
           )
         `)
         .eq('email', user.email)
-        .single();
+        .maybeSingle();
+
+      // If not found in students table, try to create a mock student from profile data
+      if (!data && profile) {
+        // For now, create a mock student data based on profile
+        const mockStudentData: CurrentStudentData = {
+          id: profile.id,
+          firstname: profile.first_name || 'Étudiant',
+          lastname: profile.last_name || '',
+          email: profile.email,
+          class_id: 'mock-class-id',
+          school_id: profile.school_id || 'mock-school-id',
+          classes: {
+            name: 'Classe Non Assignée'
+          },
+          schools: {
+            name: 'École Non Assignée'
+          }
+        };
+        setStudent(mockStudentData);
+      } else {
+        setStudent(data);
+      }
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
         throw error;
       }
 
-      setStudent(data);
     } catch (err) {
       console.error('Erreur lors du chargement des données étudiant:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des données étudiant');

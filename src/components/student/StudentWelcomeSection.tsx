@@ -4,10 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Calendar, Clock, TrendingUp } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
+import { useAssignments } from "@/hooks/useAssignments";
 
 export const StudentWelcomeSection = () => {
   const { student, loading: studentLoading } = useCurrentStudent();
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
+  const { assignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
 
   // Calculate stats from real data
   const totalSubjects = [...new Set(grades.map(g => g.subject_id))].length;
@@ -25,10 +27,13 @@ export const StudentWelcomeSection = () => {
     { subject: "Sciences", grade: 14, date: "2024-01-12", teacher: "Mme Bernard" },
   ];
 
-  const upcomingTests = [
-    { subject: "Histoire", date: "2024-01-20", teacher: "M. Durand" },
-    { subject: "Géographie", date: "2024-01-22", teacher: "Mme Petit" },
-  ];
+  // Get upcoming assignments from real data
+  const upcomingAssignments = assignments.filter(assignment => {
+    if (!assignment.due_date) return false;
+    const dueDate = new Date(assignment.due_date);
+    const today = new Date();
+    return dueDate >= today;
+  }).slice(0, 3);
 
   if (studentLoading) {
     return (
@@ -173,32 +178,44 @@ export const StudentWelcomeSection = () => {
           </CardContent>
         </Card>
 
-        {/* Upcoming Tests */}
+        {/* Upcoming Assignments */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              Prochains Contrôles
+              Prochains Devoirs
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {upcomingTests.map((test, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">{test.subject}</p>
-                    <p className="text-sm text-muted-foreground">{test.teacher}</p>
-                  </div>
-                  <Badge variant="outline">
-                    {new Date(test.date).toLocaleDateString()}
-                  </Badge>
-                </div>
-              ))}
-              {upcomingTests.length === 0 && (
+              {assignmentsLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))
+              ) : upcomingAssignments.length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">Aucun contrôle prévu prochainement</p>
+                  <p className="text-muted-foreground">Aucun devoir prévu prochainement</p>
                 </div>
+              ) : (
+                upcomingAssignments.map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium">{assignment.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {assignment.teachers ? `${assignment.teachers.firstname} ${assignment.teachers.lastname}` : 'Professeur'}
+                      </p>
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {assignment.type === 'exam' ? 'Examen' : assignment.type === 'test' ? 'Contrôle' : 'Devoir'}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline">
+                        {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'Non défini'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </CardContent>
