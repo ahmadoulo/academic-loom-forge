@@ -2,41 +2,58 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, TrendingUp, Calendar, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BookOpen, TrendingUp, Calendar, User, Download, FileText } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
+import { useClassSubjects } from "@/hooks/useClassSubjects";
 
 interface StudentsGradesSectionProps {
   studentId?: string;
 }
 
+interface SubjectGrade {
+  subjectId: string;
+  subjectName: string;
+  grades: any[];
+  average?: number;
+  hasGrades: boolean;
+}
+
 export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps) => {
-  const [selectedSubject, setSelectedSubject] = useState<string>("all");
-  
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
+  const { classSubjects, loading: subjectsLoading } = useClassSubjects(student?.class_id);
 
-  // Filtrer les notes par matière sélectionnée
-  const filteredGrades = selectedSubject === "all" 
-    ? grades 
-    : grades.filter(grade => grade.subject_id === selectedSubject);
+  // Organiser les données par matière
+  const subjectGrades: SubjectGrade[] = classSubjects.map(cs => {
+    const subjectGradesData = grades.filter(grade => grade.subject_id === cs.subject_id);
+    const average = subjectGradesData.length > 0 
+      ? subjectGradesData.reduce((sum, grade) => sum + grade.grade, 0) / subjectGradesData.length
+      : undefined;
+
+    return {
+      subjectId: cs.subject_id,
+      subjectName: cs.subjects.name,
+      grades: subjectGradesData,
+      average,
+      hasGrades: subjectGradesData.length > 0
+    };
+  });
 
   // Calculer la moyenne générale
   const overallAverage = grades.length > 0 
     ? grades.reduce((sum, grade) => sum + grade.grade, 0) / grades.length 
     : 0;
 
-  // Calculer les moyennes par matière
-  const subjects = [...new Set(grades.map(grade => ({
-    id: grade.subject_id,
-    name: grade.subjects.name
-  })))];
-  const subjectAverages = subjects.map(subject => {
-    const subjectGrades = grades.filter(grade => grade.subject_id === subject.id);
-    const average = subjectGrades.reduce((sum, grade) => sum + grade.grade, 0) / subjectGrades.length;
-    return { subject: subject.name, subjectId: subject.id, average, count: subjectGrades.length };
-  });
+  const handleExportPDF = async () => {
+    if (!student) return;
+    
+    // Nous implémenterons cette fonction pour générer le PDF
+    const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");
+    generateStudentBulletin(student, subjectGrades, overallAverage);
+  };
 
   const getGradeColor = (grade: number) => {
     if (grade >= 16) return "text-green-600";
@@ -67,7 +84,7 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     }
   };
 
-  if (studentLoading || gradesLoading) {
+  if (studentLoading || gradesLoading || subjectsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -106,163 +123,150 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Mes Notes</h1>
-          <p className="text-muted-foreground">Consultez vos résultats scolaires</p>
+          <h1 className="text-2xl font-bold">Mes Notes - Bulletin</h1>
+          <p className="text-muted-foreground">
+            {student.firstname} {student.lastname} - {student.classes.name} - {student.schools.name}
+          </p>
         </div>
-        {grades.length > 0 && (
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            <span className={`text-xl font-bold ${getGradeColor(overallAverage)}`}>
-              {overallAverage.toFixed(1)}/20
-            </span>
-            <span className="text-sm text-muted-foreground">Moyenne générale</span>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {grades.length > 0 && (
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              <span className={`text-xl font-bold ${getGradeColor(overallAverage)}`}>
+                {overallAverage.toFixed(1)}/20
+              </span>
+              <span className="text-sm text-muted-foreground">Moyenne générale</span>
+            </div>
+          )}
+          <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Télécharger le bulletin PDF
+          </Button>
+        </div>
       </div>
 
-      {grades.length === 0 ? (
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
+      {/* Bulletin de notes sous forme de tableau */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Bulletin de Notes - Semestre en cours
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {subjectGrades.length === 0 ? (
+            <div className="text-center py-8">
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-lg font-semibold mb-2">Aucune note disponible</h2>
+              <h2 className="text-lg font-semibold mb-2">Aucune matière assignée</h2>
               <p className="text-muted-foreground">
-                Vos notes apparaîtront ici une fois que vos professeurs les auront saisies.
+                Les matières apparaîtront ici une fois qu'elles seront assignées à votre classe.
               </p>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Subject Filter */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Filtrer par matière" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les matières</SelectItem>
-                    {subjects.map((subject) => {
-                      const avg = subjectAverages.find(s => s.subjectId === subject.id);
-                      return (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name} {avg && `- ${avg.average.toFixed(1)}/20`}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <div className="text-sm text-muted-foreground">
-                  {filteredGrades.length} note{filteredGrades.length > 1 ? 's' : ''} 
-                  {selectedSubject !== "all" && ` en ${subjects.find(s => s.id === selectedSubject)?.name}`}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Subject Averages */}
-          {selectedSubject === "all" && subjectAverages.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  Moyennes par Matière
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {subjectAverages.map((subjectAvg) => (
-                    <div key={subjectAvg.subjectId} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{subjectAvg.subject}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {subjectAvg.count} note{subjectAvg.count > 1 ? 's' : ''}
-                          </p>
-                        </div>
-                        <Badge 
-                          variant={getBadgeVariant(subjectAvg.average)}
-                          className="text-lg font-bold"
-                        >
-                          {subjectAvg.average.toFixed(1)}/20
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Intitulé Module</TableHead>
+                    <TableHead className="text-center">Note/20</TableHead>
+                    <TableHead className="text-center">Validation</TableHead>
+                    <TableHead className="text-center">Nb. Notes</TableHead>
+                    <TableHead>Détails des Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subjectGrades.map((subject) => (
+                    <TableRow key={subject.subjectId}>
+                      <TableCell className="font-medium">
+                        {subject.subjectName}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {subject.hasGrades ? (
+                          <Badge 
+                            variant={getBadgeVariant(subject.average || 0)}
+                            className="text-lg font-bold"
+                          >
+                            {subject.average?.toFixed(2)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-sm">
+                            Pas encore publié
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {subject.hasGrades ? (
+                          <Badge variant={subject.average && subject.average >= 10 ? "default" : "destructive"}>
+                            {subject.average && subject.average >= 10 ? "Validé" : "Non Validé"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            En attente
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">
+                          {subject.grades.length}
                         </Badge>
-                      </div>
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        {subject.hasGrades ? (
+                          <div className="space-y-1">
+                            {subject.grades.map((grade) => (
+                              <div key={grade.id} className="flex items-center gap-2 text-sm">
+                                <Badge variant="outline" className="text-xs">
+                                  {getGradeTypeLabel(grade.grade_type)}
+                                </Badge>
+                                <span className={`font-medium ${getGradeColor(grade.grade)}`}>
+                                  {grade.grade}/20
+                                </span>
+                                <span className="text-muted-foreground text-xs">
+                                  {grade.exam_date 
+                                    ? new Date(grade.exam_date).toLocaleDateString('fr-FR')
+                                    : new Date(grade.created_at).toLocaleDateString('fr-FR')
+                                  }
+                                </span>
+                                {grade.comment && (
+                                  <span className="text-muted-foreground text-xs truncate max-w-[100px]" title={grade.comment}>
+                                    "{grade.comment}"
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground text-sm">
+                            Aucune note saisie
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Grades List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                {selectedSubject === "all" ? "Toutes mes notes" : `Notes en ${subjects.find(s => s.id === selectedSubject)?.name}`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredGrades.length === 0 ? (
-                <div className="text-center py-8">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">Aucune note trouvée pour cette matière</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredGrades.map((grade) => (
-                    <div key={grade.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold">{grade.subjects.name}</h3>
-                            <Badge variant="outline">
-                              {getGradeTypeLabel(grade.grade_type)}
-                            </Badge>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                              <span>{grade.teachers.firstname} {grade.teachers.lastname}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                {grade.exam_date 
-                                  ? new Date(grade.exam_date).toLocaleDateString('fr-FR')
-                                  : new Date(grade.created_at).toLocaleDateString('fr-FR')
-                                }
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {grade.comment && (
-                            <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                              <strong>Commentaire :</strong> {grade.comment}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="text-right">
-                          <div className={`text-3xl font-bold ${getGradeColor(grade.grade)}`}>
-                            {grade.grade}/20
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {new Date(grade.created_at).toLocaleDateString('fr-FR')}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Moyenne du semestre */}
+              {grades.length > 0 && (
+                <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">Moyenne du Semestre :</span>
+                    <Badge 
+                      variant={getBadgeVariant(overallAverage)}
+                      className="text-xl font-bold px-4 py-2"
+                    >
+                      {overallAverage.toFixed(2)}/20
+                    </Badge>
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    * V-Validé, NV-Non Validé, VC-Validé par Compensation, VR-Validé après Rattrapage
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

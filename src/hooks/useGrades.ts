@@ -179,9 +179,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   };
 
   useEffect(() => {
-    if (subjectId || studentId || teacherId) {
-      fetchGrades();
-    }
+    fetchGrades();
   }, [subjectId, studentId, teacherId]);
 
   return {
