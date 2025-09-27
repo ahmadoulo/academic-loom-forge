@@ -28,15 +28,17 @@ export const useCurrentStudent = (studentId?: string) => {
   const { user, profile } = useAuth();
 
   const fetchCurrentStudent = async () => {
-    if (!user || !profile) {
+    // Allow fetching when studentId is provided, even without auth
+    if (!studentId && (!user || !profile)) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      setError(null);
       
-      // If studentId is provided, fetch specific student
+      // If studentId is provided, fetch specific student by ID
       if (studentId) {
         const { data: studentData, error: studentError } = await supabase
           .from('students')
@@ -56,50 +58,56 @@ export const useCurrentStudent = (studentId?: string) => {
           setStudent(studentData);
           return;
         }
-        if (studentError) {
+        if (studentError && studentError.code !== 'PGRST116') {
           throw studentError;
         }
+        
+        // If not found by ID, set no student
+        setStudent(null);
+        return;
       }
       
-      // First try to find student by email in students table
-      let { data, error } = await supabase
-        .from('students')
-        .select(`
-          *,
-          classes (
-            name
-          ), 
-          schools (
-            name
-          )
-        `)
-        .eq('email', user.email)
-        .maybeSingle();
+      // Original logic for authenticated user (when no studentId provided)
+      if (user?.email) {
+        let { data, error } = await supabase
+          .from('students')
+          .select(`
+            *,
+            classes (
+              name
+            ), 
+            schools (
+              name
+            )
+          `)
+          .eq('email', user.email)
+          .maybeSingle();
 
-      // If not found in students table, try to create a mock student from profile data
-      if (!data && profile) {
-        // For now, create a mock student data based on profile
-        const mockStudentData: CurrentStudentData = {
-          id: profile.id,
-          firstname: profile.first_name || 'Étudiant',
-          lastname: profile.last_name || '',
-          email: profile.email,
-          class_id: 'mock-class-id',
-          school_id: profile.school_id || 'mock-school-id',
-          classes: {
-            name: 'Classe Non Assignée'
-          },
-          schools: {
-            name: 'École Non Assignée'
-          }
-        };
-        setStudent(mockStudentData);
-      } else {
-        setStudent(data);
-      }
+        // If not found in students table, try to create a mock student from profile data
+        if (!data && profile) {
+          // For now, create a mock student data based on profile
+          const mockStudentData: CurrentStudentData = {
+            id: profile.id,
+            firstname: profile.first_name || 'Étudiant',
+            lastname: profile.last_name || '',
+            email: profile.email,
+            class_id: 'mock-class-id',
+            school_id: profile.school_id || 'mock-school-id',
+            classes: {
+              name: 'Classe Non Assignée'
+            },
+            schools: {
+              name: 'École Non Assignée'
+            }
+          };
+          setStudent(mockStudentData);
+        } else {
+          setStudent(data);
+        }
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        throw error;
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+          throw error;
+        }
       }
 
     } catch (err) {
