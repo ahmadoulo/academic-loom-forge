@@ -85,17 +85,33 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     : 0;
 
   const handleExportPDF = async () => {
-    if (!student) return;
-    
-    try {
-      console.log('DEBUG: Génération PDF demandée pour:', student.firstname, student.lastname);
-      const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");
-      generateStudentBulletin(student, subjectGrades, overallAverage);
-    } catch (error) {
-      console.error('Erreur génération PDF:', error);
+    if (!student) {
       toast({
         title: "Erreur",
-        description: "Erreur lors de la génération du PDF",
+        description: "Aucun étudiant sélectionné",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      console.log('DEBUG: Génération PDF - Données étudiant:', student);
+      console.log('DEBUG: Génération PDF - Notes par matière:', subjectGrades);
+      console.log('DEBUG: Génération PDF - Moyenne générale:', overallAverage);
+      
+      // Importer et appeler la fonction de génération PDF
+      const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");
+      await generateStudentBulletin(student, subjectGrades, overallAverage);
+      
+      toast({
+        title: "Succès",
+        description: "Le bulletin PDF a été téléchargé avec succès",
+      });
+    } catch (error) {
+      console.error('Erreur détaillée génération PDF:', error);
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la génération du PDF: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
         variant: "destructive"
       });
     }

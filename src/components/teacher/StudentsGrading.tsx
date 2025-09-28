@@ -17,6 +17,7 @@ interface Student {
 interface Grade {
   id: string;
   student_id: string;
+  subject_id: string;
   grade: number;
   grade_type: string;
   created_at: string;
@@ -98,7 +99,7 @@ export const StudentsGrading = ({
   };
 
   const getStudentGrades = (studentId: string) => {
-    return grades.filter(g => g.student_id === studentId);
+    return grades.filter(g => g.student_id === studentId && g.subject_id === subjectData.id);
   };
 
   const calculateAverage = (studentId: string) => {
