@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 export interface ClassSubject {
   id: string;
@@ -51,7 +51,11 @@ export const useClassSubjects = (classId?: string) => {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des matières';
       setError(message);
       console.error('Erreur chargement matières:', err);
-      toast.error(message);
+      toast({
+        title: "Erreur",
+        description: message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

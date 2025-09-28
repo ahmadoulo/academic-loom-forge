@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BookOpen, TrendingUp, Calendar, User, Download, FileText } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
-import { useClassSubjects } from "@/hooks/useClassSubjects";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudentsGradesSectionProps {
   studentId?: string;
@@ -25,26 +25,52 @@ interface SubjectGrade {
 export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps) => {
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
-  const { classSubjects, loading: subjectsLoading } = useClassSubjects(student?.class_id);
   
   console.log('DEBUG StudentGradesSection:', { 
     studentId, 
     student, 
     classId: student?.class_id,
     gradesCount: grades?.length,
-    subjectsCount: classSubjects?.length 
+    grades: grades
   });
 
+  // Créer une liste de matières basée sur les notes existantes et les matières de la classe
+  const [allSubjects, setAllSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (!student?.class_id) return;
+      
+      try {
+        // Récupérer toutes les matières de la classe
+        const { data: classSubjects } = await supabase
+          .from('subjects')
+          .select('*')
+          .eq('class_id', student.class_id);
+          
+        console.log('DEBUG: Matières de la classe:', classSubjects);
+        setAllSubjects(classSubjects || []);
+      } catch (error) {
+        console.error('Erreur chargement matières:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSubjects();
+  }, [student?.class_id]);
+
   // Organiser les données par matière
-  const subjectGrades: SubjectGrade[] = classSubjects.map(cs => {
-    const subjectGradesData = grades.filter(grade => grade.subject_id === cs.subject_id);
+  const subjectGrades: SubjectGrade[] = allSubjects.map(subject => {
+    const subjectGradesData = grades.filter(grade => grade.subject_id === subject.id);
     const average = subjectGradesData.length > 0 
       ? subjectGradesData.reduce((sum, grade) => sum + grade.grade, 0) / subjectGradesData.length
       : undefined;
 
     return {
-      subjectId: cs.subject_id,
-      subjectName: cs.subjects.name,
+      subjectId: subject.id,
+      subjectName: subject.name,
       grades: subjectGradesData,
       average,
       hasGrades: subjectGradesData.length > 0
@@ -67,7 +93,11 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
       generateStudentBulletin(student, subjectGrades, overallAverage);
     } catch (error) {
       console.error('Erreur génération PDF:', error);
-      toast.error('Erreur lors de la génération du PDF');
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la génération du PDF",
+        variant: "destructive"
+      });
     }
   };
 
@@ -100,7 +130,7 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     }
   };
 
-  if (studentLoading || gradesLoading || subjectsLoading) {
+  if (studentLoading || gradesLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -170,7 +200,7 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {subjectGrades.length === 0 ? (
+          {allSubjects.length === 0 ? (
             <div className="text-center py-8">
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h2 className="text-lg font-semibold mb-2">Aucune matière assignée</h2>

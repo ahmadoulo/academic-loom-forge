@@ -10,6 +10,12 @@ interface SubjectGrade {
   hasGrades: boolean;
 }
 
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 export const generateStudentBulletin = (
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
@@ -24,13 +30,13 @@ export const generateStudentBulletin = (
   // Header - Logo et titre
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('UNIVERSITÉ', 20, yPosition);
-  doc.text('ÉCOLE D\'INGÉNIERIE', 20, yPosition + 6);
+  doc.text('SYSTÈME DE GESTION SCOLAIRE', pageWidth / 2, yPosition, { align: 'center' });
+  doc.text('EDUVATE', pageWidth / 2, yPosition + 6, { align: 'center' });
   
   // Titre du bulletin
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('Bulletin de notes', pageWidth / 2, yPosition + 20, { align: 'center' });
+  doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 20, { align: 'center' });
   
   yPosition += 40;
   
@@ -39,26 +45,26 @@ export const generateStudentBulletin = (
   doc.setFont('helvetica', 'normal');
   
   const studentInfo = [
-    [`Année universitaire : ${new Date().getFullYear()}-${new Date().getFullYear() + 1}`],
-    [`Nom et Prénom : ${student.firstname} ${student.lastname}`],
-    [`École : ${student.schools.name}`],
-    [`Classe : ${student.classes.name}`],
-    [`CIN/Passeport : ${student.cin_number || 'N/A'}`],
-    [`Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`]
+    `Année universitaire : ${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+    `Nom et Prénom : ${student.firstname} ${student.lastname}`,
+    `École : ${student.schools.name}`,
+    `Classe : ${student.classes.name}`,
+    `CIN/Passeport : ${student.cin_number || 'N/A'}`,
+    `Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`
   ];
   
   studentInfo.forEach((info, index) => {
-    doc.text(info[0], 20, yPosition + (index * 6));
+    doc.text(info, 20, yPosition + (index * 6));
   });
   
   yPosition += 45;
   
   // Tableau des notes
-  const tableHeaders = ['Code', 'Intitulé Module', 'Note/20', 'V*', 'Session', 'VH'];
+  const tableHeaders = ['Code', 'Intitulé Module', 'Note/20', 'Validation', 'Session', 'VH'];
   const tableData: any[][] = [];
   
   subjectGrades.forEach((subject, index) => {
-    const code = `LIA.S${new Date().getMonth() > 6 ? '1' : '2'}.${index + 1}B`;
+    const code = `MOD.S${new Date().getMonth() > 6 ? '1' : '2'}.${(index + 1).toString().padStart(2, '0')}`;
     const validation = subject.hasGrades && subject.average && subject.average >= 10 ? 'V' : 'NV';
     const note = subject.hasGrades && subject.average ? subject.average.toFixed(2) : 'Pas encore publié';
     
@@ -73,7 +79,7 @@ export const generateStudentBulletin = (
   });
   
   // Génération du tableau avec jsPDF-AutoTable
-  (doc as any).autoTable({
+  doc.autoTable({
     head: [tableHeaders],
     body: tableData,
     startY: yPosition,
@@ -93,7 +99,7 @@ export const generateStudentBulletin = (
       0: { cellWidth: 25 }, // Code
       1: { cellWidth: 80 }, // Intitulé Module
       2: { cellWidth: 20, halign: 'center' }, // Note
-      3: { cellWidth: 15, halign: 'center' }, // Validation
+      3: { cellWidth: 20, halign: 'center' }, // Validation
       4: { cellWidth: 20, halign: 'center' }, // Session
       5: { cellWidth: 15, halign: 'center' }, // VH
     },
