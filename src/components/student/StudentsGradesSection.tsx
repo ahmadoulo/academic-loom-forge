@@ -8,6 +8,7 @@ import { BookOpen, TrendingUp, Calendar, User, Download, FileText } from "lucide
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
 import { useClassSubjects } from "@/hooks/useClassSubjects";
+import { toast } from "sonner";
 
 interface StudentsGradesSectionProps {
   studentId?: string;
@@ -25,6 +26,14 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
   const { classSubjects, loading: subjectsLoading } = useClassSubjects(student?.class_id);
+  
+  console.log('DEBUG StudentGradesSection:', { 
+    studentId, 
+    student, 
+    classId: student?.class_id,
+    gradesCount: grades?.length,
+    subjectsCount: classSubjects?.length 
+  });
 
   // Organiser les données par matière
   const subjectGrades: SubjectGrade[] = classSubjects.map(cs => {
@@ -42,6 +51,8 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     };
   });
 
+  console.log('DEBUG: SubjectGrades calculées:', subjectGrades);
+
   // Calculer la moyenne générale
   const overallAverage = grades.length > 0 
     ? grades.reduce((sum, grade) => sum + grade.grade, 0) / grades.length 
@@ -50,9 +61,14 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   const handleExportPDF = async () => {
     if (!student) return;
     
-    // Nous implémenterons cette fonction pour générer le PDF
-    const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");
-    generateStudentBulletin(student, subjectGrades, overallAverage);
+    try {
+      console.log('DEBUG: Génération PDF demandée pour:', student.firstname, student.lastname);
+      const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");
+      generateStudentBulletin(student, subjectGrades, overallAverage);
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
   };
 
   const getGradeColor = (grade: number) => {
