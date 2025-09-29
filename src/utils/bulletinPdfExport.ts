@@ -1,7 +1,5 @@
 import jsPDF from 'jspdf';
-
-// Import jsPDF-AutoTable properly
-const autoTable = require('jspdf-autotable');
+import autoTable from 'jspdf-autotable';
 import { CurrentStudentData } from '@/hooks/useCurrentStudent';
 
 interface SubjectGrade {
