@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+
+// Import jsPDF-AutoTable properly
+const autoTable = require('jspdf-autotable');
 import { CurrentStudentData } from '@/hooks/useCurrentStudent';
 
 interface SubjectGrade {
@@ -81,7 +83,7 @@ export const generateStudentBulletin = (
     console.log('DEBUG: Table data:', tableData);
     
     // Génération du tableau avec jsPDF-AutoTable
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [tableHeaders],
       body: tableData,
       startY: yPosition,
