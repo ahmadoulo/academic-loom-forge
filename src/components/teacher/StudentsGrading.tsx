@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, BookOpen, User } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, BookOpen, User, Download } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
+import { generateTeacherGradesReport } from "@/utils/teacherGradesPdfExport";
 
 interface Student {
   id: string;
@@ -51,6 +52,7 @@ export const StudentsGrading = ({
 }: StudentsGradingProps) => {
   const [newGrades, setNewGrades] = useState<{[key: string]: { grade: string; type: string; comment: string }}>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
 
   const handleSaveGrade = async (studentId: string) => {
@@ -110,6 +112,26 @@ export const StudentsGrading = ({
     return (total / studentGrades.length).toFixed(1);
   };
 
+  const handleGeneratePDF = async () => {
+    setGenerating(true);
+    try {
+      await generateTeacherGradesReport(classData, subjectData, students, grades);
+      toast({
+        title: "PDF généré",
+        description: "Le rapport des notes a été téléchargé avec succès",
+      });
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -120,7 +142,7 @@ export const StudentsGrading = ({
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
             </Button>
-            <div>
+            <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" />
                 {subjectData.name} - {classData.name}
@@ -129,6 +151,15 @@ export const StudentsGrading = ({
                 {students.length} étudiants à noter
               </p>
             </div>
+            <Button 
+              onClick={handleGeneratePDF}
+              disabled={generating}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {generating ? "Génération..." : "Exporter PDF"}
+            </Button>
           </div>
         </CardHeader>
       </Card>
