@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 
 interface Student {
   id: string;
@@ -89,7 +89,7 @@ export const generateTeacherGradesReport = (
     console.log('DEBUG: Données du tableau:', tableData);
     
     // Génération du tableau
-    autoTable(doc, {
+    (doc as any).autoTable({
       head: [tableHeaders],
       body: tableData,
       startY: yPosition,

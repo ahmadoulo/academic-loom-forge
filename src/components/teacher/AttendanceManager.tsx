@@ -63,6 +63,30 @@ export const AttendanceManager = ({
     setShowQRGenerator(true);
   };
 
+  const handleMarkAllPresent = async () => {
+    for (const student of students) {
+      await markAttendance({
+        student_id: student.id,
+        class_id: classData.id,
+        teacher_id: teacherId,
+        status: 'present',
+        date: selectedDate
+      });
+    }
+  };
+
+  const handleMarkAllAbsent = async () => {
+    for (const student of students) {
+      await markAttendance({
+        student_id: student.id,
+        class_id: classData.id,
+        teacher_id: teacherId,
+        status: 'absent',
+        date: selectedDate
+      });
+    }
+  };
+
   // Obtenir le statut de présence pour un étudiant
   const getAttendanceStatus = (studentId: string) => {
     const record = attendance.find(a => 
@@ -134,10 +158,20 @@ export const AttendanceManager = ({
                 </Badge>
               </div>
             </div>
-            <Button onClick={handleGenerateQR} className="flex items-center gap-2">
-              <QrCode className="h-4 w-4" />
-              Générer QR Code
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleMarkAllPresent} variant="outline" size="sm" className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Tout présent
+              </Button>
+              <Button onClick={handleMarkAllAbsent} variant="outline" size="sm" className="flex items-center gap-1">
+                <XCircle className="h-4 w-4 text-red-600" />
+                Tout absent
+              </Button>
+              <Button onClick={handleGenerateQR} className="flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                Générer QR Code
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
