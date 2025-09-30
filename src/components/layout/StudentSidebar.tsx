@@ -1,7 +1,8 @@
 import { 
   BookOpen, 
   Home,
-  GraduationCap
+  GraduationCap,
+  FileText
 } from "lucide-react";
 
 import {
@@ -26,6 +27,11 @@ const menuItems = [
     title: "Mes Notes", 
     value: "notes",
     icon: BookOpen 
+  },
+  { 
+    title: "Demande Document", 
+    value: "documents",
+    icon: FileText 
   },
 ];
 

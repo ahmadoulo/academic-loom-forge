@@ -159,15 +159,15 @@ export const AttendanceManager = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={handleMarkAllPresent} variant="outline" size="sm" className="flex items-center gap-1">
+              <Button type="button" onClick={handleMarkAllPresent} variant="outline" size="sm" className="flex items-center gap-1">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 Tout présent
               </Button>
-              <Button onClick={handleMarkAllAbsent} variant="outline" size="sm" className="flex items-center gap-1">
+              <Button type="button" onClick={handleMarkAllAbsent} variant="outline" size="sm" className="flex items-center gap-1">
                 <XCircle className="h-4 w-4 text-red-600" />
                 Tout absent
               </Button>
-              <Button onClick={handleGenerateQR} className="flex items-center gap-2">
+              <Button type="button" onClick={handleGenerateQR} className="flex items-center gap-2">
                 <QrCode className="h-4 w-4" />
                 Générer QR Code
               </Button>
@@ -225,6 +225,7 @@ export const AttendanceManager = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
+                          type="button"
                           variant={isPresent ? "default" : "outline"}
                           size="sm"
                           onClick={() => handleAttendanceChange(student.id, 'present')}
@@ -234,6 +235,7 @@ export const AttendanceManager = ({
                           Présent
                         </Button>
                         <Button
+                          type="button"
                           variant={!isPresent ? "default" : "outline"}
                           size="sm"
                           onClick={() => handleAttendanceChange(student.id, 'absent')}

@@ -33,6 +33,7 @@ import { StudentsListSection } from "@/components/school/StudentsListSection";
 import { ClassesListSection } from "@/components/school/ClassesListSection";
 import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
+import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -672,6 +673,10 @@ const SchoolDashboard = () => {
               
               {activeTab === "users" && (
                 <SchoolUserManagement schoolId={school?.id || ""} />
+              )}
+              
+              {activeTab === "documents" && school?.id && (
+                <DocumentRequestsManagement schoolId={school.id} />
               )}
               
               {activeTab === "settings" && (

@@ -5,6 +5,8 @@ import { StudentSidebar } from "@/components/layout/StudentSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { StudentsGradesSection } from "@/components/student/StudentsGradesSection";
 import { StudentWelcomeSection } from "@/components/student/StudentWelcomeSection";
+import { DocumentRequestForm } from "@/components/student/DocumentRequestForm";
+import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("accueil");
@@ -14,6 +16,8 @@ export default function StudentDashboard() {
   
   // Use studentId from params or query parameters
   const currentStudentId = studentId || queryStudentId;
+  
+  const { student } = useCurrentStudent(currentStudentId);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -21,6 +25,13 @@ export default function StudentDashboard() {
         return <StudentWelcomeSection studentId={currentStudentId} />;
       case "notes":
         return <StudentsGradesSection studentId={currentStudentId} />;
+      case "documents":
+        return student && (
+          <DocumentRequestForm 
+            studentId={currentStudentId!} 
+            schoolId={student.school_id} 
+          />
+        );
       default:
         return <StudentWelcomeSection studentId={currentStudentId} />;
     }

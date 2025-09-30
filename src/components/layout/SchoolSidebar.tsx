@@ -7,7 +7,8 @@ import {
   BookOpen, 
   GraduationCap, 
   Settings,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from "lucide-react";
 
 import {
@@ -52,6 +53,11 @@ const menuItems = [
     title: "Professeurs", 
     value: "teachers",
     icon: GraduationCap 
+  },
+  { 
+    title: "Demandes Document", 
+    value: "documents",
+    icon: FileText 
   },
   { 
     title: "Utilisateurs", 
