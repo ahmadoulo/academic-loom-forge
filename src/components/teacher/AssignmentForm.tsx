@@ -8,14 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
-import { useAuth } from "@/hooks/useAuth";
+import { useCurrentTeacher } from "@/hooks/useCurrentTeacher";
 import { CalendarIcon, BookOpen } from "lucide-react";
 
 export const AssignmentForm = () => {
-  const { profile } = useAuth();
+  const { teacher, loading: teacherLoading } = useCurrentTeacher();
   const { toast } = useToast();
   const { createAssignment } = useAssignments();
-  const { teacherClasses } = useTeacherClasses(profile?.id);
+  const { teacherClasses } = useTeacherClasses(teacher?.id);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -29,11 +29,11 @@ export const AssignmentForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!profile) {
+    if (!teacher) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Profil utilisateur non trouvé"
+        description: "Données professeur non trouvées"
       });
       return;
     }
@@ -56,8 +56,8 @@ export const AssignmentForm = () => {
         type: formData.type,
         class_id: formData.class_id,
         due_date: formData.due_date || undefined,
-        school_id: profile.school_id || '',
-        teacher_id: profile.id
+        school_id: teacher.school_id,
+        teacher_id: teacher.id
       });
 
       if (error) {
@@ -93,6 +93,33 @@ export const AssignmentForm = () => {
     test: 'Contrôle',
     homework: 'Devoir'
   };
+
+  if (teacherLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Chargement...
+          </h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!teacher) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Erreur
+          </h1>
+          <p className="text-muted-foreground">
+            Impossible de trouver vos données professeur. Veuillez contacter l'administrateur.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

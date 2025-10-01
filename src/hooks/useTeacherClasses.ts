@@ -63,7 +63,13 @@ export const useTeacherClasses = (teacherId?: string, classId?: string) => {
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTeacherClasses(data || []);
+      
+      // Remove duplicates based on class_id
+      const uniqueClasses = (data || []).filter((item, index, self) =>
+        index === self.findIndex((t) => t.class_id === item.class_id)
+      );
+      
+      setTeacherClasses(uniqueClasses);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des assignations');
       toast.error('Erreur lors du chargement des assignations');
