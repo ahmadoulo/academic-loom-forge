@@ -6,6 +6,7 @@ import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { StudentsGradesSection } from "@/components/student/StudentsGradesSection";
 import { StudentWelcomeSection } from "@/components/student/StudentWelcomeSection";
 import { DocumentRequestForm } from "@/components/student/DocumentRequestForm";
+import { StudentAssignmentsSection } from "@/components/student/StudentAssignmentsSection";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 
 export default function StudentDashboard() {
@@ -25,6 +26,8 @@ export default function StudentDashboard() {
         return <StudentWelcomeSection studentId={currentStudentId} />;
       case "notes":
         return <StudentsGradesSection studentId={currentStudentId} />;
+      case "devoirs":
+        return <StudentAssignmentsSection studentId={currentStudentId} />;
       case "documents":
         return student && (
           <DocumentRequestForm 

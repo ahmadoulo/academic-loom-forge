@@ -2,7 +2,8 @@ import {
   BookOpen, 
   Home,
   GraduationCap,
-  FileText
+  FileText,
+  ClipboardList
 } from "lucide-react";
 
 import {
@@ -27,6 +28,11 @@ const menuItems = [
     title: "Mes Notes", 
     value: "notes",
     icon: BookOpen 
+  },
+  { 
+    title: "Devoirs", 
+    value: "devoirs",
+    icon: ClipboardList 
   },
   { 
     title: "Demande Document", 
