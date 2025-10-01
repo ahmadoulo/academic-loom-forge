@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
-import { useCurrentTeacher } from "@/hooks/useCurrentTeacher";
+import { useTeachers } from "@/hooks/useTeachers";
 import { CalendarIcon, BookOpen } from "lucide-react";
 
-export const AssignmentForm = () => {
-  const { teacher, loading: teacherLoading } = useCurrentTeacher();
+interface AssignmentFormProps {
+  teacherId: string;
+}
+
+export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
+  const { teachers } = useTeachers();
+  const teacher = teachers.find(t => t.id === teacherId);
   const { toast } = useToast();
   const { createAssignment } = useAssignments();
-  const { teacherClasses } = useTeacherClasses(teacher?.id);
+  const { teacherClasses, loading: classesLoading } = useTeacherClasses(teacherId);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -94,7 +99,13 @@ export const AssignmentForm = () => {
     homework: 'Devoir'
   };
 
-  if (teacherLoading) {
+  useEffect(() => {
+    console.log('AssignmentForm - teacherId:', teacherId);
+    console.log('AssignmentForm - teacher:', teacher);
+    console.log('AssignmentForm - teacherClasses:', teacherClasses);
+  }, [teacherId, teacher, teacherClasses]);
+
+  if (classesLoading) {
     return (
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">

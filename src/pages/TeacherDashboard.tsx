@@ -268,7 +268,7 @@ const TeacherDashboard = () => {
             )}
 
             {activeTab === "assignments" && (
-              <AssignmentForm />
+              <AssignmentForm teacherId={teacherId || ''} />
             )}
 
             {activeTab === "classes" && (

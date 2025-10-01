@@ -64,10 +64,14 @@ export const useTeacherClasses = (teacherId?: string, classId?: string) => {
 
       if (error) throw error;
       
+      console.log('useTeacherClasses - Raw data:', data);
+      
       // Remove duplicates based on class_id
       const uniqueClasses = (data || []).filter((item, index, self) =>
         index === self.findIndex((t) => t.class_id === item.class_id)
       );
+      
+      console.log('useTeacherClasses - Unique classes after filter:', uniqueClasses);
       
       setTeacherClasses(uniqueClasses);
     } catch (err) {
