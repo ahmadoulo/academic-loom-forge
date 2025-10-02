@@ -459,6 +459,60 @@ export type Database = {
         }
         Relationships: []
       }
+      student_accounts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invitation_expires_at: string | null
+          invitation_token: string | null
+          is_active: boolean
+          password_hash: string | null
+          school_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token?: string | null
+          is_active?: boolean
+          password_hash?: string | null
+          school_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token?: string | null
+          is_active?: boolean
+          password_hash?: string | null
+          school_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_accounts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_accounts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           birth_date: string | null
