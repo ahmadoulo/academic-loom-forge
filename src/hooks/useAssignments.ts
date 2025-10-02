@@ -34,7 +34,7 @@ export interface CreateAssignmentData {
   due_date?: string;
 }
 
-export const useAssignments = (classId?: string, studentId?: string) => {
+export const useAssignments = (classId?: string, studentId?: string, teacherId?: string) => {
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +59,10 @@ export const useAssignments = (classId?: string, studentId?: string) => {
 
       if (classId) {
         query = query.eq('class_id', classId);
+      }
+
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -144,7 +148,7 @@ export const useAssignments = (classId?: string, studentId?: string) => {
 
   useEffect(() => {
     fetchAssignments();
-  }, [classId, studentId]);
+  }, [classId, studentId, teacherId]);
 
   return {
     assignments,

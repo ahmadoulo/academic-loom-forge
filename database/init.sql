@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS public.students (
     firstname TEXT NOT NULL,
     lastname TEXT NOT NULL,
     email TEXT,
+    cin_number TEXT,
+    birth_date DATE,
+    student_phone TEXT,
+    parent_phone TEXT,
     class_id UUID NOT NULL REFERENCES public.classes(id),
     school_id UUID NOT NULL REFERENCES public.schools(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -168,6 +172,55 @@ CREATE TRIGGER update_attendance_sessions_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Create assignments table
+CREATE TABLE IF NOT EXISTS public.assignments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    school_id UUID NOT NULL REFERENCES public.schools(id),
+    teacher_id UUID NOT NULL REFERENCES public.teachers(id),
+    class_id UUID NOT NULL REFERENCES public.classes(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    type TEXT NOT NULL DEFAULT 'exam',
+    due_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Create document_requests table
+CREATE TABLE IF NOT EXISTS public.document_requests (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_id UUID NOT NULL REFERENCES public.students(id),
+    school_id UUID NOT NULL REFERENCES public.schools(id),
+    document_type TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Create document_request_tracking table
+CREATE TABLE IF NOT EXISTS public.document_request_tracking (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    request_id UUID NOT NULL REFERENCES public.document_requests(id),
+    student_id UUID NOT NULL REFERENCES public.students(id),
+    school_id UUID NOT NULL REFERENCES public.schools(id),
+    status TEXT NOT NULL,
+    comment TEXT,
+    updated_by UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Add triggers for new tables
+CREATE TRIGGER update_assignments_updated_at
+    BEFORE UPDATE ON public.assignments
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_document_requests_updated_at
+    BEFORE UPDATE ON public.document_requests
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
 -- Enable Row Level Security
 ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.teachers ENABLE ROW LEVEL SECURITY;
@@ -179,6 +232,9 @@ ALTER TABLE public.class_subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_request_tracking ENABLE ROW LEVEL SECURITY;
 
 -- Create permissive policies (for development)
 CREATE POLICY "Allow all operations on schools" ON public.schools FOR ALL USING (true) WITH CHECK (true);
@@ -191,6 +247,9 @@ CREATE POLICY "Allow all operations on class_subjects" ON public.class_subjects 
 CREATE POLICY "Allow all operations on grades" ON public.grades FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Teachers can manage attendance" ON public.attendance FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Teachers can manage attendance sessions" ON public.attendance_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on assignments" ON public.assignments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on document_requests" ON public.document_requests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on document_request_tracking" ON public.document_request_tracking FOR ALL USING (true) WITH CHECK (true);
 
 -- Insert sample data
 INSERT INTO public.schools (name, identifier) VALUES 

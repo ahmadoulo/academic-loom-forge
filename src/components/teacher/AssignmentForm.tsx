@@ -9,7 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useTeachers } from "@/hooks/useTeachers";
-import { CalendarIcon, BookOpen } from "lucide-react";
+import { CalendarIcon, BookOpen, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface AssignmentFormProps {
   teacherId: string;
@@ -19,7 +21,7 @@ export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
   const { teachers } = useTeachers();
   const teacher = teachers.find(t => t.id === teacherId);
   const { toast } = useToast();
-  const { createAssignment } = useAssignments();
+  const { assignments, createAssignment, deleteAssignment, loading: assignmentsLoading } = useAssignments(undefined, undefined, teacherId);
   const { teacherClasses, loading: classesLoading } = useTeacherClasses(teacherId);
   
   const [formData, setFormData] = useState({
@@ -99,11 +101,35 @@ export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
     homework: 'Devoir'
   };
 
-  useEffect(() => {
-    console.log('AssignmentForm - teacherId:', teacherId);
-    console.log('AssignmentForm - teacher:', teacher);
-    console.log('AssignmentForm - teacherClasses:', teacherClasses);
-  }, [teacherId, teacher, teacherClasses]);
+  const handleDelete = async (assignmentId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce devoir ?')) {
+      return;
+    }
+
+    try {
+      const { error } = await deleteAssignment(assignmentId);
+      
+      if (error) {
+        throw new Error(error);
+      }
+
+      toast({
+        title: "Succès",
+        description: "Devoir supprimé avec succès"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Erreur lors de la suppression"
+      });
+    }
+  };
+
+  const getClassName = (classId: string) => {
+    const teacherClass = teacherClasses.find(tc => tc.classes.id === classId);
+    return teacherClass?.classes.name || 'Classe inconnue';
+  };
 
   if (classesLoading) {
     return (
@@ -226,6 +252,64 @@ export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
               {loading ? "Création en cours..." : "Créer le Devoir"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Liste des devoirs créés */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mes Devoirs Publiés</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {assignmentsLoading ? (
+            <p className="text-muted-foreground text-center py-4">Chargement...</p>
+          ) : assignments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">
+              Aucun devoir publié pour le moment
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold">{assignment.title}</h3>
+                      <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
+                        {typeLabels[assignment.type as keyof typeof typeLabels]}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Classe: {getClassName(assignment.class_id)}
+                    </p>
+                    {assignment.description && (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {assignment.description}
+                      </p>
+                    )}
+                    {assignment.due_date && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>
+                          Échéance: {format(new Date(assignment.due_date), 'dd MMMM yyyy', { locale: fr })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(assignment.id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

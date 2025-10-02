@@ -44,10 +44,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: http://localhost:8095
+        VITE_SUPABASE_PUBLISHABLE_KEY: "mysuperlongsecretkey_1234567890abcdef"
     container_name: eduvate_frontend
-    environment:
-      VITE_SUPABASE_URL: http://postgrest:3000
-      VITE_SUPABASE_PUBLISHABLE_KEY: "mysuperlongsecretkey_1234567890abcdef"
     ports:
       - "3000:80"
     depends_on:
