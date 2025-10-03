@@ -198,6 +198,21 @@ CREATE TABLE IF NOT EXISTS public.document_requests (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 
+-- Create student_accounts table for student authentication
+CREATE TABLE IF NOT EXISTS public.student_accounts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+    school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    password_hash TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    invitation_token TEXT,
+    invitation_expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    UNIQUE(email, school_id)
+);
+
 -- Create document_request_tracking table
 CREATE TABLE IF NOT EXISTS public.document_request_tracking (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

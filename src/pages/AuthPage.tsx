@@ -142,13 +142,17 @@ const AuthPage = () => {
               </Button>
             </form>
             
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 Authentification avec base de données interne
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Table: user_credentials
-              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.location.href = '/student-registration'}
+              >
+                Première connexion ? Créer mon compte étudiant
+              </Button>
             </div>
           </CardContent>
         </Card>

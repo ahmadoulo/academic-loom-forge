@@ -11,6 +11,8 @@ import SchoolDashboard from "./pages/SchoolDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import AttendanceScan from "./pages/AttendanceScan";
+import StudentRegistration from "./pages/StudentRegistration";
+import SetPassword from "./pages/SetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +37,8 @@ const App = () => (
             <Route path="/student/:studentId" element={<StudentDashboard />} />
             <Route path="/student-dashboard" element={<StudentDashboard />} />
             <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
+            <Route path="/student-registration" element={<StudentRegistration />} />
+            <Route path="/set-password" element={<SetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

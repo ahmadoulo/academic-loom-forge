@@ -34,6 +34,7 @@ import { ClassesListSection } from "@/components/school/ClassesListSection";
 import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
+import { StudentAccountsSection } from "@/components/school/StudentAccountsSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -672,7 +673,10 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "users" && (
-                <SchoolUserManagement schoolId={school?.id || ""} />
+                <div className="space-y-6">
+                  <StudentAccountsSection schoolId={school.id} />
+                  <SchoolUserManagement schoolId={school?.id || ""} />
+                </div>
               )}
               
               {activeTab === "documents" && school?.id && (

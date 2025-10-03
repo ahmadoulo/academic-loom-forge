@@ -99,6 +99,43 @@ export const useCustomAuth = () => {
     try {
       setLoading(true);
       
+      // Essayer d'abord avec student_accounts
+      const { data: studentAccount, error: studentError } = await supabase
+        .from('student_accounts')
+        .select('*, student:students(*, classes(*))')
+        .eq('email', email)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!studentError && studentAccount && studentAccount.password_hash) {
+        // Vérifier le mot de passe avec bcrypt
+        const bcrypt = await import('bcryptjs');
+        const passwordMatch = await bcrypt.compare(password, studentAccount.password_hash);
+        
+        if (passwordMatch) {
+          const studentUser: UserCredential = {
+            id: studentAccount.id,
+            email: studentAccount.email,
+            first_name: studentAccount.student?.firstname || '',
+            last_name: studentAccount.student?.lastname || '',
+            role: 'student',
+            school_id: studentAccount.school_id,
+            is_active: true,
+          };
+          
+          setUser(studentUser);
+          localStorage.setItem('customAuthUser', JSON.stringify(studentUser));
+          toast.success('Connexion réussie');
+          
+          setTimeout(() => {
+            window.location.href = `/student/${studentAccount.student_id}`;
+          }, 100);
+          
+          return studentUser;
+        }
+      }
+      
+      // Si pas trouvé dans student_accounts, essayer user_credentials
       const { data: userData, error } = await supabase
         .from('user_credentials')
         .select('*')
