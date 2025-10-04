@@ -41,25 +41,26 @@ serve(async (req) => {
       throw new Error('Compte étudiant non trouvé');
     }
 
-    // Toujours générer un nouveau token à chaque envoi d'invitation
-    const invitationToken = crypto.randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    // Générer un nouveau token si nécessaire
+    let invitationToken = account.invitation_token;
+    if (!invitationToken) {
+      invitationToken = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
-    const { error: updateError } = await supabaseClient
-      .from('student_accounts')
-      .update({
-        invitation_token: invitationToken,
-        invitation_expires_at: expiresAt.toISOString()
-      })
-      .eq('id', account.id);
+      const { error: updateError } = await supabaseClient
+        .from('student_accounts')
+        .update({
+          invitation_token: invitationToken,
+          invitation_expires_at: expiresAt.toISOString()
+        })
+        .eq('id', account.id);
 
-    if (updateError) {
-      console.error('Erreur mise à jour token:', updateError);
-      throw updateError;
+      if (updateError) {
+        console.error('Erreur mise à jour token:', updateError);
+        throw updateError;
+      }
     }
-
-    console.log('Token généré:', invitationToken);
 
     // Préparer l'email
     const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
@@ -89,34 +90,20 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev',
+        from: 'Academic Platform <onboarding@resend.dev>',
         to: [account.email],
         subject: 'Activez votre compte étudiant',
         html: emailHtml,
       }),
     });
 
-    const resendData = await resendResponse.json();
-    
     if (!resendResponse.ok) {
-      console.error('Erreur Resend:', resendData);
-      
-      // En mode test, Resend limite l'envoi d'emails
-      // Retourner quand même un succès pour ne pas bloquer le workflow
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          warning: 'Mode test Resend: vérifiez que le domaine est configuré sur resend.com/domains',
-          invitationUrl,
-          error: resendData
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
+      const errorText = await resendResponse.text();
+      console.error('Erreur Resend:', errorText);
+      throw new Error(`Erreur Resend: ${errorText}`);
     }
 
+    const resendData = await resendResponse.json();
     console.log('Email envoyé avec succès:', resendData);
 
     return new Response(

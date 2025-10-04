@@ -24,62 +24,37 @@ export default function SetPassword() {
 
   const validateToken = async () => {
     if (!token) {
-      console.error('Aucun token fourni');
       toast.error('Token d\'invitation invalide');
       navigate('/auth');
       return;
     }
 
     try {
-      console.log('Validation du token:', token);
-      
       const { data: account, error } = await supabase
         .from('student_accounts')
-        .select('id, email, invitation_token, invitation_expires_at, is_active')
+        .select('id, invitation_expires_at, is_active')
         .eq('invitation_token', token)
         .maybeSingle();
 
-      console.log('Résultat de la requête:', { account, error });
-
-      if (error) {
-        console.error('Erreur Supabase:', error);
-        toast.error('Erreur lors de la validation du token');
-        navigate('/auth');
-        return;
-      }
-
-      if (!account) {
-        console.error('Aucun compte trouvé avec ce token');
+      if (error || !account) {
         toast.error('Token d\'invitation invalide ou expiré');
         navigate('/auth');
         return;
       }
 
       if (account.is_active) {
-        console.log('Compte déjà actif');
         toast.info('Votre compte est déjà actif');
         navigate('/auth');
         return;
       }
 
-      if (!account.invitation_expires_at) {
-        console.error('Pas de date d\'expiration');
-        toast.error('Token invalide');
-        navigate('/auth');
-        return;
-      }
-
       const expiresAt = new Date(account.invitation_expires_at);
-      const now = new Date();
-      console.log('Vérification expiration:', { expiresAt, now, expired: expiresAt < now });
-      
-      if (expiresAt < now) {
+      if (expiresAt < new Date()) {
         toast.error('Le lien d\'invitation a expiré. Demandez un nouveau lien.');
         navigate('/auth');
         return;
       }
 
-      console.log('Token valide, affichage du formulaire');
       setValidating(false);
     } catch (err) {
       console.error('Erreur de validation:', err);
@@ -106,10 +81,9 @@ export default function SetPassword() {
     try {
       // Hasher le mot de passe
       const passwordHash = await bcrypt.hash(password, 10);
-      console.log('Password hashed, updating account...');
 
       // Mettre à jour le compte
-      const { data: updatedAccount, error } = await supabase
+      const { error } = await supabase
         .from('student_accounts')
         .update({
           password_hash: passwordHash,
@@ -117,20 +91,9 @@ export default function SetPassword() {
           invitation_token: null,
           invitation_expires_at: null
         })
-        .eq('invitation_token', token)
-        .select();
+        .eq('invitation_token', token);
 
-      console.log('Update result:', { updatedAccount, error });
-
-      if (error) {
-        console.error('Update error:', error);
-        throw error;
-      }
-
-      if (!updatedAccount || updatedAccount.length === 0) {
-        toast.error('Token invalide ou expiré');
-        return;
-      }
+      if (error) throw error;
 
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
       navigate('/auth');
