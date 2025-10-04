@@ -100,38 +100,68 @@ export const useCustomAuth = () => {
       setLoading(true);
       
       // Essayer d'abord avec student_accounts
+      console.log('Recherche du compte étudiant pour:', email);
       const { data: studentAccount, error: studentError } = await supabase
         .from('student_accounts')
-        .select('*, student:students(*, classes(*))')
+        .select('id, email, password_hash, is_active, student_id, school_id')
         .eq('email', email)
         .eq('is_active', true)
         .maybeSingle();
 
-      if (!studentError && studentAccount && studentAccount.password_hash) {
+      console.log('Résultat student_accounts:', { studentAccount, studentError });
+
+      if (!studentError && studentAccount) {
+        if (!studentAccount.password_hash) {
+          console.log('Compte sans mot de passe - non activé');
+          toast.error('Compte non activé. Veuillez définir votre mot de passe via le lien d\'invitation.');
+          throw new Error('Compte non activé');
+        }
+
         // Vérifier le mot de passe avec bcrypt
         const bcrypt = await import('bcryptjs');
         const passwordMatch = await bcrypt.compare(password, studentAccount.password_hash);
         
+        console.log('Correspondance mot de passe:', passwordMatch);
+        
         if (passwordMatch) {
-          const studentUser: UserCredential = {
-            id: studentAccount.id,
-            email: studentAccount.email,
-            first_name: studentAccount.student?.firstname || '',
-            last_name: studentAccount.student?.lastname || '',
-            role: 'student',
-            school_id: studentAccount.school_id,
-            is_active: true,
-          };
-          
-          setUser(studentUser);
-          localStorage.setItem('customAuthUser', JSON.stringify(studentUser));
-          toast.success('Connexion réussie');
-          
-          setTimeout(() => {
-            window.location.href = `/student/${studentAccount.student_id}`;
-          }, 100);
-          
-          return studentUser;
+          // Récupérer les informations de l'étudiant depuis la table students
+          const { data: student, error: studentInfoError } = await supabase
+            .from('students')
+            .select('id, firstname, lastname, school_id, class_id')
+            .eq('email', email)
+            .maybeSingle();
+
+          console.log('Informations étudiant:', { student, studentInfoError });
+
+          if (!studentInfoError && student) {
+            const studentUser: UserCredential = {
+              id: studentAccount.id,
+              email: studentAccount.email,
+              first_name: student.firstname,
+              last_name: student.lastname,
+              role: 'student',
+              school_id: student.school_id,
+              is_active: true,
+            };
+            
+            setUser(studentUser);
+            localStorage.setItem('customAuthUser', JSON.stringify(studentUser));
+            toast.success('Connexion réussie');
+            
+            console.log('Redirection vers:', `/student/${student.id}`);
+            setTimeout(() => {
+              window.location.href = `/student/${student.id}`;
+            }, 100);
+            
+            return studentUser;
+          } else {
+            toast.error('Impossible de récupérer les informations de l\'étudiant');
+            throw new Error('Informations étudiant introuvables');
+          }
+        } else {
+          console.log('Mot de passe incorrect');
+          toast.error('Mot de passe incorrect');
+          throw new Error('Mot de passe incorrect');
         }
       }
       
