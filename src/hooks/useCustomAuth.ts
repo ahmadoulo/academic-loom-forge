@@ -102,22 +102,30 @@ export const useCustomAuth = () => {
       // Essayer d'abord avec student_accounts
       const { data: studentAccount, error: studentError } = await supabase
         .from('student_accounts')
-        .select('*, student:students(*, classes(*))')
+        .select('*, students!inner(id, firstname, lastname, school_id, class_id)')
         .eq('email', email)
         .eq('is_active', true)
         .maybeSingle();
+
+      console.log('Student account lookup:', { studentAccount, studentError });
 
       if (!studentError && studentAccount && studentAccount.password_hash) {
         // Vérifier le mot de passe avec bcrypt
         const bcrypt = await import('bcryptjs');
         const passwordMatch = await bcrypt.compare(password, studentAccount.password_hash);
         
+        console.log('Password match:', passwordMatch);
+        
         if (passwordMatch) {
+          const studentData = Array.isArray(studentAccount.students) 
+            ? studentAccount.students[0] 
+            : studentAccount.students;
+
           const studentUser: UserCredential = {
             id: studentAccount.id,
             email: studentAccount.email,
-            first_name: studentAccount.student?.firstname || '',
-            last_name: studentAccount.student?.lastname || '',
+            first_name: studentData?.firstname || '',
+            last_name: studentData?.lastname || '',
             role: 'student',
             school_id: studentAccount.school_id,
             is_active: true,
@@ -132,7 +140,13 @@ export const useCustomAuth = () => {
           }, 100);
           
           return studentUser;
+        } else {
+          toast.error('Mot de passe incorrect');
+          throw new Error('Mot de passe incorrect');
         }
+      } else if (!studentError && studentAccount && !studentAccount.password_hash) {
+        toast.error('Compte non activé. Veuillez définir votre mot de passe via le lien d\'invitation.');
+        throw new Error('Compte non activé');
       }
       
       // Si pas trouvé dans student_accounts, essayer user_credentials

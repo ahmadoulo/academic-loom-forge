@@ -81,9 +81,10 @@ export default function SetPassword() {
     try {
       // Hasher le mot de passe
       const passwordHash = await bcrypt.hash(password, 10);
+      console.log('Password hashed, updating account...');
 
       // Mettre à jour le compte
-      const { error } = await supabase
+      const { data: updatedAccount, error } = await supabase
         .from('student_accounts')
         .update({
           password_hash: passwordHash,
@@ -91,9 +92,20 @@ export default function SetPassword() {
           invitation_token: null,
           invitation_expires_at: null
         })
-        .eq('invitation_token', token);
+        .eq('invitation_token', token)
+        .select();
 
-      if (error) throw error;
+      console.log('Update result:', { updatedAccount, error });
+
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      if (!updatedAccount || updatedAccount.length === 0) {
+        toast.error('Token invalide ou expiré');
+        return;
+      }
 
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
       navigate('/auth');
