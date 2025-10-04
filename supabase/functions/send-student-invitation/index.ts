@@ -41,26 +41,25 @@ serve(async (req) => {
       throw new Error('Compte étudiant non trouvé');
     }
 
-    // Générer un nouveau token si nécessaire
-    let invitationToken = account.invitation_token;
-    if (!invitationToken) {
-      invitationToken = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+    // Toujours générer un nouveau token à chaque envoi d'invitation
+    const invitationToken = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-      const { error: updateError } = await supabaseClient
-        .from('student_accounts')
-        .update({
-          invitation_token: invitationToken,
-          invitation_expires_at: expiresAt.toISOString()
-        })
-        .eq('id', account.id);
+    const { error: updateError } = await supabaseClient
+      .from('student_accounts')
+      .update({
+        invitation_token: invitationToken,
+        invitation_expires_at: expiresAt.toISOString()
+      })
+      .eq('id', account.id);
 
-      if (updateError) {
-        console.error('Erreur mise à jour token:', updateError);
-        throw updateError;
-      }
+    if (updateError) {
+      console.error('Erreur mise à jour token:', updateError);
+      throw updateError;
     }
+
+    console.log('Token généré:', invitationToken);
 
     // Préparer l'email
     const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
