@@ -24,7 +24,8 @@ interface UserCredential {
   school_id?: string;
   is_active: boolean;
   last_login?: string;
-  teacher_id?: string; // Ajouter l'ID du professeur
+  teacher_id?: string;
+  student_id?: string;
 }
 
 export const useCustomAuth = () => {
@@ -98,9 +99,12 @@ export const useCustomAuth = () => {
   const loginWithCredentials = async ({ email, password }: LoginCredentials) => {
     try {
       setLoading(true);
-      
-      // Essayer d'abord avec student_accounts
-      console.log('Recherche du compte étudiant pour:', email);
+      console.log('🔐 Tentative de connexion pour:', email);
+
+      // Import bcrypt une seule fois
+      const bcrypt = await import('bcryptjs');
+
+      // Vérifier d'abord dans student_accounts
       const { data: studentAccount, error: studentError } = await supabase
         .from('student_accounts')
         .select('id, email, password_hash, is_active, student_id, school_id')
@@ -108,136 +112,163 @@ export const useCustomAuth = () => {
         .eq('is_active', true)
         .maybeSingle();
 
-      console.log('Résultat student_accounts:', { studentAccount, studentError });
+      if (studentError) {
+        console.error('❌ Erreur student_accounts:', studentError);
+      }
 
-      if (!studentError && studentAccount) {
-        if (!studentAccount.password_hash) {
-          console.log('Compte sans mot de passe - non activé');
-          toast.error('Compte non activé. Veuillez définir votre mot de passe via le lien d\'invitation.');
-          throw new Error('Compte non activé');
-        }
+      console.log('📊 Résultat student_accounts:', {
+        found: !!studentAccount,
+        hasPassword: !!studentAccount?.password_hash,
+        isActive: studentAccount?.is_active
+      });
 
-        // Vérifier le mot de passe avec bcrypt
-        const bcrypt = await import('bcryptjs');
-        const passwordMatch = await bcrypt.compare(password, studentAccount.password_hash);
+      if (studentAccount?.password_hash) {
+        console.log('✅ Compte étudiant trouvé, vérification du mot de passe...');
         
-        console.log('Correspondance mot de passe:', passwordMatch);
-        
-        if (passwordMatch) {
-          // Récupérer les informations de l'étudiant depuis la table students
+        const isValid = await bcrypt.compare(password, studentAccount.password_hash);
+        console.log('🔑 Mot de passe valide?', isValid);
+
+        if (isValid) {
+          // Récupérer les infos de l'étudiant depuis la table students
           const { data: student, error: studentInfoError } = await supabase
             .from('students')
             .select('id, firstname, lastname, school_id, class_id')
-            .eq('email', email)
-            .maybeSingle();
+            .eq('id', studentAccount.student_id)
+            .single();
 
-          console.log('Informations étudiant:', { student, studentInfoError });
-
-          if (!studentInfoError && student) {
-            const studentUser: UserCredential = {
-              id: studentAccount.id,
-              email: studentAccount.email,
-              first_name: student.firstname,
-              last_name: student.lastname,
-              role: 'student',
-              school_id: student.school_id,
-              is_active: true,
-            };
-            
-            setUser(studentUser);
-            localStorage.setItem('customAuthUser', JSON.stringify(studentUser));
-            toast.success('Connexion réussie');
-            
-            console.log('Redirection vers:', `/student/${student.id}`);
-            setTimeout(() => {
-              window.location.href = `/student/${student.id}`;
-            }, 100);
-            
-            return studentUser;
-          } else {
-            toast.error('Impossible de récupérer les informations de l\'étudiant');
-            throw new Error('Informations étudiant introuvables');
+          if (studentInfoError || !student) {
+            console.error('❌ Erreur lors de la récupération des infos étudiant:', studentInfoError);
+            toast.error('Erreur lors de la récupération des informations');
+            throw new Error('Impossible de récupérer les informations étudiant');
           }
+
+          console.log('👨‍🎓 Infos étudiant récupérées:', student);
+
+          const userData: UserCredential = {
+            id: studentAccount.id,
+            email: studentAccount.email,
+            first_name: student.firstname,
+            last_name: student.lastname,
+            role: 'student',
+            school_id: student.school_id,
+            student_id: student.id,
+            is_active: true,
+            last_login: new Date().toISOString(),
+          };
+
+          localStorage.setItem('customAuthUser', JSON.stringify(userData));
+          setUser(userData);
+
+          // Mise à jour de last_login
+          await supabase
+            .from('student_accounts')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', studentAccount.id);
+
+          toast.success('Connexion réussie !');
+          console.log('✅ Connexion étudiant réussie, redirection vers dashboard...');
+          
+          // Redirection vers student dashboard
+          setTimeout(() => {
+            window.location.href = `/student/${student.id}`;
+          }, 500);
+          
+          return userData;
         } else {
-          console.log('Mot de passe incorrect');
-          toast.error('Mot de passe incorrect');
+          console.log('❌ Mot de passe incorrect');
+          toast.error('Email ou mot de passe incorrect');
           throw new Error('Mot de passe incorrect');
         }
       }
-      
-      // Si pas trouvé dans student_accounts, essayer user_credentials
-      const { data: userData, error } = await supabase
+
+      // Sinon, vérifier dans user_credentials
+      const { data: credential, error: credError } = await supabase
         .from('user_credentials')
         .select('*')
         .eq('email', email)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (error || !userData) {
+      if (credError) {
+        console.error('❌ Erreur user_credentials:', credError);
+      }
+
+      console.log('📊 Résultat user_credentials:', !!credential);
+
+      if (!credential) {
+        console.log('❌ Aucun compte trouvé');
+        toast.error('Email ou mot de passe incorrect');
         throw new Error('Identifiants incorrects');
       }
-      
+
+      // Vérifier le mot de passe pour user_credentials (utilise le hash SHA-256)
       const computedHash = await hashPassword(password);
-      const isValidPassword = computedHash === userData.password_hash;
+      const isValidPassword = computedHash === credential.password_hash;
       
+      console.log('🔑 Mot de passe valide (credentials)?', isValidPassword);
+
       if (!isValidPassword) {
-        throw new Error('Identifiants incorrects');
+        toast.error('Email ou mot de passe incorrect');
+        throw new Error('Mot de passe incorrect');
       }
 
-      // Mettre à jour la date de dernière connexion
+      // Trouver le teacher_id si c'est un enseignant
+      let teacherId = null;
+      if (credential.role === 'teacher') {
+        const { data: teacher } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('email', email)
+          .eq('school_id', credential.school_id)
+          .maybeSingle();
+        
+        teacherId = teacher?.id || null;
+        console.log('👨‍🏫 Teacher ID trouvé:', teacherId);
+      }
+
+      const userData: UserCredential = {
+        id: credential.id,
+        email: credential.email,
+        first_name: credential.first_name,
+        last_name: credential.last_name,
+        role: credential.role as 'student' | 'teacher' | 'school_admin' | 'global_admin' | 'admin',
+        school_id: credential.school_id,
+        teacher_id: teacherId,
+        is_active: credential.is_active,
+        last_login: new Date().toISOString(),
+      };
+
+      localStorage.setItem('customAuthUser', JSON.stringify(userData));
+      setUser(userData);
+
+      // Mise à jour de last_login
       await supabase
         .from('user_credentials')
         .update({ last_login: new Date().toISOString() })
-        .eq('id', userData.id);
+        .eq('id', credential.id);
 
-      // Si c'est un professeur, récupérer son ID depuis la table teachers
-      let teacherId = null;
-      if (userData.role === 'teacher') {
-        const { data: teacherData } = await supabase
-          .from('teachers')
-          .select('id')
-          .eq('email', userData.email)
-          .eq('school_id', userData.school_id)
-          .single();
-        
-        teacherId = teacherData?.id;
-      }
-
-      const userProfile: UserCredential = {
-        id: userData.id,
-        email: userData.email,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        role: userData.role,
-        school_id: userData.school_id,
-        is_active: userData.is_active,
-        last_login: userData.last_login,
-        teacher_id: teacherId,
-      };
+      toast.success('Connexion réussie !');
+      console.log('✅ Connexion réussie pour:', userData);
       
-      setUser(userProfile);
-      localStorage.setItem('customAuthUser', JSON.stringify(userProfile));
-      
-      toast.success('Connexion réussie');
-      
-      // Redirection immédiate
+      // Redirection
       setTimeout(() => {
-        if (userProfile.role === 'global_admin' || userProfile.role === 'admin') {
+        if (userData.role === 'global_admin' || userData.role === 'admin') {
           window.location.href = '/admin';
-        } else if (userProfile.role === 'school_admin' && userProfile.school_id) {
-          window.location.href = `/school/${userProfile.school_id}`;
-        } else if (userProfile.role === 'teacher' && userProfile.teacher_id) {
-          window.location.href = `/teacher/${userProfile.teacher_id}`;
+        } else if (userData.role === 'school_admin' && userData.school_id) {
+          window.location.href = `/school/${userData.school_id}`;
+        } else if (userData.role === 'teacher' && userData.teacher_id) {
+          window.location.href = `/teacher/${userData.teacher_id}`;
         } else {
           window.location.href = '/dashboard';
         }
-      }, 100);
+      }, 500);
       
-      return userProfile;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
+      return userData;
+    } catch (error) {
+      console.error('❌ Erreur lors de la connexion:', error);
+      const message = error instanceof Error ? error.message : 'Erreur lors de la connexion';
       toast.error(message);
-      throw err;
+      throw error;
     } finally {
       setLoading(false);
     }

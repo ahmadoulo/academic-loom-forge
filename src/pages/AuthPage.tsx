@@ -28,6 +28,8 @@ const AuthPage = () => {
           window.location.replace(`/school/${user.school_id}`);
         } else if (user.role === 'teacher' && user.teacher_id) {
           window.location.replace(`/teacher/${user.teacher_id}`);
+        } else if (user.role === 'student' && user.student_id) {
+          window.location.replace(`/student/${user.student_id}`);
         } else {
           window.location.replace('/dashboard');
         }

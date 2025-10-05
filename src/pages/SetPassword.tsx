@@ -108,11 +108,11 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('Début de la mise à jour du mot de passe pour le token:', token);
+      console.log('🔐 Début de la mise à jour du mot de passe pour le token:', token);
       
-      // Hasher le mot de passe avec bcrypt
+      // Hasher le mot de passe avec bcrypt (10 rounds)
       const passwordHash = await bcrypt.hash(password, 10);
-      console.log('Mot de passe hashé avec succès');
+      console.log('✅ Mot de passe hashé avec succès');
 
       // Mettre à jour le compte dans student_accounts
       const { data: updatedAccount, error } = await supabase
@@ -124,32 +124,43 @@ export default function SetPassword() {
           invitation_expires_at: null
         })
         .eq('invitation_token', token)
-        .select('id, email, student_id, is_active')
+        .select('id, email, student_id, is_active, password_hash')
         .single();
 
-      console.log('Résultat de la mise à jour:', { updatedAccount, error });
+      console.log('📥 Résultat de la mise à jour:', { 
+        account: updatedAccount, 
+        error,
+        hasPasswordHash: !!updatedAccount?.password_hash 
+      });
 
       if (error) {
-        console.error('Erreur lors de la mise à jour:', error);
-        throw error;
+        console.error('❌ Erreur Supabase lors de la mise à jour:', error);
+        toast.error(`Erreur: ${error.message}`);
+        return;
       }
 
       if (!updatedAccount) {
-        console.error('Aucun compte mis à jour');
+        console.error('❌ Aucun compte mis à jour');
         toast.error('Token invalide ou expiré');
         return;
       }
 
-      console.log('Compte activé avec succès:', updatedAccount);
+      console.log('✅ Compte activé avec succès:', {
+        id: updatedAccount.id,
+        email: updatedAccount.email,
+        is_active: updatedAccount.is_active,
+        has_password: !!updatedAccount.password_hash
+      });
+      
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
       
-      // Rediriger vers la page d'authentification après 1 seconde
+      // Rediriger vers la page d'authentification après 1.5 secondes
       setTimeout(() => {
         navigate('/auth');
-      }, 1000);
-    } catch (err) {
-      console.error('Erreur lors de la définition du mot de passe:', err);
-      toast.error('Erreur lors de la définition du mot de passe');
+      }, 1500);
+    } catch (err: any) {
+      console.error('❌ Erreur lors de la définition du mot de passe:', err);
+      toast.error(`Erreur: ${err?.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }
