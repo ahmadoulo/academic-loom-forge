@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { accountId, email } = await req.json();
+    const { accountId, email, appUrl } = await req.json();
 
     if (!accountId && !email) {
       throw new Error('accountId ou email requis');
@@ -61,9 +61,11 @@ serve(async (req) => {
 
     console.log('Token généré:', invitationToken);
 
-    // Préparer l'email
-    const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
-    const invitationUrl = `${appUrl}/set-password?token=${invitationToken}`;
+    // Construire l'URL d'invitation
+    const baseUrl = appUrl || Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
+    const invitationUrl = `${baseUrl}/set-password?token=${invitationToken}`;
+
+    console.log('URL d\'invitation:', invitationUrl);
 
     const emailHtml = `
       <h1>Bienvenue ${account.student?.firstname} ${account.student?.lastname} !</h1>

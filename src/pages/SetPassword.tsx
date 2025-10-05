@@ -35,7 +35,7 @@ export default function SetPassword() {
       
       const { data: account, error } = await supabase
         .from('student_accounts')
-        .select('id, email, invitation_token, invitation_expires_at, is_active')
+        .select('id, email, student_id, school_id, invitation_token, invitation_expires_at, is_active, password_hash')
         .eq('invitation_token', token)
         .maybeSingle();
 
@@ -55,7 +55,7 @@ export default function SetPassword() {
         return;
       }
 
-      if (account.is_active) {
+      if (account.is_active && account.password_hash) {
         console.log('Compte déjà actif');
         toast.info('Votre compte est déjà actif');
         navigate('/auth');
@@ -71,7 +71,11 @@ export default function SetPassword() {
 
       const expiresAt = new Date(account.invitation_expires_at);
       const now = new Date();
-      console.log('Vérification expiration:', { expiresAt, now, expired: expiresAt < now });
+      console.log('Vérification expiration:', { 
+        expiresAt: expiresAt.toISOString(), 
+        now: now.toISOString(), 
+        expired: expiresAt < now 
+      });
       
       if (expiresAt < now) {
         toast.error('Le lien d\'invitation a expiré. Demandez un nouveau lien.');
@@ -104,11 +108,13 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      // Hasher le mot de passe
+      console.log('Début de la mise à jour du mot de passe pour le token:', token);
+      
+      // Hasher le mot de passe avec bcrypt
       const passwordHash = await bcrypt.hash(password, 10);
-      console.log('Password hashed, updating account...');
+      console.log('Mot de passe hashé avec succès');
 
-      // Mettre à jour le compte
+      // Mettre à jour le compte dans student_accounts
       const { data: updatedAccount, error } = await supabase
         .from('student_accounts')
         .update({
@@ -118,24 +124,31 @@ export default function SetPassword() {
           invitation_expires_at: null
         })
         .eq('invitation_token', token)
-        .select();
+        .select('id, email, student_id, is_active')
+        .single();
 
-      console.log('Update result:', { updatedAccount, error });
+      console.log('Résultat de la mise à jour:', { updatedAccount, error });
 
       if (error) {
-        console.error('Update error:', error);
+        console.error('Erreur lors de la mise à jour:', error);
         throw error;
       }
 
-      if (!updatedAccount || updatedAccount.length === 0) {
+      if (!updatedAccount) {
+        console.error('Aucun compte mis à jour');
         toast.error('Token invalide ou expiré');
         return;
       }
 
+      console.log('Compte activé avec succès:', updatedAccount);
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
-      navigate('/auth');
+      
+      // Rediriger vers la page d'authentification après 1 seconde
+      setTimeout(() => {
+        navigate('/auth');
+      }, 1000);
     } catch (err) {
-      console.error('Erreur:', err);
+      console.error('Erreur lors de la définition du mot de passe:', err);
       toast.error('Erreur lors de la définition du mot de passe');
     } finally {
       setLoading(false);
