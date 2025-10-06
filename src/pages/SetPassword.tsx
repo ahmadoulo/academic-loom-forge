@@ -25,46 +25,58 @@ export default function SetPassword() {
 
   const validateToken = async () => {
     if (!token) {
-      console.error('Aucun token fourni');
+      console.error('❌ Aucun token fourni');
       toast.error('Token d\'invitation invalide');
       navigate('/auth');
       return;
     }
 
     try {
-      console.log('Validation du token:', token);
+      console.log('🔍 Validation du token:', token);
+      console.log('🔍 Longueur du token:', token.length);
+      
+      // Nettoyer le token des espaces blancs
+      const cleanToken = token.trim();
       
       const { data: account, error } = await supabase
         .from('student_accounts')
         .select('id, email, student_id, school_id, invitation_token, invitation_expires_at, is_active, password_hash')
-        .eq('invitation_token', token)
+        .eq('invitation_token', cleanToken)
         .maybeSingle();
 
-      console.log('Résultat de la requête:', { account, error });
+      console.log('📥 Résultat de la requête:', { 
+        accountFound: !!account, 
+        accountId: account?.id,
+        hasToken: !!account?.invitation_token,
+        hasExpiration: !!account?.invitation_expires_at,
+        error 
+      });
 
       if (error) {
-        console.error('Erreur Supabase:', error);
+        console.error('❌ Erreur Supabase:', error);
         toast.error('Erreur lors de la validation du token');
         navigate('/auth');
         return;
       }
 
       if (!account) {
-        console.error('Aucun compte trouvé avec ce token');
-        toast.error('Token d\'invitation invalide ou expiré');
+        console.error('❌ Aucun compte trouvé avec ce token');
+        toast.error('Token d\'invitation invalide');
         navigate('/auth');
         return;
       }
 
+      // Vérifier si le compte est déjà actif
       if (account.is_active && account.password_hash) {
-        console.log('Compte déjà actif');
+        console.log('✅ Compte déjà actif');
         toast.info('Votre compte est déjà actif');
         navigate('/auth');
         return;
       }
 
+      // Vérifier l'expiration du token
       if (!account.invitation_expires_at) {
-        console.error('Pas de date d\'expiration');
+        console.error('❌ Pas de date d\'expiration');
         toast.error('Token invalide');
         navigate('/auth');
         return;
@@ -72,23 +84,26 @@ export default function SetPassword() {
 
       const expiresAt = new Date(account.invitation_expires_at);
       const now = new Date();
-      console.log('Vérification expiration:', { 
+      
+      console.log('📅 Vérification expiration:', { 
         expiresAt: expiresAt.toISOString(), 
         now: now.toISOString(), 
-        expired: expiresAt < now 
+        isExpired: now > expiresAt
       });
       
-      if (expiresAt < now) {
+      // Vérifier si le token a expiré (la date actuelle est APRÈS la date d'expiration)
+      if (now > expiresAt) {
+        console.error('❌ Token expiré');
         toast.error('Le lien d\'invitation a expiré. Demandez un nouveau lien.');
         navigate('/auth');
         return;
       }
 
-      console.log('Token valide, affichage du formulaire');
+      console.log('✅ Token valide, affichage du formulaire');
       setAccountId(account.id);
       setValidating(false);
     } catch (err) {
-      console.error('Erreur de validation:', err);
+      console.error('❌ Erreur de validation:', err);
       toast.error('Erreur lors de la validation du token');
       navigate('/auth');
     }
@@ -107,16 +122,16 @@ export default function SetPassword() {
       return;
     }
 
+    if (!accountId) {
+      toast.error('Session invalide. Veuillez recommencer.');
+      navigate('/auth');
+      return;
+    }
+
     setLoading(true);
 
     try {
       console.log('🔐 Début de la mise à jour du mot de passe pour le compte:', accountId);
-      
-      if (!accountId) {
-        toast.error('Session invalide. Veuillez recommencer.');
-        navigate('/auth');
-        return;
-      }
       
       // Hasher le mot de passe avec bcrypt (10 rounds)
       const passwordHash = await bcrypt.hash(password, 10);
@@ -136,20 +151,22 @@ export default function SetPassword() {
         .maybeSingle();
 
       console.log('📥 Résultat de la mise à jour:', { 
-        account: updatedAccount, 
-        error,
-        hasPasswordHash: !!updatedAccount?.password_hash 
+        success: !!updatedAccount,
+        accountId: updatedAccount?.id,
+        isActive: updatedAccount?.is_active,
+        hasPasswordHash: !!updatedAccount?.password_hash,
+        error
       });
 
       if (error) {
         console.error('❌ Erreur Supabase lors de la mise à jour:', error);
-        toast.error(`Erreur: ${error.message}`);
+        toast.error(`Erreur lors de la mise à jour: ${error.message}`);
         return;
       }
 
       if (!updatedAccount) {
-        console.error('❌ Aucun compte mis à jour');
-        toast.error('Token invalide ou expiré');
+        console.error('❌ Aucun compte mis à jour - le compte n\'existe peut-être plus');
+        toast.error('Impossible de mettre à jour le compte. Veuillez réessayer.');
         return;
       }
 
@@ -157,7 +174,8 @@ export default function SetPassword() {
         id: updatedAccount.id,
         email: updatedAccount.email,
         is_active: updatedAccount.is_active,
-        has_password: !!updatedAccount.password_hash
+        has_password: !!updatedAccount.password_hash,
+        token_expired: true
       });
       
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
