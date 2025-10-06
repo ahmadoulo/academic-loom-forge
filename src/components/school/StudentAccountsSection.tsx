@@ -33,19 +33,20 @@ export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps
                 <TableHead>Email</TableHead>
                 <TableHead>Classe</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead>Invitation</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Chargement...
                   </TableCell>
                 </TableRow>
               ) : accounts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Aucun étudiant trouvé. Ajoutez des étudiants dans la section "Étudiants".
                   </TableCell>
                 </TableRow>
@@ -60,6 +61,11 @@ export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps
                     <TableCell>
                       <Badge variant={account.is_active ? "default" : "secondary"}>
                         {account.is_active ? 'Actif' : 'En attente'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={account.invitation_sent ? "outline" : "secondary"}>
+                        {account.invitation_sent ? 'Envoyée' : 'Non envoyée'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

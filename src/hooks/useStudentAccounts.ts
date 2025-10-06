@@ -8,6 +8,7 @@ export interface StudentAccount {
   school_id: string;
   email: string;
   is_active: boolean;
+  invitation_sent: boolean;
   created_at: string;
   student?: {
     firstname: string;
@@ -50,7 +51,7 @@ export const useStudentAccounts = (schoolId?: string) => {
       // Récupérer les comptes étudiants existants
       const { data: studentAccounts, error: accountsError } = await supabase
         .from('student_accounts')
-        .select('*')
+        .select('id, student_id, school_id, email, is_active, invitation_token, created_at')
         .eq('school_id', schoolId);
 
       if (accountsError) throw accountsError;
@@ -67,6 +68,7 @@ export const useStudentAccounts = (schoolId?: string) => {
           school_id: schoolId,
           email: student.email || '',
           is_active: account?.is_active || false,
+          invitation_sent: !!account?.invitation_token,
           created_at: account?.created_at || new Date().toISOString(),
           student: {
             firstname: student.firstname,
@@ -129,7 +131,9 @@ export const useStudentAccounts = (schoolId?: string) => {
 
   const sendInvitation = async (studentId: string, email: string) => {
     try {
-      // D'abord créer ou mettre à jour le compte
+      // D'abord créer ou récupérer le compte
+      let accountId: string;
+      
       const { data: existingAccount } = await supabase
         .from('student_accounts')
         .select('id')
@@ -138,12 +142,26 @@ export const useStudentAccounts = (schoolId?: string) => {
 
       if (!existingAccount) {
         await createStudentAccount(studentId, email);
+        
+        // Récupérer l'ID du compte nouvellement créé
+        const { data: newAccount } = await supabase
+          .from('student_accounts')
+          .select('id')
+          .eq('student_id', studentId)
+          .maybeSingle();
+        
+        if (!newAccount) {
+          throw new Error('Impossible de créer le compte');
+        }
+        accountId = newAccount.id;
+      } else {
+        accountId = existingAccount.id;
       }
 
-      // Envoyer l'invitation avec l'URL de l'application
+      // Envoyer l'invitation avec l'accountId et l'URL de l'application
       const appUrl = window.location.origin;
       const { data, error } = await supabase.functions.invoke('send-student-invitation', {
-        body: { email, appUrl }
+        body: { accountId, email, appUrl }
       });
 
       if (error) throw error;

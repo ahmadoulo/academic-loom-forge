@@ -137,8 +137,29 @@ export default function SetPassword() {
       const passwordHash = await bcrypt.hash(password, 10);
       console.log('✅ Mot de passe hashé avec succès');
 
+      // Vérifier que le compte existe avant la mise à jour
+      const { data: accountCheck, error: checkError } = await supabase
+        .from('student_accounts')
+        .select('id, email')
+        .eq('id', accountId)
+        .maybeSingle();
+
+      console.log('🔍 Vérification du compte:', {
+        found: !!accountCheck,
+        accountId: accountCheck?.id,
+        email: accountCheck?.email,
+        checkError
+      });
+
+      if (checkError || !accountCheck) {
+        console.error('❌ Compte non trouvé pour la mise à jour');
+        toast.error('Compte introuvable. Le lien a peut-être expiré.');
+        navigate('/auth');
+        return;
+      }
+
       // Mettre à jour le compte dans student_accounts
-      const { data: updatedAccount, error } = await supabase
+      const { error: updateError } = await supabase
         .from('student_accounts')
         .update({
           password_hash: passwordHash,
@@ -146,36 +167,43 @@ export default function SetPassword() {
           invitation_token: null,
           invitation_expires_at: null
         })
-        .eq('id', accountId)
-        .select('id, email, student_id, is_active, password_hash')
-        .maybeSingle();
+        .eq('id', accountId);
 
       console.log('📥 Résultat de la mise à jour:', { 
-        success: !!updatedAccount,
-        accountId: updatedAccount?.id,
-        isActive: updatedAccount?.is_active,
-        hasPasswordHash: !!updatedAccount?.password_hash,
-        error
+        success: !updateError,
+        updateError
       });
 
-      if (error) {
-        console.error('❌ Erreur Supabase lors de la mise à jour:', error);
-        toast.error(`Erreur lors de la mise à jour: ${error.message}`);
+      if (updateError) {
+        console.error('❌ Erreur Supabase lors de la mise à jour:', updateError);
+        toast.error(`Erreur: ${updateError.message}`);
         return;
       }
 
-      if (!updatedAccount) {
-        console.error('❌ Aucun compte mis à jour - le compte n\'existe peut-être plus');
-        toast.error('Impossible de mettre à jour le compte. Veuillez réessayer.');
+      // Vérifier que la mise à jour a bien été effectuée
+      const { data: verifyAccount, error: verifyError } = await supabase
+        .from('student_accounts')
+        .select('id, email, is_active, password_hash')
+        .eq('id', accountId)
+        .maybeSingle();
+
+      console.log('✅ Vérification après mise à jour:', {
+        found: !!verifyAccount,
+        isActive: verifyAccount?.is_active,
+        hasPassword: !!verifyAccount?.password_hash,
+        verifyError
+      });
+
+      if (!verifyAccount || !verifyAccount.is_active || !verifyAccount.password_hash) {
+        console.error('❌ La mise à jour n\'a pas été enregistrée correctement');
+        toast.error('Erreur lors de l\'activation du compte. Veuillez réessayer.');
         return;
       }
 
       console.log('✅ Compte activé avec succès:', {
-        id: updatedAccount.id,
-        email: updatedAccount.email,
-        is_active: updatedAccount.is_active,
-        has_password: !!updatedAccount.password_hash,
-        token_expired: true
+        id: verifyAccount.id,
+        email: verifyAccount.email,
+        is_active: verifyAccount.is_active
       });
       
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
