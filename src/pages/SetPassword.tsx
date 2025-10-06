@@ -133,7 +133,7 @@ export default function SetPassword() {
         })
         .eq('id', accountId)
         .select('id, email, student_id, is_active, password_hash')
-        .single();
+        .maybeSingle();
 
       console.log('📥 Résultat de la mise à jour:', { 
         account: updatedAccount, 
