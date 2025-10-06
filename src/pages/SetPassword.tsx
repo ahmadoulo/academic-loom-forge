@@ -16,6 +16,7 @@ export default function SetPassword() {
   const [validating, setValidating] = useState(true);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountId, setAccountId] = useState<string | null>(null);
   const token = searchParams.get('token');
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export default function SetPassword() {
       }
 
       console.log('Token valide, affichage du formulaire');
+      setAccountId(account.id);
       setValidating(false);
     } catch (err) {
       console.error('Erreur de validation:', err);
@@ -108,7 +110,13 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('🔐 Début de la mise à jour du mot de passe pour le token:', token);
+      console.log('🔐 Début de la mise à jour du mot de passe pour le compte:', accountId);
+      
+      if (!accountId) {
+        toast.error('Session invalide. Veuillez recommencer.');
+        navigate('/auth');
+        return;
+      }
       
       // Hasher le mot de passe avec bcrypt (10 rounds)
       const passwordHash = await bcrypt.hash(password, 10);
@@ -123,7 +131,7 @@ export default function SetPassword() {
           invitation_token: null,
           invitation_expires_at: null
         })
-        .eq('invitation_token', token)
+        .eq('id', accountId)
         .select('id, email, student_id, is_active, password_hash')
         .single();
 
