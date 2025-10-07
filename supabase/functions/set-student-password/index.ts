@@ -122,13 +122,10 @@ serve(async (req) => {
     }
 
     // Hasher le mot de passe avec bcrypt
-    console.log('🔐 Hashing password...');
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log('✅ Password hashed');
+    console.log('🔐 Hashing password with bcrypt...');
+    const bcrypt = await import('https://deno.land/x/bcrypt@v0.4.1/mod.ts');
+    const passwordHash = await bcrypt.hash(password);
+    console.log('✅ Password hashed with bcrypt');
 
     // Mettre à jour le compte (avec service role, bypass RLS)
     console.log('💾 Updating account...');
