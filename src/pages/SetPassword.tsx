@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
+import bcrypt from 'bcryptjs';
 
 export default function SetPassword() {
   const navigate = useNavigate();
@@ -128,13 +129,18 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('🔐 Appel de l\'edge function pour définir le mot de passe');
+      console.log('🔐 Hashage du mot de passe avec bcrypt (rounds: 12)...');
+      
+      // Hasher le mot de passe avec bcrypt (12 rounds) côté client
+      const passwordHash = await bcrypt.hash(password, 12);
+      
+      console.log('✅ Mot de passe hashé, appel de l\'edge function');
       
       // Appeler l'edge function qui gère la définition du mot de passe de manière sécurisée
       const { data, error } = await supabase.functions.invoke('set-student-password', {
         body: {
           token: token.trim(),
-          password: password
+          passwordHash: passwordHash
         }
       });
 

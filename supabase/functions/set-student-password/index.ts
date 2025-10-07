@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface SetPasswordRequest {
   token: string;
-  password: string;
+  passwordHash: string;
 }
 
 serve(async (req) => {
@@ -17,23 +17,25 @@ serve(async (req) => {
   }
 
   try {
-    const { token, password }: SetPasswordRequest = await req.json();
+    const { token, passwordHash }: SetPasswordRequest = await req.json();
 
     console.log('🔐 Set password request received');
     console.log('🔍 Token length:', token?.length);
+    console.log('🔍 Password hash length:', passwordHash?.length);
 
-    if (!token || !password) {
-      console.error('❌ Missing token or password');
+    if (!token || !passwordHash) {
+      console.error('❌ Missing token or password hash');
       return new Response(
         JSON.stringify({ error: 'Token et mot de passe requis' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (password.length < 8) {
-      console.error('❌ Password too short');
+    // Vérifier que le hash bcrypt est valide (commence par $2a$, $2b$ ou $2y$)
+    if (!passwordHash.match(/^\$2[aby]\$\d{2}\$/)) {
+      console.error('❌ Invalid bcrypt hash format');
       return new Response(
-        JSON.stringify({ error: 'Le mot de passe doit contenir au moins 8 caractères' }),
+        JSON.stringify({ error: 'Format de hash invalide' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -121,17 +123,8 @@ serve(async (req) => {
       );
     }
 
-    // Hasher le mot de passe avec bcrypt
-    console.log('🔐 Hashing password...');
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log('✅ Password hashed');
-
-    // Mettre à jour le compte (avec service role, bypass RLS)
-    console.log('💾 Updating account...');
+    // Le mot de passe est déjà hashé côté client avec bcrypt (12 rounds)
+    console.log('💾 Updating account with bcrypt hash...');
     const { error: updateError } = await supabaseAdmin
       .from('student_accounts')
       .update({
