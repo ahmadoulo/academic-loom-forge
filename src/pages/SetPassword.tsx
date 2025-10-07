@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
-import bcrypt from 'bcryptjs';
 
 export default function SetPassword() {
   const navigate = useNavigate();
@@ -16,7 +15,6 @@ export default function SetPassword() {
   const [validating, setValidating] = useState(true);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountId, setAccountId] = useState<string | null>(null);
   const token = searchParams.get('token');
 
   useEffect(() => {
@@ -100,7 +98,6 @@ export default function SetPassword() {
       }
 
       console.log('✅ Token valide, affichage du formulaire');
-      setAccountId(account.id);
       setValidating(false);
     } catch (err) {
       console.error('❌ Erreur de validation:', err);
@@ -122,8 +119,8 @@ export default function SetPassword() {
       return;
     }
 
-    if (!accountId) {
-      toast.error('Session invalide. Veuillez recommencer.');
+    if (!token) {
+      toast.error('Token invalide. Veuillez recommencer.');
       navigate('/auth');
       return;
     }
@@ -131,81 +128,41 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('🔐 Début de la mise à jour du mot de passe pour le compte:', accountId);
+      console.log('🔐 Appel de l\'edge function pour définir le mot de passe');
       
-      // Hasher le mot de passe avec bcrypt (10 rounds)
-      const passwordHash = await bcrypt.hash(password, 10);
-      console.log('✅ Mot de passe hashé avec succès');
-
-      // Vérifier que le compte existe avant la mise à jour
-      const { data: accountCheck, error: checkError } = await supabase
-        .from('student_accounts')
-        .select('id, email')
-        .eq('id', accountId)
-        .maybeSingle();
-
-      console.log('🔍 Vérification du compte:', {
-        found: !!accountCheck,
-        accountId: accountCheck?.id,
-        email: accountCheck?.email,
-        checkError
+      // Appeler l'edge function qui gère la définition du mot de passe de manière sécurisée
+      const { data, error } = await supabase.functions.invoke('set-student-password', {
+        body: {
+          token: token.trim(),
+          password: password
+        }
       });
 
-      if (checkError || !accountCheck) {
-        console.error('❌ Compte non trouvé pour la mise à jour');
-        toast.error('Compte introuvable. Le lien a peut-être expiré.');
-        navigate('/auth');
+      console.log('📥 Réponse de l\'edge function:', { 
+        success: !!data?.success,
+        error,
+        data 
+      });
+
+      if (error) {
+        console.error('❌ Erreur lors de l\'appel de l\'edge function:', error);
+        toast.error(`Erreur: ${error.message}`);
         return;
       }
 
-      // Mettre à jour le compte dans student_accounts
-      const { error: updateError } = await supabase
-        .from('student_accounts')
-        .update({
-          password_hash: passwordHash,
-          is_active: true,
-          invitation_token: null,
-          invitation_expires_at: null
-        })
-        .eq('id', accountId);
-
-      console.log('📥 Résultat de la mise à jour:', { 
-        success: !updateError,
-        updateError
-      });
-
-      if (updateError) {
-        console.error('❌ Erreur Supabase lors de la mise à jour:', updateError);
-        toast.error(`Erreur: ${updateError.message}`);
+      if (data?.error) {
+        console.error('❌ Erreur retournée par l\'edge function:', data.error);
+        toast.error(data.error);
         return;
       }
 
-      // Vérifier que la mise à jour a bien été effectuée
-      const { data: verifyAccount, error: verifyError } = await supabase
-        .from('student_accounts')
-        .select('id, email, is_active, password_hash')
-        .eq('id', accountId)
-        .maybeSingle();
-
-      console.log('✅ Vérification après mise à jour:', {
-        found: !!verifyAccount,
-        isActive: verifyAccount?.is_active,
-        hasPassword: !!verifyAccount?.password_hash,
-        verifyError
-      });
-
-      if (!verifyAccount || !verifyAccount.is_active || !verifyAccount.password_hash) {
-        console.error('❌ La mise à jour n\'a pas été enregistrée correctement');
-        toast.error('Erreur lors de l\'activation du compte. Veuillez réessayer.');
+      if (!data?.success) {
+        console.error('❌ L\'edge function n\'a pas retourné de succès');
+        toast.error('Erreur lors de la définition du mot de passe');
         return;
       }
 
-      console.log('✅ Compte activé avec succès:', {
-        id: verifyAccount.id,
-        email: verifyAccount.email,
-        is_active: verifyAccount.is_active
-      });
-      
+      console.log('✅ Mot de passe défini avec succès');
       toast.success('Mot de passe défini avec succès ! Vous pouvez maintenant vous connecter.');
       
       // Rediriger vers la page d'authentification après 1.5 secondes
