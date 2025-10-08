@@ -17,6 +17,8 @@ import { ActiveSessionsPanel } from "@/components/teacher/ActiveSessionsPanel";
 import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
 import { AssignmentForm } from "@/components/teacher/AssignmentForm";
 import { TeacherCalendarSection } from "@/components/teacher/TeacherCalendarSection";
+import { CalendarSummary } from "@/components/calendar/CalendarSummary";
+import { useAssignments } from "@/hooks/useAssignments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -39,6 +41,9 @@ const TeacherDashboard = () => {
   // Get teacher's assigned classes
   const { teacherClasses } = useTeacherClasses(teacherId);
   const teacherClassIds = teacherClasses.map(tc => tc.class_id);
+  
+  // Get assignments for teacher
+  const { assignments } = useAssignments({ teacherId });
   
   // Get students from teacher's classes
   const { students } = useStudents(currentTeacher?.school_id);
@@ -265,6 +270,19 @@ const TeacherDashboard = () => {
                     );
                   })}
                 </div>
+                
+                <CalendarSummary 
+                  events={assignments.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    session_date: a.session_date || a.due_date || "",
+                    start_time: a.start_time || null,
+                    end_time: a.end_time || null,
+                    type: a.type,
+                    class_name: a.classes?.name,
+                  }))}
+                  title="Mes séances à venir"
+                />
               </div>
             )}
 

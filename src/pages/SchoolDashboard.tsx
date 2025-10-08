@@ -20,6 +20,7 @@ import { useTeachers } from "@/hooks/useTeachers";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useGrades } from "@/hooks/useGrades";
+import { useAssignments } from "@/hooks/useAssignments";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { StatsCard } from "@/components/analytics/StatsCard";
 import { QuickActions } from "@/components/analytics/QuickActions";
@@ -36,6 +37,7 @@ import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
 import { StudentAccountsSection } from "@/components/school/StudentAccountsSection";
 import { SchoolCalendarSection } from "@/components/school/SchoolCalendarSection";
+import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -87,6 +89,7 @@ const SchoolDashboard = () => {
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
   const { grades } = useGrades();
+  const { assignments } = useAssignments({ schoolId: school?.id });
 
   // Calculate enhanced stats
   const stats = useMemo(() => {
@@ -484,6 +487,19 @@ const SchoolDashboard = () => {
                   </div>
                   
                   <AnalyticsDashboard schoolId={school.id} />
+                  
+                  <CalendarSummary 
+                    events={assignments.map(a => ({
+                      id: a.id,
+                      title: a.title,
+                      session_date: a.session_date || a.due_date || "",
+                      start_time: a.start_time || null,
+                      end_time: a.end_time || null,
+                      type: a.type,
+                      class_name: a.classes?.name,
+                    }))}
+                    title="Séances à venir"
+                  />
                 </div>
               )}
 

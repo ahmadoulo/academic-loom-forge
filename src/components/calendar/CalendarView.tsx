@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,12 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ events, onDateSelect, selectedDate }: CalendarViewProps) {
+  // Sélectionner automatiquement la date du jour au montage
+  useEffect(() => {
+    if (!selectedDate) {
+      onDateSelect(new Date());
+    }
+  }, []);
   const getEventsForDate = (date: Date) => {
     return events.filter(event => 
       event.session_date && isSameDay(new Date(event.session_date), date)
@@ -37,12 +43,12 @@ export function CalendarView({ events, onDateSelect, selectedDate }: CalendarVie
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Calendrier</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex justify-center">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -52,9 +58,9 @@ export function CalendarView({ events, onDateSelect, selectedDate }: CalendarVie
               hasEvent: getDatesWithEvents()
             }}
             modifiersClassNames={{
-              hasEvent: "bg-primary/20 font-bold"
+              hasEvent: "relative after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-primary"
             }}
-            className="rounded-md border"
+            className="rounded-md border scale-110 origin-center"
           />
         </CardContent>
       </Card>
