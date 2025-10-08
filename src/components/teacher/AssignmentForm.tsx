@@ -21,7 +21,7 @@ export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
   const { teachers } = useTeachers();
   const teacher = teachers.find(t => t.id === teacherId);
   const { toast } = useToast();
-  const { assignments, createAssignment, deleteAssignment, loading: assignmentsLoading } = useAssignments(undefined, undefined, teacherId);
+  const { assignments, createAssignment, deleteAssignment, loading: assignmentsLoading } = useAssignments({ teacherId });
   const { teacherClasses, loading: classesLoading } = useTeacherClasses(teacherId);
   
   const [formData, setFormData] = useState({

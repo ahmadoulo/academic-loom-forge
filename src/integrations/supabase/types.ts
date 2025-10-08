@@ -20,8 +20,11 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          end_time: string | null
           id: string
           school_id: string
+          session_date: string | null
+          start_time: string | null
           teacher_id: string
           title: string
           type: string
@@ -32,8 +35,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          end_time?: string | null
           id?: string
           school_id: string
+          session_date?: string | null
+          start_time?: string | null
           teacher_id: string
           title: string
           type?: string
@@ -44,8 +50,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          end_time?: string | null
           id?: string
           school_id?: string
+          session_date?: string | null
+          start_time?: string | null
           teacher_id?: string
           title?: string
           type?: string

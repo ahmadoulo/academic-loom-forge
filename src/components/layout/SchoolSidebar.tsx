@@ -8,7 +8,8 @@ import {
   GraduationCap, 
   Settings,
   ChevronRight,
-  FileText
+  FileText,
+  Calendar
 } from "lucide-react";
 
 import {
@@ -33,6 +34,11 @@ const menuItems = [
     title: "Analytics", 
     value: "analytics",
     icon: BarChart3 
+  },
+  { 
+    title: "Calendrier", 
+    value: "calendar",
+    icon: Calendar 
   },
   { 
     title: "Étudiants", 

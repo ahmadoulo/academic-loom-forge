@@ -7,7 +7,8 @@ import {
   GraduationCap,
   Home,
   UserCheck,
-  FileText
+  FileText,
+  Calendar
 } from "lucide-react";
 
 import {
@@ -28,6 +29,11 @@ const menuItems = [
     title: "Tableau de bord", 
     value: "dashboard",
     icon: Home 
+  },
+  { 
+    title: "Calendrier", 
+    value: "calendar",
+    icon: Calendar 
   },
   { 
     title: "Mes Classes", 

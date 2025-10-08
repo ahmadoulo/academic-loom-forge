@@ -7,6 +7,7 @@ import { StudentsGradesSection } from "@/components/student/StudentsGradesSectio
 import { StudentWelcomeSection } from "@/components/student/StudentWelcomeSection";
 import { DocumentRequestForm } from "@/components/student/DocumentRequestForm";
 import { StudentAssignmentsSection } from "@/components/student/StudentAssignmentsSection";
+import { StudentCalendarSection } from "@/components/student/StudentCalendarSection";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 
 export default function StudentDashboard() {
@@ -24,6 +25,13 @@ export default function StudentDashboard() {
     switch (activeTab) {
       case "accueil":
         return <StudentWelcomeSection studentId={currentStudentId} />;
+      case "calendar":
+        return student && (
+          <StudentCalendarSection 
+            studentId={currentStudentId!} 
+            classId={student.class_id}
+          />
+        );
       case "notes":
         return <StudentsGradesSection studentId={currentStudentId} />;
       case "devoirs":

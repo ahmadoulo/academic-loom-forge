@@ -16,6 +16,7 @@ import { AttendanceHistory } from "@/components/teacher/AttendanceHistory";
 import { ActiveSessionsPanel } from "@/components/teacher/ActiveSessionsPanel";
 import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
 import { AssignmentForm } from "@/components/teacher/AssignmentForm";
+import { TeacherCalendarSection } from "@/components/teacher/TeacherCalendarSection";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -265,6 +266,10 @@ const TeacherDashboard = () => {
                   })}
                 </div>
               </div>
+            )}
+
+            {activeTab === "calendar" && (
+              <TeacherCalendarSection teacherId={teacherId || ''} />
             )}
 
             {activeTab === "assignments" && (

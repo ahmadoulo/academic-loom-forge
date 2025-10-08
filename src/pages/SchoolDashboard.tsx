@@ -35,6 +35,7 @@ import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
 import { StudentAccountsSection } from "@/components/school/StudentAccountsSection";
+import { SchoolCalendarSection } from "@/components/school/SchoolCalendarSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -484,6 +485,14 @@ const SchoolDashboard = () => {
                   
                   <AnalyticsDashboard schoolId={school.id} />
                 </div>
+              )}
+
+              {activeTab === "calendar" && (
+                <SchoolCalendarSection 
+                  schoolId={school.id}
+                  classes={classes}
+                  teachers={teachers}
+                />
               )}
               
               {activeTab === "students" && (

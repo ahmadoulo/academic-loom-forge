@@ -3,7 +3,8 @@ import {
   Home,
   GraduationCap,
   FileText,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from "lucide-react";
 
 import {
@@ -23,6 +24,11 @@ const menuItems = [
     title: "Accueil", 
     value: "accueil",
     icon: Home 
+  },
+  { 
+    title: "Calendrier", 
+    value: "calendar",
+    icon: Calendar 
   },
   { 
     title: "Mes Notes", 

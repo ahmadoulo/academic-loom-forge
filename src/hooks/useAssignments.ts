@@ -8,8 +8,11 @@ export interface Assignment {
   class_id: string;
   title: string;
   description?: string;
-  type: 'exam' | 'test' | 'homework';
+  type: 'exam' | 'test' | 'homework' | 'course' | 'assignment';
   due_date?: string;
+  session_date?: string;
+  start_time?: string;
+  end_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -30,11 +33,25 @@ export interface CreateAssignmentData {
   class_id: string;
   title: string;
   description?: string;
-  type: 'exam' | 'test' | 'homework';
+  type: 'exam' | 'test' | 'homework' | 'course' | 'assignment';
   due_date?: string;
+  session_date?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
-export const useAssignments = (classId?: string, studentId?: string, teacherId?: string) => {
+interface UseAssignmentsOptions {
+  classId?: string;
+  studentId?: string;
+  teacherId?: string;
+  schoolId?: string;
+}
+
+export const useAssignments = (options?: UseAssignmentsOptions | string) => {
+  // Support both old signature (classId as string) and new signature (options object)
+  const opts = typeof options === 'string' ? { classId: options } : options || {};
+  const { classId, studentId, teacherId, schoolId } = opts;
+
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +82,10 @@ export const useAssignments = (classId?: string, studentId?: string, teacherId?:
         query = query.eq('teacher_id', teacherId);
       }
 
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -72,7 +93,7 @@ export const useAssignments = (classId?: string, studentId?: string, teacherId?:
       // Type assertion to ensure proper typing
       const typedData = (data || []).map(assignment => ({
         ...assignment,
-        type: assignment.type as 'exam' | 'test' | 'homework'
+        type: assignment.type as 'exam' | 'test' | 'homework' | 'course' | 'assignment'
       }));
 
       setAssignments(typedData);
