@@ -41,13 +41,18 @@ const menuItems = [
     icon: Users 
   },
   { 
-    title: "Présence", 
+    title: "Marquer Présence", 
     value: "attendance",
     icon: UserCheck 
   },
   { 
-    title: "Noter", 
-    value: "grading",
+    title: "Historique Présences", 
+    value: "attendance-view",
+    icon: Calendar 
+  },
+  { 
+    title: "Gestion des Notes", 
+    value: "grades",
     icon: BookOpen 
   },
   { 

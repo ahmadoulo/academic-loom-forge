@@ -18,6 +18,8 @@ import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
 import { AssignmentForm } from "@/components/teacher/AssignmentForm";
 import { TeacherCalendarSection } from "@/components/teacher/TeacherCalendarSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
+import { TeacherGradesView } from "@/components/teacher/TeacherGradesView";
+import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
 import { useAssignments } from "@/hooks/useAssignments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -292,6 +294,25 @@ const TeacherDashboard = () => {
 
             {activeTab === "assignments" && (
               <AssignmentForm teacherId={teacherId || ''} />
+            )}
+
+            {activeTab === "grades" && (
+              <TeacherGradesView
+                teacherClasses={teacherClasses}
+                subjects={subjects}
+                students={teacherStudents}
+                grades={grades}
+                onSaveGrade={handleSaveGrade}
+                onDeleteGrade={handleDeleteGrade}
+              />
+            )}
+
+            {activeTab === "attendance-view" && (
+              <TeacherAttendanceView
+                teacherClasses={teacherClasses}
+                students={teacherStudents}
+                teacherId={teacherId || ''}
+              />
             )}
 
             {activeTab === "classes" && (

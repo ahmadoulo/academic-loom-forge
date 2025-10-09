@@ -51,6 +51,16 @@ const menuItems = [
     icon: School 
   },
   { 
+    title: "Notes", 
+    value: "grades",
+    icon: BookOpen 
+  },
+  { 
+    title: "Présences", 
+    value: "attendance",
+    icon: Calendar 
+  },
+  { 
     title: "Matières", 
     value: "subjects",
     icon: BookOpen 

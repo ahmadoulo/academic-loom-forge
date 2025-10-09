@@ -38,6 +38,9 @@ import { DocumentRequestsManagement } from "@/components/school/DocumentRequests
 import { StudentAccountsSection } from "@/components/school/StudentAccountsSection";
 import { SchoolCalendarSection } from "@/components/school/SchoolCalendarSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
+import { SchoolGradesView } from "@/components/school/SchoolGradesView";
+import { SchoolAttendanceView } from "@/components/school/SchoolAttendanceView";
+import { useAttendance } from "@/hooks/useAttendance";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -90,6 +93,7 @@ const SchoolDashboard = () => {
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
   const { grades } = useGrades();
   const { assignments } = useAssignments({ schoolId: school?.id });
+  const { attendance, loading: attendanceLoading } = useAttendance();
 
   // Calculate enhanced stats
   const stats = useMemo(() => {
@@ -509,6 +513,29 @@ const SchoolDashboard = () => {
                   classes={classes}
                   teachers={teachers}
                 />
+              )}
+              
+              {activeTab === "grades" && (
+                <div className="space-y-6">
+                  <SchoolGradesView
+                    classes={classes}
+                    students={students}
+                    grades={grades}
+                    subjects={subjects}
+                    loading={studentsLoading || subjectsLoading}
+                  />
+                </div>
+              )}
+              
+              {activeTab === "attendance" && (
+                <div className="space-y-6">
+                  <SchoolAttendanceView
+                    classes={classes}
+                    students={students}
+                    attendance={attendance}
+                    loading={attendanceLoading}
+                  />
+                </div>
               )}
               
               {activeTab === "students" && (

@@ -108,43 +108,43 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
                 )}
               </div>
             ) : (
-              <div className="max-h-[600px] overflow-y-auto">
+              <div className="max-h-[600px] overflow-y-auto overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nom Complet</TableHead>
-                      <TableHead>Classe</TableHead>
-                      <TableHead>CIN</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Téléphone</TableHead>
-                      <TableHead>Tél. Parent</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="min-w-[150px]">Nom Complet</TableHead>
+                      <TableHead className="min-w-[120px]">Classe</TableHead>
+                      <TableHead className="min-w-[100px]">CIN</TableHead>
+                      <TableHead className="min-w-[180px]">Email</TableHead>
+                      <TableHead className="min-w-[120px]">Téléphone</TableHead>
+                      <TableHead className="min-w-[120px]">Tél. Parent</TableHead>
+                      <TableHead className="text-right min-w-[180px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
                       <TableRow key={student.id}>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium whitespace-nowrap">
                           {student.firstname} {student.lastname}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <Badge variant="outline">
                             {student.classes?.name || "Non assignée"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
+                        <TableCell className="font-mono text-sm whitespace-nowrap">
                           {student.cin_number || "-"}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm whitespace-nowrap">
                           {student.email || "-"}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm whitespace-nowrap">
                           {student.student_phone || "-"}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm whitespace-nowrap">
                           {student.parent_phone || "-"}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
                           <div className="flex justify-end gap-2">
                             <Button
                               variant="outline"
