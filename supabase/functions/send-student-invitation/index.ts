@@ -91,7 +91,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev',
+        from: 'noreply@ndiambour-it.com',
         to: [account.email],
         subject: 'Activez votre compte étudiant',
         html: emailHtml,
