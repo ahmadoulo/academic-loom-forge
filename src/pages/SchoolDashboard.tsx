@@ -529,12 +529,7 @@ const SchoolDashboard = () => {
               
               {activeTab === "attendance" && (
                 <div className="space-y-6">
-                  <SchoolAttendanceView
-                    classes={classes}
-                    students={students}
-                    attendance={attendance}
-                    loading={attendanceLoading}
-                  />
+                  <SchoolAttendanceView schoolId={schoolId} />
                 </div>
               )}
               

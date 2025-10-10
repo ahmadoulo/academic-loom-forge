@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "lucide-react";
-import { AttendanceHistory } from "./AttendanceHistory";
+import { useAssignments } from "@/hooks/useAssignments";
+import { SessionsList } from "./SessionsList";
+import { SessionAttendanceManager } from "./SessionAttendanceManager";
 
 interface Class {
   id: string;
@@ -15,6 +16,20 @@ interface Student {
   firstname: string;
   lastname: string;
   class_id: string;
+}
+
+interface Assignment {
+  id: string;
+  title: string;
+  description?: string | null;
+  session_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  type: string;
+  subjects?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface TeacherAttendanceViewProps {
@@ -29,24 +44,29 @@ export function TeacherAttendanceView({
   teacherId 
 }: TeacherAttendanceViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [showHistory, setShowHistory] = useState(false);
-
-  const handleViewHistory = () => {
-    if (selectedClass) {
-      setShowHistory(true);
-    }
-  };
+  const [selectedSession, setSelectedSession] = useState<Assignment | null>(null);
+  
+  const { assignments, loading } = useAssignments({ 
+    classId: selectedClass,
+    teacherId: teacherId 
+  });
 
   const classData = teacherClasses.find(tc => tc.class_id === selectedClass)?.classes;
   const classStudents = students.filter(s => s.class_id === selectedClass);
 
-  if (showHistory && classData) {
+  // Filtrer uniquement les assignments de type 'course' ou qui ont des horaires (ce sont des séances)
+  const sessions = (assignments || []).filter(a => 
+    a.session_date && a.start_time && a.end_time
+  );
+
+  if (selectedSession && classData) {
     return (
-      <AttendanceHistory
-        classData={classData}
+      <SessionAttendanceManager
+        assignment={selectedSession}
         students={classStudents}
         teacherId={teacherId}
-        onBack={() => setShowHistory(false)}
+        classId={selectedClass}
+        onBack={() => setSelectedSession(null)}
       />
     );
   }
@@ -56,7 +76,7 @@ export function TeacherAttendanceView({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          Historique des Présences
+          Gestion des Présences par Séance
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -78,16 +98,23 @@ export function TeacherAttendanceView({
           </div>
 
           {selectedClass && (
-            <Button onClick={handleViewHistory} className="w-full">
-              Voir l'historique des présences
-            </Button>
+            loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Chargement des séances...</p>
+              </div>
+            ) : (
+              <SessionsList
+                assignments={sessions}
+                onSelectSession={setSelectedSession}
+              />
+            )
           )}
         </div>
 
         {!selectedClass && (
           <div className="text-center py-12 text-muted-foreground">
             <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Sélectionnez une classe pour commencer</p>
+            <p>Sélectionnez une classe pour voir les séances</p>
           </div>
         )}
       </CardContent>

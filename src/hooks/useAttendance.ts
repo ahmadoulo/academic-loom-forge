@@ -7,6 +7,8 @@ interface AttendanceRecord {
   student_id: string;
   class_id: string;
   teacher_id: string;
+  assignment_id?: string;
+  subject_id?: string;
   date: string;
   status: 'present' | 'absent';
   marked_at: string;
@@ -15,6 +17,15 @@ interface AttendanceRecord {
     id: string;
     firstname: string;
     lastname: string;
+  };
+  assignments?: {
+    id: string;
+    title: string;
+    type: string;
+  };
+  subjects?: {
+    id: string;
+    name: string;
   };
 }
 
@@ -32,12 +43,14 @@ interface CreateAttendanceData {
   student_id: string;
   class_id: string;
   teacher_id: string;
+  assignment_id?: string;
+  subject_id?: string;
   status: 'present' | 'absent';
   method?: 'manual' | 'qr_scan';
   date?: string;
 }
 
-export const useAttendance = (classId?: string, teacherId?: string, date?: string) => {
+export const useAttendance = (classId?: string, teacherId?: string, date?: string, assignmentId?: string, subjectId?: string) => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +62,12 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       setLoading(true);
       let query = supabase
         .from('attendance')
-        .select('*')
+        .select(`
+          *,
+          assignments(id, title, type),
+          subjects(id, name),
+          students!inner(id, firstname, lastname)
+        `)
         .order('created_at', { ascending: false });
 
       if (classId) {
@@ -61,28 +79,18 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       if (date) {
         query = query.eq('date', date);
       }
+      if (assignmentId) {
+        query = query.eq('assignment_id', assignmentId);
+      }
+      if (subjectId) {
+        query = query.eq('subject_id', subjectId);
+      }
 
       const { data, error } = await query;
 
       if (error) throw error;
       
-      // Fetch student details separately
-      const attendanceWithStudents = await Promise.all(
-        (data || []).map(async (record: any) => {
-          const { data: student } = await supabase
-            .from('students')
-            .select('id, firstname, lastname')
-            .eq('id', record.student_id)
-            .single();
-          
-          return {
-            ...record,
-            students: student
-          };
-        })
-      );
-      
-      setAttendance(attendanceWithStudents as AttendanceRecord[]);
+      setAttendance((data || []) as unknown as AttendanceRecord[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des présences');
       console.error('Error fetching attendance:', err);
@@ -121,7 +129,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
           date: attendanceData.date || new Date().toISOString().split('T')[0],
           method: attendanceData.method || 'manual'
         }, {
-          onConflict: 'student_id, class_id, date'
+          onConflict: attendanceData.assignment_id ? 'student_id, assignment_id' : 'student_id, class_id, date'
         })
         .select();
 
@@ -324,7 +332,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(sessionsChannel);
     };
-  }, [classId, teacherId, date]);
+  }, [classId, teacherId, date, assignmentId, subjectId]);
 
   return {
     attendance,

@@ -86,6 +86,7 @@ export type Database = {
       }
       attendance: {
         Row: {
+          assignment_id: string | null
           class_id: string
           created_at: string
           date: string
@@ -94,10 +95,12 @@ export type Database = {
           method: string
           status: string
           student_id: string
+          subject_id: string | null
           teacher_id: string
           updated_at: string
         }
         Insert: {
+          assignment_id?: string | null
           class_id: string
           created_at?: string
           date?: string
@@ -106,10 +109,12 @@ export type Database = {
           method?: string
           status?: string
           student_id: string
+          subject_id?: string | null
           teacher_id: string
           updated_at?: string
         }
         Update: {
+          assignment_id?: string | null
           class_id?: string
           created_at?: string
           date?: string
@@ -118,10 +123,26 @@ export type Database = {
           method?: string
           status?: string
           student_id?: string
+          subject_id?: string | null
           teacher_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "attendance_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       attendance_sessions: {
         Row: {

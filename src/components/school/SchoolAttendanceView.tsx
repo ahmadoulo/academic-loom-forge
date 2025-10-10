@@ -2,261 +2,194 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar as CalendarIcon, Download } from "lucide-react";
+import { useClasses } from "@/hooks/useClasses";
+import { useStudents } from "@/hooks/useStudents";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useSubjects } from "@/hooks/useSubjects";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+// import { exportAttendanceToPdf } from "@/utils/attendancePdfExport";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar, Download, Loader2, CheckCircle, XCircle } from "lucide-react";
-import { generateSchoolAttendanceReport } from "@/utils/attendancePdfExport";
-import { useToast } from "@/hooks/use-toast";
-
-interface Student {
-  id: string;
-  firstname: string;
-  lastname: string;
-  class_id: string;
-}
-
-interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  class_id: string;
-  teacher_id: string;
-  date: string;
-  status: 'present' | 'absent';
-  method: 'manual' | 'qr_scan';
-}
-
-interface Class {
-  id: string;
-  name: string;
-}
 
 interface SchoolAttendanceViewProps {
-  classes: Class[];
-  students: Student[];
-  attendance: AttendanceRecord[];
-  loading: boolean;
+  schoolId: string;
 }
 
-export function SchoolAttendanceView({ classes, students, attendance, loading }: SchoolAttendanceViewProps) {
-  const [selectedClass, setSelectedClass] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [generating, setGenerating] = useState(false);
-  const { toast } = useToast();
+export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  const { classes } = useClasses(schoolId);
+  const { students } = useStudents(schoolId);
+  const { subjects } = useSubjects(schoolId);
+  const { attendance, loading } = useAttendance(
+    selectedClass, 
+    undefined, 
+    selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
+    undefined,
+    selectedSubject || undefined
+  );
 
-  const filteredStudents = selectedClass === "all" 
-    ? students 
-    : students.filter(s => s.class_id === selectedClass);
+  const classData = classes.find(c => c.id === selectedClass);
+  const classStudents = students.filter(s => s.class_id === selectedClass);
+  const classSubjects = subjects.filter(s => s.class_id === selectedClass);
 
-  const getAttendanceForStudent = (studentId: string) => {
-    return attendance.find(a => 
-      a.student_id === studentId && 
-      a.date === selectedDate
-    );
+  const handleExportPdf = () => {
+    // TODO: Implement PDF export with subject filtering
+    console.log('Export PDF for class:', classData?.name, 'Subject:', selectedSubject);
   };
 
-  const getAttendanceStats = (studentId: string) => {
-    const studentAttendance = attendance.filter(a => a.student_id === studentId);
-    const present = studentAttendance.filter(a => a.status === 'present').length;
-    const absent = studentAttendance.filter(a => a.status === 'absent').length;
-    const total = present + absent;
-    const rate = total > 0 ? ((present / total) * 100).toFixed(0) : "0";
-    
-    return { present, absent, total, rate };
-  };
-
-  const handleExportPDF = async () => {
-    setGenerating(true);
-    try {
-      const classData = selectedClass === "all" 
-        ? { id: "all", name: "Toutes les classes" }
-        : classes.find(c => c.id === selectedClass) || { id: "", name: "" };
-
-      await generateSchoolAttendanceReport(
-        classData,
-        filteredStudents,
-        attendance,
-        selectedDate
-      );
-      
-      toast({
-        title: "PDF généré",
-        description: "Le rapport de présence a été téléchargé avec succès",
-      });
-    } catch (error) {
-      console.error('Erreur génération PDF:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de générer le PDF",
-        variant: "destructive"
-      });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const presentCount = filteredStudents.filter(s => {
-    const record = getAttendanceForStudent(s.id);
-    return record?.status === 'present';
-  }).length;
-
-  const absentCount = filteredStudents.filter(s => {
-    const record = getAttendanceForStudent(s.id);
-    return record?.status === 'absent';
-  }).length;
+  const presentCount = classStudents.filter(s => 
+    attendance.find(a => a.student_id === s.id && a.status === 'present')
+  ).length;
+  
+  const absentCount = classStudents.filter(s => 
+    !attendance.find(a => a.student_id === s.id && a.status === 'present')
+  ).length;
 
   return (
     <Card className="shadow-lg">
-      <CardHeader className="pb-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Présences et Absences
-            </CardTitle>
-            
-            <Button 
-              onClick={handleExportPDF}
-              disabled={generating || filteredStudents.length === 0}
-              variant="outline"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              {generating ? "Génération..." : "Exporter PDF"}
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5 text-primary" />
+            Présences et Absences par Matière
+          </span>
+          {selectedClass && (
+            <Button onClick={handleExportPdf} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exporter PDF
             </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Classe</label>
+            <Select value={selectedClass} onValueChange={(value) => {
+              setSelectedClass(value);
+              setSelectedSubject(""); // Reset subject when class changes
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une classe" />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex-1">
-              <Label htmlFor="class-filter">Classe</Label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger id="class-filter">
-                  <SelectValue placeholder="Filtrer par classe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes les classes</SelectItem>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Matière</label>
+            <Select 
+              value={selectedSubject} 
+              onValueChange={setSelectedSubject}
+              disabled={!selectedClass}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Toutes les matières" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Toutes les matières</SelectItem>
+                {classSubjects.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
-          <div className="flex gap-4">
-            <Badge variant="outline" className="flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-600" />
-              {presentCount} présents
-            </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <XCircle className="h-3 w-3 text-red-600" />
-              {absentCount} absents
-            </Badge>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, 'PPP', { locale: fr })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  locale={fr}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-      </CardHeader>
-      
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-lg">Chargement...</span>
+
+        {selectedClass && (
+          <div className="border rounded-lg p-4 bg-muted/50">
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-success">{presentCount}</div>
+                <div className="text-sm text-muted-foreground">Présents</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-destructive">{absentCount}</div>
+                <div className="text-sm text-muted-foreground">Absents</div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            {filteredStudents.length === 0 ? (
-              <div className="text-center py-12">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-lg">Aucun étudiant trouvé</p>
-              </div>
-            ) : (
-              <div className="max-h-[600px] overflow-y-auto overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[150px]">Étudiant</TableHead>
-                      <TableHead className="min-w-[120px]">Classe</TableHead>
-                      <TableHead className="min-w-[120px] text-center">Statut du jour</TableHead>
-                      <TableHead className="min-w-[100px] text-center">Total Présent</TableHead>
-                      <TableHead className="min-w-[100px] text-center">Total Absent</TableHead>
-                      <TableHead className="min-w-[120px] text-center">Taux Présence</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student) => {
-                      const studentClass = classes.find(c => c.id === student.class_id);
-                      const todayRecord = getAttendanceForStudent(student.id);
-                      const stats = getAttendanceStats(student.id);
-                      
-                      return (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium whitespace-nowrap">
-                            {student.firstname} {student.lastname}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            <Badge variant="outline">
-                              {studentClass?.name || "Non assignée"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center whitespace-nowrap">
-                            {todayRecord ? (
-                              <Badge 
-                                variant={todayRecord.status === 'present' ? 'default' : 'destructive'}
-                                className={todayRecord.status === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                              >
-                                {todayRecord.status === 'present' ? (
-                                  <>
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Présent
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Absent
-                                  </>
-                                )}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">Non marqué</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center whitespace-nowrap">
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              {stats.present}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center whitespace-nowrap">
-                            <Badge variant="secondary" className="bg-red-100 text-red-800">
-                              {stats.absent}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center whitespace-nowrap">
-                            <Badge 
-                              variant={Number(stats.rate) >= 75 ? "default" : "destructive"}
-                            >
-                              {stats.rate}%
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+        )}
+
+        {selectedClass && !loading && (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Liste des étudiants</h3>
+            <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+              {classStudents.map((student) => {
+                const record = attendance.find(a => a.student_id === student.id);
+                const isPresent = record?.status === 'present';
+                
+                return (
+                  <div
+                    key={student.id}
+                    className="p-3 flex items-center justify-between hover:bg-accent/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{student.firstname} {student.lastname}</span>
+                      {record?.subjects && (
+                        <Badge variant="outline" className="text-xs">
+                          {record.subjects.name}
+                        </Badge>
+                      )}
+                      {record?.assignments && (
+                        <Badge variant="secondary" className="text-xs">
+                          {record.assignments.title}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      isPresent 
+                        ? 'bg-success/20 text-success' 
+                        : 'bg-destructive/20 text-destructive'
+                    }`}>
+                      {isPresent ? 'Présent' : 'Absent'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!selectedClass && (
+          <div className="text-center py-12 text-muted-foreground">
+            <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Sélectionnez une classe pour voir les présences</p>
           </div>
         )}
       </CardContent>

@@ -130,8 +130,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Erreur dans send-student-invitation:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
