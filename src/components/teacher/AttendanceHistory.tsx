@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft,
   Download,
@@ -15,6 +16,7 @@ import {
   FileText
 } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
+import { useSubjects } from "@/hooks/useSubjects";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import jsPDF from 'jspdf';
@@ -42,8 +44,18 @@ export const AttendanceHistory = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
   
-  const { attendance, loading } = useAttendance(classData.id, teacherId);
+  // Récupérer les matières du professeur pour cette classe
+  const { subjects } = useSubjects(undefined, classData.id, teacherId);
+  
+  const { attendance, loading } = useAttendance(
+    classData.id, 
+    teacherId,
+    undefined,
+    undefined,
+    selectedSubject || undefined
+  );
 
   // Filtrer les présences par mois sélectionné
   const filteredAttendance = attendance.filter(record => {
@@ -171,8 +183,24 @@ export const AttendanceHistory = ({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex items-center gap-2 flex-1">
+                <Label htmlFor="subject">Matière:</Label>
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Toutes les matières" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Toutes les matières</SelectItem>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor="month">Mois:</Label>
                 <Input
@@ -183,19 +211,24 @@ export const AttendanceHistory = ({
                   className="w-auto"
                 />
               </div>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {dates.length} sessions
-              </Badge>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {students.length} étudiants
-              </Badge>
             </div>
-            <Button onClick={exportToPDF} className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Exporter PDF
-            </Button>
+            
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              <div className="flex gap-2">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {dates.length} sessions
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {students.length} étudiants
+                </Badge>
+              </div>
+              <Button onClick={exportToPDF} className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Exporter PDF
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -256,12 +289,20 @@ export const AttendanceHistory = ({
                           const studentRecord = dayAttendance.find(r => r.student_id === student.id);
                           const isPresent = studentRecord?.status === 'present';
                           const method = studentRecord?.method;
+                          const subjectName = studentRecord?.subjects?.name;
                           
                           return (
                             <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg">
-                              <span className="font-medium">
-                                {student.firstname} {student.lastname}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {student.firstname} {student.lastname}
+                                </span>
+                                {subjectName && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {subjectName}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Badge 
                                   variant={isPresent ? "default" : "secondary"}

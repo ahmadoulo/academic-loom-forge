@@ -41,14 +41,9 @@ const menuItems = [
     icon: Users 
   },
   { 
-    title: "Marquer Présence", 
-    value: "attendance",
-    icon: UserCheck 
-  },
-  { 
-    title: "Historique Présences", 
+    title: "Présence", 
     value: "attendance-view",
-    icon: Calendar 
+    icon: UserCheck 
   },
   { 
     title: "Gestion des Notes", 

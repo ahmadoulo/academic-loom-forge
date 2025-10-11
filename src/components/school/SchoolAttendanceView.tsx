@@ -23,16 +23,20 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
-  const { classes } = useClasses(schoolId);
+  const { classes, loading: classesLoading } = useClasses(schoolId);
   const { students } = useStudents(schoolId);
   const { subjects } = useSubjects(schoolId);
   const { attendance, loading } = useAttendance(
-    selectedClass, 
+    selectedClass || undefined, 
     undefined, 
     selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
     undefined,
     selectedSubject || undefined
   );
+  
+  console.log('SchoolAttendanceView - schoolId:', schoolId);
+  console.log('SchoolAttendanceView - classes:', classes);
+  console.log('SchoolAttendanceView - classesLoading:', classesLoading);
 
   const classData = classes.find(c => c.id === selectedClass);
   const classStudents = students.filter(s => s.class_id === selectedClass);
@@ -71,12 +75,20 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="text-sm font-medium mb-2 block">Classe</label>
-            <Select value={selectedClass} onValueChange={(value) => {
-              setSelectedClass(value);
-              setSelectedSubject(""); // Reset subject when class changes
-            }}>
+            <Select 
+              value={selectedClass} 
+              onValueChange={(value) => {
+                setSelectedClass(value);
+                setSelectedSubject(""); // Reset subject when class changes
+              }}
+              disabled={classesLoading || classes.length === 0}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une classe" />
+                <SelectValue placeholder={
+                  classesLoading ? "Chargement..." : 
+                  classes.length === 0 ? "Aucune classe disponible" : 
+                  "Sélectionner une classe"
+                } />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((cls) => (

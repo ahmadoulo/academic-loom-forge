@@ -141,7 +141,7 @@ const SchoolDashboard = () => {
     // Recent grades
     grades.slice(0, 2).forEach(grade => {
       const student = students.find(s => s.id === grade.student_id);
-      if (student?.school_id === school?.id) {
+      if (student && student.school_id === school?.id && student.firstname && student.lastname) {
         activities.push({
           id: `grade-${grade.id}`,
           type: 'grade' as const,
