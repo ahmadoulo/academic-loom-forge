@@ -99,7 +99,6 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
                 <SelectValue placeholder="Toutes les matières" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les matières</SelectItem>
                 {classSubjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.name}
