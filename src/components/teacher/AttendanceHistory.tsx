@@ -44,7 +44,7 @@ export const AttendanceHistory = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
   
   // Récupérer les matières du professeur pour cette classe
   const { subjects } = useSubjects(undefined, classData.id, teacherId);
@@ -54,7 +54,7 @@ export const AttendanceHistory = ({
     teacherId,
     undefined,
     undefined,
-    selectedSubject || undefined
+    selectedSubject === "all" ? undefined : selectedSubject
   );
 
   // Filtrer les présences par mois sélectionné
@@ -192,7 +192,7 @@ export const AttendanceHistory = ({
                     <SelectValue placeholder="Toutes les matières" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes les matières</SelectItem>
+                    <SelectItem value="all">Toutes les matières</SelectItem>
                     {subjects.map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>
                         {subject.name}
