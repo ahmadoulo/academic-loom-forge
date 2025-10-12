@@ -21,6 +21,7 @@ interface Assignment {
   end_time?: string | null;
   type: string;
   teacher_id?: string;
+  subject_id?: string;
   subjects?: {
     id: string;
     name: string;

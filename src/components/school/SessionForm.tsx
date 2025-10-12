@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useSubjects } from "@/hooks/useSubjects";
 
 interface SessionFormProps {
   onSubmit: (data: SessionFormData) => void;
@@ -17,6 +18,7 @@ interface SessionFormProps {
   classes: Array<{ id: string; name: string }>;
   teachers: Array<{ id: string; firstname: string; lastname: string }>;
   loading?: boolean;
+  schoolId: string;
 }
 
 export interface SessionFormData {
@@ -24,15 +26,24 @@ export interface SessionFormData {
   description: string;
   class_id: string;
   teacher_id: string;
+  subject_id?: string;
   session_date: Date;
   start_time: string;
   end_time: string;
   type: 'course' | 'exam' | 'assignment';
 }
 
-export function SessionForm({ onSubmit, onCancel, classes, teachers, loading }: SessionFormProps) {
+export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, schoolId }: SessionFormProps) {
   const [formData, setFormData] = useState<Partial<SessionFormData>>({
     type: 'course',
+  });
+  
+  const { subjects } = useSubjects(schoolId, formData.class_id, formData.teacher_id);
+  
+  // Filtrer les subjects en fonction de la classe et du professeur sélectionnés
+  const availableSubjects = subjects.filter(subject => {
+    if (!formData.class_id || !formData.teacher_id) return false;
+    return subject.class_id === formData.class_id && subject.teacher_id === formData.teacher_id;
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,7 +108,7 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading }: 
           <Label htmlFor="class">Classe *</Label>
           <Select
             value={formData.class_id}
-            onValueChange={(value) => setFormData({ ...formData, class_id: value })}
+            onValueChange={(value) => setFormData({ ...formData, class_id: value, subject_id: undefined })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner une classe" />
@@ -116,7 +127,7 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading }: 
           <Label htmlFor="teacher">Professeur *</Label>
           <Select
             value={formData.teacher_id}
-            onValueChange={(value) => setFormData({ ...formData, teacher_id: value })}
+            onValueChange={(value) => setFormData({ ...formData, teacher_id: value, subject_id: undefined })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner un professeur" />
@@ -131,6 +142,33 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading }: 
           </Select>
         </div>
       </div>
+
+      {formData.class_id && formData.teacher_id && (
+        <div>
+          <Label htmlFor="subject">Matière</Label>
+          <Select
+            value={formData.subject_id}
+            onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner une matière (optionnel)" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableSubjects.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">
+                  Aucune matière disponible pour cette classe et ce professeur
+                </div>
+              ) : (
+                availableSubjects.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div>
         <Label>Date de la séance *</Label>

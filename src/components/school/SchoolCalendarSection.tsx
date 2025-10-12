@@ -40,6 +40,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         description: data.description,
         class_id: data.class_id,
         teacher_id: data.teacher_id,
+        subject_id: data.subject_id,
         session_date: format(data.session_date, "yyyy-MM-dd"),
         start_time: data.start_time,
         end_time: data.end_time,
@@ -80,6 +81,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
               classes={classes}
               teachers={teachers}
               loading={loading}
+              schoolId={schoolId}
             />
           </DialogContent>
         </Dialog>

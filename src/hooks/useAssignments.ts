@@ -6,6 +6,7 @@ export interface Assignment {
   school_id: string;
   teacher_id: string;
   class_id: string;
+  subject_id?: string;
   title: string;
   description?: string;
   type: 'exam' | 'test' | 'homework' | 'course' | 'assignment';
@@ -25,12 +26,17 @@ export interface AssignmentWithDetails extends Assignment {
   classes?: {
     name: string;
   };
+  subjects?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface CreateAssignmentData {
   school_id: string;
   teacher_id: string;
   class_id: string;
+  subject_id?: string;
   title: string;
   description?: string;
   type: 'exam' | 'test' | 'homework' | 'course' | 'assignment';
@@ -71,6 +77,10 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
           ),
           classes (
             name
+          ),
+          subjects (
+            id,
+            name
           )
         `);
 
@@ -93,8 +103,12 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
       // Type assertion to ensure proper typing
       const typedData = (data || []).map(assignment => ({
         ...assignment,
-        type: assignment.type as 'exam' | 'test' | 'homework' | 'course' | 'assignment'
-      }));
+        type: assignment.type as 'exam' | 'test' | 'homework' | 'course' | 'assignment',
+        // Normalize subjects to be a single object or null
+        subjects: Array.isArray(assignment.subjects) && assignment.subjects.length > 0 
+          ? assignment.subjects[0] 
+          : (assignment.subjects || null)
+      })) as AssignmentWithDetails[];
 
       setAssignments(typedData);
     } catch (err) {

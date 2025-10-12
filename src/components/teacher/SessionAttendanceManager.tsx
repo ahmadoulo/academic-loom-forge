@@ -20,6 +20,7 @@ interface Assignment {
   start_time?: string | null;
   end_time?: string | null;
   type: string;
+  subject_id?: string;
   subjects?: {
     id: string;
     name: string;
@@ -42,12 +43,16 @@ export function SessionAttendanceManager({
   onBack,
 }: SessionAttendanceManagerProps) {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
+  
+  // Utiliser subject_id en priorité, sinon subjects?.id
+  const subjectId = assignment.subject_id || assignment.subjects?.id;
+  
   const { attendance, markAttendance, loading, createAttendanceSession, attendanceSessions } = useAttendance(
     classId,
     teacherId,
     assignment.session_date || undefined,
     assignment.id,
-    assignment.subjects?.id
+    subjectId
   );
 
   const handleAttendanceChange = async (studentId: string, status: 'present' | 'absent') => {
@@ -56,7 +61,7 @@ export function SessionAttendanceManager({
       class_id: classId,
       teacher_id: teacherId,
       assignment_id: assignment.id,
-      subject_id: assignment.subjects?.id || undefined,
+      subject_id: subjectId,
       status,
       date: assignment.session_date || undefined,
     });

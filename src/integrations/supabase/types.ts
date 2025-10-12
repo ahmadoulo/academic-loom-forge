@@ -25,6 +25,7 @@ export type Database = {
           school_id: string
           session_date: string | null
           start_time: string | null
+          subject_id: string | null
           teacher_id: string
           title: string
           type: string
@@ -40,6 +41,7 @@ export type Database = {
           school_id: string
           session_date?: string | null
           start_time?: string | null
+          subject_id?: string | null
           teacher_id: string
           title: string
           type?: string
@@ -55,12 +57,20 @@ export type Database = {
           school_id?: string
           session_date?: string | null
           start_time?: string | null
+          subject_id?: string | null
           teacher_id?: string
           title?: string
           type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_assignments_class_id"
             columns: ["class_id"]
