@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useSubjects } from "@/hooks/useSubjects";
+import { toast } from "sonner";
 
 interface SessionFormProps {
   onSubmit: (data: SessionFormData) => void;
@@ -48,6 +49,21 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, sc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation des horaires
+    if (formData.start_time && formData.end_time) {
+      const [startHour, startMin] = formData.start_time.split(':').map(Number);
+      const [endHour, endMin] = formData.end_time.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      if (startMinutes >= endMinutes) {
+        toast.error("L'heure de début doit être avant l'heure de fin");
+        return;
+      }
+    }
+    
     if (
       formData.title &&
       formData.class_id &&

@@ -44,6 +44,7 @@ export function SessionsList({ assignments, onSelectSession }: SessionsListProps
   const renderSessionCard = (assignment: Assignment) => {
     if (!assignment.session_date) return null;
     const isToday = assignment.session_date === today;
+    const canTakeAttendance = isToday; // Seul le jour J
     
     return (
       <Card 
@@ -51,7 +52,7 @@ export function SessionsList({ assignments, onSelectSession }: SessionsListProps
         className={`cursor-pointer hover:shadow-md transition-shadow ${
           isToday ? 'border-primary' : ''
         }`}
-        onClick={() => onSelectSession(assignment)}
+        onClick={() => canTakeAttendance && onSelectSession(assignment)}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
@@ -84,9 +85,19 @@ export function SessionsList({ assignments, onSelectSession }: SessionsListProps
             )}
           </div>
 
-          <Button className="w-full mt-3" variant={isToday ? "default" : "outline"}>
+          <Button 
+            className="w-full mt-3" 
+            variant={isToday ? "default" : "outline"}
+            disabled={!canTakeAttendance}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canTakeAttendance) {
+                onSelectSession(assignment);
+              }
+            }}
+          >
             <Users className="h-4 w-4 mr-2" />
-            Prendre les présences
+            {canTakeAttendance ? "Prendre les présences" : "Disponible le jour J"}
           </Button>
         </CardContent>
       </Card>
