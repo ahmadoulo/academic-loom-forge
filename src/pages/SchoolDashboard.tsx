@@ -527,9 +527,9 @@ const SchoolDashboard = () => {
                 </div>
               )}
               
-              {activeTab === "attendance" && (
+              {activeTab === "attendance" && school?.id && (
                 <div className="space-y-6">
-                  <SchoolAttendanceView schoolId={schoolId} />
+                  <SchoolAttendanceView schoolId={school.id} />
                 </div>
               )}
               
