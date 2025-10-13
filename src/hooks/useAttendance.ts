@@ -122,16 +122,57 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
 
   const markAttendance = async (attendanceData: CreateAttendanceData) => {
     try {
-      const { data, error } = await supabase
+      const currentDate = attendanceData.date || new Date().toISOString().split('T')[0];
+      
+      // Vérifier si un enregistrement existe déjà
+      let query = supabase
         .from('attendance')
-        .upsert({
-          ...attendanceData,
-          date: attendanceData.date || new Date().toISOString().split('T')[0],
-          method: attendanceData.method || 'manual'
-        }, {
-          onConflict: attendanceData.assignment_id ? 'student_id, assignment_id' : 'student_id, class_id, date'
-        })
-        .select();
+        .select('id')
+        .eq('student_id', attendanceData.student_id)
+        .eq('class_id', attendanceData.class_id)
+        .eq('date', currentDate);
+
+      if (attendanceData.assignment_id) {
+        query = query.eq('assignment_id', attendanceData.assignment_id);
+      } else {
+        query = query.is('assignment_id', null);
+      }
+
+      const { data: existingRecord } = await query.maybeSingle();
+
+      let data, error;
+      
+      if (existingRecord) {
+        // Mettre à jour l'enregistrement existant
+        const updateResult = await supabase
+          .from('attendance')
+          .update({
+            status: attendanceData.status,
+            method: attendanceData.method || 'manual',
+            marked_at: new Date().toISOString(),
+            teacher_id: attendanceData.teacher_id,
+            subject_id: attendanceData.subject_id
+          })
+          .eq('id', existingRecord.id)
+          .select();
+        
+        data = updateResult.data;
+        error = updateResult.error;
+      } else {
+        // Créer un nouvel enregistrement
+        const insertResult = await supabase
+          .from('attendance')
+          .insert({
+            ...attendanceData,
+            date: currentDate,
+            method: attendanceData.method || 'manual',
+            marked_at: new Date().toISOString()
+          })
+          .select();
+        
+        data = insertResult.data;
+        error = insertResult.error;
+      }
 
       if (error) throw error;
 
