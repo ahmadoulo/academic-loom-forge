@@ -124,7 +124,16 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
     try {
       const currentDate = attendanceData.date || new Date().toISOString().split('T')[0];
       
-      // Vérifier si un enregistrement existe déjà
+      console.log('📝 Marking attendance with data:', {
+        student_id: attendanceData.student_id,
+        class_id: attendanceData.class_id,
+        teacher_id: attendanceData.teacher_id,
+        subject_id: attendanceData.subject_id,
+        date: currentDate,
+        status: attendanceData.status
+      });
+      
+      // Vérifier si un enregistrement existe déjà pour cet étudiant, cette classe, cette date ET cette matière
       let query = supabase
         .from('attendance')
         .select('id')
@@ -132,13 +141,20 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
         .eq('class_id', attendanceData.class_id)
         .eq('date', currentDate);
 
+      // Filtrer par subject_id pour permettre à plusieurs profs de marquer la présence
+      if (attendanceData.subject_id) {
+        query = query.eq('subject_id', attendanceData.subject_id);
+      } else {
+        query = query.is('subject_id', null);
+      }
+
       if (attendanceData.assignment_id) {
         query = query.eq('assignment_id', attendanceData.assignment_id);
-      } else {
-        query = query.is('assignment_id', null);
       }
 
       const { data: existingRecord } = await query.maybeSingle();
+      
+      console.log('🔍 Existing record found:', existingRecord ? 'Yes (updating)' : 'No (creating new)');
 
       let data, error;
       
@@ -175,6 +191,8 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       }
 
       if (error) throw error;
+
+      console.log('✅ Attendance marked successfully:', data);
 
       toast({
         title: "Présence mise à jour",
