@@ -92,26 +92,16 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
                 <SidebarMenuItem key={item.value}>
                   <SidebarMenuButton 
                     asChild
-                    isActive={item.value === 'calendar' ? false : activeTab === item.value}
+                    isActive={activeTab === item.value}
                     className="w-full justify-start"
                   >
-                    {item.value === 'calendar' ? (
-                      <NavLink 
-                        to="/calendar"
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    ) : (
-                      <button 
-                        onClick={() => onTabChange(item.value)}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => onTabChange(item.value)}
+                      className="flex items-center gap-3 w-full text-left"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {open && <span>{item.title}</span>}
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

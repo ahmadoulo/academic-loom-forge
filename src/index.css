@@ -2,87 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
-/* EduVate - Premium SaaS Design System
-Inspired by Linear, Notion, Stripe Dashboard */
+/* EduVate SaaS Platform Design System
+Modern Blue & White Theme - All colors MUST be HSL */
 
 @layer base {
   :root {
-    /* Base colors - Premium light mode */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Base colors - Modern SaaS avec blanc foncé */
+    --background: 220 14% 93%;
+    --foreground: 215 20% 15%;
 
-    /* Card system with elevated feel */
+    /* Card system with subtle elevation */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 215 20% 15%;
 
     /* Popover system */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 215 20% 15%;
 
-    /* Primary - Modern Blue */
-    --primary: 221 83% 53%;
+    /* Primary - SaaS Blue (Plus Foncé) */
+    --primary: 213 94% 25%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 221 83% 96%;
-    --primary-dark: 221 83% 43%;
-    --primary-accent: 221 83% 63%;
+    --primary-light: 213 94% 85%;
+    --primary-dark: 213 94% 18%;
+    --primary-accent: 213 94% 35%;
 
-    /* Secondary - Subtle Grey */
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    /* Secondary - Clean Neutral */
+    --secondary: 220 16% 92%;
+    --secondary-foreground: 215 20% 15%;
 
     /* Muted colors */
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 16% 92%;
+    --muted-foreground: 215 16% 47%;
 
-    /* Accent - Vibrant Purple */
-    --accent: 262 83% 58%;
+    /* Accent - Modern Teal */
+    --accent: 189 94% 55%;
     --accent-foreground: 0 0% 100%;
-    --accent-light: 262 83% 97%;
+    --accent-light: 189 94% 95%;
 
     /* Status colors */
-    --success: 142 76% 36%;
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
-    --success-light: 142 76% 96%;
+    --success-light: 160 84% 95%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --warning-light: 38 92% 96%;
+    --warning-light: 38 92% 95%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-light: 0 84% 96%;
+    --destructive-light: 0 84% 95%;
 
     /* Interface elements */
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 221 83% 53%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 213 94% 68%;
 
     --radius: 0.75rem;
 
-    /* Premium Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
-    --gradient-hero: linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(262 83% 58%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(240 4.8% 98%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 4.8% 97%));
+    /* SaaS Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-accent)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220 20% 94% / 0.9), hsl(220 16% 92%));
+    --gradient-subtle: linear-gradient(180deg, hsl(220 20% 94%), hsl(220 16% 92%));
     
-    /* Premium Shadows - Inspired by Linear */
-    --shadow-soft: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
-    --shadow-medium: 0 2px 8px 0 hsl(0 0% 0% / 0.08), 0 1px 4px 0 hsl(0 0% 0% / 0.04);
-    --shadow-large: 0 8px 24px 0 hsl(0 0% 0% / 0.12), 0 2px 8px 0 hsl(0 0% 0% / 0.04);
-    --shadow-glow: 0 0 0 1px hsl(var(--primary) / 0.08), 0 4px 16px hsl(var(--primary) / 0.12);
+    /* Modern Shadows */
+    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-large: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+    --shadow-glow: 0 0 40px hsl(var(--primary) / 0.15);
 
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 240 5.9% 90%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    /* Dark mode colors - Premium dark */
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    /* Dark mode colors */
+    --background: 210 11% 15%;
+    --foreground: 0 0% 98%;
 
     --card: 210 11% 15%;
     --card-foreground: 0 0% 98%;
@@ -140,45 +140,5 @@ Inspired by Linear, Notion, Stripe Dashboard */
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
-  }
-
-  h1 {
-    @apply text-4xl lg:text-5xl;
-  }
-
-  h2 {
-    @apply text-3xl lg:text-4xl;
-  }
-
-  h3 {
-    @apply text-2xl lg:text-3xl;
-  }
-}
-
-@layer components {
-  /* Premium hover effects */
-  .hover-lift {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-medium;
-  }
-
-  .hover-glow {
-    @apply transition-all duration-300 hover:shadow-glow;
-  }
-
-  /* Premium focus states */
-  .focus-ring {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
-  }
-
-  /* Smooth transitions */
-  .transition-smooth {
-    @apply transition-all duration-200 ease-out;
   }
 }
