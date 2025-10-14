@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SchoolDashboard from "./pages/SchoolDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import CalendarDashboard from "./pages/CalendarDashboard";
 import AttendanceScan from "./pages/AttendanceScan";
 import StudentRegistration from "./pages/StudentRegistration";
 import SetPassword from "./pages/SetPassword";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/student/:studentId" element={<StudentDashboard />} />
             <Route path="/student-dashboard" element={<StudentDashboard />} />
+            <Route path="/calendar" element={<CalendarDashboard />} />
             <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
             <Route path="/student-registration" element={<StudentRegistration />} />
             <Route path="/set-password" element={<SetPassword />} />
