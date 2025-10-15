@@ -8,7 +8,9 @@ import {
   Home,
   UserCheck,
   FileText,
-  Calendar
+  Calendar,
+  Megaphone,
+  CalendarDays
 } from "lucide-react";
 
 import {
@@ -28,42 +30,62 @@ const menuItems = [
   { 
     title: "Tableau de bord", 
     value: "dashboard",
-    icon: Home 
+    icon: Home,
+    href: "/teacher"
   },
   { 
     title: "Calendrier", 
     value: "calendar",
-    icon: Calendar 
+    icon: Calendar,
+    href: "/teacher"
   },
   { 
     title: "Mes Classes", 
     value: "classes",
-    icon: Users 
+    icon: Users,
+    href: "/teacher"
   },
   { 
     title: "Présence", 
     value: "attendance-view",
-    icon: UserCheck 
+    icon: UserCheck,
+    href: "/teacher"
   },
   { 
     title: "Gestion des Notes", 
     value: "grades",
-    icon: BookOpen 
+    icon: BookOpen,
+    href: "/teacher"
   },
   { 
     title: "Publier un Devoir", 
     value: "assignments",
-    icon: FileText 
+    icon: FileText,
+    href: "/teacher"
   },
   { 
     title: "Mes Matières", 
     value: "subjects",
-    icon: BookOpen 
+    icon: BookOpen,
+    href: "/teacher"
   },
   { 
     title: "Analytics", 
     value: "analytics",
-    icon: BarChart3 
+    icon: BarChart3,
+    href: "/teacher"
+  },
+  { 
+    title: "Événements", 
+    value: "events",
+    icon: CalendarDays,
+    href: "/events"
+  },
+  { 
+    title: "Annonces", 
+    value: "announcements",
+    icon: Megaphone,
+    href: "/announcements"
   },
 ];
 
@@ -95,13 +117,23 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
                     isActive={activeTab === item.value}
                     className="w-full justify-start"
                   >
-                    <button 
-                      onClick={() => onTabChange(item.value)}
-                      className="flex items-center gap-3 w-full text-left"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {open && <span>{item.title}</span>}
-                    </button>
+                    {item.href && item.href !== "/teacher" ? (
+                      <a 
+                        href={item.href}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </a>
+                    ) : (
+                      <button 
+                        onClick={() => onTabChange(item.value)}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -4,7 +4,9 @@ import {
   GraduationCap,
   FileText,
   ClipboardList,
-  Calendar
+  Calendar,
+  Megaphone,
+  CalendarDays
 } from "lucide-react";
 
 import {
@@ -23,27 +25,44 @@ const menuItems = [
   { 
     title: "Accueil", 
     value: "accueil",
-    icon: Home 
+    icon: Home,
+    href: "/student"
   },
   { 
     title: "Calendrier", 
     value: "calendar",
-    icon: Calendar 
+    icon: Calendar,
+    href: "/student"
   },
   { 
     title: "Mes Notes", 
     value: "notes",
-    icon: BookOpen 
+    icon: BookOpen,
+    href: "/student"
   },
   { 
     title: "Devoirs", 
     value: "devoirs",
-    icon: ClipboardList 
+    icon: ClipboardList,
+    href: "/student"
   },
   { 
     title: "Demande Document", 
     value: "documents",
-    icon: FileText 
+    icon: FileText,
+    href: "/student"
+  },
+  { 
+    title: "Événements", 
+    value: "events",
+    icon: CalendarDays,
+    href: "/events"
+  },
+  { 
+    title: "Annonces", 
+    value: "announcements",
+    icon: Megaphone,
+    href: "/announcements"
   },
 ];
 
@@ -75,13 +94,23 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
                     isActive={activeTab === item.value}
                     className="w-full justify-start"
                   >
-                    <button 
-                      onClick={() => onTabChange(item.value)}
-                      className="flex items-center gap-3 w-full text-left"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {open && <span>{item.title}</span>}
-                    </button>
+                    {item.href && item.href !== "/student" ? (
+                      <a 
+                        href={item.href}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </a>
+                    ) : (
+                      <button 
+                        onClick={() => onTabChange(item.value)}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

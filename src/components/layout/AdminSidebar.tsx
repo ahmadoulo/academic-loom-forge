@@ -6,7 +6,9 @@ import {
   HelpCircle,
   ChevronRight,
   Menu,
-  X
+  X,
+  Megaphone,
+  CalendarDays
 } from "lucide-react";
 
 import {
@@ -34,19 +36,36 @@ const menuItems = [
     title: "Écoles", 
     value: "schools",
     icon: School,
-    description: "Gérer les établissements"
+    description: "Gérer les établissements",
+    href: "/admin"
   },
   { 
     title: "Paramètres", 
     value: "settings",
     icon: Settings,
-    description: "Utilisateurs et rôles"
+    description: "Utilisateurs et rôles",
+    href: "/admin"
   },
   { 
     title: "Support Écoles", 
     value: "support",
     icon: HelpCircle,
-    description: "Assistance utilisateurs"
+    description: "Assistance utilisateurs",
+    href: "/admin"
+  },
+  { 
+    title: "Événements", 
+    value: "events",
+    icon: CalendarDays,
+    description: "Gérer les événements",
+    href: "/events"
+  },
+  { 
+    title: "Annonces", 
+    value: "announcements",
+    icon: Megaphone,
+    description: "Gérer les annonces",
+    href: "/announcements"
   },
 ];
 
@@ -81,18 +100,33 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
                     isActive={activeTab === item.value}
                     className="w-full justify-start"
                   >
-                    <button 
-                      onClick={() => onTabChange(item.value)}
-                      className="flex items-center gap-3 w-full text-left"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {(open || isMobile) && (
-                        <div className="flex-1">
-                          <span className="block">{item.title}</span>
-                          <span className="text-xs text-muted-foreground">{item.description}</span>
-                        </div>
-                      )}
-                    </button>
+                    {item.href && item.href !== "/admin" ? (
+                      <a 
+                        href={item.href}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {(open || isMobile) && (
+                          <div className="flex-1">
+                            <span className="block">{item.title}</span>
+                            <span className="text-xs text-muted-foreground">{item.description}</span>
+                          </div>
+                        )}
+                      </a>
+                    ) : (
+                      <button 
+                        onClick={() => onTabChange(item.value)}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {(open || isMobile) && (
+                          <div className="flex-1">
+                            <span className="block">{item.title}</span>
+                            <span className="text-xs text-muted-foreground">{item.description}</span>
+                          </div>
+                        )}
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

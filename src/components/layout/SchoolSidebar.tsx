@@ -9,7 +9,9 @@ import {
   Settings,
   ChevronRight,
   FileText,
-  Calendar
+  Calendar,
+  Megaphone,
+  CalendarDays
 } from "lucide-react";
 
 import {
@@ -33,57 +35,80 @@ const menuItems = [
   { 
     title: "Analytics", 
     value: "analytics",
-    icon: BarChart3 
+    icon: BarChart3,
+    href: "/school"
   },
   { 
     title: "Calendrier", 
     value: "calendar",
-    icon: Calendar 
+    icon: Calendar,
+    href: "/school"
   },
   { 
     title: "Étudiants", 
     value: "students",
-    icon: Users 
+    icon: Users,
+    href: "/school"
   },
   { 
     title: "Classes", 
     value: "classes",
-    icon: School 
+    icon: School,
+    href: "/school"
   },
   { 
     title: "Notes", 
     value: "grades",
-    icon: BookOpen 
+    icon: BookOpen,
+    href: "/school"
   },
   { 
     title: "Présences", 
     value: "attendance",
-    icon: Calendar 
+    icon: Calendar,
+    href: "/school"
   },
   { 
     title: "Matières", 
     value: "subjects",
-    icon: BookOpen 
+    icon: BookOpen,
+    href: "/school"
   },
   { 
     title: "Professeurs", 
     value: "teachers",
-    icon: GraduationCap 
+    icon: GraduationCap,
+    href: "/school"
   },
   { 
     title: "Demandes Document", 
     value: "documents",
-    icon: FileText 
+    icon: FileText,
+    href: "/school"
   },
   { 
     title: "Utilisateurs", 
     value: "users",
-    icon: Users 
+    icon: Users,
+    href: "/school"
+  },
+  { 
+    title: "Événements", 
+    value: "events",
+    icon: CalendarDays,
+    href: "/events"
+  },
+  { 
+    title: "Annonces", 
+    value: "announcements",
+    icon: Megaphone,
+    href: "/announcements"
   },
   { 
     title: "Paramètres", 
     value: "settings",
-    icon: Settings 
+    icon: Settings,
+    href: "/school"
   },
 ];
 
@@ -116,13 +141,23 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
                     isActive={activeTab === item.value}
                     className="w-full justify-start"
                   >
-                    <button 
-                      onClick={() => onTabChange(item.value)}
-                      className="flex items-center gap-3 w-full text-left"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {open && <span>{item.title}</span>}
-                    </button>
+                    {item.href && item.href !== "/school" ? (
+                      <a 
+                        href={item.href}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </a>
+                    ) : (
+                      <button 
+                        onClick={() => onTabChange(item.value)}
+                        className="flex items-center gap-3 w-full text-left"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

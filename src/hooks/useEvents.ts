@@ -1,0 +1,141 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+export interface Event {
+  id: string;
+  title: string;
+  description: string | null;
+  start_at: string;
+  end_at: string;
+  location: string | null;
+  created_by: string | null;
+  scope: string;
+  class_id: string | null;
+  subject_id: string | null;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const useEvents = () => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("events" as any)
+        .select("*")
+        .eq("published", true)
+        .order("start_at", { ascending: true });
+
+      if (error) throw error;
+      setEvents((data as unknown as Event[]) || []);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les événements",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+
+    const channel = supabase
+      .channel("events-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => {
+          fetchEvents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const createEvent = async (eventData: Omit<Event, "id" | "created_at" | "updated_at">) => {
+    try {
+      const { error } = await supabase.from("events" as any).insert(eventData);
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Événement créé avec succès",
+      });
+      fetchEvents();
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const updateEvent = async (id: string, eventData: Partial<Event>) => {
+    try {
+      const { error } = await supabase
+        .from("events" as any)
+        .update(eventData)
+        .eq("id", id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Événement mis à jour",
+      });
+      fetchEvents();
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    try {
+      const { error } = await supabase.from("events" as any).delete().eq("id", id);
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Événement supprimé",
+      });
+      fetchEvents();
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  return {
+    events,
+    loading,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    refetch: fetchEvents,
+  };
+};
