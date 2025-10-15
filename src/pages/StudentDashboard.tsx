@@ -11,6 +11,8 @@ import { StudentCalendarSection } from "@/components/student/StudentCalendarSect
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { supabase } from "@/integrations/supabase/client";
+import { EventsSection } from "@/components/school/EventsSection";
+import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("accueil");
@@ -90,6 +92,10 @@ export default function StudentDashboard() {
             schoolId={student.school_id} 
           />
         );
+      case "events":
+        return <EventsSection />;
+      case "announcements":
+        return <AnnouncementsSection />;
       default:
         return <StudentWelcomeSection studentId={currentStudentId} />;
     }

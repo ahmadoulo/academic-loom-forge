@@ -41,6 +41,8 @@ import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 import { SchoolGradesView } from "@/components/school/SchoolGradesView";
 import { SchoolAttendanceView } from "@/components/school/SchoolAttendanceView";
 import { useAttendance } from "@/hooks/useAttendance";
+import { EventsSection } from "@/components/school/EventsSection";
+import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -734,6 +736,14 @@ const SchoolDashboard = () => {
                 <div className="space-y-6">
                   <SchoolSettings schoolId={school.id} />
                 </div>
+              )}
+              
+              {activeTab === "events" && (
+                <EventsSection />
+              )}
+              
+              {activeTab === "announcements" && (
+                <AnnouncementsSection />
               )}
             </div>
           </main>

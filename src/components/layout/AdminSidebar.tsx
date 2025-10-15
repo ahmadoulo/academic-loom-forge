@@ -6,9 +6,7 @@ import {
   HelpCircle,
   ChevronRight,
   Menu,
-  X,
-  Megaphone,
-  CalendarDays
+  X
 } from "lucide-react";
 
 import {
@@ -52,20 +50,6 @@ const menuItems = [
     icon: HelpCircle,
     description: "Assistance utilisateurs",
     href: "/admin"
-  },
-  { 
-    title: "Événements", 
-    value: "events",
-    icon: CalendarDays,
-    description: "Gérer les événements",
-    href: "/events"
-  },
-  { 
-    title: "Annonces", 
-    value: "announcements",
-    icon: Megaphone,
-    description: "Gérer les annonces",
-    href: "/announcements"
   },
 ];
 

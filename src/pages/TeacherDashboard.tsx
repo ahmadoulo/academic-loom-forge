@@ -24,6 +24,8 @@ import { useAssignments } from "@/hooks/useAssignments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import { EventsSection } from "@/components/school/EventsSection";
+import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
@@ -399,6 +401,14 @@ const TeacherDashboard = () => {
               <div className="space-y-4 lg:space-y-6">
                 <AnalyticsDashboard teacherId={teacherId} />
               </div>
+            )}
+            
+            {activeTab === "events" && (
+              <EventsSection />
+            )}
+            
+            {activeTab === "announcements" && (
+              <AnnouncementsSection />
             )}
           </div>
         )}

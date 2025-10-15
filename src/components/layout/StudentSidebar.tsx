@@ -56,13 +56,13 @@ const menuItems = [
     title: "Événements", 
     value: "events",
     icon: CalendarDays,
-    href: "/events"
+    href: "/student"
   },
   { 
     title: "Annonces", 
     value: "announcements",
     icon: Megaphone,
-    href: "/announcements"
+    href: "/student"
   },
 ];
 
