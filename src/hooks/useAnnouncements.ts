@@ -29,7 +29,10 @@ export const useAnnouncements = (schoolId?: string) => {
       
       // Filtrer par school_id si fourni
       if (schoolId) {
+        console.log("🔍 Filtrage des annonces par school_id:", schoolId);
         query = query.eq("school_id", schoolId);
+      } else {
+        console.log("⚠️ Aucun school_id fourni, toutes les annonces seront affichées");
       }
       
       const { data, error } = await query
@@ -37,8 +40,10 @@ export const useAnnouncements = (schoolId?: string) => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log("📢 Annonces récupérées:", data?.length, "pour school_id:", schoolId);
       setAnnouncements((data as unknown as Announcement[]) || []);
     } catch (error: any) {
+      console.error("❌ Erreur chargement annonces:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les annonces",

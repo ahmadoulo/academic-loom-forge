@@ -32,15 +32,20 @@ export const useEvents = (schoolId?: string) => {
       
       // Filtrer par school_id si fourni
       if (schoolId) {
+        console.log("🔍 Filtrage des événements par school_id:", schoolId);
         query = query.eq("school_id", schoolId);
+      } else {
+        console.log("⚠️ Aucun school_id fourni, tous les événements seront affichés");
       }
       
       const { data, error } = await query
         .order("start_at", { ascending: true });
 
       if (error) throw error;
+      console.log("📅 Événements récupérés:", data?.length, "pour school_id:", schoolId);
       setEvents((data as unknown as Event[]) || []);
     } catch (error: any) {
+      console.error("❌ Erreur chargement événements:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les événements",

@@ -32,7 +32,10 @@ export function AnnouncementsSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
   
-  const isAdmin = user?.role === "admin_school" || user?.role === "superadmin";
+  const isAdmin = user?.role === "school_admin" || user?.role === "admin_school" || user?.role === "global_admin" || user?.role === "admin";
+
+  console.log("👤 AnnouncementsSection - User:", { role: user?.role, school_id: user?.school_id, isAdmin });
+  console.log("📢 AnnouncementsSection - Annonces:", announcements.length);
 
   const [formData, setFormData] = useState({
     title: "",

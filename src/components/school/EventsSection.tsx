@@ -24,7 +24,10 @@ export function EventsSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   
-  const isAdmin = user?.role === "admin_school" || user?.role === "superadmin";
+  const isAdmin = user?.role === "school_admin" || user?.role === "admin_school" || user?.role === "global_admin" || user?.role === "admin";
+
+  console.log("👤 EventsSection - User:", { role: user?.role, school_id: user?.school_id, isAdmin });
+  console.log("📅 EventsSection - Événements:", events.length);
 
   const [formData, setFormData] = useState({
     title: "",
