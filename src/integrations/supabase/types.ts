@@ -23,6 +23,7 @@ export type Database = {
           ends_at: string | null
           id: string
           pinned: boolean
+          school_id: string | null
           starts_at: string | null
           title: string
           updated_at: string
@@ -36,6 +37,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           pinned?: boolean
+          school_id?: string | null
           starts_at?: string | null
           title: string
           updated_at?: string
@@ -49,6 +51,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           pinned?: boolean
+          school_id?: string | null
           starts_at?: string | null
           title?: string
           updated_at?: string
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -428,6 +438,7 @@ export type Database = {
           id: string
           location: string | null
           published: boolean
+          school_id: string | null
           scope: string
           start_at: string
           subject_id: string | null
@@ -443,6 +454,7 @@ export type Database = {
           id?: string
           location?: string | null
           published?: boolean
+          school_id?: string | null
           scope?: string
           start_at: string
           subject_id?: string | null
@@ -458,6 +470,7 @@ export type Database = {
           id?: string
           location?: string | null
           published?: boolean
+          school_id?: string | null
           scope?: string
           start_at?: string
           subject_id?: string | null
@@ -470,6 +483,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
           {

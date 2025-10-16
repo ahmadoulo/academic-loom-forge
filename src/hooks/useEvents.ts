@@ -18,17 +18,24 @@ export interface Event {
   updated_at: string;
 }
 
-export const useEvents = () => {
+export const useEvents = (schoolId?: string) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("events" as any)
         .select("*")
-        .eq("published", true)
+        .eq("published", true);
+      
+      // Filtrer par school_id si fourni
+      if (schoolId) {
+        query = query.eq("school_id", schoolId);
+      }
+      
+      const { data, error } = await query
         .order("start_at", { ascending: true });
 
       if (error) throw error;
@@ -61,7 +68,7 @@ export const useEvents = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [schoolId]);
 
   const createEvent = async (eventData: Omit<Event, "id" | "created_at" | "updated_at">) => {
     try {

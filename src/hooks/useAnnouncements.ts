@@ -16,16 +16,23 @@ export interface Announcement {
   updated_at: string;
 }
 
-export const useAnnouncements = () => {
+export const useAnnouncements = (schoolId?: string) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchAnnouncements = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("announcements" as any)
-        .select("*")
+        .select("*");
+      
+      // Filtrer par school_id si fourni
+      if (schoolId) {
+        query = query.eq("school_id", schoolId);
+      }
+      
+      const { data, error } = await query
         .order("pinned", { ascending: false })
         .order("created_at", { ascending: false });
 
@@ -59,7 +66,7 @@ export const useAnnouncements = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [schoolId]);
 
   const createAnnouncement = async (announcementData: Omit<Announcement, "id" | "created_at" | "updated_at">) => {
     try {

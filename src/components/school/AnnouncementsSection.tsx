@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 
 export function AnnouncementsSection() {
   const { user } = useCustomAuth();
-  const { announcements, loading, createAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements();
+  const { announcements, loading, createAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(user?.school_id);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
   
@@ -50,6 +50,7 @@ export function AnnouncementsSection() {
       ...formData,
       created_by: user?.id || null,
       class_id: null,
+      school_id: user?.school_id || null,
     };
 
     const success = editingAnnouncement

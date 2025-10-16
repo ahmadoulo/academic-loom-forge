@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 
 export function EventsSection() {
   const { user } = useCustomAuth();
-  const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents();
+  const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(user?.school_id);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   
@@ -44,6 +44,7 @@ export function EventsSection() {
       created_by: user?.id || null,
       class_id: null,
       subject_id: null,
+      school_id: user?.school_id || null,
     };
 
     const success = editingEvent
