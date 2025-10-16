@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          body: string
+          class_id: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          pinned: boolean
+          starts_at: string | null
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          body: string
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          pinned?: boolean
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          body?: string
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          pinned?: boolean
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           class_id: string
@@ -364,6 +414,69 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_at: string
+          id: string
+          location: string | null
+          published: boolean
+          scope: string
+          start_at: string
+          subject_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_at: string
+          id?: string
+          location?: string | null
+          published?: boolean
+          scope?: string
+          start_at: string
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_at?: string
+          id?: string
+          location?: string | null
+          published?: boolean
+          scope?: string
+          start_at?: string
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
