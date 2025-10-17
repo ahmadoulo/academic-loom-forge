@@ -404,11 +404,11 @@ const TeacherDashboard = () => {
             )}
             
             {activeTab === "events" && currentTeacher && (
-              <EventsSection schoolId={currentTeacher.school_id} />
+              <EventsSection schoolId={currentTeacher.school_id} isAdmin={false} />
             )}
             
             {activeTab === "announcements" && currentTeacher && (
-              <AnnouncementsSection schoolId={currentTeacher.school_id} />
+              <AnnouncementsSection schoolId={currentTeacher.school_id} isAdmin={false} userRole="teacher" />
             )}
           </div>
         )}

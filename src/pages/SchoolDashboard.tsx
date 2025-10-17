@@ -743,7 +743,7 @@ const SchoolDashboard = () => {
               )}
 
               {activeTab === "announcements" && (
-                <AnnouncementsSection schoolId={school.id} isAdmin={true} />
+                <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
               )}
             </div>
           </main>

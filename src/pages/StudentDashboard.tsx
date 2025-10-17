@@ -93,9 +93,9 @@ export default function StudentDashboard() {
           />
         );
       case "events":
-        return student ? <EventsSection schoolId={student.school_id} /> : null;
+        return student ? <EventsSection schoolId={student.school_id} isAdmin={false} /> : null;
       case "announcements":
-        return student ? <AnnouncementsSection schoolId={student.school_id} /> : null;
+        return student ? <AnnouncementsSection schoolId={student.school_id} isAdmin={false} userRole="student" /> : null;
       default:
         return <StudentWelcomeSection studentId={currentStudentId} />;
     }

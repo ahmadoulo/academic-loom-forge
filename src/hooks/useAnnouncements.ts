@@ -16,7 +16,7 @@ export interface Announcement {
   updated_at: string;
 }
 
-export const useAnnouncements = (schoolId?: string) => {
+export const useAnnouncements = (schoolId?: string, userRole?: string) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -29,10 +29,7 @@ export const useAnnouncements = (schoolId?: string) => {
       
       // Filtrer par school_id si fourni
       if (schoolId) {
-        console.log("🔍 Filtrage des annonces par school_id:", schoolId);
         query = query.eq("school_id", schoolId);
-      } else {
-        console.log("⚠️ Aucun school_id fourni, toutes les annonces seront affichées");
       }
       
       const { data, error } = await query
@@ -40,8 +37,21 @@ export const useAnnouncements = (schoolId?: string) => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      console.log("📢 Annonces récupérées:", data?.length, "pour school_id:", schoolId);
-      setAnnouncements((data as unknown as Announcement[]) || []);
+      
+      // Filtrer côté client selon le rôle et la visibilité
+      let filteredData = (data as unknown as Announcement[]) || [];
+      
+      if (userRole === 'student') {
+        filteredData = filteredData.filter(a => 
+          a.visibility === 'tous' || a.visibility === 'etudiants' || a.visibility === 'all' || a.visibility === 'students'
+        );
+      } else if (userRole === 'teacher') {
+        filteredData = filteredData.filter(a => 
+          a.visibility === 'tous' || a.visibility === 'professeurs' || a.visibility === 'all' || a.visibility === 'teachers'
+        );
+      }
+      
+      setAnnouncements(filteredData);
     } catch (error: any) {
       console.error("❌ Erreur chargement annonces:", error);
       toast({
@@ -71,7 +81,7 @@ export const useAnnouncements = (schoolId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [schoolId]);
+  }, [schoolId, userRole]);
 
   const createAnnouncement = async (announcementData: Omit<Announcement, "id" | "created_at" | "updated_at">) => {
     try {
