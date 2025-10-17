@@ -739,11 +739,11 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "events" && (
-                <EventsSection />
+                <EventsSection schoolId={school.id} isAdmin={true} />
               )}
-              
+
               {activeTab === "announcements" && (
-                <AnnouncementsSection />
+                <AnnouncementsSection schoolId={school.id} isAdmin={true} />
               )}
             </div>
           </main>

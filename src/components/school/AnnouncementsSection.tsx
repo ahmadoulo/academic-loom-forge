@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +25,15 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-export function AnnouncementsSection() {
-  const { user } = useCustomAuth();
-  const { announcements, loading, createAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(user?.school_id);
+interface AnnouncementsSectionProps {
+  schoolId: string;
+  isAdmin?: boolean;
+}
+
+export function AnnouncementsSection({ schoolId, isAdmin = false }: AnnouncementsSectionProps) {
+  const { announcements, loading, createAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
-  
-  const isAdmin = user?.role === "school_admin" || user?.role === "admin_school" || user?.role === "global_admin" || user?.role === "admin";
-
-  console.log("👤 AnnouncementsSection - User:", { role: user?.role, school_id: user?.school_id, isAdmin });
-  console.log("📢 AnnouncementsSection - Annonces:", announcements.length);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -51,9 +49,9 @@ export function AnnouncementsSection() {
     
     const announcementData = {
       ...formData,
-      created_by: user?.id || null,
+      created_by: null,
       class_id: null,
-      school_id: user?.school_id || null,
+      school_id: schoolId,
     };
 
     const success = editingAnnouncement

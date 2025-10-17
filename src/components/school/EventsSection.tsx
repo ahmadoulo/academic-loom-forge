@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useEvents } from "@/hooks/useEvents";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,16 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-export function EventsSection() {
-  const { user } = useCustomAuth();
-  const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(user?.school_id);
+interface EventsSectionProps {
+  schoolId: string;
+  isAdmin?: boolean;
+}
+
+export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {
+  const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
-  
-  const isAdmin = user?.role === "school_admin" || user?.role === "admin_school" || user?.role === "global_admin" || user?.role === "admin";
-
-  console.log("👤 EventsSection - User:", { role: user?.role, school_id: user?.school_id, isAdmin });
-  console.log("📅 EventsSection - Événements:", events.length);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -44,10 +42,10 @@ export function EventsSection() {
     
     const eventData = {
       ...formData,
-      created_by: user?.id || null,
+      created_by: null,
       class_id: null,
       subject_id: null,
-      school_id: user?.school_id || null,
+      school_id: schoolId,
     };
 
     const success = editingEvent
