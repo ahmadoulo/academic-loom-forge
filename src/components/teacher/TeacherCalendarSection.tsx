@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { CalendarView } from "@/components/calendar/CalendarView";
+import { useState, useEffect } from "react";
+import { ModernCalendarView } from "@/components/calendar/ModernCalendarView";
 import { useAssignments } from "@/hooks/useAssignments";
 
 interface TeacherCalendarSectionProps {
@@ -7,8 +7,12 @@ interface TeacherCalendarSectionProps {
 }
 
 export function TeacherCalendarSection({ teacherId }: TeacherCalendarSectionProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { assignments } = useAssignments({ teacherId });
+
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []);
 
   const calendarEvents = assignments.map((assignment) => ({
     id: assignment.id,
@@ -21,19 +25,10 @@ export function TeacherCalendarSection({ teacherId }: TeacherCalendarSectionProp
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Mon calendrier</h2>
-        <p className="text-muted-foreground">
-          Vos séances de cours, examens et devoirs
-        </p>
-      </div>
-
-      <CalendarView
-        events={calendarEvents}
-        onDateSelect={setSelectedDate}
-        selectedDate={selectedDate}
-      />
-    </div>
+    <ModernCalendarView
+      events={calendarEvents}
+      onDateSelect={setSelectedDate}
+      selectedDate={selectedDate}
+    />
   );
 }

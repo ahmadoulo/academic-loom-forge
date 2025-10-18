@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { ModernCalendarView } from "@/components/calendar/ModernCalendarView";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
-interface StudentCalendarSectionProps {
-  studentId: string;
-  classId: string;
+interface SchoolCalendarViewProps {
+  schoolId: string;
 }
 
 interface Assignment {
@@ -16,11 +14,19 @@ interface Assignment {
   start_time: string | null;
   end_time: string | null;
   type: string;
-  classes: { name: string } | null;
-  teachers: { firstname: string; lastname: string } | null;
+  classes?: {
+    name: string;
+  };
+  subjects?: {
+    name: string;
+    teachers?: {
+      firstname: string;
+      lastname: string;
+    };
+  };
 }
 
-export function StudentCalendarSection({ studentId, classId }: StudentCalendarSectionProps) {
+export function SchoolCalendarView({ schoolId }: SchoolCalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,12 +36,14 @@ export function StudentCalendarSection({ studentId, classId }: StudentCalendarSe
   }, []);
 
   useEffect(() => {
-    fetchAssignments();
-  }, [classId]);
+    if (schoolId) {
+      fetchAssignments();
+    }
+  }, [schoolId]);
 
   const fetchAssignments = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from("assignments")
         .select(`
@@ -47,16 +55,21 @@ export function StudentCalendarSection({ studentId, classId }: StudentCalendarSe
           end_time,
           type,
           classes (name),
-          teachers (firstname, lastname)
+          subjects (
+            name,
+            teachers (
+              firstname,
+              lastname
+            )
+          )
         `)
-        .eq("class_id", classId)
+        .eq("school_id", schoolId)
         .order("session_date", { ascending: true });
 
       if (error) throw error;
       setAssignments(data || []);
     } catch (error) {
-      console.error("Erreur chargement du calendrier:", error);
-      toast.error("Erreur lors du chargement du calendrier");
+      console.error("Erreur lors du chargement des séances:", error);
     } finally {
       setLoading(false);
     }
@@ -66,17 +79,17 @@ export function StudentCalendarSection({ studentId, classId }: StudentCalendarSe
     id: assignment.id,
     title: assignment.title,
     session_date: assignment.session_date || assignment.due_date || "",
-    start_time: assignment.start_time,
-    end_time: assignment.end_time,
+    start_time: assignment.start_time || null,
+    end_time: assignment.end_time || null,
     type: assignment.type,
     class_name: assignment.classes?.name,
-    teacher_name: assignment.teachers 
-      ? `${assignment.teachers.firstname} ${assignment.teachers.lastname}`
+    teacher_name: assignment.subjects?.teachers 
+      ? `${assignment.subjects.teachers.firstname} ${assignment.subjects.teachers.lastname}`
       : undefined,
   }));
 
   if (loading) {
-    return <div className="text-center py-8">Chargement du calendrier...</div>;
+    return <div>Chargement du calendrier...</div>;
   }
 
   return (

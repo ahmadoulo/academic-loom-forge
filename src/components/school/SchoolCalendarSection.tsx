@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarView } from "@/components/calendar/CalendarView";
+import { ModernCalendarView } from "@/components/calendar/ModernCalendarView";
 import { SessionForm, SessionFormData } from "./SessionForm";
 import { useAssignments } from "@/hooks/useAssignments";
 import { Plus } from "lucide-react";
@@ -15,7 +15,7 @@ interface SchoolCalendarSectionProps {
 }
 
 export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCalendarSectionProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { assignments, createAssignment, loading } = useAssignments({ schoolId });
 
@@ -56,21 +56,13 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Calendrier de l'école</h2>
-          <p className="text-muted-foreground">
-            Gérez les séances de cours, examens et devoirs
-          </p>
-        </div>
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nouvelle séance
+        </Button>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle séance
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Créer une séance</DialogTitle>
@@ -87,7 +79,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         </Dialog>
       </div>
 
-      <CalendarView
+      <ModernCalendarView
         events={calendarEvents}
         onDateSelect={setSelectedDate}
         selectedDate={selectedDate}

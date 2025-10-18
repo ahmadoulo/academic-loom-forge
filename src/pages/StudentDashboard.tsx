@@ -109,6 +109,9 @@ export default function StudentDashboard() {
           <AuthenticatedHeader 
             title="Interface Étudiant"
             onSettingsClick={() => {}}
+            showMobileMenu={true}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
           <main className="flex-1 p-4 lg:p-6 bg-background">
             {renderContent()}

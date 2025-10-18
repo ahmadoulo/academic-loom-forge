@@ -439,6 +439,9 @@ const SchoolDashboard = () => {
           <AuthenticatedHeader 
             title={school.name}
             onSettingsClick={handleSettingsClick}
+            showMobileMenu={true}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
           
           <main className="flex-1 p-4 lg:p-6">

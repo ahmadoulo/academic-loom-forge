@@ -6,12 +6,20 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
 
+interface MenuItem {
+  title: string;
+  value: string;
+  icon: any;
+  description?: string;
+}
+
 interface AuthenticatedHeaderProps {
   title: string;
   onSettingsClick: () => void;
   showMobileMenu?: boolean;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  menuItems?: MenuItem[];
 }
 
 export function AuthenticatedHeader({ 
@@ -19,7 +27,8 @@ export function AuthenticatedHeader({
   onSettingsClick, 
   showMobileMenu = false, 
   activeTab, 
-  onTabChange 
+  onTabChange,
+  menuItems: customMenuItems
 }: AuthenticatedHeaderProps) {
   // Mock user pour l'accès libre
   const profile = {
@@ -29,7 +38,7 @@ export function AuthenticatedHeader({
     role: "global_admin"
   };
 
-  const menuItems = [
+  const defaultMenuItems = [
     { 
       title: "Écoles", 
       value: "schools",
@@ -49,6 +58,8 @@ export function AuthenticatedHeader({
       description: "Assistance utilisateurs"
     },
   ];
+
+  const menuItems = customMenuItems || defaultMenuItems;
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
