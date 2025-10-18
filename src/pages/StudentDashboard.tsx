@@ -58,7 +58,7 @@ export default function StudentDashboard() {
     switch (activeTab) {
       case "accueil":
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             <StudentWelcomeSection studentId={currentStudentId} />
             <CalendarSummary 
               events={assignments.map(a => ({
@@ -110,7 +110,7 @@ export default function StudentDashboard() {
             title="Interface Étudiant"
             onSettingsClick={() => {}}
           />
-          <main className="flex-1 p-6 bg-background">
+          <main className="flex-1 p-4 lg:p-6 bg-background">
             {renderContent()}
           </main>
         </div>
