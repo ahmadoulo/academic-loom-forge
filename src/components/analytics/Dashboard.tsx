@@ -9,32 +9,31 @@ interface AnalyticsDashboardProps {
   schoolId?: string;
   teacherId?: string;
   classId?: string;
+  performanceBySubject?: Array<{ subject: string; average: number; trend: 'up' | 'down' | 'stable' }>;
+  attendanceByMonth?: Array<{ month: string; rate: number }>;
+  gradeDistribution?: Array<{ grade: string; count: number; color: string }>;
+  overallStats?: {
+    averageGrade: number;
+    successRate: number;
+    attendanceRate: number;
+    studentsInDifficulty: number;
+  };
 }
 
-const mockAnalyticsData = {
-  performance: [
-    { subject: 'Mathématiques', average: 14.2, trend: 'up' },
-    { subject: 'Français', average: 13.8, trend: 'down' },
-    { subject: 'Histoire', average: 15.1, trend: 'up' },
-    { subject: 'Physique', average: 12.9, trend: 'stable' },
-  ],
-  attendance: [
-    { month: 'Jan', rate: 95 },
-    { month: 'Fév', rate: 92 },
-    { month: 'Mar', rate: 96 },
-    { month: 'Avr', rate: 89 },
-    { month: 'Mai', rate: 94 },
-  ],
-  gradeDistribution: [
-    { grade: '16-20', count: 45, color: '#22c55e' },
-    { grade: '14-16', count: 68, color: '#3b82f6' },
-    { grade: '12-14', count: 52, color: '#f59e0b' },
-    { grade: '10-12', count: 23, color: '#ef4444' },
-    { grade: '0-10', count: 8, color: '#dc2626' },
-  ]
-};
-
-export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDashboardProps) => {
+export const AnalyticsDashboard = ({ 
+  schoolId, 
+  teacherId, 
+  classId,
+  performanceBySubject = [],
+  attendanceByMonth = [],
+  gradeDistribution = [],
+  overallStats = {
+    averageGrade: 0,
+    successRate: 0,
+    attendanceRate: 0,
+    studentsInDifficulty: 0
+  }
+}: AnalyticsDashboardProps) => {
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -45,10 +44,14 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">14.2/20</div>
+            <div className="text-2xl font-bold">{overallStats.averageGrade}/20</div>
             <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              +0.3 ce mois
+              {overallStats.averageGrade >= 12 ? (
+                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
+              ) : (
+                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
+              )}
+              Performance globale
             </p>
           </CardContent>
         </Card>
@@ -59,10 +62,14 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">87%</div>
+            <div className="text-2xl font-bold">{overallStats.successRate}%</div>
             <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              +2% ce mois
+              {overallStats.successRate >= 80 ? (
+                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
+              ) : (
+                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
+              )}
+              Étudiants avec moyenne ≥ 10
             </p>
           </CardContent>
         </Card>
@@ -73,10 +80,14 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">94%</div>
+            <div className="text-2xl font-bold">{overallStats.attendanceRate}%</div>
             <p className="text-xs text-muted-foreground">
-              <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
-              -1% ce mois
+              {overallStats.attendanceRate >= 90 ? (
+                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
+              ) : (
+                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
+              )}
+              Taux de présence
             </p>
           </CardContent>
         </Card>
@@ -87,9 +98,9 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{overallStats.studentsInDifficulty}</div>
             <p className="text-xs text-muted-foreground">
-              Étudiants en difficulté
+              Étudiants avec moyenne &lt; 10
             </p>
           </CardContent>
         </Card>
@@ -112,7 +123,7 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockAnalyticsData.performance.map((subject) => (
+                {performanceBySubject.length > 0 ? performanceBySubject.map((subject) => (
                   <div key={subject.subject} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <BookOpen className="h-5 w-5 text-primary" />
@@ -128,7 +139,9 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
                       {subject.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-gray-400" />}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-muted-foreground text-center py-4">Aucune donnée disponible</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -142,7 +155,7 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={mockAnalyticsData.attendance}>
+                <LineChart data={attendanceByMonth}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis domain={[80, 100]} />
@@ -165,7 +178,7 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={mockAnalyticsData.gradeDistribution}
+                      data={gradeDistribution}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -173,7 +186,7 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
                       fill="#8884d8"
                       dataKey="count"
                     >
-                      {mockAnalyticsData.gradeDistribution.map((entry, index) => (
+                      {gradeDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -181,7 +194,7 @@ export const AnalyticsDashboard = ({ schoolId, teacherId, classId }: AnalyticsDa
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-2">
-                  {mockAnalyticsData.gradeDistribution.map((item) => (
+                  {gradeDistribution.map((item) => (
                     <div key={item.grade} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div 

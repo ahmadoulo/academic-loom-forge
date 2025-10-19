@@ -7,7 +7,7 @@ import { ClassForm } from "@/components/school/ClassForm";
 import { useClassSubjects } from "@/hooks/useClassSubjects";
 import { TeacherClassAssignment } from "@/components/admin/TeacherClassAssignment";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,8 @@ import { SchoolAttendanceView } from "@/components/school/SchoolAttendanceView";
 import { useAttendance } from "@/hooks/useAttendance";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
+import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -96,6 +98,16 @@ const SchoolDashboard = () => {
   const { grades } = useGrades();
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
+  const { 
+    absencesByClass, 
+    topStudentsByClass, 
+    performanceBySubject,
+    gradeDistribution,
+    attendanceByMonth,
+    overallStats,
+    loading: analyticsLoading 
+  } = useSchoolAnalytics(school?.id);
+  const { requests: documentRequests, loading: documentRequestsLoading } = useDocumentRequests(school?.id);
 
   // Calculate enhanced stats
   const stats = useMemo(() => {
@@ -495,7 +507,145 @@ const SchoolDashboard = () => {
                     </div>
                   </div>
                   
-                  <AnalyticsDashboard schoolId={school.id} />
+                  {/* Nouvelles sections avec données réelles */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Absences par classe */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Absences par Classe</CardTitle>
+                        <CardDescription>Résumé des absences par classe</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {analyticsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : absencesByClass.length > 0 ? (
+                          <div className="space-y-3">
+                            {absencesByClass.slice(0, 5).map((item) => (
+                              <div key={item.classId} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                  <p className="font-medium">{item.className}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {item.totalAbsences} absences • {item.totalStudents} étudiants
+                                  </p>
+                                </div>
+                                <Badge variant={item.absenceRate > 15 ? "destructive" : item.absenceRate > 10 ? "outline" : "default"}>
+                                  {item.absenceRate.toFixed(1)}%
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-center py-8">Aucune donnée d'absence disponible</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Demandes de documents */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Demandes de Documents</CardTitle>
+                        <CardDescription>Résumé des demandes en cours</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {documentRequestsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : documentRequests.length > 0 ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="text-center p-3 border rounded-lg">
+                                <div className="text-2xl font-bold">
+                                  {documentRequests.filter(r => r.status === 'pending').length}
+                                </div>
+                                <div className="text-xs text-muted-foreground">En attente</div>
+                              </div>
+                              <div className="text-center p-3 border rounded-lg">
+                                <div className="text-2xl font-bold">
+                                  {documentRequests.filter(r => r.status === 'processing').length}
+                                </div>
+                                <div className="text-xs text-muted-foreground">En cours</div>
+                              </div>
+                              <div className="text-center p-3 border rounded-lg">
+                                <div className="text-2xl font-bold">
+                                  {documentRequests.filter(r => r.status === 'completed').length}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Complétées</div>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {documentRequests.slice(0, 3).map((request) => (
+                                <div key={request.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                                  <span>{request.document_type}</span>
+                                  <Badge variant={
+                                    request.status === 'completed' ? 'default' : 
+                                    request.status === 'processing' ? 'outline' : 
+                                    'secondary'
+                                  }>
+                                    {request.status}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-center py-8">Aucune demande de document</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Meilleurs étudiants */}
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle>Meilleurs Étudiants</CardTitle>
+                      <CardDescription>Classement par moyenne générale</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {analyticsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : topStudentsByClass.length > 0 ? (
+                        <div className="space-y-2">
+                          {topStudentsByClass.map((student, index) => (
+                            <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                                  index === 0 ? 'bg-yellow-500 text-white' :
+                                  index === 1 ? 'bg-gray-400 text-white' :
+                                  index === 2 ? 'bg-orange-600 text-white' :
+                                  'bg-accent text-foreground'
+                                }`}>
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <p className="font-medium">{student.firstname} {student.lastname}</p>
+                                  <p className="text-sm text-muted-foreground">{student.className}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold">{student.average}/20</div>
+                                <div className="text-xs text-muted-foreground">{student.totalGrades} notes</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">Aucune note disponible</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                  
+                  <AnalyticsDashboard 
+                    schoolId={school.id}
+                    performanceBySubject={performanceBySubject}
+                    attendanceByMonth={attendanceByMonth}
+                    gradeDistribution={gradeDistribution}
+                    overallStats={overallStats}
+                  />
                   
                   <CalendarSummary 
                     events={assignments.map(a => ({
