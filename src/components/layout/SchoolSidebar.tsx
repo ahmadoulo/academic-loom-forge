@@ -11,7 +11,8 @@ import {
   FileText,
   Calendar,
   Megaphone,
-  CalendarDays
+  CalendarDays,
+  Building2
 } from "lucide-react";
 
 import {
@@ -84,6 +85,12 @@ const menuItems = [
     title: "Demandes Document", 
     value: "documents",
     icon: FileText,
+    href: "/school"
+  },
+  { 
+    title: "Salles de Cours", 
+    value: "classrooms",
+    icon: Building2,
     href: "/school"
   },
   { 

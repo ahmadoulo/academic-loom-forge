@@ -45,6 +45,7 @@ import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
+import { ClassroomManagement } from "@/components/school/ClassroomManagement";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -883,6 +884,10 @@ const SchoolDashboard = () => {
               
               {activeTab === "documents" && school?.id && (
                 <DocumentRequestsManagement schoolId={school.id} />
+              )}
+              
+              {activeTab === "classrooms" && school?.id && (
+                <ClassroomManagement schoolId={school.id} />
               )}
               
               {activeTab === "settings" && (

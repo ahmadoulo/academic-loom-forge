@@ -325,6 +325,102 @@ export type Database = {
           },
         ]
       }
+      classroom_assignments: {
+        Row: {
+          assignment_id: string
+          classroom_id: string
+          created_at: string
+          id: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          classroom_id: string
+          created_at?: string
+          id?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          classroom_id?: string
+          created_at?: string
+          id?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_assignments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classroom_assignments_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classroom_assignments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classrooms: {
+        Row: {
+          building: string | null
+          capacity: number
+          created_at: string
+          equipment: string[] | null
+          floor: string | null
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          building?: string | null
+          capacity?: number
+          created_at?: string
+          equipment?: string[] | null
+          floor?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          building?: string | null
+          capacity?: number
+          created_at?: string
+          equipment?: string[] | null
+          floor?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classrooms_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_request_tracking: {
         Row: {
           comment: string | null
@@ -972,6 +1068,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_classroom_availability: {
+        Args: {
+          p_assignment_id: string
+          p_classroom_id: string
+          p_school_id: string
+        }
+        Returns: boolean
+      }
       generate_random_password: {
         Args: { length?: number }
         Returns: string
