@@ -10,56 +10,86 @@ export const exportTimetableToPDF = (
   schoolName: string,
   weekStart: Date
 ) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape" });
 
   // En-tête
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const centerX = pageWidth / 2;
+  
   doc.setFontSize(18);
-  doc.text("Emploi du Temps", 105, 20, { align: "center" });
+  doc.text("Emploi du Temps", centerX, 15, { align: "center" });
 
-  doc.setFontSize(12);
-  const weekNumber = format(weekStart, "wo", { locale: fr });
-  doc.text(`Semaine ${weekNumber}`, 105, 30, { align: "center" });
+  doc.setFontSize(11);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekPeriod = `Du ${format(weekStart, "dd/MM/yyyy", { locale: fr })} au ${format(weekEnd, "dd/MM/yyyy", { locale: fr })}`;
+  doc.text(weekPeriod, centerX, 23, { align: "center" });
 
-  doc.setFontSize(14);
-  doc.text(`Classe: ${className}`, 105, 40, { align: "center" });
+  doc.setFontSize(13);
+  doc.text(`Classe: ${className}`, centerX, 31, { align: "center" });
 
   doc.setFontSize(10);
-  doc.text(`École: ${schoolName}`, 105, 50, { align: "center" });
+  doc.text(`École: ${schoolName}`, centerX, 38, { align: "center" });
 
-  // Préparer les données pour la table (sans groupement, chaque ligne affiche le jour)
-  const tableData: any[] = entries.map((entry) => [
-    `${entry.day} ${entry.date}`,
-    entry.subject,
-    entry.classroom,
-    `${entry.startTime} - ${entry.endTime}`,
-    entry.teacher,
-  ]);
+  // Grouper les entrées par jour
+  const groupedByDay: Record<string, TimetableEntry[]> = {};
+  entries.forEach((entry) => {
+    const key = `${entry.day} ${entry.date}`;
+    if (!groupedByDay[key]) {
+      groupedByDay[key] = [];
+    }
+    groupedByDay[key].push(entry);
+  });
+
+  // Préparer les données pour la table avec rowSpan
+  const tableData: any[] = [];
+  Object.entries(groupedByDay).forEach(([dayDate, dayEntries]) => {
+    dayEntries.forEach((entry, index) => {
+      tableData.push([
+        index === 0 ? { content: dayDate, rowSpan: dayEntries.length } : "",
+        entry.subject,
+        entry.classroom,
+        `${entry.startTime} - ${entry.endTime}`,
+        entry.teacher,
+      ]);
+    });
+  });
 
   // Créer la table
   autoTable(doc, {
     head: [["Jour", "Matière", "Salle", "Horaire", "Enseignant"]],
     body: tableData,
-    startY: 60,
+    startY: 45,
     styles: {
       fontSize: 9,
-      cellPadding: 4,
-      lineColor: [0, 0, 0],
-      lineWidth: 0.5,
+      cellPadding: 5,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.3,
+      textColor: [50, 50, 50],
     },
     headStyles: {
-      fillColor: [135, 206, 250], // Bleu clair comme dans l'image
-      textColor: [0, 0, 0],
+      fillColor: [59, 130, 246], // Bleu moderne (blue-500)
+      textColor: [255, 255, 255],
       fontStyle: "bold",
       halign: "center",
+      fontSize: 10,
     },
     columnStyles: {
-      0: { cellWidth: 40, fillColor: [173, 216, 230], fontStyle: "bold" }, // Jour - bleu clair
-      1: { cellWidth: 45 }, // Matière
-      2: { cellWidth: 30, halign: "center" }, // Salle
-      3: { cellWidth: 40, halign: "center", fillColor: [255, 255, 153] }, // Horaire - jaune
-      4: { cellWidth: 35 }, // Enseignant
+      0: { cellWidth: 55, fillColor: [219, 234, 254], fontStyle: "bold", valign: "middle" }, // Jour - bleu-100
+      1: { cellWidth: 60 }, // Matière
+      2: { cellWidth: 45, halign: "center" }, // Salle
+      3: { cellWidth: 50, halign: "center", fillColor: [254, 249, 195], fontStyle: "bold" }, // Horaire - yellow-100
+      4: { cellWidth: 55 }, // Enseignant
     },
-    margin: { top: 60, left: 15, right: 15 },
+    didParseCell: function (data) {
+      // Appliquer les styles pour les cellules avec rowSpan
+      if (data.column.index === 0 && data.cell.raw !== "") {
+        data.cell.styles.fillColor = [219, 234, 254];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.valign = "middle";
+      }
+    },
+    margin: { top: 45, left: 15, right: 15 },
   });
 
   // Footer

@@ -11,7 +11,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Download, Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTimetable } from "@/hooks/useTimetable";
 import { useClasses } from "@/hooks/useClasses";
@@ -44,6 +44,16 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
   );
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
+
+  // Grouper par jour
+  const groupedEntries = timetableEntries?.reduce((acc, entry) => {
+    const key = `${entry.day} ${entry.date}`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(entry);
+    return acc;
+  }, {} as Record<string, typeof timetableEntries>);
 
   const handleWeekSelect = (date: Date | undefined) => {
     if (date) {
@@ -157,9 +167,12 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
       {selectedClassId && selectedWeek && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              Aperçu - {schoolName} - {selectedClass?.name} - Semaine du{" "}
-              {format(selectedWeek, "dd/MM/yyyy", { locale: fr })}
+            <CardTitle className="text-lg">
+              Aperçu - {schoolName} - {selectedClass?.name}
+              <span className="block text-sm font-normal text-muted-foreground mt-1">
+                Du {format(selectedWeek, "dd/MM/yyyy", { locale: fr })} au{" "}
+                {format(addDays(selectedWeek, 6), "dd/MM/yyyy", { locale: fr })}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -172,35 +185,44 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
                 Aucune séance programmée pour cette semaine
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="bg-blue-200 font-bold">Jour</TableHead>
-                      <TableHead className="font-bold">Matière</TableHead>
-                      <TableHead className="text-center font-bold">Salle</TableHead>
-                      <TableHead className="text-center font-bold bg-yellow-100">
+                    <TableRow className="bg-primary hover:bg-primary">
+                      <TableHead className="font-bold text-primary-foreground">Jour</TableHead>
+                      <TableHead className="font-bold text-primary-foreground">Matière</TableHead>
+                      <TableHead className="text-center font-bold text-primary-foreground">Salle</TableHead>
+                      <TableHead className="text-center font-bold text-primary-foreground">
                         Horaire
                       </TableHead>
-                      <TableHead className="font-bold">Enseignant</TableHead>
+                      <TableHead className="font-bold text-primary-foreground">Enseignant</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {timetableEntries?.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="bg-blue-100 font-semibold">
-                          {entry.day} {entry.date}
-                        </TableCell>
-                        <TableCell>{entry.subject}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline">{entry.classroom}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center bg-yellow-50 font-medium">
-                          {entry.startTime} - {entry.endTime}
-                        </TableCell>
-                        <TableCell>{entry.teacher}</TableCell>
-                      </TableRow>
-                    ))}
+                    {Object.entries(groupedEntries || {}).map(([dayDate, entries]) =>
+                      entries.map((entry, index) => (
+                        <TableRow key={entry.id} className="hover:bg-muted/50">
+                          {index === 0 && (
+                            <TableCell 
+                              rowSpan={entries.length}
+                              className="bg-blue-50 dark:bg-blue-950/20 font-semibold align-middle border-r border-border"
+                            >
+                              {dayDate}
+                            </TableCell>
+                          )}
+                          <TableCell className="font-medium">{entry.subject}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="font-normal">
+                              {entry.classroom}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center bg-yellow-50 dark:bg-yellow-950/20 font-semibold">
+                            {entry.startTime} - {entry.endTime}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{entry.teacher}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
