@@ -72,15 +72,6 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
     }
   };
 
-  // Grouper par jour
-  const groupedEntries = timetableEntries?.reduce((acc, entry) => {
-    const key = `${entry.day} ${entry.date}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(entry);
-    return acc;
-  }, {} as Record<string, typeof timetableEntries>);
 
   return (
     <div className="space-y-6">
@@ -167,7 +158,7 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
         <Card>
           <CardHeader>
             <CardTitle>
-              Aperçu - {selectedClass?.name} - Semaine du{" "}
+              Aperçu - {schoolName} - {selectedClass?.name} - Semaine du{" "}
               {format(selectedWeek, "dd/MM/yyyy", { locale: fr })}
             </CardTitle>
           </CardHeader>
@@ -195,26 +186,21 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(groupedEntries || {}).map(([dayDate, entries]) =>
-                      entries.map((entry, index) => (
-                        <TableRow key={entry.id}>
-                          <TableCell
-                            className="bg-blue-100 font-semibold"
-                            rowSpan={index === 0 ? entries.length : undefined}
-                          >
-                            {index === 0 && dayDate}
-                          </TableCell>
-                          <TableCell>{entry.subject}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline">{entry.classroom}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center bg-yellow-50 font-medium">
-                            {entry.startTime} - {entry.endTime}
-                          </TableCell>
-                          <TableCell>{entry.teacher}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                    {timetableEntries?.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="bg-blue-100 font-semibold">
+                          {entry.day} {entry.date}
+                        </TableCell>
+                        <TableCell>{entry.subject}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">{entry.classroom}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center bg-yellow-50 font-medium">
+                          {entry.startTime} - {entry.endTime}
+                        </TableCell>
+                        <TableCell>{entry.teacher}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

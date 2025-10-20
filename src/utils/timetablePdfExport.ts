@@ -1,14 +1,8 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TimetableEntry } from "@/hooks/useTimetable";
-
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 export const exportTimetableToPDF = (
   entries: TimetableEntry[],
@@ -32,32 +26,17 @@ export const exportTimetableToPDF = (
   doc.setFontSize(10);
   doc.text(`École: ${schoolName}`, 105, 50, { align: "center" });
 
-  // Grouper les entrées par jour
-  const groupedByDay: Record<string, TimetableEntry[]> = {};
-  entries.forEach((entry) => {
-    const key = `${entry.day} ${entry.date}`;
-    if (!groupedByDay[key]) {
-      groupedByDay[key] = [];
-    }
-    groupedByDay[key].push(entry);
-  });
-
-  // Préparer les données pour la table
-  const tableData: any[] = [];
-  Object.entries(groupedByDay).forEach(([dayDate, dayEntries]) => {
-    dayEntries.forEach((entry, index) => {
-      tableData.push([
-        index === 0 ? dayDate : "", // Afficher le jour/date seulement sur la première ligne
-        entry.subject,
-        entry.classroom,
-        `${entry.startTime}-${entry.endTime}`,
-        entry.teacher,
-      ]);
-    });
-  });
+  // Préparer les données pour la table (sans groupement, chaque ligne affiche le jour)
+  const tableData: any[] = entries.map((entry) => [
+    `${entry.day} ${entry.date}`,
+    entry.subject,
+    entry.classroom,
+    `${entry.startTime} - ${entry.endTime}`,
+    entry.teacher,
+  ]);
 
   // Créer la table
-  doc.autoTable({
+  autoTable(doc, {
     head: [["Jour", "Matière", "Salle", "Horaire", "Enseignant"]],
     body: tableData,
     startY: 60,
@@ -74,22 +53,11 @@ export const exportTimetableToPDF = (
       halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 35, fillColor: [173, 216, 230] }, // Jour - bleu clair
-      1: { cellWidth: 50 }, // Matière
-      2: { cellWidth: 25, halign: "center" }, // Salle
-      3: { cellWidth: 35, halign: "center", fillColor: [255, 255, 153] }, // Horaire - jaune
-      4: { cellWidth: 45 }, // Enseignant
-    },
-    didParseCell: function (data) {
-      // Appliquer le fond bleu pour la colonne du jour
-      if (data.column.index === 0 && data.cell.raw !== "") {
-        data.cell.styles.fillColor = [173, 216, 230];
-        data.cell.styles.fontStyle = "bold";
-      }
-      // Appliquer le fond jaune pour la colonne horaire
-      if (data.column.index === 3) {
-        data.cell.styles.fillColor = [255, 255, 153];
-      }
+      0: { cellWidth: 40, fillColor: [173, 216, 230], fontStyle: "bold" }, // Jour - bleu clair
+      1: { cellWidth: 45 }, // Matière
+      2: { cellWidth: 30, halign: "center" }, // Salle
+      3: { cellWidth: 40, halign: "center", fillColor: [255, 255, 153] }, // Horaire - jaune
+      4: { cellWidth: 35 }, // Enseignant
     },
     margin: { top: 60, left: 15, right: 15 },
   });
