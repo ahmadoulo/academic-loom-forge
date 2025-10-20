@@ -94,6 +94,12 @@ const menuItems = [
     href: "/school"
   },
   { 
+    title: "Emploi du Temps", 
+    value: "timetable",
+    icon: Calendar,
+    href: "/school"
+  },
+  { 
     title: "Utilisateurs", 
     value: "users",
     icon: Users,

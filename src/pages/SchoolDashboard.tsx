@@ -46,6 +46,7 @@ import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 import { ClassroomManagement } from "@/components/school/ClassroomManagement";
+import { TimetableSection } from "@/components/school/TimetableSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -888,6 +889,10 @@ const SchoolDashboard = () => {
               
               {activeTab === "classrooms" && school?.id && (
                 <ClassroomManagement schoolId={school.id} />
+              )}
+              
+              {activeTab === "timetable" && school?.id && (
+                <TimetableSection schoolId={school.id} schoolName={school.name} />
               )}
               
               {activeTab === "settings" && (
