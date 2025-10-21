@@ -31,9 +31,16 @@ export const exportTimetableToPDF = (
   doc.setFontSize(10);
   doc.text(`École: ${schoolName}`, centerX, 38, { align: "center" });
 
+  // Trier les entrées par jour et heure
+  const sortedEntries = [...entries].sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
   // Grouper les entrées par jour
   const groupedByDay: Record<string, TimetableEntry[]> = {};
-  entries.forEach((entry) => {
+  sortedEntries.forEach((entry) => {
     const key = `${entry.day} ${entry.date}`;
     if (!groupedByDay[key]) {
       groupedByDay[key] = [];
@@ -45,13 +52,23 @@ export const exportTimetableToPDF = (
   const tableData: any[] = [];
   Object.entries(groupedByDay).forEach(([dayDate, dayEntries]) => {
     dayEntries.forEach((entry, index) => {
-      tableData.push([
-        index === 0 ? { content: dayDate, rowSpan: dayEntries.length } : "",
-        entry.subject,
-        entry.classroom,
-        `${entry.startTime} - ${entry.endTime}`,
-        entry.teacher,
-      ]);
+      if (index === 0) {
+        tableData.push([
+          { content: dayDate, rowSpan: dayEntries.length, styles: { valign: 'middle', halign: 'center' } },
+          entry.subject,
+          entry.classroom,
+          `${entry.startTime} - ${entry.endTime}`,
+          entry.teacher,
+        ]);
+      } else {
+        tableData.push([
+          "", // Cellule vide pour le jour (fusionnée via rowSpan)
+          entry.subject,
+          entry.classroom,
+          `${entry.startTime} - ${entry.endTime}`,
+          entry.teacher,
+        ]);
+      }
     });
   });
 
@@ -75,19 +92,11 @@ export const exportTimetableToPDF = (
       fontSize: 10,
     },
     columnStyles: {
-      0: { cellWidth: 55, fillColor: [219, 234, 254], fontStyle: "bold", valign: "middle" }, // Jour - bleu-100
+      0: { cellWidth: 55, fillColor: [219, 234, 254], fontStyle: "bold", valign: "middle", halign: "center" }, // Jour - bleu-100
       1: { cellWidth: 60 }, // Matière
       2: { cellWidth: 45, halign: "center" }, // Salle
       3: { cellWidth: 50, halign: "center", fillColor: [254, 249, 195], fontStyle: "bold" }, // Horaire - yellow-100
       4: { cellWidth: 55 }, // Enseignant
-    },
-    didParseCell: function (data) {
-      // Appliquer les styles pour les cellules avec rowSpan
-      if (data.column.index === 0 && data.cell.raw !== "") {
-        data.cell.styles.fillColor = [219, 234, 254];
-        data.cell.styles.fontStyle = "bold";
-        data.cell.styles.valign = "middle";
-      }
     },
     margin: { top: 45, left: 15, right: 15 },
   });
