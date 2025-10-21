@@ -48,27 +48,38 @@ export const exportTimetableToPDF = (
     groupedByDay[key].push(entry);
   });
 
-  // Préparer les données pour la table avec rowSpan
+  // Préparer les données pour la table
   const tableData: any[] = [];
   Object.entries(groupedByDay).forEach(([dayDate, dayEntries]) => {
     dayEntries.forEach((entry, index) => {
+      const row: any[] = [];
+      
+      // Colonne Jour avec rowSpan pour la première entrée du jour
       if (index === 0) {
-        tableData.push([
-          { content: dayDate, rowSpan: dayEntries.length, styles: { valign: 'middle', halign: 'center' } },
-          entry.subject,
-          entry.classroom,
-          `${entry.startTime} - ${entry.endTime}`,
-          entry.teacher,
-        ]);
-      } else {
-        tableData.push([
-          "", // Cellule vide pour le jour (fusionnée via rowSpan)
-          entry.subject,
-          entry.classroom,
-          `${entry.startTime} - ${entry.endTime}`,
-          entry.teacher,
-        ]);
+        row.push({
+          content: dayDate,
+          rowSpan: dayEntries.length,
+          styles: {
+            fillColor: [219, 234, 254],
+            fontStyle: "bold",
+            valign: "middle",
+            halign: "center",
+          },
+        });
       }
+      
+      // Les autres colonnes (seulement si ce n'est pas la première ligne du groupe)
+      if (index > 0) {
+        row.push(""); // Placeholder pour le jour (géré par rowSpan)
+      }
+      
+      // Colonnes: Matière, Salle, Horaire, Enseignant
+      row.push(entry.subject);
+      row.push(entry.classroom);
+      row.push(`${entry.startTime} - ${entry.endTime}`);
+      row.push(entry.teacher);
+      
+      tableData.push(row);
     });
   });
 
