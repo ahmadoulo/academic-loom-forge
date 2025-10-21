@@ -12,7 +12,8 @@ import {
   Calendar,
   Megaphone,
   CalendarDays,
-  Building2
+  Building2,
+  Award
 } from "lucide-react";
 
 import {
@@ -61,6 +62,12 @@ const menuItems = [
     title: "Notes", 
     value: "grades",
     icon: BookOpen,
+    href: "/school"
+  },
+  { 
+    title: "Bulletin", 
+    value: "bulletin",
+    icon: Award,
     href: "/school"
   },
   { 

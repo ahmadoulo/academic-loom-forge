@@ -47,6 +47,7 @@ import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 import { ClassroomManagement } from "@/components/school/ClassroomManagement";
 import { TimetableSection } from "@/components/school/TimetableSection";
+import { BulletinSection } from "@/components/school/BulletinSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -907,6 +908,18 @@ const SchoolDashboard = () => {
 
               {activeTab === "announcements" && (
                 <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
+              )}
+              
+              {activeTab === "bulletin" && (
+                <BulletinSection
+                  schoolId={school.id}
+                  schoolName={school.name}
+                  students={students}
+                  classes={classes}
+                  grades={grades}
+                  subjects={subjects}
+                  loading={studentsLoading || subjectsLoading}
+                />
               )}
             </div>
           </main>

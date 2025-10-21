@@ -1,6 +1,22 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CurrentStudentData } from '@/hooks/useCurrentStudent';
+
+export interface CurrentStudentData {
+  id: string;
+  firstname: string;
+  lastname: string;
+  email?: string;
+  cin_number?: string;
+  class_id: string;
+  school_id: string;
+  classes?: {
+    id?: string;
+    name: string;
+  };
+  schools?: {
+    name: string;
+  };
+}
 
 interface SubjectGrade {
   subjectId: string;
@@ -16,134 +32,176 @@ export const generateStudentBulletin = (
   overallAverage: number
 ) => {
   try {
-    console.log('DEBUG: Début génération PDF');
-    console.log('DEBUG: Student data:', student);
-    console.log('DEBUG: Subject grades:', subjectGrades);
-    console.log('DEBUG: Overall average:', overallAverage);
-
     const doc = new jsPDF();
     
     // Configuration de base
     const pageWidth = doc.internal.pageSize.width;
     let yPosition = 20;
     
-    // Header - Logo et titre
-    doc.setFontSize(16);
+    // Header - Logo et informations école
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('SYSTÈME DE GESTION SCOLAIRE', pageWidth / 2, yPosition, { align: 'center' });
-    doc.text('EDUVATE', pageWidth / 2, yPosition + 6, { align: 'center' });
+    doc.text(student.schools?.name || 'ÉCOLE', pageWidth / 2, yPosition, { align: 'center' });
     
     // Titre du bulletin
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 20, { align: 'center' });
+    yPosition += 10;
+    doc.text('Bulletin de notes', pageWidth / 2, yPosition, { align: 'center' });
     
-    yPosition += 40;
-    
-    // Informations de l'étudiant
-    doc.setFontSize(10);
+    // Année universitaire
+    yPosition += 10;
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
+    const currentYear = new Date().getFullYear();
+    doc.text(`Année universitaire : ${currentYear}-${currentYear + 1}`, pageWidth / 2, yPosition, { align: 'center' });
     
-    const studentInfo = [
-      `Année universitaire : ${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-      `Nom et Prénom : ${student.firstname} ${student.lastname}`,
-      `École : ${student.schools?.name || 'N/A'}`,
-      `Classe : ${student.classes?.name || 'N/A'}`,
-      `CIN/Passeport : ${student.cin_number || 'N/A'}`,
-      `Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`
-    ];
+    yPosition += 15;
     
-    studentInfo.forEach((info, index) => {
-      doc.text(info, 20, yPosition + (index * 6));
-    });
+    // Informations de l'étudiant en deux colonnes
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
     
-    yPosition += 45;
+    // Colonne gauche
+    const leftCol = 15;
+    const rightCol = pageWidth / 2 + 10;
+    
+    doc.text('Nom et Prénom :', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${student.firstname} ${student.lastname}`, leftCol + 35, yPosition);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cycle :', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Licence - Bac+3', rightCol + 20, yPosition);
+    
+    yPosition += 6;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('CIN/Passeport :', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(student.cin_number || 'N/A', leftCol + 35, yPosition);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Filière :', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(student.classes?.name || 'N/A', rightCol + 20, yPosition);
+    
+    yPosition += 6;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('CNE :', leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(student.email?.split('@')[0] || 'N/A', leftCol + 35, yPosition);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Option :', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text('-', rightCol + 20, yPosition);
+    
+    yPosition += 6;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text("Date d'édition :", leftCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleDateString('fr-FR'), leftCol + 35, yPosition);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Niveau :', rightCol, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Deuxième année', rightCol + 20, yPosition);
+    
+    yPosition += 15;
     
     // Tableau des notes
-    const tableHeaders = ['Code', 'Intitulé Module', 'Note/20', 'Validation', 'Session', 'VH'];
+    const semester = new Date().getMonth() > 6 ? 1 : 2;
+    const tableHeaders = ['Code', 'Intitulé Module', 'Note/20', 'V*', 'Rang', 'Session', 'VH'];
     const tableData: any[][] = [];
     
     subjectGrades.forEach((subject, index) => {
-      const code = `MOD.S${new Date().getMonth() > 6 ? '1' : '2'}.${(index + 1).toString().padStart(2, '0')}`;
+      const code = `MOD.S${semester}.${(index + 1).toString().padStart(2, '0')}`;
       const validation = subject.hasGrades && subject.average && subject.average >= 10 ? 'V' : 'NV';
-      const note = subject.hasGrades && subject.average ? subject.average.toFixed(2) : 'Pas encore publié';
+      const note = subject.hasGrades && subject.average ? subject.average.toFixed(2) : '-';
       
       tableData.push([
         code,
         subject.subjectName,
         note,
         validation,
+        '-',
         'S1',
         '50'
       ]);
     });
-    
-    console.log('DEBUG: Table data:', tableData);
     
     // Génération du tableau avec jsPDF-AutoTable
     autoTable(doc, {
       head: [tableHeaders],
       body: tableData,
       startY: yPosition,
+      theme: 'grid',
       styles: {
         fontSize: 9,
         cellPadding: 3,
+        halign: 'center',
       },
       headStyles: {
         fillColor: [66, 139, 202],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
+        halign: 'center',
       },
       columnStyles: {
         0: { cellWidth: 25 }, // Code
-        1: { cellWidth: 80 }, // Intitulé Module
-        2: { cellWidth: 20, halign: 'center' }, // Note
-        3: { cellWidth: 20, halign: 'center' }, // Validation
-        4: { cellWidth: 20, halign: 'center' }, // Session
-        5: { cellWidth: 15, halign: 'center' }, // VH
+        1: { cellWidth: 80, halign: 'left' }, // Intitulé Module
+        2: { cellWidth: 20 }, // Note
+        3: { cellWidth: 15 }, // Validation
+        4: { cellWidth: 15 }, // Rang
+        5: { cellWidth: 20 }, // Session
+        6: { cellWidth: 15 }, // VH
       },
     });
     
     // Position après le tableau
-    yPosition = (doc as any).lastAutoTable.finalY + 15;
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
     
     // Moyenne du semestre
     if (overallAverage > 0) {
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Moyenne du Semestre : ${overallAverage.toFixed(2)}/20`, 20, yPosition);
-      yPosition += 10;
+      doc.text(`Moyenne du Semestre ${semester} : ${overallAverage.toFixed(2)}/20`, leftCol, yPosition);
+      yPosition += 8;
     }
     
     // Légende
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('* : V-Validé, NV-Non Validé, VC-Validé par Compensation, VR-Validé après Rattrapage', 20, yPosition);
+    doc.text('* : V-Validé, NV-Non Validé, VC-Validé par Compensation, VR-Validé après Rattrapage', leftCol, yPosition);
     
-    yPosition += 20;
+    yPosition += 15;
     
     // Signature
     doc.setFontSize(10);
-    doc.text('Signature du directeur pédagogique', 20, yPosition);
-    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, yPosition + 15);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Signature du directeur pédagogique :', leftCol, yPosition);
+    yPosition += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, leftCol, yPosition);
     
     // Footer
-    const footerY = doc.internal.pageSize.height - 20;
+    const footerY = doc.internal.pageSize.height - 15;
     doc.setFontSize(8);
-    doc.text('Système de gestion scolaire Eduvate', pageWidth / 2, footerY, { align: 'center' });
+    doc.setFont('helvetica', 'italic');
+    doc.text(student.schools?.name || 'École', pageWidth / 2, footerY, { align: 'center' });
+    doc.text('Système de gestion scolaire Eduvate', pageWidth / 2, footerY + 4, { align: 'center' });
     
     // Télécharger le PDF
     const fileName = `Bulletin_${student.firstname}_${student.lastname}_${new Date().toISOString().slice(0, 10)}.pdf`;
-    console.log('DEBUG: Téléchargement PDF:', fileName);
     doc.save(fileName);
     
-    console.log('DEBUG: PDF généré avec succès');
     return true;
   } catch (error) {
-    console.error('DEBUG: Erreur dans generateStudentBulletin:', error);
+    console.error('Erreur dans generateStudentBulletin:', error);
     throw error;
   }
 };
