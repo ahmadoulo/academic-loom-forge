@@ -6,6 +6,13 @@ export interface School {
   id: string;
   name: string;
   identifier: string;
+  phone?: string;
+  address?: string;
+  logo_url?: string;
+  academic_year?: string;
+  city?: string;
+  country?: string;
+  website?: string;
   created_at: string;
   updated_at: string;
 }
@@ -13,6 +20,13 @@ export interface School {
 export interface CreateSchoolData {
   name: string;
   identifier: string;
+  phone?: string;
+  address?: string;
+  logo_url?: string;
+  academic_year?: string;
+  city?: string;
+  country?: string;
+  website?: string;
 }
 
 export const useSchools = () => {

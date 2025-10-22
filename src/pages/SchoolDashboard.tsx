@@ -914,6 +914,7 @@ const SchoolDashboard = () => {
                 <BulletinSection
                   schoolId={school.id}
                   schoolName={school.name}
+                  schoolLogoUrl={school.logo_url}
                   students={students}
                   classes={classes}
                   grades={grades}

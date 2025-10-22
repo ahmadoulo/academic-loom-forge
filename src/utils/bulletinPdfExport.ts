@@ -27,16 +27,29 @@ interface SubjectGrade {
 }
 
 // Fonction pour générer le contenu du bulletin dans un document existant
-export const generateStudentBulletinInDoc = (
+export const generateStudentBulletinInDoc = async (
   doc: jsPDF,
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
-  overallAverage: number
+  overallAverage: number,
+  schoolLogoUrl?: string
 ) => {
     
     // Configuration de base
     const pageWidth = doc.internal.pageSize.width;
     let yPosition = 20;
+    
+    // Add logo if available
+    if (schoolLogoUrl) {
+      try {
+        const logoWidth = 25;
+        const logoHeight = 25;
+        doc.addImage(schoolLogoUrl, 'PNG', 15, yPosition - 5, logoWidth, logoHeight);
+        yPosition += 5;
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout du logo:', error);
+      }
+    }
     
     // Header - Logo et informations école
     doc.setFontSize(12);
@@ -157,14 +170,15 @@ export const generateStudentBulletinInDoc = (
 };
 
 // Fonction principale pour générer et télécharger un bulletin individuel
-export const generateStudentBulletin = (
+export const generateStudentBulletin = async (
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
-  overallAverage: number
+  overallAverage: number,
+  schoolLogoUrl?: string
 ) => {
   try {
     const doc = new jsPDF();
-    generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage);
+    await generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage, schoolLogoUrl);
     
     const fileName = `Bulletin_${student.firstname}_${student.lastname}_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);

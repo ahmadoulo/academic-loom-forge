@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 interface BulletinSectionProps {
   schoolId: string;
   schoolName: string;
+  schoolLogoUrl?: string;
   students: any[];
   classes: any[];
   grades: any[];
@@ -22,6 +23,7 @@ interface BulletinSectionProps {
 export const BulletinSection = ({
   schoolId,
   schoolName,
+  schoolLogoUrl,
   students,
   classes,
   grades,
@@ -102,7 +104,7 @@ export const BulletinSection = ({
     return classStudents.findIndex(s => s.id === student.id) + 1;
   };
 
-  const handleGeneratePDF = (student: any) => {
+  const handleGeneratePDF = async (student: any) => {
     try {
       const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
       const studentClass = classes.find(c => c.id === student.class_id);
@@ -119,7 +121,7 @@ export const BulletinSection = ({
         schools: { name: schoolName },
       };
       
-      generateStudentBulletin(studentData, subjectGrades, overallAverage);
+      await generateStudentBulletin(studentData, subjectGrades, overallAverage, schoolLogoUrl);
       toast.success("Bulletin généré avec succès");
     } catch (error) {
       console.error("Erreur génération PDF:", error);
@@ -127,7 +129,7 @@ export const BulletinSection = ({
     }
   };
 
-  const handleGenerateClassBulletins = (classId: string) => {
+  const handleGenerateClassBulletins = async (classId: string) => {
     try {
       const classStudents = studentsByClass[classId] || [];
       if (classStudents.length === 0) {
@@ -138,7 +140,8 @@ export const BulletinSection = ({
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
 
-      classStudents.forEach((student, index) => {
+      for (let index = 0; index < classStudents.length; index++) {
+        const student = classStudents[index];
         if (index > 0) {
           doc.addPage();
         }
@@ -158,8 +161,8 @@ export const BulletinSection = ({
         };
 
         // Générer le bulletin pour cet étudiant dans le doc existant
-        generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage);
-      });
+        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, schoolLogoUrl);
+      }
 
       const className = studentClass?.name || 'Classe';
       const fileName = `Bulletins_${className}_${new Date().toISOString().slice(0, 10)}.pdf`;

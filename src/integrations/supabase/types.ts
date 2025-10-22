@@ -713,25 +713,46 @@ export type Database = {
       }
       schools: {
         Row: {
+          academic_year: string | null
+          address: string | null
+          city: string | null
+          country: string | null
           created_at: string
           id: string
           identifier: string
+          logo_url: string | null
           name: string
+          phone: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          academic_year?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           id?: string
           identifier: string
+          logo_url?: string | null
           name: string
+          phone?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          academic_year?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           id?: string
           identifier?: string
+          logo_url?: string | null
           name?: string
+          phone?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
