@@ -26,13 +26,13 @@ interface SubjectGrade {
   hasGrades: boolean;
 }
 
-export const generateStudentBulletin = (
+// Fonction pour générer le contenu du bulletin dans un document existant
+export const generateStudentBulletinInDoc = (
+  doc: jsPDF,
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
   overallAverage: number
 ) => {
-  try {
-    const doc = new jsPDF();
     
     // Configuration de base
     const pageWidth = doc.internal.pageSize.width;
@@ -58,11 +58,10 @@ export const generateStudentBulletin = (
     
     yPosition += 15;
     
-    // Informations de l'étudiant en deux colonnes
+    // Informations de l'étudiant
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     
-    // Colonne gauche
     const leftCol = 15;
     const rightCol = pageWidth / 2 + 10;
     
@@ -71,9 +70,9 @@ export const generateStudentBulletin = (
     doc.text(`${student.firstname} ${student.lastname}`, leftCol + 35, yPosition);
     
     doc.setFont('helvetica', 'bold');
-    doc.text('Cycle :', rightCol, yPosition);
+    doc.text('Classe :', rightCol, yPosition);
     doc.setFont('helvetica', 'normal');
-    doc.text('Licence - Bac+3', rightCol + 20, yPosition);
+    doc.text(student.classes?.name || 'N/A', rightCol + 20, yPosition);
     
     yPosition += 6;
     
@@ -83,54 +82,24 @@ export const generateStudentBulletin = (
     doc.text(student.cin_number || 'N/A', leftCol + 35, yPosition);
     
     doc.setFont('helvetica', 'bold');
-    doc.text('Filière :', rightCol, yPosition);
+    doc.text("Date d'édition :", rightCol, yPosition);
     doc.setFont('helvetica', 'normal');
-    doc.text(student.classes?.name || 'N/A', rightCol + 20, yPosition);
-    
-    yPosition += 6;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('CNE :', leftCol, yPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(student.email?.split('@')[0] || 'N/A', leftCol + 35, yPosition);
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Option :', rightCol, yPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text('-', rightCol + 20, yPosition);
-    
-    yPosition += 6;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text("Date d'édition :", leftCol, yPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString('fr-FR'), leftCol + 35, yPosition);
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Niveau :', rightCol, yPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Deuxième année', rightCol + 20, yPosition);
+    doc.text(new Date().toLocaleDateString('fr-FR'), rightCol + 20, yPosition);
     
     yPosition += 15;
     
     // Tableau des notes
-    const semester = new Date().getMonth() > 6 ? 1 : 2;
-    const tableHeaders = ['Code', 'Intitulé Module', 'Note/20', 'V*', 'Rang', 'Session', 'VH'];
+    const tableHeaders = ['Matière', 'Note/20', 'Validation'];
     const tableData: any[][] = [];
     
-    subjectGrades.forEach((subject, index) => {
-      const code = `MOD.S${semester}.${(index + 1).toString().padStart(2, '0')}`;
-      const validation = subject.hasGrades && subject.average && subject.average >= 10 ? 'V' : 'NV';
+    subjectGrades.forEach((subject) => {
+      const validation = subject.hasGrades && subject.average && subject.average >= 10 ? 'Validé' : 'Non Validé';
       const note = subject.hasGrades && subject.average ? subject.average.toFixed(2) : '-';
       
       tableData.push([
-        code,
         subject.subjectName,
         note,
-        validation,
-        '-',
-        'S1',
-        '50'
+        validation
       ]);
     });
     
@@ -152,31 +121,22 @@ export const generateStudentBulletin = (
         halign: 'center',
       },
       columnStyles: {
-        0: { cellWidth: 25 }, // Code
-        1: { cellWidth: 80, halign: 'left' }, // Intitulé Module
-        2: { cellWidth: 20 }, // Note
-        3: { cellWidth: 15 }, // Validation
-        4: { cellWidth: 15 }, // Rang
-        5: { cellWidth: 20 }, // Session
-        6: { cellWidth: 15 }, // VH
+        0: { cellWidth: 100, halign: 'left' }, // Matière
+        1: { cellWidth: 40 }, // Note
+        2: { cellWidth: 40 }, // Validation
       },
     });
     
     // Position après le tableau
     yPosition = (doc as any).lastAutoTable.finalY + 10;
     
-    // Moyenne du semestre
+    // Moyenne générale
     if (overallAverage > 0) {
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Moyenne du Semestre ${semester} : ${overallAverage.toFixed(2)}/20`, leftCol, yPosition);
+      doc.text(`Moyenne Générale : ${overallAverage.toFixed(2)}/20`, leftCol, yPosition);
       yPosition += 8;
     }
-    
-    // Légende
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('* : V-Validé, NV-Non Validé, VC-Validé par Compensation, VR-Validé après Rattrapage', leftCol, yPosition);
     
     yPosition += 15;
     
@@ -194,8 +154,18 @@ export const generateStudentBulletin = (
     doc.setFont('helvetica', 'italic');
     doc.text(student.schools?.name || 'École', pageWidth / 2, footerY, { align: 'center' });
     doc.text('Système de gestion scolaire Eduvate', pageWidth / 2, footerY + 4, { align: 'center' });
+};
+
+// Fonction principale pour générer et télécharger un bulletin individuel
+export const generateStudentBulletin = (
+  student: CurrentStudentData,
+  subjectGrades: SubjectGrade[],
+  overallAverage: number
+) => {
+  try {
+    const doc = new jsPDF();
+    generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage);
     
-    // Télécharger le PDF
     const fileName = `Bulletin_${student.firstname}_${student.lastname}_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
     

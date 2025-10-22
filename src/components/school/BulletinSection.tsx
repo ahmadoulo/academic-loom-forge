@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, FileText, Award, TrendingUp, Download, ArrowLeft, Users } from "lucide-react";
-import { generateStudentBulletin } from "@/utils/bulletinPdfExport";
+import { generateStudentBulletin, generateStudentBulletinInDoc } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -123,6 +124,51 @@ export const BulletinSection = ({
     } catch (error) {
       console.error("Erreur génération PDF:", error);
       toast.error("Erreur lors de la génération du bulletin");
+    }
+  };
+
+  const handleGenerateClassBulletins = (classId: string) => {
+    try {
+      const classStudents = studentsByClass[classId] || [];
+      if (classStudents.length === 0) {
+        toast.error("Aucun étudiant dans cette classe");
+        return;
+      }
+
+      const doc = new jsPDF();
+      const studentClass = classes.find(c => c.id === classId);
+
+      classStudents.forEach((student, index) => {
+        if (index > 0) {
+          doc.addPage();
+        }
+
+        const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
+        
+        const studentData = {
+          id: student.id,
+          firstname: student.firstname,
+          lastname: student.lastname,
+          email: student.email,
+          cin_number: student.cin_number,
+          class_id: student.class_id,
+          school_id: student.school_id,
+          classes: studentClass,
+          schools: { name: schoolName },
+        };
+
+        // Générer le bulletin pour cet étudiant dans le doc existant
+        generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage);
+      });
+
+      const className = studentClass?.name || 'Classe';
+      const fileName = `Bulletins_${className}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(fileName);
+      
+      toast.success(`${classStudents.length} bulletins générés avec succès`);
+    } catch (error) {
+      console.error("Erreur génération PDF groupé:", error);
+      toast.error("Erreur lors de la génération des bulletins");
     }
   };
 
@@ -300,7 +346,17 @@ export const BulletinSection = ({
         {classes.map((classItem) => (
           <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
             {studentsByClass[classItem.id]?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <>
+                <div className="flex justify-end mb-4">
+                  <Button 
+                    onClick={() => handleGenerateClassBulletins(classItem.id)}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Télécharger tous les bulletins ({studentsByClass[classItem.id].length})
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {studentsByClass[classItem.id].map((student, index) => (
                   <Card 
                     key={student.id} 
@@ -353,7 +409,8 @@ export const BulletinSection = ({
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                </div>
+              </>
             ) : (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
