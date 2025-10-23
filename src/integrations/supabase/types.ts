@@ -1097,10 +1097,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      generate_random_password: {
-        Args: { length?: number }
-        Returns: string
-      }
+      generate_random_password: { Args: { length?: number }; Returns: string }
       get_user_profile: {
         Args: { _user_id: string }
         Returns: {
