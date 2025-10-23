@@ -24,12 +24,30 @@ export const generateSchoolGradesReport = (
   classData: { id: string; name: string },
   students: Student[],
   grades: Grade[],
-  subjects: Subject[]
+  subjects: Subject[],
+  schoolName: string,
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     let yPosition = 20;
+    
+    // Add logo if available
+    if (schoolLogoBase64) {
+      try {
+        const logoWidth = 30;
+        const logoHeight = 30;
+        doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(schoolName, 50, yPosition + 7);
+        yPosition += 35;
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout du logo:', error);
+      }
+    }
     
     // Header
     doc.setFontSize(16);
@@ -45,9 +63,10 @@ export const generateSchoolGradesReport = (
     
     const info = [
       `Classe : ${classData.name}`,
+      academicYear ? `Année universitaire : ${academicYear}` : '',
       `Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`,
       `Nombre d'étudiants : ${students.length}`
-    ];
+    ].filter(Boolean);
     
     info.forEach((line, index) => {
       doc.text(line, 20, yPosition + (index * 6));

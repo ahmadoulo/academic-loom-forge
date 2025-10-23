@@ -20,21 +20,48 @@ export interface StudentExportData {
 export const exportStudentsToPDF = (
   students: StudentExportData[],
   className: string,
-  schoolName: string
+  schoolName: string,
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
   const doc = new jsPDF();
   
+  let yPosition = 20;
+  
+  // Add logo if available
+  if (schoolLogoBase64) {
+    try {
+      const logoWidth = 30;
+      const logoHeight = 30;
+      doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(schoolName, 50, yPosition + 7);
+      yPosition += 35;
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du logo:', error);
+    }
+  }
+  
   // Add title
   doc.setFontSize(20);
-  doc.text(`Liste des Étudiants - ${className}`, 20, 30);
+  doc.text(`Liste des Étudiants - ${className}`, 20, yPosition + 10);
   
-  // Add school name
-  doc.setFontSize(14);
-  doc.text(`École: ${schoolName}`, 20, 45);
+  // Add school name if no logo
+  if (!schoolLogoBase64) {
+    doc.setFontSize(14);
+    doc.text(`École: ${schoolName}`, 20, yPosition + 25);
+  }
+  
+  // Add academic year
+  if (academicYear) {
+    doc.setFontSize(10);
+    doc.text(`Année universitaire: ${academicYear}`, 20, yPosition + (schoolLogoBase64 ? 20 : 35));
+  }
   
   // Add date
   doc.setFontSize(10);
-  doc.text(`Généré le: ${new Date().toLocaleDateString('fr-FR')}`, 20, 55);
+  doc.text(`Généré le: ${new Date().toLocaleDateString('fr-FR')}`, 20, yPosition + (academicYear ? 30 : 25) + (schoolLogoBase64 ? 5 : 10));
   
   // Prepare table data
   const tableData = students.map(student => [
@@ -45,11 +72,13 @@ export const exportStudentsToPDF = (
     student.parent_phone || 'N/A'
   ]);
   
+  const tableStartY = yPosition + (academicYear ? 40 : 35) + (schoolLogoBase64 ? 10 : 5);
+  
   // Add table
   doc.autoTable({
     head: [['Nom Complet', 'Email', 'CIN', 'Tél. Étudiant', 'Tél. Parent']],
     body: tableData,
-    startY: 70,
+    startY: tableStartY,
     styles: {
       fontSize: 9,
       cellPadding: 3,

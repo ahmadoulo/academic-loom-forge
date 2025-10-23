@@ -8,28 +8,53 @@ export const exportTimetableToPDF = (
   entries: TimetableEntry[],
   className: string,
   schoolName: string,
-  weekStart: Date
+  weekStart: Date,
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
   const doc = new jsPDF({ orientation: "landscape" });
 
   // En-tête
   const pageWidth = doc.internal.pageSize.getWidth();
   const centerX = pageWidth / 2;
+  let yPosition = 15;
+  
+  // Add logo if available
+  if (schoolLogoBase64) {
+    try {
+      const logoWidth = 30;
+      const logoHeight = 30;
+      doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(schoolName, 50, yPosition + 7);
+      yPosition += 40;
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du logo:', error);
+    }
+  }
   
   doc.setFontSize(18);
-  doc.text("Emploi du Temps", centerX, 15, { align: "center" });
+  doc.text("Emploi du Temps", centerX, yPosition, { align: "center" });
 
   doc.setFontSize(11);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
   const weekPeriod = `Du ${format(weekStart, "dd/MM/yyyy", { locale: fr })} au ${format(weekEnd, "dd/MM/yyyy", { locale: fr })}`;
-  doc.text(weekPeriod, centerX, 23, { align: "center" });
+  doc.text(weekPeriod, centerX, yPosition + 8, { align: "center" });
 
   doc.setFontSize(13);
-  doc.text(`Classe: ${className}`, centerX, 31, { align: "center" });
+  doc.text(`Classe: ${className}`, centerX, yPosition + 16, { align: "center" });
 
-  doc.setFontSize(10);
-  doc.text(`École: ${schoolName}`, centerX, 38, { align: "center" });
+  if (!schoolLogoBase64) {
+    doc.setFontSize(10);
+    doc.text(`École: ${schoolName}`, centerX, yPosition + 23, { align: "center" });
+  }
+  
+  if (academicYear) {
+    doc.setFontSize(10);
+    doc.text(`Année universitaire: ${academicYear}`, centerX, yPosition + (schoolLogoBase64 ? 23 : 30), { align: "center" });
+  }
 
   // Trier les entrées par jour et heure
   const sortedEntries = [...entries].sort((a, b) => {
@@ -83,10 +108,11 @@ export const exportTimetableToPDF = (
   });
 
   // Créer la table
+  const tableStartY = yPosition + (academicYear ? 33 : 28) + (schoolLogoBase64 ? 5 : 0);
   autoTable(doc, {
     head: [["Jour", "Matière", "Salle", "Horaire", "Enseignant"]],
     body: tableData,
-    startY: 45,
+    startY: tableStartY,
     styles: {
       fontSize: 9,
       cellPadding: 5,
@@ -108,7 +134,7 @@ export const exportTimetableToPDF = (
       3: { cellWidth: 50, halign: "center", fillColor: [254, 249, 195], fontStyle: "bold" }, // Horaire - yellow-100
       4: { cellWidth: 55 }, // Enseignant
     },
-    margin: { top: 45, left: 15, right: 15 },
+    margin: { top: tableStartY, left: 15, right: 15 },
   });
 
   // Footer

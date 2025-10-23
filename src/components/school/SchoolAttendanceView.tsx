@@ -13,6 +13,8 @@ import { generateSchoolAttendanceReport } from "@/utils/attendancePdfExport";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { useSchools } from "@/hooks/useSchools";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 
 interface SchoolAttendanceViewProps {
   schoolId: string;
@@ -26,6 +28,26 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const { classes, loading: classesLoading } = useClasses(schoolId);
   const { students } = useStudents(schoolId);
   const { subjects } = useSubjects(schoolId, selectedClass !== "all" ? selectedClass : undefined);
+  const { getSchoolById } = useSchools();
+  const [school, setSchool] = useState<any>(null);
+  const [logoBase64, setLogoBase64] = useState<string>();
+  
+  React.useEffect(() => {
+    const loadSchool = async () => {
+      const schoolData = await getSchoolById(schoolId);
+      setSchool(schoolData);
+      if (schoolData?.logo_url) {
+        try {
+          const base64 = await imageUrlToBase64(schoolData.logo_url);
+          setLogoBase64(base64);
+        } catch (error) {
+          console.error("Erreur conversion logo:", error);
+        }
+      }
+    };
+    loadSchool();
+  }, [schoolId]);
+  
   const { attendance, loading: attendanceLoading } = useAttendance(
     selectedClass !== "all" ? selectedClass : undefined,
     undefined,
@@ -58,7 +80,10 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
         classData,
         filteredStudents,
         attendance,
-        selectedDate
+        selectedDate,
+        school?.name || 'École',
+        logoBase64,
+        school?.academic_year
       );
       toast.success("Rapport exporté avec succès");
     } catch (error) {

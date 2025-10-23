@@ -21,7 +21,10 @@ export const generateTeacherGradesReport = (
   classData: { id: string; name: string },
   subjectData: { id: string; name: string },
   students: Student[],
-  grades: Grade[]
+  grades: Grade[],
+  schoolName: string,
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
   try {
     console.log('DEBUG: Génération PDF professeur - début');
@@ -29,6 +32,21 @@ export const generateTeacherGradesReport = (
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     let yPosition = 20;
+    
+    // Add logo if available
+    if (schoolLogoBase64) {
+      try {
+        const logoWidth = 30;
+        const logoHeight = 30;
+        doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(schoolName, 50, yPosition + 7);
+        yPosition += 35;
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout du logo:', error);
+      }
+    }
     
     // Header
     doc.setFontSize(16);
@@ -45,9 +63,10 @@ export const generateTeacherGradesReport = (
     const courseInfo = [
       `Matière : ${subjectData.name}`,
       `Classe : ${classData.name}`,
+      academicYear ? `Année universitaire : ${academicYear}` : '',
       `Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`,
       `Nombre d'étudiants : ${students.length}`
-    ];
+    ].filter(Boolean);
     
     courseInfo.forEach((info, index) => {
       doc.text(info, 20, yPosition + (index * 6));

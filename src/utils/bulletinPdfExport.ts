@@ -32,7 +32,8 @@ export const generateStudentBulletinInDoc = async (
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
   overallAverage: number,
-  schoolLogoUrl?: string
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
     
     // Configuration de base
@@ -40,12 +41,11 @@ export const generateStudentBulletinInDoc = async (
     let yPosition = 20;
     
     // Add logo if available
-    if (schoolLogoUrl) {
+    if (schoolLogoBase64) {
       try {
-        const logoWidth = 25;
-        const logoHeight = 25;
-        doc.addImage(schoolLogoUrl, 'PNG', 15, yPosition - 5, logoWidth, logoHeight);
-        yPosition += 5;
+        const logoWidth = 30;
+        const logoHeight = 30;
+        doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
       } catch (error) {
         console.error('Erreur lors de l\'ajout du logo:', error);
       }
@@ -54,20 +54,23 @@ export const generateStudentBulletinInDoc = async (
     // Header - Logo et informations école
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(student.schools?.name || 'ÉCOLE', pageWidth / 2, yPosition, { align: 'center' });
+    const schoolNameX = schoolLogoBase64 ? 50 : pageWidth / 2;
+    const schoolNameAlign: 'center' | 'left' = schoolLogoBase64 ? 'left' : 'center';
+    doc.text(student.schools?.name || 'ÉCOLE', schoolNameX, yPosition + 7, { align: schoolNameAlign });
+    
+    yPosition += schoolLogoBase64 ? 35 : 10;
     
     // Titre du bulletin
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    yPosition += 10;
     doc.text('Bulletin de notes', pageWidth / 2, yPosition, { align: 'center' });
     
     // Année universitaire
     yPosition += 10;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    const currentYear = new Date().getFullYear();
-    doc.text(`Année universitaire : ${currentYear}-${currentYear + 1}`, pageWidth / 2, yPosition, { align: 'center' });
+    const displayYear = academicYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+    doc.text(`Année universitaire : ${displayYear}`, pageWidth / 2, yPosition, { align: 'center' });
     
     yPosition += 15;
     
@@ -174,11 +177,12 @@ export const generateStudentBulletin = async (
   student: CurrentStudentData,
   subjectGrades: SubjectGrade[],
   overallAverage: number,
-  schoolLogoUrl?: string
+  schoolLogoBase64?: string,
+  academicYear?: string
 ) => {
   try {
     const doc = new jsPDF();
-    await generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage, schoolLogoUrl);
+    await generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage, schoolLogoBase64, academicYear);
     
     const fileName = `Bulletin_${student.firstname}_${student.lastname}_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);

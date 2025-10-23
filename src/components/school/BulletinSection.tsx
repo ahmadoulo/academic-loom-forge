@@ -8,11 +8,13 @@ import { Loader2, FileText, Award, TrendingUp, Download, ArrowLeft, Users } from
 import { generateStudentBulletin, generateStudentBulletinInDoc } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 
 interface BulletinSectionProps {
   schoolId: string;
   schoolName: string;
   schoolLogoUrl?: string;
+  academicYear?: string;
   students: any[];
   classes: any[];
   grades: any[];
@@ -24,6 +26,7 @@ export const BulletinSection = ({
   schoolId,
   schoolName,
   schoolLogoUrl,
+  academicYear,
   students,
   classes,
   grades,
@@ -31,6 +34,22 @@ export const BulletinSection = ({
   loading,
 }: BulletinSectionProps) => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
+  
+  // Convertir le logo en base64 au chargement
+  React.useEffect(() => {
+    const convertLogo = async () => {
+      if (schoolLogoUrl) {
+        try {
+          const base64 = await imageUrlToBase64(schoolLogoUrl);
+          setLogoBase64(base64);
+        } catch (error) {
+          console.error("Erreur conversion logo:", error);
+        }
+      }
+    };
+    convertLogo();
+  }, [schoolLogoUrl]);
 
   // Grouper les étudiants par classe
   const studentsByClass = useMemo(() => {
@@ -121,7 +140,7 @@ export const BulletinSection = ({
         schools: { name: schoolName },
       };
       
-      await generateStudentBulletin(studentData, subjectGrades, overallAverage, schoolLogoUrl);
+      await generateStudentBulletin(studentData, subjectGrades, overallAverage, logoBase64, academicYear);
       toast.success("Bulletin généré avec succès");
     } catch (error) {
       console.error("Erreur génération PDF:", error);
@@ -161,7 +180,7 @@ export const BulletinSection = ({
         };
 
         // Générer le bulletin pour cet étudiant dans le doc existant
-        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, schoolLogoUrl);
+        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, logoBase64, academicYear);
       }
 
       const className = studentClass?.name || 'Classe';
