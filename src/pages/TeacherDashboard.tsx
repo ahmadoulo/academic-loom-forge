@@ -222,6 +222,7 @@ const TeacherDashboard = () => {
           <StudentsGrading
             classData={selectedClass}
             subjectData={selectedSubject}
+            schoolId={currentTeacher?.school_id}
             students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
             grades={grades}
             onBack={handleBackToOverview}

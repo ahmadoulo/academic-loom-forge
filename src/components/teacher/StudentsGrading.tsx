@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { ArrowLeft, Plus, Trash2, BookOpen, User, Download } from "lucide-react"
 
 import { useToast } from "@/hooks/use-toast";
 import { generateTeacherGradesReport } from "@/utils/teacherGradesPdfExport";
+import { useSchools } from "@/hooks/useSchools";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 
 interface Student {
   id: string;
@@ -34,6 +36,7 @@ interface StudentsGradingProps {
     id: string;
     name: string;
   };
+  schoolId?: string;
   students: Student[];
   grades: Grade[];
   onBack: () => void;
@@ -43,7 +46,8 @@ interface StudentsGradingProps {
 
 export const StudentsGrading = ({ 
   classData, 
-  subjectData, 
+  subjectData,
+  schoolId,
   students, 
   grades,
   onBack, 
@@ -54,6 +58,26 @@ export const StudentsGrading = ({
   const [saving, setSaving] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
+  const { getSchoolById } = useSchools();
+  const [school, setSchool] = useState<any>(null);
+  const [logoBase64, setLogoBase64] = useState<string>();
+  
+  React.useEffect(() => {
+    if (!schoolId) return;
+    const loadSchool = async () => {
+      const schoolData = await getSchoolById(schoolId);
+      setSchool(schoolData);
+      if (schoolData?.logo_url) {
+        try {
+          const base64 = await imageUrlToBase64(schoolData.logo_url);
+          setLogoBase64(base64);
+        } catch (error) {
+          console.error("Erreur conversion logo:", error);
+        }
+      }
+    };
+    loadSchool();
+  }, [schoolId]);
 
   const handleSaveGrade = async (studentId: string) => {
     const gradeData = newGrades[studentId];
@@ -115,7 +139,15 @@ export const StudentsGrading = ({
   const handleGeneratePDF = async () => {
     setGenerating(true);
     try {
-      await generateTeacherGradesReport(classData, subjectData, students, grades);
+      await generateTeacherGradesReport(
+        classData, 
+        subjectData, 
+        students, 
+        grades,
+        school?.name || 'École',
+        logoBase64,
+        school?.academic_year
+      );
       toast({
         title: "PDF généré",
         description: "Le rapport des notes a été téléchargé avec succès",

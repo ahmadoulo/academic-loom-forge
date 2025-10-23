@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, Download, Loader2 } from "lucide-react";
 import { generateSchoolGradesReport } from "@/utils/schoolGradesPdfExport";
 import { useToast } from "@/hooks/use-toast";
+import { useSchools } from "@/hooks/useSchools";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 
 interface Student {
   id: string;
@@ -38,6 +40,7 @@ interface Class {
 }
 
 interface SchoolGradesViewProps {
+  schoolId: string;
   classes: Class[];
   students: Student[];
   grades: Grade[];
@@ -45,10 +48,29 @@ interface SchoolGradesViewProps {
   loading: boolean;
 }
 
-export function SchoolGradesView({ classes, students, grades, subjects, loading }: SchoolGradesViewProps) {
+export function SchoolGradesView({ schoolId, classes, students, grades, subjects, loading }: SchoolGradesViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
+  const { getSchoolById } = useSchools();
+  const [school, setSchool] = useState<any>(null);
+  const [logoBase64, setLogoBase64] = useState<string>();
+  
+  React.useEffect(() => {
+    const loadSchool = async () => {
+      const schoolData = await getSchoolById(schoolId);
+      setSchool(schoolData);
+      if (schoolData?.logo_url) {
+        try {
+          const base64 = await imageUrlToBase64(schoolData.logo_url);
+          setLogoBase64(base64);
+        } catch (error) {
+          console.error("Erreur conversion logo:", error);
+        }
+      }
+    };
+    loadSchool();
+  }, [schoolId]);
 
   const filteredStudents = selectedClass === "all" 
     ? students 
@@ -81,7 +103,10 @@ export function SchoolGradesView({ classes, students, grades, subjects, loading 
         classData,
         filteredStudents,
         grades,
-        subjects
+        subjects,
+        school?.name || 'École',
+        logoBase64,
+        school?.academic_year
       );
       
       toast({

@@ -676,6 +676,7 @@ const SchoolDashboard = () => {
               {activeTab === "grades" && (
                 <div className="space-y-6">
                   <SchoolGradesView
+                    schoolId={school.id}
                     classes={classes}
                     students={students}
                     grades={grades}
@@ -915,6 +916,7 @@ const SchoolDashboard = () => {
                   schoolId={school.id}
                   schoolName={school.name}
                   schoolLogoUrl={school.logo_url}
+                  academicYear={school.academic_year}
                   students={students}
                   classes={classes}
                   grades={grades}
