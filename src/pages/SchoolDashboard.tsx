@@ -457,6 +457,9 @@ const SchoolDashboard = () => {
             showMobileMenu={true}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            schoolName={school.name}
+            schoolLogoUrl={school.logo_url || undefined}
+            userRole="admin"
           />
           
           <main className="flex-1 p-4 lg:p-6">

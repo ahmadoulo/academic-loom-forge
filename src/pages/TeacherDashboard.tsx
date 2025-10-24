@@ -8,6 +8,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useGrades } from "@/hooks/useGrades";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
+import { useSchools } from "@/hooks/useSchools";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
@@ -41,6 +42,10 @@ const TeacherDashboard = () => {
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
   const currentTeacher = teachers.find(t => t.id === teacherId);
+  
+  // Get school information
+  const { schools } = useSchools();
+  const school = schools.find(s => s.id === currentTeacher?.school_id);
   
   // Get teacher's assigned classes
   const { teacherClasses } = useTeacherClasses(teacherId);
@@ -178,6 +183,9 @@ const TeacherDashboard = () => {
             showMobileMenu={true}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            schoolName={school?.name}
+            schoolLogoUrl={school?.logo_url || undefined}
+            userRole="teacher"
           />
           
           <main className="flex-1 p-4 lg:p-6">

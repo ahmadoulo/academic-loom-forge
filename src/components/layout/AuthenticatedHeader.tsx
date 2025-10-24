@@ -20,6 +20,9 @@ interface AuthenticatedHeaderProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   menuItems?: MenuItem[];
+  schoolName?: string;
+  schoolLogoUrl?: string;
+  userRole?: 'teacher' | 'student' | 'admin';
 }
 
 export function AuthenticatedHeader({ 
@@ -28,7 +31,10 @@ export function AuthenticatedHeader({
   showMobileMenu = false, 
   activeTab, 
   onTabChange,
-  menuItems: customMenuItems
+  menuItems: customMenuItems,
+  schoolName,
+  schoolLogoUrl,
+  userRole
 }: AuthenticatedHeaderProps) {
   // Mock user pour l'accès libre
   const profile = {
@@ -75,11 +81,11 @@ export function AuthenticatedHeader({
   };
 
   return (
-    <header className="border-b border-border bg-card">
+    <header className="border-b border-border bg-card shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center space-x-2 lg:space-x-4">
+        <div className="flex items-center space-x-3 lg:space-x-4 min-w-0 flex-1">
           {showMobileMenu && activeTab && onTabChange && (
-            <div className="md:hidden">
+            <div className="md:hidden flex-shrink-0">
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -89,13 +95,21 @@ export function AuthenticatedHeader({
                 <SheetContent side="left" className="w-64 p-0">
                   <div className="flex flex-col h-full">
                     <div className="p-4 border-b">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
-                          <School className="h-5 w-5 text-primary-foreground" />
-                        </div>
-                        <div>
-                          <span className="font-bold text-lg">Admin Panel</span>
-                          <p className="text-xs text-muted-foreground">Gestion système</p>
+                      <div className="flex items-center gap-3">
+                        {schoolLogoUrl ? (
+                          <img 
+                            src={schoolLogoUrl} 
+                            alt={schoolName || "École"} 
+                            className="h-10 w-10 rounded-lg object-cover ring-2 ring-primary/20"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary to-primary-dark rounded-lg flex items-center justify-center">
+                            <School className="h-6 w-6 text-primary-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-base truncate block">{schoolName || "Admin Panel"}</span>
+                          <p className="text-xs text-muted-foreground truncate">Gestion système</p>
                         </div>
                       </div>
                     </div>
@@ -113,9 +127,9 @@ export function AuthenticatedHeader({
                             }`}
                           >
                             <item.icon className="h-4 w-4" />
-                            <div className="flex-1">
-                              <span className="block font-medium">{item.title}</span>
-                              <span className="text-xs opacity-75">{item.description}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="block font-medium truncate">{item.title}</span>
+                              <span className="text-xs opacity-75 truncate block">{item.description}</span>
                             </div>
                           </button>
                         ))}
@@ -126,13 +140,53 @@ export function AuthenticatedHeader({
               </Sheet>
             </div>
           )}
-          <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">
-              {title}
-            </h1>
+          
+          {/* Logo and Branding */}
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+            {/* User info and role badge */}
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 lg:h-9 lg:w-9 bg-gradient-to-br from-primary via-primary to-primary-dark rounded-lg flex items-center justify-center flex-shrink-0">
+                <GraduationCap className="h-4 w-4 lg:h-5 lg:w-5 text-primary-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-sm lg:text-base font-bold text-foreground truncate">
+                  {title}
+                </h1>
+                {schoolName && userRole && (
+                  <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                    {userRole === 'teacher' ? 'Professeur' : userRole === 'student' ? 'Étudiant' : 'Administrateur'}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* School Logo and Name - Only for teacher and student */}
+            {schoolName && (userRole === 'teacher' || userRole === 'student' || userRole === 'admin') && (
+              <>
+                <div className="hidden lg:block h-8 w-px bg-border flex-shrink-0" />
+                <div className="hidden lg:flex items-center gap-2 lg:gap-3">
+                  {schoolLogoUrl ? (
+                    <img 
+                      src={schoolLogoUrl} 
+                      alt={schoolName} 
+                      className="h-10 w-10 lg:h-12 lg:w-12 rounded-lg object-cover ring-2 ring-primary/10 shadow-md"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 lg:h-12 lg:w-12 bg-gradient-to-br from-primary/80 to-primary rounded-lg flex items-center justify-center shadow-md">
+                      <School className="h-5 w-5 lg:h-6 lg:w-6 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {userRole === 'admin' ? 'Administration' : 'École'}
+                    </p>
+                    <p className="text-sm font-bold text-foreground truncate max-w-[200px]">
+                      {schoolName}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

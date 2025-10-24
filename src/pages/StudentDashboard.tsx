@@ -10,6 +10,7 @@ import { StudentAssignmentsSection } from "@/components/student/StudentAssignmen
 import { StudentCalendarSection } from "@/components/student/StudentCalendarSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
+import { useSchools } from "@/hooks/useSchools";
 import { supabase } from "@/integrations/supabase/client";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
@@ -25,6 +26,10 @@ export default function StudentDashboard() {
   const currentStudentId = studentId || queryStudentId;
   
   const { student } = useCurrentStudent(currentStudentId);
+  
+  // Get school information
+  const { schools } = useSchools();
+  const school = schools.find(s => s.id === student?.school_id);
 
   useEffect(() => {
     if (student?.class_id) {
@@ -107,11 +112,14 @@ export default function StudentDashboard() {
         <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 flex flex-col">
           <AuthenticatedHeader 
-            title="Interface Étudiant"
+            title={`${student?.firstname || ''} ${student?.lastname || ''}`}
             onSettingsClick={() => {}}
             showMobileMenu={true}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            schoolName={school?.name}
+            schoolLogoUrl={school?.logo_url || undefined}
+            userRole="student"
           />
           <main className="flex-1 p-4 lg:p-6 bg-background">
             {renderContent()}
