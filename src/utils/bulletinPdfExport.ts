@@ -40,25 +40,25 @@ export const generateStudentBulletinInDoc = async (
     const pageWidth = doc.internal.pageSize.width;
     let yPosition = 20;
     
-    // Add logo if available
+    // Add logo if available - centered
     if (schoolLogoBase64) {
       try {
         const logoWidth = 30;
         const logoHeight = 30;
-        doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
+        const logoX = (pageWidth - logoWidth) / 2;
+        doc.addImage(schoolLogoBase64, 'PNG', logoX, yPosition, logoWidth, logoHeight);
+        yPosition += logoHeight + 5;
       } catch (error) {
         console.error('Erreur lors de l\'ajout du logo:', error);
       }
     }
     
-    // Header - Logo et informations école
+    // Header - School name centered
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    const schoolNameX = schoolLogoBase64 ? 50 : pageWidth / 2;
-    const schoolNameAlign: 'center' | 'left' = schoolLogoBase64 ? 'left' : 'center';
-    doc.text(student.schools?.name || 'ÉCOLE', schoolNameX, yPosition + 7, { align: schoolNameAlign });
+    doc.text(student.schools?.name || 'ÉCOLE', pageWidth / 2, yPosition, { align: 'center' });
     
-    yPosition += schoolLogoBase64 ? 35 : 10;
+    yPosition += 10;
     
     // Titre du bulletin
     doc.setFontSize(16);

@@ -19,20 +19,24 @@ export const exportTimetableToPDF = (
   const centerX = pageWidth / 2;
   let yPosition = 15;
   
-  // Add logo if available
+  // Add logo if available - centered
   if (schoolLogoBase64) {
     try {
       const logoWidth = 30;
       const logoHeight = 30;
-      doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, logoWidth, logoHeight);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(schoolName, 50, yPosition + 7);
-      yPosition += 40;
+      const logoX = (pageWidth - logoWidth) / 2;
+      doc.addImage(schoolLogoBase64, 'PNG', logoX, yPosition, logoWidth, logoHeight);
+      yPosition += logoHeight + 5;
     } catch (error) {
       console.error('Erreur lors de l\'ajout du logo:', error);
     }
   }
+  
+  // School name - centered
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(schoolName, centerX, yPosition, { align: 'center' });
+  yPosition += 10;
   
   doc.setFontSize(18);
   doc.text("Emploi du Temps", centerX, yPosition, { align: "center" });
