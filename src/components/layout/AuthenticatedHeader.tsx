@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { GraduationCap, Settings, LogOut, User, Menu, School, Users, HelpCircle } from "lucide-react";
+import { AcademicYearSelector } from "./AcademicYearSelector";
 
 interface MenuItem {
   title: string;
@@ -191,6 +192,7 @@ export function AuthenticatedHeader({
         </div>
 
         <div className="flex items-center space-x-2 lg:space-x-4">
+          <AcademicYearSelector />
           <div className="hidden sm:block">
             {profile?.role && getRoleBadge(profile.role)}
           </div>
