@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { StudentImport } from "@/components/school/StudentImport";
 import { StudentForm } from "@/components/school/StudentForm";
 import { ClassForm } from "@/components/school/ClassForm";
@@ -51,6 +52,7 @@ import { BulletinSection } from "@/components/school/BulletinSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
+  const { selectedYear } = useAcademicYear();
   const [activeTab, setActiveTab] = useState("analytics");
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [showClassDetails, setShowClassDetails] = useState(false);
@@ -93,14 +95,14 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
-  const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id);
-  const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id);
+  const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id, undefined, selectedYear);
+  const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id, selectedYear);
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
-  const { grades } = useGrades();
-  const { assignments } = useAssignments({ schoolId: school?.id });
-  const { attendance, loading: attendanceLoading } = useAttendance();
+  const { grades } = useGrades(undefined, undefined, undefined, selectedYear);
+  const { assignments } = useAssignments({ schoolId: school?.id, academicYear: selectedYear });
+  const { attendance, loading: attendanceLoading } = useAttendance(undefined, undefined, undefined, undefined, undefined, selectedYear);
   const { 
     absencesByClass, 
     topStudentsByClass, 
@@ -213,7 +215,8 @@ const SchoolDashboard = () => {
     try {
       const newClass = await createClass({
         name: classData.name,
-        school_id: school.id
+        school_id: school.id,
+        academic_year: selectedYear
       });
       
       if (classData.selectedSubjects.length > 0 && newClass) {
@@ -373,6 +376,7 @@ const SchoolDashboard = () => {
       const completeStudentData = {
         ...studentData,
         school_id: school.id,
+        academic_year: selectedYear
       };
       
       console.log('Données complètes pour createStudent:', completeStudentData);

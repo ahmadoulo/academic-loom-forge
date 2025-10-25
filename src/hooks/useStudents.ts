@@ -35,7 +35,7 @@ export interface CreateStudentData {
   parent_phone?: string;
 }
 
-export const useStudents = (schoolId?: string, classId?: string) => {
+export const useStudents = (schoolId?: string, classId?: string, academicYear?: string) => {
   const [students, setStudents] = useState<StudentWithClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +60,10 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         query = query.eq('class_id', classId);
       }
 
+      if (academicYear) {
+        query = query.eq('academic_year', academicYear);
+      }
+
       const { data, error } = await query.order('lastname', { ascending: true });
 
       if (error) throw error;
@@ -72,7 +76,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     }
   };
 
-  const createStudent = async (studentData: CreateStudentData) => {
+  const createStudent = async (studentData: CreateStudentData & { academic_year?: string }) => {
     try {
       console.log('=== useStudents createStudent DÉBUT ===');
       console.log('Données reçues:', studentData);
@@ -120,6 +124,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         cin_number: studentData.cin_number.trim(),
         student_phone: studentData.student_phone?.trim() ? studentData.student_phone.trim() : null,
         parent_phone: studentData.parent_phone?.trim() ? studentData.parent_phone.trim() : null,
+        academic_year: studentData.academic_year || academicYear || '2024-2025',
       };
       
       console.log('Données à insérer:', insertData);
@@ -273,7 +278,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   useEffect(() => {
     fetchStudents();
-  }, [schoolId, classId]);
+  }, [schoolId, classId, academicYear]);
 
   return {
     students,

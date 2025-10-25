@@ -51,12 +51,13 @@ interface UseAssignmentsOptions {
   studentId?: string;
   teacherId?: string;
   schoolId?: string;
+  academicYear?: string;
 }
 
 export const useAssignments = (options?: UseAssignmentsOptions | string) => {
   // Support both old signature (classId as string) and new signature (options object)
   const opts = typeof options === 'string' ? { classId: options } : options || {};
-  const { classId, studentId, teacherId, schoolId } = opts;
+  const { classId, studentId, teacherId, schoolId, academicYear } = opts;
 
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,10 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
         query = query.eq('school_id', schoolId);
       }
 
+      if (academicYear) {
+        query = query.eq('academic_year', academicYear);
+      }
+
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -119,11 +124,11 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     }
   };
 
-  const createAssignment = async (assignmentData: CreateAssignmentData) => {
+  const createAssignment = async (assignmentData: CreateAssignmentData & { academic_year?: string }) => {
     try {
       const { data, error } = await supabase
         .from('assignments')
-        .insert([assignmentData])
+        .insert([{ ...assignmentData, academic_year: assignmentData.academic_year || academicYear || '2024-2025' }])
         .select()
         .single();
 
@@ -183,7 +188,7 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
 
   useEffect(() => {
     fetchAssignments();
-  }, [classId, studentId, teacherId]);
+  }, [classId, studentId, teacherId, academicYear]);
 
   return {
     assignments,

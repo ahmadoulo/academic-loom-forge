@@ -39,7 +39,7 @@ export interface CreateGradeData {
   exam_date?: string;
 }
 
-export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string) => {
+export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string, academicYear?: string) => {
   const [grades, setGrades] = useState<GradeWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +76,10 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
         query = query.eq('teacher_id', teacherId);
       }
 
+      if (academicYear) {
+        query = query.eq('academic_year', academicYear);
+      }
+
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -88,11 +92,11 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
     }
   };
 
-  const createGrade = async (gradeData: CreateGradeData) => {
+  const createGrade = async (gradeData: CreateGradeData & { academic_year?: string }) => {
     try {
       const { data, error } = await supabase
         .from('grades')
-        .insert([gradeData])
+        .insert([{ ...gradeData, academic_year: gradeData.academic_year || academicYear || '2024-2025' }])
         .select(`
           *,
           students (
@@ -180,7 +184,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   useEffect(() => {
     fetchGrades();
-  }, [subjectId, studentId, teacherId]);
+  }, [subjectId, studentId, teacherId, academicYear]);
 
   return {
     grades,

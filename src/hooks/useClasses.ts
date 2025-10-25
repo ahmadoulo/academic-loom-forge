@@ -15,7 +15,7 @@ export interface CreateClassData {
   school_id: string;
 }
 
-export const useClasses = (schoolId?: string) => {
+export const useClasses = (schoolId?: string, academicYear?: string) => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +31,10 @@ export const useClasses = (schoolId?: string) => {
         query = query.eq('school_id', schoolId);
       }
 
+      if (academicYear) {
+        query = query.eq('academic_year', academicYear);
+      }
+
       const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
@@ -43,11 +47,11 @@ export const useClasses = (schoolId?: string) => {
     }
   };
 
-  const createClass = async (classData: CreateClassData) => {
+  const createClass = async (classData: CreateClassData & { academic_year?: string }) => {
     try {
       const { data, error } = await supabase
         .from('classes')
-        .insert([classData])
+        .insert([{ ...classData, academic_year: classData.academic_year || academicYear || '2024-2025' }])
         .select()
         .single();
 
@@ -87,7 +91,7 @@ export const useClasses = (schoolId?: string) => {
     if (schoolId) {
       fetchClasses();
     }
-  }, [schoolId]);
+  }, [schoolId, academicYear]);
 
   return {
     classes,

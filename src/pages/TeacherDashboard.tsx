@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Users, TrendingUp, Loader2, GraduationCap } from "lucide-react";
@@ -30,6 +31,7 @@ import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
+  const { selectedYear } = useAcademicYear();
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
@@ -52,17 +54,17 @@ const TeacherDashboard = () => {
   const teacherClassIds = teacherClasses.map(tc => tc.class_id);
   
   // Get assignments for teacher
-  const { assignments } = useAssignments({ teacherId });
+  const { assignments } = useAssignments({ teacherId, academicYear: selectedYear });
   
   // Get students from teacher's classes
-  const { students } = useStudents(currentTeacher?.school_id);
+  const { students } = useStudents(currentTeacher?.school_id, undefined, selectedYear);
   const teacherStudents = students.filter(student => 
     teacherClassIds.includes(student.class_id)
   );
   
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
-  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId);
+  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, selectedYear);
 
   const handleViewStudents = (classId: string, subjectId: string) => {
     const classData = teacherClasses.find(tc => tc.class_id === classId);
@@ -128,7 +130,8 @@ const TeacherDashboard = () => {
       grade: grade,
       grade_type: gradeType,
       exam_date: new Date().toISOString().split('T')[0],
-      comment: comment || `Note ${gradeType} ajoutée le ${new Date().toLocaleDateString()}`
+      comment: comment || `Note ${gradeType} ajoutée le ${new Date().toLocaleDateString()}`,
+      academic_year: selectedYear
     });
   };
 

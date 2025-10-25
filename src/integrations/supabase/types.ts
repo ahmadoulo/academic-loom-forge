@@ -76,6 +76,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          academic_year: string
           class_id: string
           created_at: string
           description: string | null
@@ -92,6 +93,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           class_id: string
           created_at?: string
           description?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           class_id?: string
           created_at?: string
           description?: string | null
@@ -156,6 +159,7 @@ export type Database = {
       }
       attendance: {
         Row: {
+          academic_year: string
           assignment_id: string | null
           class_id: string
           created_at: string
@@ -170,6 +174,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           assignment_id?: string | null
           class_id: string
           created_at?: string
@@ -184,6 +189,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           assignment_id?: string | null
           class_id?: string
           created_at?: string
@@ -295,6 +301,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          academic_year: string
           created_at: string
           id: string
           name: string
@@ -302,6 +309,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           created_at?: string
           id?: string
           name: string
@@ -309,6 +317,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           created_at?: string
           id?: string
           name?: string
@@ -599,6 +608,7 @@ export type Database = {
       }
       grades: {
         Row: {
+          academic_year: string
           comment: string | null
           created_at: string
           exam_date: string | null
@@ -611,6 +621,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -623,6 +634,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -812,6 +824,7 @@ export type Database = {
       }
       students: {
         Row: {
+          academic_year: string
           birth_date: string | null
           cin_number: string | null
           class_id: string
@@ -826,6 +839,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           birth_date?: string | null
           cin_number?: string | null
           class_id: string
@@ -840,6 +854,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           birth_date?: string | null
           cin_number?: string | null
           class_id?: string
