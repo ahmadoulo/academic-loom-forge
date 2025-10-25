@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudentSidebar } from "@/components/layout/StudentSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -19,7 +18,6 @@ import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("accueil");
   const { studentId } = useParams();
-  const { selectedYear } = useAcademicYear();
   const [searchParams] = useSearchParams();
   const queryStudentId = searchParams.get('studentId');
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -37,7 +35,7 @@ export default function StudentDashboard() {
     if (student?.class_id) {
       fetchAssignments();
     }
-  }, [student?.class_id, selectedYear]);
+  }, [student?.class_id]);
 
   const fetchAssignments = async () => {
     if (!student?.class_id) return;
@@ -55,7 +53,6 @@ export default function StudentDashboard() {
         classes (name)
       `)
       .eq("class_id", student.class_id)
-      .eq("academic_year", selectedYear)
       .gte("session_date", new Date().toISOString().split('T')[0])
       .order("session_date", { ascending: true });
     

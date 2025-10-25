@@ -50,7 +50,7 @@ interface CreateAttendanceData {
   date?: string;
 }
 
-export const useAttendance = (classId?: string, teacherId?: string, date?: string, assignmentId?: string, subjectId?: string, academicYear?: string) => {
+export const useAttendance = (classId?: string, teacherId?: string, date?: string, assignmentId?: string, subjectId?: string) => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,9 +84,6 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       }
       if (subjectId) {
         query = query.eq('subject_id', subjectId);
-      }
-      if (academicYear) {
-        query = query.eq('academic_year', academicYear);
       }
 
       const { data, error } = await query;
@@ -185,8 +182,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
             ...attendanceData,
             date: currentDate,
             method: attendanceData.method || 'manual',
-            marked_at: new Date().toISOString(),
-            academic_year: academicYear || '2024-2025'
+            marked_at: new Date().toISOString()
           })
           .select();
         
@@ -395,7 +391,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(sessionsChannel);
     };
-  }, [classId, teacherId, date, assignmentId, subjectId, academicYear]);
+  }, [classId, teacherId, date, assignmentId, subjectId]);
 
   return {
     attendance,
