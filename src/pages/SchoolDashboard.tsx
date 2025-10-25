@@ -93,7 +93,7 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
-  const { students, loading: studentsLoading, importStudents, createStudent, deleteStudent } = useStudents(school?.id);
+  const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id);
   const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id);
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
@@ -708,7 +708,7 @@ const SchoolDashboard = () => {
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
+                  <div className="space-y-6">
                     <StudentImport 
                       onImportComplete={handleImportStudents}
                       classes={classes}
@@ -724,6 +724,13 @@ const SchoolDashboard = () => {
                         id,
                         name
                       })}
+                      onUpdateStudent={async (id, data) => {
+                        try {
+                          await updateStudent(id, data);
+                        } catch (error) {
+                          console.error('Error updating student:', error);
+                        }
+                      }}
                     />
                   </div>
                 </div>

@@ -214,6 +214,44 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     }
   };
 
+  const updateStudent = async (id: string, studentData: Partial<CreateStudentData>) => {
+    try {
+      const updateData: any = {};
+      
+      if (studentData.firstname !== undefined) updateData.firstname = studentData.firstname.trim();
+      if (studentData.lastname !== undefined) updateData.lastname = studentData.lastname.trim();
+      if (studentData.email !== undefined) updateData.email = studentData.email?.trim() || null;
+      if (studentData.class_id !== undefined) updateData.class_id = studentData.class_id;
+      if (studentData.birth_date !== undefined) updateData.birth_date = studentData.birth_date?.trim() || null;
+      if (studentData.cin_number !== undefined) updateData.cin_number = studentData.cin_number?.trim() || null;
+      if (studentData.student_phone !== undefined) updateData.student_phone = studentData.student_phone?.trim() || null;
+      if (studentData.parent_phone !== undefined) updateData.parent_phone = studentData.parent_phone?.trim() || null;
+
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .eq('id', id)
+        .select(`
+          *,
+          classes (
+            name
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+      
+      setStudents(prev => prev.map(student => student.id === id ? data : student));
+      toast.success('Étudiant modifié avec succès');
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la modification de l\'étudiant';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
   const deleteStudent = async (id: string) => {
     try {
       const { error } = await supabase
@@ -242,6 +280,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     loading,
     error,
     createStudent,
+    updateStudent,
     importStudents,
     deleteStudent,
     refetch: fetchStudents

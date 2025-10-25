@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Trash2, Loader2, Filter } from "lucide-react";
+import { Users, Search, Trash2, Loader2, Filter, Pencil, ExternalLink } from "lucide-react";
+import { StudentEditDialog } from "./StudentEditDialog";
 
 interface StudentWithClass {
   id: string;
@@ -15,6 +16,8 @@ interface StudentWithClass {
   cin_number?: string | null;
   student_phone?: string | null;
   parent_phone?: string | null;
+  birth_date?: string | null;
+  class_id: string;
   classes?: { name: string };
 }
 
@@ -28,11 +31,19 @@ interface StudentsListSectionProps {
   classes: Class[];
   loading: boolean;
   onDeleteStudent: (id: string, name: string) => void;
+  onUpdateStudent: (id: string, data: Partial<StudentWithClass>) => Promise<void>;
 }
 
-export function StudentsListSection({ students, classes, loading, onDeleteStudent }: StudentsListSectionProps) {
+export function StudentsListSection({ students, classes, loading, onDeleteStudent, onUpdateStudent }: StudentsListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [editingStudent, setEditingStudent] = useState<StudentWithClass | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleEditClick = (student: StudentWithClass) => {
+    setEditingStudent(student);
+    setIsEditDialogOpen(true);
+  };
 
   const filteredStudents = students.filter(student => {
     const fullName = `${student.firstname} ${student.lastname}`.toLowerCase();
@@ -48,12 +59,13 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
   });
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          Base de données des Étudiants ({students.length})
-        </CardTitle>
+    <>
+      <Card className="shadow-lg">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6 text-primary" />
+            Base de données des Étudiants ({students.length})
+          </CardTitle>
         
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -108,27 +120,27 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
                 )}
               </div>
             ) : (
-              <div className="max-h-[600px] overflow-y-auto overflow-x-auto">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[150px]">Nom Complet</TableHead>
-                      <TableHead className="min-w-[120px]">Classe</TableHead>
-                      <TableHead className="min-w-[100px]">CIN</TableHead>
-                      <TableHead className="min-w-[180px]">Email</TableHead>
-                      <TableHead className="min-w-[120px]">Téléphone</TableHead>
-                      <TableHead className="min-w-[120px]">Tél. Parent</TableHead>
-                      <TableHead className="text-right min-w-[180px]">Actions</TableHead>
+                      <TableHead className="min-w-[180px]">Nom Complet</TableHead>
+                      <TableHead className="min-w-[140px]">Classe</TableHead>
+                      <TableHead className="min-w-[120px]">CIN</TableHead>
+                      <TableHead className="min-w-[200px]">Email</TableHead>
+                      <TableHead className="min-w-[140px]">Téléphone</TableHead>
+                      <TableHead className="min-w-[140px]">Tél. Parent</TableHead>
+                      <TableHead className="text-right min-w-[200px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
-                      <TableRow key={student.id}>
+                      <TableRow key={student.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium whitespace-nowrap">
                           {student.firstname} {student.lastname}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="font-medium">
                             {student.classes?.name || "Non assignée"}
                           </Badge>
                         </TableCell>
@@ -149,9 +161,18 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => handleEditClick(student)}
+                              className="hover:bg-primary hover:text-primary-foreground"
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Modifier
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => window.open(`/student-dashboard?studentId=${student.id}`, '_blank')}
                             >
-                              Interface
+                              <ExternalLink className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="outline"
@@ -173,5 +194,14 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
         )}
       </CardContent>
     </Card>
+
+    <StudentEditDialog
+      student={editingStudent}
+      classes={classes}
+      open={isEditDialogOpen}
+      onOpenChange={setIsEditDialogOpen}
+      onSave={onUpdateStudent}
+    />
+    </>
   );
 }
