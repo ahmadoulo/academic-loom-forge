@@ -28,10 +28,10 @@ export const AcademicYearSelector = () => {
           }
         }}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px] bg-background">
           <SelectValue placeholder="Année scolaire" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-background z-50">
           <SelectItem value="all">Toutes les années</SelectItem>
           {availableYears.map((year) => (
             <SelectItem key={year.id} value={year.id}>
