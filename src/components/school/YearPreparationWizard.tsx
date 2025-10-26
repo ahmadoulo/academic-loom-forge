@@ -27,7 +27,6 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
     cancelPreparation
   } = useYearTransition(schoolId);
   
-  const { classes: currentClasses } = useClassesByYear(schoolId, currentYear?.id);
   const [currentStep, setCurrentStep] = useState(1);
   const [nextYear, setNextYear] = useState<any>(null);
 
@@ -265,7 +264,7 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
               <div className="flex justify-end">
                 <Button
                   onClick={handleInitialize}
-                  disabled={loading || !currentClasses || currentClasses.length === 0}
+                  disabled={loading || !currentYear}
                 >
                   Démarrer la préparation
                   <ArrowRight className="ml-2 h-4 w-4" />
