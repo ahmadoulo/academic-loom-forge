@@ -40,11 +40,11 @@ export interface CreateGradeData {
   exam_date?: string;
 }
 
-export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string) => {
+export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string, yearId?: string) => {
   const [grades, setGrades] = useState<GradeWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getYearForCreation } = useAcademicYear();
+  const { getYearForCreation, currentYear } = useAcademicYear();
 
   const fetchGrades = async () => {
     try {
@@ -65,6 +65,12 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
             lastname
           )
         `);
+
+      // Filtrer par année scolaire (utiliser l'année passée en paramètre ou l'année actuelle)
+      const filterYearId = yearId || currentYear?.id;
+      if (filterYearId) {
+        query = query.eq('school_year_id', filterYearId);
+      }
 
       if (subjectId) {
         query = query.eq('subject_id', subjectId);
@@ -188,7 +194,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   useEffect(() => {
     fetchGrades();
-  }, [subjectId, studentId, teacherId]);
+  }, [subjectId, studentId, teacherId, yearId, currentYear?.id]);
 
   return {
     grades,
