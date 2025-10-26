@@ -11,8 +11,17 @@ export interface Class {
   updated_at: string;
 }
 
-export const useClassesByYear = (schoolId?: string, yearId?: string) => {
-  const [classes, setClasses] = useState<Class[]>([]);
+export interface ClassWithYear extends Class {
+  school_year?: {
+    id: string;
+    name: string;
+    is_current: boolean;
+  };
+  student_count?: number;
+}
+
+export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllYears = false) => {
+  const [classes, setClasses] = useState<ClassWithYear[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,20 +30,32 @@ export const useClassesByYear = (schoolId?: string, yearId?: string) => {
       setLoading(true);
       let query = supabase
         .from('classes' as any)
-        .select('*');
+        .select(`
+          *,
+          school_year:school_years(id, name, is_current),
+          student_count:student_school(count)
+        `);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
       }
 
-      if (yearId) {
+      if (yearId && !includeAllYears) {
         query = query.eq('school_year_id', yearId);
       }
 
       const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
-      setClasses((data as unknown as Class[]) || []);
+      
+      // Transform data to include student count
+      const classesWithCount = (data || []).map((cls: any) => ({
+        ...cls,
+        school_year: cls.school_year,
+        student_count: cls.student_count?.[0]?.count || 0
+      }));
+      
+      setClasses(classesWithCount as ClassWithYear[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des classes');
       toast.error('Erreur lors du chargement des classes');
@@ -47,7 +68,7 @@ export const useClassesByYear = (schoolId?: string, yearId?: string) => {
     if (schoolId) {
       fetchClasses();
     }
-  }, [schoolId, yearId]);
+  }, [schoolId, yearId, includeAllYears]);
 
   return {
     classes,
