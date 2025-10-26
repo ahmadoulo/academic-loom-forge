@@ -16,6 +16,8 @@ import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
+import { useClassesByYear } from "@/hooks/useClassesByYear";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -94,8 +96,27 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
+  // Get current academic year for filtering
+  const { currentYear } = useAcademicYear();
+  
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id);
-  const { classes, loading: classesLoading, createClass, deleteClass } = useClasses(school?.id);
+  
+  // Use filtered classes by current year, but keep createClass/deleteClass from useClasses
+  const { createClass: createClassOriginal, deleteClass: deleteClassOriginal } = useClasses(school?.id);
+  const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, currentYear?.id);
+  
+  // Wrapper functions to refresh filtered data after mutations
+  const createClass = async (data: any) => {
+    const result = await createClassOriginal(data);
+    await refetchClasses();
+    return result;
+  };
+  
+  const deleteClass = async (id: string) => {
+    await deleteClassOriginal(id);
+    await refetchClasses();
+  };
+  
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);

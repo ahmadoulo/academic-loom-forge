@@ -30,7 +30,8 @@ export const ClassMappingStep = ({
   onComplete,
   onBack
 }: ClassMappingStepProps) => {
-  const { classes: currentClasses } = useClassesByYear(schoolId, currentYearId);
+  // Charger TOUTES les classes de l'école (anciennes années incluses) comme sources
+  const { classes: allClasses } = useClassesByYear(schoolId, undefined, true);
   const { classes: nextClasses } = useClassesByYear(schoolId, nextYearId);
   const {
     createClassMapping,
@@ -95,11 +96,19 @@ export const ClassMappingStep = ({
   };
 
   const getClassName = (classId: string, isNext: boolean) => {
-    const classList = isNext ? nextClasses : currentClasses;
-    return classList?.find(c => c.id === classId)?.name || 'Classe inconnue';
+    const classList = isNext ? nextClasses : allClasses;
+    const cls = classList?.find(c => c.id === classId);
+    if (!cls) return 'Classe inconnue';
+    
+    // Afficher le nom de la classe avec l'année si c'est une classe source
+    if (!isNext && cls.school_year) {
+      return `${cls.name} (${cls.school_year.name})`;
+    }
+    return cls.name;
   };
 
-  const canProceed = currentClasses && mappings.length === currentClasses.length;
+  // On ne peut continuer que si au moins un mapping existe
+  const canProceed = mappings.length > 0;
 
   return (
     <div className="space-y-6">
@@ -144,12 +153,12 @@ export const ClassMappingStep = ({
           )}
 
           {/* Add New Mapping */}
-          {currentClasses && mappings.length < currentClasses.length && (
+          {allClasses && (
             <div className="space-y-4 pt-4 border-t">
               <h4 className="font-medium text-sm">Ajouter un mapping</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Classe actuelle</label>
+                  <label className="text-sm font-medium">Ancienne classe (toutes années)</label>
                   <Select
                     value={pendingMapping?.from_class_id || ''}
                     onValueChange={(value) =>
@@ -161,14 +170,14 @@ export const ClassMappingStep = ({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une classe" />
+                      <SelectValue placeholder="Sélectionner une ancienne classe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {currentClasses
+                      {allClasses
                         ?.filter(c => !mappings.find(m => m.from_class_id === c.id))
                         .map((cls) => (
                           <SelectItem key={cls.id} value={cls.id}>
-                            {cls.name}
+                            {cls.name} {cls.school_year ? `(${cls.school_year.name})` : ''} - {cls.student_count || 0} étudiants
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -176,7 +185,7 @@ export const ClassMappingStep = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nouvelle classe</label>
+                  <label className="text-sm font-medium">Nouvelle classe ({nextClasses?.[0]?.school_year?.name || 'Année suivante'})</label>
                   <Select
                     value={pendingMapping?.to_class_id || ''}
                     onValueChange={(value) =>
@@ -188,7 +197,7 @@ export const ClassMappingStep = ({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une classe" />
+                      <SelectValue placeholder="Sélectionner une nouvelle classe" />
                     </SelectTrigger>
                     <SelectContent>
                       {nextClasses?.map((cls) => (
@@ -212,10 +221,15 @@ export const ClassMappingStep = ({
             </div>
           )}
 
-          {canProceed && (
-            <p className="text-sm text-primary font-medium">
-              ✓ Toutes les classes ont été mappées
-            </p>
+          {mappings.length > 0 && (
+            <div className="pt-4 border-t">
+              <p className="text-sm text-primary font-medium">
+                ✓ {mappings.length} mapping(s) créé(s) - Vous pouvez continuer
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Les étudiants des classes mappées seront disponibles à l'étape suivante
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

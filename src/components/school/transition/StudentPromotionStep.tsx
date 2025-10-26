@@ -37,7 +37,8 @@ export const StudentPromotionStep = ({
   onComplete,
   onBack
 }: StudentPromotionStepProps) => {
-  const { classes: currentClasses } = useClassesByYear(schoolId, currentYearId);
+  // Charger toutes les classes de l'école pour afficher les noms corrects
+  const { classes: allClasses } = useClassesByYear(schoolId, undefined, true);
   const { classes: nextClasses } = useClassesByYear(schoolId, nextYearId);
   const {
     getClassMappings,
@@ -60,12 +61,30 @@ export const StudentPromotionStep = ({
       
       // Récupérer les mappings
       const mappings = await getClassMappings(preparationId);
+      console.log('Mappings trouvés:', mappings);
       
-      // Pour chaque classe actuelle, récupérer les étudiants
+      if (mappings.length === 0) {
+        console.log('Aucun mapping trouvé');
+        setStudents([]);
+        setLoadingStudents(false);
+        return;
+      }
+      
+      // Pour chaque mapping, récupérer les étudiants de la classe source
       const allStudents: StudentWithTransition[] = [];
       
       for (const mapping of mappings) {
-        const classStudents = await getStudentsByClass(mapping.from_class_id, currentYearId);
+        console.log(`Recherche des étudiants pour la classe ${mapping.from_class_id}`);
+        
+        // Récupérer l'année de la classe source
+        const sourceClass = allClasses?.find(c => c.id === mapping.from_class_id);
+        const sourceYearId = sourceClass?.school_year_id;
+        
+        console.log(`Année de la classe source: ${sourceYearId}`);
+        
+        // Récupérer les étudiants avec l'année correcte
+        const classStudents = await getStudentsByClass(mapping.from_class_id, sourceYearId || currentYearId);
+        console.log(`${classStudents.length} étudiants trouvés`);
         
         classStudents.forEach((enrollment: any) => {
           if (enrollment.students) {
@@ -83,6 +102,7 @@ export const StudentPromotionStep = ({
         });
       }
       
+      console.log(`Total: ${allStudents.length} étudiants à promouvoir`);
       setStudents(allStudents);
       // Sélectionner tous les étudiants par défaut
       setSelectedStudents(allStudents.map(s => s.student_id));
@@ -146,8 +166,15 @@ export const StudentPromotionStep = ({
 
   const getClassName = (classId: string | null, isNext: boolean) => {
     if (!classId) return '-';
-    const classList = isNext ? nextClasses : currentClasses;
-    return classList?.find(c => c.id === classId)?.name || 'Classe inconnue';
+    const classList = isNext ? nextClasses : allClasses;
+    const cls = classList?.find(c => c.id === classId);
+    if (!cls) return 'Classe inconnue';
+    
+    // Afficher avec l'année pour les classes sources
+    if (!isNext && cls.school_year) {
+      return `${cls.name} (${cls.school_year.name})`;
+    }
+    return cls.name;
   };
 
   const groupedStudents = students.reduce((acc, student) => {
