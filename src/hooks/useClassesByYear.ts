@@ -32,8 +32,7 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
         .from('classes' as any)
         .select(`
           *,
-          school_year:school_years(id, name, is_current),
-          student_count:student_school(count)
+          school_year:school_years(id, name, is_current)
         `);
 
       if (schoolId) {
@@ -48,11 +47,24 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
 
       if (error) throw error;
       
-      // Transform data to include student count
-      const classesWithCount = (data || []).map((cls: any) => ({
-        ...cls,
-        school_year: cls.school_year,
-        student_count: cls.student_count?.[0]?.count || 0
+      // Pour chaque classe, compter les étudiants actifs de l'année scolaire correspondante
+      const classesWithCount = await Promise.all((data || []).map(async (cls: any) => {
+        const { count, error: countError } = await supabase
+          .from('student_school')
+          .select('*', { count: 'exact', head: true })
+          .eq('class_id', cls.id)
+          .eq('school_year_id', cls.school_year_id)
+          .eq('is_active', true);
+
+        if (countError) {
+          console.error('Error counting students for class:', cls.id, countError);
+        }
+
+        return {
+          ...cls,
+          school_year: cls.school_year,
+          student_count: count || 0
+        };
       }));
       
       setClasses(classesWithCount as ClassWithYear[]);
