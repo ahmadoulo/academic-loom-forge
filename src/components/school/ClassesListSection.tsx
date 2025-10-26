@@ -8,6 +8,8 @@ import { School, Search, Trash2, Users, ArrowRight, Plus } from "lucide-react";
 interface Class {
   id: string;
   name: string;
+  school_year_id: string;
+  student_count?: number;
 }
 
 interface StudentWithClass {
@@ -44,8 +46,9 @@ export function ClassesListSection({
     return className.includes(term);
   });
 
-  const getClassStudentCount = (classId: string) => {
-    return students.filter(student => student.class_id === classId).length;
+  const getClassStudentCount = (classItem: Class) => {
+    // Utiliser le student_count déjà calculé par useClassesByYear qui tient compte de l'année
+    return classItem.student_count ?? 0;
   };
 
   return (
@@ -105,7 +108,7 @@ export function ClassesListSection({
                 </div>
               ) : (
                 filteredClasses.map((classItem) => {
-                  const studentCount = getClassStudentCount(classItem.id);
+                  const studentCount = getClassStudentCount(classItem);
                   
                   return (
                     <Card key={classItem.id} className="relative hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/30 cursor-pointer group">

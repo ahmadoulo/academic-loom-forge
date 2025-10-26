@@ -47,14 +47,14 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
 
       if (error) throw error;
       
-      // Pour chaque classe, compter les étudiants actifs de l'année scolaire correspondante
+      // Pour chaque classe, compter tous les étudiants inscrits dans cette année
+      // (sans filtrer par is_active car après migration, les anciens étudiants ont is_active=false)
       const classesWithCount = await Promise.all((data || []).map(async (cls: any) => {
         const { count, error: countError } = await supabase
           .from('student_school')
           .select('*', { count: 'exact', head: true })
           .eq('class_id', cls.id)
-          .eq('school_year_id', cls.school_year_id)
-          .eq('is_active', true);
+          .eq('school_year_id', cls.school_year_id);
 
         if (countError) {
           console.error('Error counting students for class:', cls.id, countError);

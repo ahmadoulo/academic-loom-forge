@@ -96,14 +96,15 @@ const SchoolDashboard = () => {
     fetchSchool();
   }, [schoolId, getSchoolByIdentifier]);
 
-  // Get current academic year for filtering
-  const { currentYear } = useAcademicYear();
+  // Get academic year for filtering - use getYearForDisplay to respect user selection
+  const { getYearForDisplay } = useAcademicYear();
+  const displayYearId = getYearForDisplay();
   
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id);
   
-  // Use filtered classes by current year, but keep createClass/deleteClass from useClasses
+  // Use filtered classes by selected year (or current if none selected)
   const { createClass: createClassOriginal, deleteClass: deleteClassOriginal } = useClasses(school?.id);
-  const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, currentYear?.id);
+  const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, displayYearId);
   
   // Wrapper functions to refresh filtered data after mutations
   const createClass = async (data: any) => {
