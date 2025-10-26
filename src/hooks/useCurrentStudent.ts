@@ -27,7 +27,7 @@ export const useCurrentStudent = (studentId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, profile } = useAuth();
-  const { getYearForDisplay } = useAcademicYear();
+  const { getYearForDisplay, currentYear } = useAcademicYear();
 
   const fetchCurrentStudent = async () => {
     // Allow fetching when studentId is provided, even without auth
@@ -200,7 +200,7 @@ export const useCurrentStudent = (studentId?: string) => {
 
   useEffect(() => {
     fetchCurrentStudent();
-  }, [user, profile, studentId, getYearForDisplay()]);
+  }, [user, profile, studentId, currentYear?.id]);
 
   return {
     student,

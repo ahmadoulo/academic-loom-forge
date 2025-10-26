@@ -62,6 +62,7 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getYearForCreation } = useAcademicYear();
 
   const fetchAssignments = async () => {
     try {
@@ -122,7 +123,6 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
 
   const createAssignment = async (assignmentData: CreateAssignmentData) => {
     try {
-      const { getYearForCreation } = useAcademicYear();
       const currentYearId = getYearForCreation();
 
       if (!currentYearId) {

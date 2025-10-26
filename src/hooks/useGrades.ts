@@ -44,6 +44,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   const [grades, setGrades] = useState<GradeWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getYearForCreation } = useAcademicYear();
 
   const fetchGrades = async () => {
     try {
@@ -91,7 +92,6 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   const createGrade = async (gradeData: CreateGradeData) => {
     try {
-      const { getYearForCreation } = useAcademicYear();
       const currentYearId = getYearForCreation();
 
       if (!currentYearId) {

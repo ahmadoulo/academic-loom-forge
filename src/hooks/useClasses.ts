@@ -20,6 +20,7 @@ export const useClasses = (schoolId?: string) => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getYearForCreation } = useAcademicYear();
 
   const fetchClasses = async () => {
     try {
@@ -46,7 +47,6 @@ export const useClasses = (schoolId?: string) => {
 
   const createClass = async (classData: CreateClassData) => {
     try {
-      const { getYearForCreation } = useAcademicYear();
       const currentYearId = getYearForCreation();
 
       if (!currentYearId) {

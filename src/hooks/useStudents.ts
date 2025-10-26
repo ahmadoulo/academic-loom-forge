@@ -40,9 +40,12 @@ export const useStudents = (schoolId?: string, classId?: string) => {
   const [students, setStudents] = useState<StudentWithClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getYearForDisplay } = useAcademicYear();
+  const { getYearForDisplay, getYearForCreation, selectedYear, loading: yearLoading } = useAcademicYear();
 
   const fetchStudents = async () => {
+    // Attendre que l'année soit chargée
+    if (yearLoading) return;
+    
     try {
       setLoading(true);
       const yearId = getYearForDisplay();
@@ -120,7 +123,6 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   const createStudent = async (data: CreateStudentData) => {
     try {
-      const { getYearForCreation } = useAcademicYear();
       const currentYearId = getYearForCreation();
       
       // Validation : CIN requis
@@ -215,7 +217,6 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   const importStudents = async (studentsData: CreateStudentData[]) => {
     try {
-      const { getYearForCreation } = useAcademicYear();
       const currentYearId = getYearForCreation();
 
       if (!currentYearId) {
@@ -340,8 +341,10 @@ export const useStudents = (schoolId?: string, classId?: string) => {
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, [schoolId, classId, getYearForDisplay()]);
+    if (!yearLoading) {
+      fetchStudents();
+    }
+  }, [schoolId, classId, selectedYear?.id, yearLoading]);
 
   return {
     students,

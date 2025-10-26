@@ -57,6 +57,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { getYearForCreation } = useAcademicYear();
 
   const fetchAttendance = async () => {
     try {
@@ -177,7 +178,6 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
         error = updateResult.error;
       } else {
         // Créer un nouvel enregistrement
-        const { getYearForCreation } = useAcademicYear();
         const currentYearId = getYearForCreation();
 
         if (!currentYearId) {
