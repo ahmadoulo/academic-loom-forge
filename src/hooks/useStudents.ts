@@ -354,20 +354,13 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       if (studentData.student_phone !== undefined) updateData.student_phone = studentData.student_phone?.trim() || null;
       if (studentData.parent_phone !== undefined) updateData.parent_phone = studentData.parent_phone?.trim() || null;
 
-      // 1. Mettre à jour l'étudiant
-      const { data, error } = await supabase
+      // 1. Mettre à jour l'étudiant dans la table students
+      const { error: studentError } = await supabase
         .from('students')
         .update(updateData)
-        .eq('id', id)
-        .select(`
-          *,
-          classes (
-            name
-          )
-        `)
-        .single();
+        .eq('id', id);
 
-      if (error) throw error;
+      if (studentError) throw studentError;
 
       // 2. Si la classe a changé, mettre à jour student_school aussi
       if (studentData.class_id !== undefined) {
@@ -381,10 +374,60 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             .eq('is_active', true);
         }
       }
+
+      // 3. Récupérer les données mises à jour via student_school
+      const yearId = getYearForDisplay();
+      const { data, error: fetchError } = await supabase
+        .from('student_school')
+        .select(`
+          student_id,
+          school_id,
+          class_id,
+          students!inner (
+            id,
+            firstname,
+            lastname,
+            email,
+            birth_date,
+            cin_number,
+            student_phone,
+            parent_phone,
+            created_at,
+            updated_at
+          ),
+          classes!inner (
+            name
+          )
+        `)
+        .eq('student_id', id)
+        .eq('school_year_id', yearId)
+        .eq('is_active', true)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Transformer au format StudentWithClass
+      const transformedData = {
+        id: (data as any).students.id,
+        firstname: (data as any).students.firstname,
+        lastname: (data as any).students.lastname,
+        email: (data as any).students.email,
+        class_id: data.class_id,
+        school_id: data.school_id,
+        birth_date: (data as any).students.birth_date,
+        cin_number: (data as any).students.cin_number,
+        student_phone: (data as any).students.student_phone,
+        parent_phone: (data as any).students.parent_phone,
+        created_at: (data as any).students.created_at,
+        updated_at: (data as any).students.updated_at,
+        classes: {
+          name: (data as any).classes.name
+        }
+      };
       
-      setStudents(prev => prev.map(student => student.id === id ? data : student));
+      setStudents(prev => prev.map(student => student.id === id ? transformedData : student));
       toast.success('Étudiant modifié avec succès');
-      return data;
+      return transformedData;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la modification de l\'étudiant';
       setError(message);

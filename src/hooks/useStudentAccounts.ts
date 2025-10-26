@@ -30,23 +30,27 @@ export const useStudentAccounts = (schoolId?: string) => {
     
     try {
       setLoading(true);
-      // Récupérer tous les étudiants de l'école
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
+      // Récupérer tous les étudiants de l'école via student_school
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('student_school')
         .select(`
-          id,
-          firstname,
-          lastname,
-          email,
+          student_id,
           class_id,
+          students!inner (
+            id,
+            firstname,
+            lastname,
+            email
+          ),
           classes (
             name
           )
         `)
         .eq('school_id', schoolId)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (studentsError) throw studentsError;
+      if (enrollmentsError) throw enrollmentsError;
 
       // Récupérer les comptes étudiants existants
       const { data: studentAccounts, error: accountsError } = await supabase
@@ -60,7 +64,8 @@ export const useStudentAccounts = (schoolId?: string) => {
       const accountsMap = new Map(studentAccounts?.map(acc => [acc.student_id, acc]) || []);
 
       // Combiner les données
-      const combinedData: StudentAccount[] = (students || []).map(student => {
+      const combinedData: StudentAccount[] = (enrollments || []).map((enrollment: any) => {
+        const student = enrollment.students;
         const account = accountsMap.get(student.id);
         return {
           id: account?.id || student.id,
@@ -73,8 +78,8 @@ export const useStudentAccounts = (schoolId?: string) => {
           student: {
             firstname: student.firstname,
             lastname: student.lastname,
-            class_id: student.class_id,
-            classes: student.classes
+            class_id: enrollment.class_id,
+            classes: enrollment.classes
           }
         };
       });

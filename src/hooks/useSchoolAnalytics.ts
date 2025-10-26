@@ -57,22 +57,34 @@ export const useSchoolAnalytics = (schoolId?: string) => {
           `)
           .eq('students.school_id', schoolId);
 
-        // Fetch grades with relations
+        // Fetch grades with relations (no filter needed here)
         const { data: gradesData } = await supabase
           .from('grades')
           .select(`
             *,
-            students!inner(id, firstname, lastname, class_id, school_id),
+            students!inner(id, firstname, lastname),
             subjects(id, name),
             teachers(id, firstname, lastname)
-          `)
-          .eq('students.school_id', schoolId);
+          `);
 
-        // Fetch students
-        const { data: studentsData } = await supabase
-          .from('students')
-          .select('*, classes(id, name)')
-          .eq('school_id', schoolId);
+        // Fetch students via student_school
+        const { data: enrollments } = await supabase
+          .from('student_school')
+          .select(`
+            student_id,
+            class_id,
+            students!inner(id, firstname, lastname),
+            classes(id, name)
+          `)
+          .eq('school_id', schoolId)
+          .eq('is_active', true);
+        
+        // Transform to match expected format
+        const studentsData = enrollments?.map((e: any) => ({
+          ...e.students,
+          class_id: e.class_id,
+          classes: e.classes
+        }));
 
         // Fetch classes
         const { data: classesData } = await supabase

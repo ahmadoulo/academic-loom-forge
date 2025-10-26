@@ -311,29 +311,30 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       }
 
       // SÉCURITÉ: Vérifier que l'étudiant appartient bien à la classe de la session
-      const { data: student, error: studentError } = await supabase
-        .from('students')
+      const { data: enrollment, error: enrollmentError } = await supabase
+        .from('student_school')
         .select('class_id, school_id')
-        .eq('id', studentId)
+        .eq('student_id', studentId)
+        .eq('is_active', true)
         .single();
 
-      if (studentError || !student) {
-        throw new Error('Étudiant non trouvé');
+      if (enrollmentError || !enrollment) {
+        throw new Error('Inscription non trouvée');
       }
 
       // Vérifier que l'étudiant est bien dans la classe de la session
-      if (student.class_id !== session.class_id) {
+      if (enrollment.class_id !== session.class_id) {
         throw new Error('Vous n\'êtes pas autorisé à marquer votre présence pour cette classe');
       }
 
-      // Optionnel: Vérifier aussi l'école pour plus de sécurité
+      // Vérifier aussi l'école pour plus de sécurité
       const { data: sessionClass, error: classError } = await supabase
         .from('classes')
         .select('school_id')
         .eq('id', session.class_id)
         .single();
 
-      if (classError || !sessionClass || student.school_id !== sessionClass.school_id) {
+      if (classError || !sessionClass || enrollment.school_id !== sessionClass.school_id) {
         throw new Error('Accès non autorisé - école différente');
       }
 

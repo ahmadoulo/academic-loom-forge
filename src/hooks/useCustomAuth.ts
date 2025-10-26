@@ -132,7 +132,7 @@ export const useCustomAuth = () => {
           // Récupérer les infos de l'étudiant depuis la table students
           const { data: student, error: studentInfoError } = await supabase
             .from('students')
-            .select('id, firstname, lastname, school_id, class_id')
+            .select('id, firstname, lastname')
             .eq('id', studentAccount.student_id)
             .single();
 
@@ -142,7 +142,15 @@ export const useCustomAuth = () => {
             throw new Error('Impossible de récupérer les informations étudiant');
           }
 
-          console.log('👨‍🎓 Infos étudiant récupérées:', student);
+          // Récupérer l'école depuis student_school
+          const { data: enrollment } = await supabase
+            .from('student_school')
+            .select('school_id')
+            .eq('student_id', studentAccount.student_id)
+            .eq('is_active', true)
+            .single();
+
+          console.log('👨‍🎓 Infos étudiant récupérées:', student, enrollment);
 
           const userData: UserCredential = {
             id: studentAccount.id,
@@ -150,7 +158,7 @@ export const useCustomAuth = () => {
             first_name: student.firstname,
             last_name: student.lastname,
             role: 'student',
-            school_id: student.school_id,
+            school_id: enrollment?.school_id || null,
             student_id: student.id,
             is_active: true,
             last_login: new Date().toISOString(),

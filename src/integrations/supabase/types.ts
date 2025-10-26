@@ -961,71 +961,40 @@ export type Database = {
         Row: {
           birth_date: string | null
           cin_number: string
-          class_id: string | null
           created_at: string
           email: string | null
           firstname: string
           id: string
           lastname: string
           parent_phone: string | null
-          school_id: string | null
-          school_year_id: string | null
           student_phone: string | null
           updated_at: string
         }
         Insert: {
           birth_date?: string | null
           cin_number: string
-          class_id?: string | null
           created_at?: string
           email?: string | null
           firstname: string
           id?: string
           lastname: string
           parent_phone?: string | null
-          school_id?: string | null
-          school_year_id?: string | null
           student_phone?: string | null
           updated_at?: string
         }
         Update: {
           birth_date?: string | null
           cin_number?: string
-          class_id?: string | null
           created_at?: string
           email?: string | null
           firstname?: string
           id?: string
           lastname?: string
           parent_phone?: string | null
-          school_id?: string | null
-          school_year_id?: string | null
           student_phone?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "students_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "students_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "students_school_year_id_fkey"
-            columns: ["school_year_id"]
-            isOneToOne: false
-            referencedRelation: "school_years"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       subjects: {
         Row: {
