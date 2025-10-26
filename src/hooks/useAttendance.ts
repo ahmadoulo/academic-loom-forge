@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAcademicYear } from './useAcademicYear';
 
 interface AttendanceRecord {
   id: string;
@@ -176,14 +177,22 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
         error = updateResult.error;
       } else {
         // Créer un nouvel enregistrement
+        const { getYearForCreation } = useAcademicYear();
+        const currentYearId = getYearForCreation();
+
+        if (!currentYearId) {
+          throw new Error('Aucune année scolaire active');
+        }
+
         const insertResult = await supabase
           .from('attendance')
-          .insert({
+          .insert([{
             ...attendanceData,
             date: currentDate,
+            school_year_id: currentYearId,
             method: attendanceData.method || 'manual',
             marked_at: new Date().toISOString()
-          })
+          }])
           .select();
         
         data = insertResult.data;

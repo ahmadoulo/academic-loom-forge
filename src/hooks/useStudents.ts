@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAcademicYear } from './useAcademicYear';
 
 export interface Student {
   id: string;
@@ -39,18 +40,38 @@ export const useStudents = (schoolId?: string, classId?: string) => {
   const [students, setStudents] = useState<StudentWithClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getYearForDisplay } = useAcademicYear();
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
+      const yearId = getYearForDisplay();
+      
+      // Utiliser student_school pour filtrer par année scolaire
       let query = supabase
-        .from('students')
+        .from('student_school')
         .select(`
-          *,
-          classes (
+          student_id,
+          school_id,
+          class_id,
+          is_active,
+          students!inner (
+            id,
+            firstname,
+            lastname,
+            email,
+            birth_date,
+            cin_number,
+            student_phone,
+            parent_phone,
+            created_at,
+            updated_at
+          ),
+          classes!inner (
             name
           )
-        `);
+        `)
+        .eq('is_active', true);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
@@ -60,10 +81,35 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         query = query.eq('class_id', classId);
       }
 
-      const { data, error } = await query.order('lastname', { ascending: true });
+      // Filtrer par année scolaire sélectionnée (null = toutes les années)
+      if (yearId) {
+        query = query.eq('school_year_id', yearId);
+      }
+
+      const { data, error } = await query.order('students(lastname)', { ascending: true });
 
       if (error) throw error;
-      setStudents(data || []);
+      
+      // Transformer les données pour correspondre à l'interface StudentWithClass
+      const transformedData = (data || []).map((item: any) => ({
+        id: item.students.id,
+        firstname: item.students.firstname,
+        lastname: item.students.lastname,
+        email: item.students.email,
+        class_id: item.class_id,
+        school_id: item.school_id,
+        birth_date: item.students.birth_date,
+        cin_number: item.students.cin_number,
+        student_phone: item.students.student_phone,
+        parent_phone: item.students.parent_phone,
+        created_at: item.students.created_at,
+        updated_at: item.students.updated_at,
+        classes: {
+          name: item.classes.name
+        }
+      }));
+
+      setStudents(transformedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des étudiants');
       toast.error('Erreur lors du chargement des étudiants');
@@ -72,128 +118,119 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     }
   };
 
-  const createStudent = async (studentData: CreateStudentData) => {
+  const createStudent = async (data: CreateStudentData) => {
     try {
-      console.log('=== useStudents createStudent DÉBUT ===');
-      console.log('Données reçues:', studentData);
-      console.log('supabase client disponible:', !!supabase);
+      const { getYearForCreation } = useAcademicYear();
+      const currentYearId = getYearForCreation();
       
       // Validation : CIN requis
-      if (!studentData.cin_number) {
-        console.error('❌ Validation échouée: CIN manquant');
+      if (!data.cin_number) {
         throw new Error('Le numéro CIN est requis');
       }
 
       // Validation : school_id requis
-      if (!studentData.school_id) {
-        console.error('❌ Validation échouée: school_id manquant');
+      if (!data.school_id) {
         throw new Error('L\'identifiant de l\'école est requis');
       }
 
       // Validation : class_id requis
-      if (!studentData.class_id) {
-        console.error('❌ Validation échouée: class_id manquant');
+      if (!data.class_id) {
         throw new Error('La classe est requise');
       }
 
       // Validation : prénom et nom requis
-      if (!studentData.firstname?.trim()) {
-        console.error('❌ Validation échouée: Prénom manquant');
+      if (!data.firstname?.trim()) {
         throw new Error('Le prénom est requis');
       }
 
-      if (!studentData.lastname?.trim()) {
-        console.error('❌ Validation échouée: Nom manquant');
+      if (!data.lastname?.trim()) {
         throw new Error('Le nom est requis');
       }
 
-      console.log('✅ Toutes les validations passées');
-      console.log('📤 Insertion dans Supabase...');
+      if (!currentYearId) {
+        throw new Error('Aucune année scolaire active');
+      }
       
       const insertData = {
-        firstname: studentData.firstname.trim(),
-        lastname: studentData.lastname.trim(),
-        email: studentData.email?.trim() ? studentData.email.trim() : null,
-        class_id: studentData.class_id,
-        school_id: studentData.school_id,
-        birth_date: studentData.birth_date?.trim() ? studentData.birth_date.trim() : null,
-        cin_number: studentData.cin_number.trim(),
-        student_phone: studentData.student_phone?.trim() ? studentData.student_phone.trim() : null,
-        parent_phone: studentData.parent_phone?.trim() ? studentData.parent_phone.trim() : null,
+        firstname: data.firstname.trim(),
+        lastname: data.lastname.trim(),
+        email: data.email?.trim() ? data.email.trim() : null,
+        class_id: data.class_id,
+        school_id: data.school_id,
+        school_year_id: currentYearId,
+        birth_date: data.birth_date?.trim() ? data.birth_date.trim() : null,
+        cin_number: data.cin_number.trim(),
+        student_phone: data.student_phone?.trim() ? data.student_phone.trim() : null,
+        parent_phone: data.parent_phone?.trim() ? data.parent_phone.trim() : null,
       };
       
-      console.log('Données à insérer:', insertData);
-      
-      const { data, error } = await supabase
+      // 1. Créer l'étudiant
+      const { data: newStudent, error: studentError } = await supabase
         .from('students')
         .insert([insertData])
+        .select('*')
+        .single();
+
+      if (studentError) throw studentError;
+      if (!newStudent) throw new Error('Aucune donnée retournée après insertion');
+
+      // 2. Créer l'entrée dans student_school
+      const { error: enrollmentError } = await supabase
+        .from('student_school')
+        .insert([{
+          student_id: newStudent.id,
+          school_id: newStudent.school_id,
+          school_year_id: currentYearId,
+          class_id: newStudent.class_id,
+          is_active: true
+        }]);
+
+      if (enrollmentError) throw enrollmentError;
+
+      // 3. Récupérer les données complètes avec la classe
+      const { data: completeData, error: fetchError } = await supabase
+        .from('students')
         .select(`
           *,
           classes (
             name
           )
         `)
+        .eq('id', newStudent.id)
         .single();
 
-      console.log('📥 Résultat Supabase:');
-      console.log('  - data:', data);
-      console.log('  - error:', error);
+      if (fetchError) throw fetchError;
 
-      if (error) {
-        console.error('❌ Erreur Supabase détaillée:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
-
-      if (!data) {
-        console.error('❌ Aucune donnée retournée de Supabase');
-        throw new Error('Aucune donnée retournée après insertion');
-      }
-
-      console.log('✅ Étudiant créé avec succès dans la base:', data);
       toast.success('Étudiant créé avec succès');
+      setStudents(prev => [...prev, completeData]);
       
-      console.log('📝 Mise à jour de la liste locale des étudiants...');
-      setStudents(prev => {
-        const newList = [...prev, data];
-        console.log('  - Ancienne liste:', prev.length, 'étudiants');
-        console.log('  - Nouvelle liste:', newList.length, 'étudiants');
-        return newList;
-      });
-      
-      console.log('=== useStudents createStudent FIN SUCCESS ===');
-      return data;
+      return completeData;
     } catch (err) {
-      console.error('=== ❌ ERREUR dans createStudent ===');
-      console.error('Type d\'erreur:', typeof err);
-      console.error('Erreur complète:', err);
-      
-      if (err && typeof err === 'object') {
-        console.error('Propriétés de l\'erreur:');
-        Object.keys(err).forEach(key => {
-          console.error(`  ${key}:`, (err as any)[key]);
-        });
-      }
-      
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'étudiant';
-      console.error('Message d\'erreur final:', message);
-      
       setError(message);
       toast.error(message);
-      console.log('=== FIN GESTION ERREUR ===');
       throw err;
     }
   };
 
   const importStudents = async (studentsData: CreateStudentData[]) => {
     try {
+      const { getYearForCreation } = useAcademicYear();
+      const currentYearId = getYearForCreation();
+
+      if (!currentYearId) {
+        throw new Error('Aucune année scolaire active');
+      }
+
+      // Ajouter school_year_id à chaque étudiant
+      const dataWithYear = studentsData.map(student => ({
+        ...student,
+        school_year_id: currentYearId
+      }));
+
       const { data, error } = await supabase
         .from('students')
-        .insert(studentsData)
+        .insert(dataWithYear)
         .select(`
           *,
           classes (
@@ -202,6 +239,23 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         `);
 
       if (error) throw error;
+
+      // Créer les entrées dans student_school
+      if (data) {
+        const enrollments = data.map(student => ({
+          student_id: student.id,
+          school_id: student.school_id,
+          school_year_id: currentYearId,
+          class_id: student.class_id,
+          is_active: true
+        }));
+
+        const { error: enrollmentError } = await supabase
+          .from('student_school')
+          .insert(enrollments);
+
+        if (enrollmentError) throw enrollmentError;
+      }
       
       setStudents(prev => [...prev, ...(data || [])]);
       toast.success(`${data?.length || 0} étudiants importés avec succès`);
@@ -227,6 +281,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       if (studentData.student_phone !== undefined) updateData.student_phone = studentData.student_phone?.trim() || null;
       if (studentData.parent_phone !== undefined) updateData.parent_phone = studentData.parent_phone?.trim() || null;
 
+      // 1. Mettre à jour l'étudiant
       const { data, error } = await supabase
         .from('students')
         .update(updateData)
@@ -240,6 +295,19 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         .single();
 
       if (error) throw error;
+
+      // 2. Si la classe a changé, mettre à jour student_school aussi
+      if (studentData.class_id !== undefined) {
+        const yearId = getYearForDisplay();
+        if (yearId) {
+          await supabase
+            .from('student_school')
+            .update({ class_id: studentData.class_id })
+            .eq('student_id', id)
+            .eq('school_year_id', yearId)
+            .eq('is_active', true);
+        }
+      }
       
       setStudents(prev => prev.map(student => student.id === id ? data : student));
       toast.success('Étudiant modifié avec succès');
@@ -273,7 +341,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   useEffect(() => {
     fetchStudents();
-  }, [schoolId, classId]);
+  }, [schoolId, classId, getYearForDisplay()]);
 
   return {
     students,

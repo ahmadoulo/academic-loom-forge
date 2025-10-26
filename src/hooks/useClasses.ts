@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAcademicYear } from './useAcademicYear';
 
 export interface Class {
   id: string;
@@ -45,9 +46,16 @@ export const useClasses = (schoolId?: string) => {
 
   const createClass = async (classData: CreateClassData) => {
     try {
+      const { getYearForCreation } = useAcademicYear();
+      const currentYearId = getYearForCreation();
+
+      if (!currentYearId) {
+        throw new Error('Aucune année scolaire active');
+      }
+
       const { data, error } = await supabase
         .from('classes')
-        .insert([classData])
+        .insert([{ ...classData, school_year_id: currentYearId }])
         .select()
         .single();
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademicYear } from './useAcademicYear';
 
 export interface Assignment {
   id: string;
@@ -121,9 +122,16 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
 
   const createAssignment = async (assignmentData: CreateAssignmentData) => {
     try {
+      const { getYearForCreation } = useAcademicYear();
+      const currentYearId = getYearForCreation();
+
+      if (!currentYearId) {
+        throw new Error('Aucune année scolaire active');
+      }
+
       const { data, error } = await supabase
         .from('assignments')
-        .insert([assignmentData])
+        .insert([{ ...assignmentData, school_year_id: currentYearId }])
         .select()
         .single();
 

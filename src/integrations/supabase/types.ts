@@ -892,6 +892,71 @@ export type Database = {
           },
         ]
       }
+      student_school: {
+        Row: {
+          class_id: string
+          created_at: string
+          enrolled_at: string | null
+          id: string
+          is_active: boolean
+          school_id: string
+          school_year_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          enrolled_at?: string | null
+          id?: string
+          is_active?: boolean
+          school_id: string
+          school_year_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          enrolled_at?: string | null
+          id?: string
+          is_active?: boolean
+          school_id?: string
+          school_year_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_school_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_school_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_school_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_school_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           academic_year: string
