@@ -9,6 +9,7 @@ import { useGrades } from "@/hooks/useGrades";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSchools } from "@/hooks/useSchools";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
@@ -54,6 +55,10 @@ const TeacherDashboard = () => {
   // Get assignments for teacher
   const { assignments } = useAssignments({ teacherId });
   
+  // Get academic year for filtering
+  const { getYearForDisplay } = useAcademicYear();
+  const displayYearId = getYearForDisplay();
+  
   // Get students from teacher's classes
   const { students } = useStudents(currentTeacher?.school_id);
   const teacherStudents = students.filter(student => 
@@ -62,7 +67,7 @@ const TeacherDashboard = () => {
   
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
-  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId);
+  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId);
 
   const handleViewStudents = (classId: string, subjectId: string) => {
     const classData = teacherClasses.find(tc => tc.class_id === classId);

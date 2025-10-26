@@ -45,6 +45,9 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getYearForCreation, getYearForDisplay } = useAcademicYear();
+  
+  // Obtenir l'année d'affichage une fois pour la dépendance du useEffect
+  const displayYearId = getYearForDisplay();
 
   const fetchGrades = async () => {
     try {
@@ -67,7 +70,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
         `);
 
       // Filtrer par année scolaire (utiliser l'année passée en paramètre ou l'année sélectionnée)
-      const filterYearId = yearId || getYearForDisplay();
+      const filterYearId = yearId || displayYearId;
       if (filterYearId) {
         query = query.eq('school_year_id', filterYearId);
       }
@@ -194,7 +197,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   useEffect(() => {
     fetchGrades();
-  }, [subjectId, studentId, teacherId, yearId, getYearForDisplay()]);
+  }, [subjectId, studentId, teacherId, yearId, displayYearId]);
 
   return {
     grades,

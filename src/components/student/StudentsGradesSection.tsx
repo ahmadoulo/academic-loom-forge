@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BookOpen, TrendingUp, Calendar, User, Download, FileText } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,7 +25,9 @@ interface SubjectGrade {
 
 export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps) => {
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
-  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
+  const { getYearForDisplay } = useAcademicYear();
+  const displayYearId = getYearForDisplay();
+  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId);
   
   console.log('DEBUG StudentGradesSection:', { 
     studentId, 

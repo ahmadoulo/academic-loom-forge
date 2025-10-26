@@ -121,7 +121,7 @@ const SchoolDashboard = () => {
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
-  const { grades } = useGrades();
+  const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
   const { 
