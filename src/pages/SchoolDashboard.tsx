@@ -48,6 +48,7 @@ import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 import { ClassroomManagement } from "@/components/school/ClassroomManagement";
 import { TimetableSection } from "@/components/school/TimetableSection";
 import { BulletinSection } from "@/components/school/BulletinSection";
+import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -915,6 +916,10 @@ const SchoolDashboard = () => {
                 <div className="space-y-6">
                   <SchoolSettings schoolId={school.id} />
                 </div>
+              )}
+              
+              {activeTab === "year-transition" && school?.id && (
+                <YearPreparationWizard schoolId={school.id} />
               )}
               
               {activeTab === "events" && (

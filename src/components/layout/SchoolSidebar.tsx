@@ -125,6 +125,12 @@ const menuItems = [
     href: "/school"
   },
   { 
+    title: "Nouvelle Année", 
+    value: "year-transition",
+    icon: CalendarDays,
+    href: "/school"
+  },
+  { 
     title: "Paramètres", 
     value: "settings",
     icon: Settings,

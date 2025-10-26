@@ -76,7 +76,6 @@ export type Database = {
       }
       assignments: {
         Row: {
-          academic_year: string
           class_id: string
           created_at: string
           description: string | null
@@ -94,7 +93,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_year?: string
           class_id: string
           created_at?: string
           description?: string | null
@@ -112,7 +110,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          academic_year?: string
           class_id?: string
           created_at?: string
           description?: string | null
@@ -169,7 +166,6 @@ export type Database = {
       }
       attendance: {
         Row: {
-          academic_year: string
           assignment_id: string | null
           class_id: string
           created_at: string
@@ -185,7 +181,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_year?: string
           assignment_id?: string | null
           class_id: string
           created_at?: string
@@ -201,7 +196,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          academic_year?: string
           assignment_id?: string | null
           class_id?: string
           created_at?: string
@@ -319,9 +313,54 @@ export type Database = {
           },
         ]
       }
+      class_transitions: {
+        Row: {
+          created_at: string
+          from_class_id: string
+          id: string
+          preparation_id: string
+          to_class_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_class_id: string
+          id?: string
+          preparation_id: string
+          to_class_id: string
+        }
+        Update: {
+          created_at?: string
+          from_class_id?: string
+          id?: string
+          preparation_id?: string
+          to_class_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_transitions_from_class_id_fkey"
+            columns: ["from_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_transitions_preparation_id_fkey"
+            columns: ["preparation_id"]
+            isOneToOne: false
+            referencedRelation: "year_preparations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_transitions_to_class_id_fkey"
+            columns: ["to_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
-          academic_year: string
           created_at: string
           id: string
           name: string
@@ -330,7 +369,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_year?: string
           created_at?: string
           id?: string
           name: string
@@ -339,7 +377,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          academic_year?: string
           created_at?: string
           id?: string
           name?: string
@@ -638,7 +675,6 @@ export type Database = {
       }
       grades: {
         Row: {
-          academic_year: string
           comment: string | null
           created_at: string
           exam_date: string | null
@@ -652,7 +688,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          academic_year?: string
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -666,7 +701,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          academic_year?: string
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -957,6 +991,78 @@ export type Database = {
           },
         ]
       }
+      student_transitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          from_class_id: string
+          id: string
+          notes: string | null
+          preparation_id: string
+          student_id: string
+          to_class_id: string | null
+          transition_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          from_class_id: string
+          id?: string
+          notes?: string | null
+          preparation_id: string
+          student_id: string
+          to_class_id?: string | null
+          transition_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          from_class_id?: string
+          id?: string
+          notes?: string | null
+          preparation_id?: string
+          student_id?: string
+          to_class_id?: string | null
+          transition_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_transitions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_transitions_from_class_id_fkey"
+            columns: ["from_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transitions_preparation_id_fkey"
+            columns: ["preparation_id"]
+            isOneToOne: false
+            referencedRelation: "year_preparations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transitions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transitions_to_class_id_fkey"
+            columns: ["to_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           birth_date: string | null
@@ -1206,6 +1312,67 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      year_preparations: {
+        Row: {
+          classes_created_at: string | null
+          created_at: string
+          from_year_id: string
+          id: string
+          mapping_completed_at: string | null
+          school_id: string
+          status: string
+          students_promoted_at: string | null
+          to_year_id: string
+          updated_at: string
+        }
+        Insert: {
+          classes_created_at?: string | null
+          created_at?: string
+          from_year_id: string
+          id?: string
+          mapping_completed_at?: string | null
+          school_id: string
+          status?: string
+          students_promoted_at?: string | null
+          to_year_id: string
+          updated_at?: string
+        }
+        Update: {
+          classes_created_at?: string | null
+          created_at?: string
+          from_year_id?: string
+          id?: string
+          mapping_completed_at?: string | null
+          school_id?: string
+          status?: string
+          students_promoted_at?: string | null
+          to_year_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "year_preparations_from_year_id_fkey"
+            columns: ["from_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "year_preparations_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "year_preparations_to_year_id_fkey"
+            columns: ["to_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
             referencedColumns: ["id"]
           },
         ]
