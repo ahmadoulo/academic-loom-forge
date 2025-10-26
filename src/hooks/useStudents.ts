@@ -31,7 +31,7 @@ export interface CreateStudentData {
   class_id: string;
   school_id: string;
   birth_date?: string;
-  cin_number?: string;
+  cin_number: string; // Requis maintenant
   student_phone?: string;
   parent_phone?: string;
 }
@@ -125,88 +125,159 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     try {
       const currentYearId = getYearForCreation();
       
-      // Validation : CIN requis
-      if (!data.cin_number) {
-        throw new Error('Le numéro CIN est requis');
-      }
+      // Validations de base
+      if (!data.firstname?.trim()) throw new Error('Le prénom est requis');
+      if (!data.lastname?.trim()) throw new Error('Le nom est requis');
+      if (!data.cin_number?.trim()) throw new Error('Le numéro CIN/Passport est requis');
+      if (!data.school_id) throw new Error('L\'identifiant de l\'école est requis');
+      if (!data.class_id) throw new Error('La classe est requise');
+      if (!currentYearId) throw new Error('Aucune année scolaire active');
 
-      // Validation : school_id requis
-      if (!data.school_id) {
-        throw new Error('L\'identifiant de l\'école est requis');
-      }
-
-      // Validation : class_id requis
-      if (!data.class_id) {
-        throw new Error('La classe est requise');
-      }
-
-      // Validation : prénom et nom requis
-      if (!data.firstname?.trim()) {
-        throw new Error('Le prénom est requis');
-      }
-
-      if (!data.lastname?.trim()) {
-        throw new Error('Le nom est requis');
-      }
-
-      if (!currentYearId) {
-        throw new Error('Aucune année scolaire active');
-      }
-      
-      const insertData = {
-        firstname: data.firstname.trim(),
-        lastname: data.lastname.trim(),
-        email: data.email?.trim() ? data.email.trim() : null,
-        class_id: data.class_id,
-        school_id: data.school_id,
-        school_year_id: currentYearId,
-        birth_date: data.birth_date?.trim() ? data.birth_date.trim() : null,
-        cin_number: data.cin_number.trim(),
-        student_phone: data.student_phone?.trim() ? data.student_phone.trim() : null,
-        parent_phone: data.parent_phone?.trim() ? data.parent_phone.trim() : null,
-      };
-      
-      // 1. Créer l'étudiant
-      const { data: newStudent, error: studentError } = await supabase
+      // 1. Vérifier si un étudiant avec ce CIN existe déjà
+      const { data: existingStudent, error: searchError } = await supabase
         .from('students')
-        .insert([insertData])
-        .select('*')
-        .single();
+        .select('id, firstname, lastname')
+        .eq('cin_number', data.cin_number.trim())
+        .maybeSingle();
 
-      if (studentError) throw studentError;
-      if (!newStudent) throw new Error('Aucune donnée retournée après insertion');
+      if (searchError && searchError.code !== 'PGRST116') throw searchError;
 
-      // 2. Créer l'entrée dans student_school
+      let studentId: string;
+
+      if (existingStudent) {
+        // L'étudiant existe déjà, vérifier s'il est déjà inscrit cette année
+        const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
+          .from('student_school')
+          .select('id, school_id, schools!inner(name)')
+          .eq('student_id', existingStudent.id)
+          .eq('school_year_id', currentYearId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (enrollmentCheckError && enrollmentCheckError.code !== 'PGRST116') throw enrollmentCheckError;
+
+        if (existingEnrollment) {
+          // Déjà inscrit cette année
+          if (existingEnrollment.school_id !== data.school_id) {
+            // Inscrit dans une autre école cette année: bloquer
+            const schoolName = (existingEnrollment as any).schools?.name || 'une autre école';
+            throw new Error(
+              `Cet étudiant (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans ${schoolName} pour l'année scolaire en cours. ` +
+              `Veuillez procéder à un transfert d'école si nécessaire.`
+            );
+          } else {
+            // Déjà inscrit dans la même école cette année
+            throw new Error(
+              `Cet étudiant (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans cette école pour l'année scolaire en cours.`
+            );
+          }
+        }
+
+        // Pas d'inscription cette année, réutiliser le même ID
+        studentId = existingStudent.id;
+        toast.info(`Étudiant existant trouvé: ${existingStudent.firstname} ${existingStudent.lastname}. Création de l'inscription pour la nouvelle année.`);
+        
+        // Mettre à jour les infos de l'étudiant si nécessaire
+        await supabase
+          .from('students')
+          .update({
+            firstname: data.firstname.trim(),
+            lastname: data.lastname.trim(),
+            email: data.email?.trim() || null,
+            birth_date: data.birth_date?.trim() || null,
+            student_phone: data.student_phone?.trim() || null,
+            parent_phone: data.parent_phone?.trim() || null,
+          })
+          .eq('id', studentId);
+      } else {
+        // Nouvel étudiant, créer l'entrée
+        const { data: newStudent, error: studentError } = await supabase
+          .from('students')
+          .insert([{
+            firstname: data.firstname.trim(),
+            lastname: data.lastname.trim(),
+            email: data.email?.trim() || null,
+            cin_number: data.cin_number.trim(),
+            birth_date: data.birth_date?.trim() || null,
+            student_phone: data.student_phone?.trim() || null,
+            parent_phone: data.parent_phone?.trim() || null,
+          }])
+          .select('id')
+          .single();
+
+        if (studentError) throw studentError;
+        if (!newStudent) throw new Error('Aucune donnée retournée après insertion');
+        
+        studentId = newStudent.id;
+      }
+
+      // 2. Créer l'inscription dans student_school
       const { error: enrollmentError } = await supabase
         .from('student_school')
         .insert([{
-          student_id: newStudent.id,
-          school_id: newStudent.school_id,
+          student_id: studentId,
+          school_id: data.school_id,
           school_year_id: currentYearId,
-          class_id: newStudent.class_id,
+          class_id: data.class_id,
           is_active: true
         }]);
 
       if (enrollmentError) throw enrollmentError;
 
-      // 3. Récupérer les données complètes avec la classe
+      // 3. Récupérer les données complètes via student_school
       const { data: completeData, error: fetchError } = await supabase
-        .from('students')
+        .from('student_school')
         .select(`
-          *,
-          classes (
+          student_id,
+          school_id,
+          class_id,
+          students!inner (
+            id,
+            firstname,
+            lastname,
+            email,
+            birth_date,
+            cin_number,
+            student_phone,
+            parent_phone,
+            created_at,
+            updated_at
+          ),
+          classes!inner (
             name
           )
         `)
-        .eq('id', newStudent.id)
+        .eq('student_id', studentId)
+        .eq('school_year_id', currentYearId)
+        .eq('school_id', data.school_id)
+        .eq('is_active', true)
         .single();
 
       if (fetchError) throw fetchError;
 
+      // Transformer au format StudentWithClass
+      const transformedData = {
+        id: (completeData as any).students.id,
+        firstname: (completeData as any).students.firstname,
+        lastname: (completeData as any).students.lastname,
+        email: (completeData as any).students.email,
+        class_id: completeData.class_id,
+        school_id: completeData.school_id,
+        birth_date: (completeData as any).students.birth_date,
+        cin_number: (completeData as any).students.cin_number,
+        student_phone: (completeData as any).students.student_phone,
+        parent_phone: (completeData as any).students.parent_phone,
+        created_at: (completeData as any).students.created_at,
+        updated_at: (completeData as any).students.updated_at,
+        classes: {
+          name: (completeData as any).classes.name
+        }
+      };
+
       toast.success('Étudiant créé avec succès');
-      setStudents(prev => [...prev, completeData]);
+      setStudents(prev => [...prev, transformedData]);
       
-      return completeData;
+      return transformedData;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'étudiant';
       setError(message);
@@ -223,44 +294,45 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         throw new Error('Aucune année scolaire active');
       }
 
-      // Ajouter school_year_id à chaque étudiant
-      const dataWithYear = studentsData.map(student => ({
-        ...student,
-        school_year_id: currentYearId
-      }));
+      // Valider que tous les étudiants ont un CIN
+      const missingCin = studentsData.filter(s => !s.cin_number?.trim());
+      if (missingCin.length > 0) {
+        throw new Error(`${missingCin.length} étudiant(s) n'ont pas de numéro CIN/Passport`);
+      }
 
-      const { data, error } = await supabase
-        .from('students')
-        .insert(dataWithYear)
-        .select(`
-          *,
-          classes (
-            name
-          )
-        `);
+      const results = [];
+      let created = 0;
+      let enrolled = 0;
+      let errors = 0;
 
-      if (error) throw error;
-
-      // Créer les entrées dans student_school
-      if (data) {
-        const enrollments = data.map(student => ({
-          student_id: student.id,
-          school_id: student.school_id,
-          school_year_id: currentYearId,
-          class_id: student.class_id,
-          is_active: true
-        }));
-
-        const { error: enrollmentError } = await supabase
-          .from('student_school')
-          .insert(enrollments);
-
-        if (enrollmentError) throw enrollmentError;
+      // Traiter chaque étudiant individuellement pour gérer les doublons
+      for (const studentData of studentsData) {
+        try {
+          const result = await createStudent(studentData);
+          if (result) {
+            results.push(result);
+            created++;
+          }
+        } catch (err) {
+          // Si l'étudiant existe déjà cette année, compter comme erreur mais continuer
+          const message = err instanceof Error ? err.message : 'Erreur';
+          if (message.includes('déjà inscrit')) {
+            enrolled++;
+          } else {
+            errors++;
+          }
+          console.warn(`Erreur pour ${studentData.firstname} ${studentData.lastname}:`, message);
+        }
       }
       
-      setStudents(prev => [...prev, ...(data || [])]);
-      toast.success(`${data?.length || 0} étudiants importés avec succès`);
-      return data;
+      // Message de synthèse
+      const messages = [];
+      if (created > 0) messages.push(`${created} créé(s)`);
+      if (enrolled > 0) messages.push(`${enrolled} déjà inscrit(s)`);
+      if (errors > 0) messages.push(`${errors} erreur(s)`);
+      
+      toast.success(`Import terminé: ${messages.join(', ')}`);
+      return results;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'import des étudiants';
       setError(message);

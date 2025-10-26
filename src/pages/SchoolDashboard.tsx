@@ -299,7 +299,11 @@ const SchoolDashboard = () => {
       lastname: student.lastname,
       email: student.email || "",
       class_id: student.class_id,
-      school_id: school.id
+      school_id: school.id,
+      cin_number: student.cin_number || `TEMP-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      birth_date: student.birth_date,
+      student_phone: student.student_phone,
+      parent_phone: student.parent_phone
     }));
     
     try {
@@ -315,7 +319,7 @@ const SchoolDashboard = () => {
     email?: string;
     class_id: string;
     birth_date?: string;
-    cin_number?: string;
+    cin_number: string; // Requis maintenant
     student_phone?: string;
     parent_phone?: string;
   }) => {

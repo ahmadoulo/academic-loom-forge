@@ -959,50 +959,47 @@ export type Database = {
       }
       students: {
         Row: {
-          academic_year: string
           birth_date: string | null
-          cin_number: string | null
-          class_id: string
+          cin_number: string
+          class_id: string | null
           created_at: string
           email: string | null
           firstname: string
           id: string
           lastname: string
           parent_phone: string | null
-          school_id: string
-          school_year_id: string
+          school_id: string | null
+          school_year_id: string | null
           student_phone: string | null
           updated_at: string
         }
         Insert: {
-          academic_year?: string
           birth_date?: string | null
-          cin_number?: string | null
-          class_id: string
+          cin_number: string
+          class_id?: string | null
           created_at?: string
           email?: string | null
           firstname: string
           id?: string
           lastname: string
           parent_phone?: string | null
-          school_id: string
-          school_year_id: string
+          school_id?: string | null
+          school_year_id?: string | null
           student_phone?: string | null
           updated_at?: string
         }
         Update: {
-          academic_year?: string
           birth_date?: string | null
-          cin_number?: string | null
-          class_id?: string
+          cin_number?: string
+          class_id?: string | null
           created_at?: string
           email?: string | null
           firstname?: string
           id?: string
           lastname?: string
           parent_phone?: string | null
-          school_id?: string
-          school_year_id?: string
+          school_id?: string | null
+          school_year_id?: string | null
           student_phone?: string | null
           updated_at?: string
         }

@@ -11,7 +11,7 @@ interface StudentFormProps {
     email?: string;
     class_id: string;
     birth_date?: string;
-    cin_number?: string;
+    cin_number: string; // Requis maintenant
     student_phone?: string;
     parent_phone?: string;
   }) => void;
