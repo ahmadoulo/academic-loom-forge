@@ -51,6 +51,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       const yearId = getYearForDisplay();
       
       // Utiliser student_school pour filtrer par année scolaire
+      // Ne pas filtrer par is_active car on veut voir les étudiants de l'année sélectionnée
+      // même s'ils ont été migrés (leurs notes doivent rester visibles)
       let query = supabase
         .from('student_school')
         .select(`
@@ -73,8 +75,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
           classes!inner (
             name
           )
-        `)
-        .eq('is_active', true);
+        `);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
