@@ -269,6 +269,28 @@ export const useYearTransition = (schoolId: string) => {
     try {
       setLoading(true);
 
+      // Récupérer l'info de préparation pour avoir from_year_id et to_year_id
+      const { data: prep, error: prepError } = await supabase
+        .from('year_preparations' as any)
+        .select('from_year_id, to_year_id')
+        .eq('id', preparationId)
+        .single();
+
+      if (prepError) throw prepError;
+      if (!prep) throw new Error('Préparation non trouvée');
+
+      const prepData = prep as unknown as { from_year_id: string; to_year_id: string };
+
+      // Désactiver tous les student_school de l'année précédente pour ces étudiants
+      const studentIds = transitions.map(t => t.student_id);
+      const { error: deactivateError } = await supabase
+        .from('student_school' as any)
+        .update({ is_active: false })
+        .eq('school_year_id', prepData.from_year_id)
+        .in('student_id', studentIds);
+
+      if (deactivateError) throw deactivateError;
+
       // Créer les enregistrements de transition
       const transitionRecords = transitions.map(t => ({
         preparation_id: preparationId,
@@ -285,41 +307,28 @@ export const useYearTransition = (schoolId: string) => {
 
       if (transitionError) throw transitionError;
 
-      // Pour les étudiants promus ou redoublants, créer/mettre à jour leur student_school
+      // Pour les étudiants promus ou redoublants, créer leur nouveau student_school
       const studentsToEnroll = transitions.filter(
         t => t.transition_type === 'promoted' || t.transition_type === 'retained'
       );
 
       if (studentsToEnroll.length > 0) {
-        // Récupérer l'info de préparation pour avoir le to_year_id
-        const { data: prep, error: prepError } = await supabase
-          .from('year_preparations' as any)
-          .select('to_year_id')
-          .eq('id', preparationId)
-          .single();
+        const enrollments = studentsToEnroll
+          .filter(t => t.to_class_id) // Seulement si une classe est assignée
+          .map(t => ({
+            student_id: t.student_id,
+            school_id: schoolId,
+            school_year_id: prepData.to_year_id,
+            class_id: t.to_class_id,
+            is_active: true
+          }));
 
-        if (prepError) throw prepError;
+        if (enrollments.length > 0) {
+          const { error: enrollError } = await supabase
+            .from('student_school' as any)
+            .insert(enrollments);
 
-        if (prep) {
-          const prepData = prep as unknown as { to_year_id: string };
-          
-          const enrollments = studentsToEnroll
-            .filter(t => t.to_class_id) // Seulement si une classe est assignée
-            .map(t => ({
-              student_id: t.student_id,
-              school_id: schoolId,
-              school_year_id: prepData.to_year_id,
-              class_id: t.to_class_id,
-              is_active: true
-            }));
-
-          if (enrollments.length > 0) {
-            const { error: enrollError } = await supabase
-              .from('student_school' as any)
-              .insert(enrollments);
-
-            if (enrollError) throw enrollError;
-          }
+          if (enrollError) throw enrollError;
         }
       }
 
@@ -361,6 +370,97 @@ export const useYearTransition = (schoolId: string) => {
     }
   };
 
+  const getTransitionHistory = async (fromYearId?: string) => {
+    try {
+      let query = supabase
+        .from('year_preparations' as any)
+        .select(`
+          *,
+          from_year:from_year_id (id, name),
+          to_year:to_year_id (id, name)
+        `)
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+
+      if (fromYearId) {
+        query = query.eq('from_year_id', fromYearId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      toast.error('Erreur lors de la récupération de l\'historique: ' + error.message);
+      return [];
+    }
+  };
+
+  const getTransitionDetails = async (preparationId: string) => {
+    try {
+      const [classTransitions, studentTransitions] = await Promise.all([
+        supabase
+          .from('class_transitions' as any)
+          .select(`
+            *,
+            from_class:from_class_id (id, name),
+            to_class:to_class_id (id, name)
+          `)
+          .eq('preparation_id', preparationId),
+        supabase
+          .from('student_transitions' as any)
+          .select(`
+            *,
+            student:student_id (id, firstname, lastname, cin_number),
+            from_class:from_class_id (id, name),
+            to_class:to_class_id (id, name)
+          `)
+          .eq('preparation_id', preparationId)
+      ]);
+
+      if (classTransitions.error) throw classTransitions.error;
+      if (studentTransitions.error) throw studentTransitions.error;
+
+      return {
+        classTransitions: classTransitions.data || [],
+        studentTransitions: studentTransitions.data || []
+      };
+    } catch (error: any) {
+      toast.error('Erreur lors de la récupération des détails: ' + error.message);
+      return { classTransitions: [], studentTransitions: [] };
+    }
+  };
+
+  const cancelPreparation = async (preparationId: string) => {
+    try {
+      // Supprimer les transitions d'étudiants
+      await supabase
+        .from('student_transitions' as any)
+        .delete()
+        .eq('preparation_id', preparationId);
+
+      // Supprimer les mappings de classes
+      await supabase
+        .from('class_transitions' as any)
+        .delete()
+        .eq('preparation_id', preparationId);
+
+      // Supprimer la préparation
+      const { error } = await supabase
+        .from('year_preparations' as any)
+        .delete()
+        .eq('id', preparationId);
+
+      if (error) throw error;
+
+      toast.success('Préparation annulée avec succès');
+      return true;
+    } catch (error: any) {
+      toast.error('Erreur lors de l\'annulation: ' + error.message);
+      throw error;
+    }
+  };
+
   return {
     loading,
     currentPreparation,
@@ -373,6 +473,9 @@ export const useYearTransition = (schoolId: string) => {
     getClassMappings,
     deleteClassMapping,
     promoteStudents,
-    getStudentsByClass
+    getStudentsByClass,
+    getTransitionHistory,
+    getTransitionDetails,
+    cancelPreparation
   };
 };

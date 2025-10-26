@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { useAcademicYear } from '@/hooks/useAcademicYear';
 import { useYearTransition } from '@/hooks/useYearTransition';
 import { useClassesByYear } from '@/hooks/useClassesByYear';
-import { Calendar, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowRight, ArrowLeft, History, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ClassCreationStep } from './transition/ClassCreationStep';
 import { ClassMappingStep } from './transition/ClassMappingStep';
 import { StudentPromotionStep } from './transition/StudentPromotionStep';
+import { TransitionHistory } from './TransitionHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface YearPreparationWizardProps {
   schoolId: string;
@@ -20,7 +23,8 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
     loading,
     currentPreparation,
     getOrCreatePreparation,
-    updatePreparationStatus
+    updatePreparationStatus,
+    cancelPreparation
   } = useYearTransition(schoolId);
   
   const { classes: currentClasses } = useClassesByYear(schoolId, currentYear?.id);
@@ -110,6 +114,19 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
     }
   };
 
+  const handleCancel = async () => {
+    if (!currentPreparation) return;
+    
+    try {
+      await cancelPreparation(currentPreparation.id);
+      setCurrentStep(1);
+      // Rafraîchir après annulation
+      await refetchYears();
+    } catch (error) {
+      console.error('Error cancelling preparation:', error);
+    }
+  };
+
   const steps = [
     { number: 1, title: 'Initialisation', status: currentStep >= 1 ? 'completed' : 'pending' },
     { number: 2, title: 'Création des classes', status: currentStep >= 2 ? (currentStep === 2 ? 'current' : 'completed') : 'pending' },
@@ -120,16 +137,58 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Préparer une nouvelle année scolaire
-          </CardTitle>
-          <CardDescription>
-            Gérez la transition vers l'année scolaire suivante en 4 étapes
-          </CardDescription>
-        </CardHeader>
+      <Tabs defaultValue="wizard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="wizard" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Nouvelle Préparation
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-2">
+            <History className="h-4 w-4" />
+            Historique
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="wizard">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Préparer une nouvelle année scolaire
+                  </CardTitle>
+                  <CardDescription>
+                    Gérez la transition vers l'année scolaire suivante en 4 étapes
+                  </CardDescription>
+                </div>
+                {currentStep > 1 && currentStep < 5 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <X className="h-4 w-4" />
+                        Annuler
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Annuler la préparation ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action supprimera toutes les données de cette préparation (classes créées, mappings, promotions).
+                          Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Continuer la préparation</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCancel}>
+                          Oui, annuler tout
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </CardHeader>
         <CardContent>
           {/* Progress Steps */}
           <div className="flex items-center justify-between mb-8">
@@ -262,6 +321,12 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <TransitionHistory schoolId={schoolId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
