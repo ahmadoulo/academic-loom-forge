@@ -36,22 +36,35 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchYears = async () => {
     try {
-      // Récupérer le school_id de l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
+      let schoolId = null;
+
+      // Essayer d'abord de récupérer depuis customAuthUser (système custom)
+      const customUser = localStorage.getItem('customAuthUser');
+      if (customUser) {
+        const userData = JSON.parse(customUser);
+        schoolId = userData.school_id;
+        console.log('DEBUG AcademicYear: School ID from custom auth:', schoolId);
       }
 
-      const { data: profileData } = await supabase
-        .from('profiles' as any)
-        .select('school_id')
-        .eq('user_id', user.id)
-        .single();
+      // Si pas de custom auth, essayer Supabase auth
+      if (!schoolId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles' as any)
+            .select('school_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-      const profile = profileData as any;
+          const profile = profileData as any;
+          schoolId = profile?.school_id;
+          console.log('DEBUG AcademicYear: School ID from Supabase:', schoolId);
+        }
+      }
 
-      if (!profile?.school_id) {
+      // Si toujours pas de school_id, ne pas continuer
+      if (!schoolId) {
+        console.log('DEBUG AcademicYear: No school_id found');
         setLoading(false);
         return;
       }
@@ -59,8 +72,10 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('school_years' as any)
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('start_date', { ascending: true });
+      
+      console.log('DEBUG AcademicYear: Fetched years:', data);
 
       if (error) throw error;
 
@@ -134,23 +149,35 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   // Fonction pour changer l'année courante (admin uniquement)
   const setCurrentYear = async (yearId: string) => {
     try {
-      // Récupérer le school_id de l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      let schoolId = null;
 
-      const { data: profileData } = await supabase
-        .from('profiles' as any)
-        .select('school_id')
-        .eq('user_id', user.id)
-        .single();
+      // Essayer d'abord de récupérer depuis customAuthUser (système custom)
+      const customUser = localStorage.getItem('customAuthUser');
+      if (customUser) {
+        const userData = JSON.parse(customUser);
+        schoolId = userData.school_id;
+      }
 
-      const profile = profileData as any;
+      // Si pas de custom auth, essayer Supabase auth
+      if (!schoolId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles' as any)
+            .select('school_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-      if (!profile?.school_id) throw new Error('School not found');
+          const profile = profileData as any;
+          schoolId = profile?.school_id;
+        }
+      }
+
+      if (!schoolId) throw new Error('School not found');
 
       const { error } = await supabase.rpc('set_current_school_year' as any, {
         year_id: yearId,
-        p_school_id: profile.school_id
+        p_school_id: schoolId
       });
 
       if (error) throw error;
