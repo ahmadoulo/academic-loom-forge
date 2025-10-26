@@ -4,10 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSchools } from '@/hooks/useSchools';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Building2, Upload, Loader2 } from 'lucide-react';
+import { Building2, Upload, Loader2, Calendar } from 'lucide-react';
+import { SchoolYearManagement } from './SchoolYearManagement';
 
 interface SchoolSettingsProps {
   schoolId: string;
@@ -134,7 +136,20 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
         </p>
       </div>
 
-      <Card>
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="general" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            Informations générales
+          </TabsTrigger>
+          <TabsTrigger value="years" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Années scolaires
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general">
+          <Card>
         <CardHeader>
           <CardTitle>Informations générales</CardTitle>
           <CardDescription>
@@ -263,13 +278,17 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="academic_year">Année scolaire</Label>
+              <Label htmlFor="academic_year">Année scolaire (Legacy)</Label>
               <Input
                 id="academic_year"
                 value={schoolData.academic_year}
                 onChange={(e) => setSchoolData(prev => ({ ...prev, academic_year: e.target.value }))}
                 placeholder="2024-2025"
+                disabled
               />
+              <p className="text-xs text-muted-foreground">
+                Gérez les années scolaires dans l'onglet "Années scolaires"
+              </p>
             </div>
           </div>
 
@@ -292,6 +311,12 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="years">
+          <SchoolYearManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -40,15 +40,21 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
       // Essayer d'abord de récupérer depuis customAuthUser (système custom)
       const customUser = localStorage.getItem('customAuthUser');
+      console.log('DEBUG AcademicYear: customAuthUser raw:', customUser);
+      
       if (customUser) {
         const userData = JSON.parse(customUser);
         schoolId = userData.school_id;
         console.log('DEBUG AcademicYear: School ID from custom auth:', schoolId);
+        console.log('DEBUG AcademicYear: Full custom user data:', userData);
       }
 
       // Si pas de custom auth, essayer Supabase auth
       if (!schoolId) {
+        console.log('DEBUG AcademicYear: No custom auth, trying Supabase...');
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('DEBUG AcademicYear: Supabase user:', user);
+        
         if (user) {
           const { data: profileData } = await supabase
             .from('profiles' as any)
@@ -64,18 +70,19 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
       // Si toujours pas de school_id, ne pas continuer
       if (!schoolId) {
-        console.log('DEBUG AcademicYear: No school_id found');
+        console.log('DEBUG AcademicYear: No school_id found - stopping');
         setLoading(false);
         return;
       }
 
+      console.log('DEBUG AcademicYear: Fetching years for school:', schoolId);
       const { data, error } = await supabase
         .from('school_years' as any)
         .select('*')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: true });
       
-      console.log('DEBUG AcademicYear: Fetched years:', data);
+      console.log('DEBUG AcademicYear: Fetched years:', data, 'error:', error);
 
       if (error) throw error;
 
