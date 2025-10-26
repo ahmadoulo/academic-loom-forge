@@ -9,8 +9,7 @@ import {
   Clock, 
   ArrowRight, 
   AlertTriangle,
-  Info,
-  History
+  Info
 } from "lucide-react";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 export function SchoolYearManagement() {
@@ -49,25 +47,6 @@ export function SchoolYearManagement() {
       toast({
         title: "Erreur",
         description: "Impossible d'activer l'année scolaire",
-        variant: "destructive",
-      });
-    } finally {
-      setActivating(false);
-    }
-  };
-
-  const handleRollbackYear = async (yearId: string) => {
-    setActivating(true);
-    try {
-      await setCurrentYear(yearId);
-      toast({
-        title: "Retour arrière effectué",
-        description: "L'année scolaire précédente a été restaurée.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de restaurer l'année scolaire.",
         variant: "destructive",
       });
     } finally {
@@ -195,58 +174,10 @@ export function SchoolYearManagement() {
                       {new Date(year.start_date).toLocaleDateString('fr-FR')} - {new Date(year.end_date).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2">
                     {year.is_current && <Badge variant="default">Active</Badge>}
                     {year.is_next && <Badge variant="outline">Suivante</Badge>}
-                    {!year.is_current && !year.is_next && (
-                      <>
-                        <Badge variant="secondary">Archivée</Badge>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2">
-                              <History className="h-3 w-3" />
-                              <span className="text-xs">Restaurer</span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-orange-500" />
-                                Restaurer cette année scolaire ?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription className="space-y-3 pt-2">
-                                <p>
-                                  Vous êtes sur le point d'activer <strong>{year.name}</strong> comme année scolaire active.
-                                </p>
-                                <p className="font-medium text-foreground">
-                                  Cette action va :
-                                </p>
-                                <ul className="list-disc list-inside space-y-1 text-sm">
-                                  <li>Désactiver l'année courante actuelle</li>
-                                  <li>Réactiver l'année <strong>{year.name}</strong></li>
-                                  <li>Toutes les nouvelles données seront associées à cette année</li>
-                                </ul>
-                                <Alert>
-                                  <Info className="h-4 w-4" />
-                                  <AlertDescription>
-                                    Cette opération est <strong>réversible</strong>. Vous pourrez revenir à l'année actuelle si nécessaire.
-                                  </AlertDescription>
-                                </Alert>
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel disabled={activating}>Annuler</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleRollbackYear(year.id)}
-                                disabled={activating}
-                              >
-                                {activating ? "Restauration..." : "Confirmer la restauration"}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
+                    {!year.is_current && !year.is_next && <Badge variant="secondary">Archivée</Badge>}
                   </div>
                 </div>
               ))}
