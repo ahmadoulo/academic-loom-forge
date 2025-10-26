@@ -35,8 +35,10 @@ export const AcademicYearSelector = () => {
           <SelectItem value="all">Toutes les années</SelectItem>
           {availableYears.map((year) => (
             <SelectItem key={year.id} value={year.id}>
-              {year.name}
-              {year.is_current && " ⭐"}
+              <span className="flex items-center gap-2">
+                {year.name}
+                {year.is_current && <span className="font-bold text-primary">(Actuel)</span>}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

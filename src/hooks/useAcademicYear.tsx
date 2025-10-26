@@ -42,8 +42,39 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
 
       if (data) {
-        setAvailableYears(data as unknown as SchoolYear[]);
-        const current = (data as unknown as SchoolYear[]).find(y => y.is_current);
+        // Filtrer les années qui ont des données
+        const yearsWithData = await Promise.all(
+          (data as unknown as SchoolYear[]).map(async (year) => {
+            // Vérifier si l'année a des données (students, classes, ou assignments)
+            const [studentsCount, classesCount, assignmentsCount] = await Promise.all([
+              supabase
+                .from('student_school' as any)
+                .select('id', { count: 'exact', head: true })
+                .eq('school_year_id', year.id),
+              supabase
+                .from('classes' as any)
+                .select('id', { count: 'exact', head: true })
+                .eq('school_year_id', year.id),
+              supabase
+                .from('assignments' as any)
+                .select('id', { count: 'exact', head: true })
+                .eq('school_year_id', year.id),
+            ]);
+
+            const hasData = 
+              (studentsCount.count && studentsCount.count > 0) ||
+              (classesCount.count && classesCount.count > 0) ||
+              (assignmentsCount.count && assignmentsCount.count > 0) ||
+              year.is_current; // Toujours inclure l'année courante
+
+            return hasData ? year : null;
+          })
+        );
+
+        const filteredYears = yearsWithData.filter((y): y is SchoolYear => y !== null);
+        setAvailableYears(filteredYears);
+        
+        const current = filteredYears.find(y => y.is_current);
         if (current) {
           setCurrentYearState(current);
           // Par défaut, afficher l'année courante
