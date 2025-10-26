@@ -38,9 +38,32 @@ export const useYearTransition = (schoolId: string) => {
   const [loading, setLoading] = useState(false);
   const [currentPreparation, setCurrentPreparation] = useState<YearPreparation | null>(null);
 
-  const getOrCreatePreparation = async (fromYearId: string, toYearId: string) => {
+  const createNextYear = async (currentYearId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('create_next_school_year' as any, {
+        current_year_id: currentYearId
+      });
+
+      if (error) throw error;
+      return data as string; // returns UUID of next year
+    } catch (error: any) {
+      toast.error('Erreur lors de la création de l\'année suivante: ' + error.message);
+      throw error;
+    }
+  };
+
+  const getOrCreatePreparation = async (fromYearId: string, toYearId?: string) => {
     try {
       setLoading(true);
+      
+      // Si toYearId n'est pas fourni, créer l'année suivante automatiquement
+      let nextYearId = toYearId;
+      if (!nextYearId) {
+        nextYearId = await createNextYear(fromYearId);
+        if (!nextYearId) {
+          throw new Error('Impossible de créer l\'année suivante');
+        }
+      }
       
       // Vérifier si une préparation existe déjà
       const { data: existing, error: fetchError } = await supabase
@@ -48,7 +71,7 @@ export const useYearTransition = (schoolId: string) => {
         .select('*')
         .eq('school_id', schoolId)
         .eq('from_year_id', fromYearId)
-        .eq('to_year_id', toYearId)
+        .eq('to_year_id', nextYearId)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
@@ -64,7 +87,7 @@ export const useYearTransition = (schoolId: string) => {
         .insert([{
           school_id: schoolId,
           from_year_id: fromYearId,
-          to_year_id: toYearId,
+          to_year_id: nextYearId,
           status: 'draft'
         }])
         .select()
@@ -73,7 +96,7 @@ export const useYearTransition = (schoolId: string) => {
       if (insertError) throw insertError;
 
       setCurrentPreparation(newPrep as unknown as YearPreparation);
-      toast.success('Préparation de la nouvelle année initialisée');
+      toast.success('Année suivante créée et préparation initialisée');
       return newPrep as unknown as YearPreparation;
     } catch (error: any) {
       toast.error('Erreur lors de l\'initialisation: ' + error.message);
@@ -341,6 +364,7 @@ export const useYearTransition = (schoolId: string) => {
   return {
     loading,
     currentPreparation,
+    createNextYear,
     getOrCreatePreparation,
     createClassForNewYear,
     duplicateCurrentClasses,

@@ -28,8 +28,16 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
   const [nextYear, setNextYear] = useState<any>(null);
 
   useEffect(() => {
-    // Trouver l'année suivante
+    // Trouver l'année suivante (is_next ou la prochaine par date)
     if (currentYear && availableYears.length > 0) {
+      // D'abord chercher une année marquée is_next
+      const nextMarked = availableYears.find(y => y.is_next);
+      if (nextMarked) {
+        setNextYear(nextMarked);
+        return;
+      }
+      
+      // Sinon, trouver l'année suivante par date
       const currentYearDate = new Date(currentYear.start_date);
       const nextYearCandidate = availableYears.find(y => {
         const yDate = new Date(y.start_date);
@@ -40,11 +48,14 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
   }, [currentYear, availableYears]);
 
   const handleInitialize = async () => {
-    if (!currentYear || !nextYear) return;
+    if (!currentYear) return;
     
     try {
-      const prep = await getOrCreatePreparation(currentYear.id, nextYear.id);
+      // La fonction getOrCreatePreparation va créer automatiquement l'année suivante
+      const prep = await getOrCreatePreparation(currentYear.id, nextYear?.id);
       if (prep) {
+        // Rafraîchir les années pour voir la nouvelle année créée
+        await refetchYears();
         setCurrentStep(2);
       }
     } catch (error) {
@@ -176,28 +187,31 @@ export const YearPreparationWizard = ({ schoolId }: YearPreparationWizardProps) 
                     {nextYear ? (
                       <>
                         <p className="font-semibold">{nextYear.name}</p>
-                        <Badge variant="outline" className="mt-2">À préparer</Badge>
+                        <Badge variant="outline" className="mt-2">
+                          {nextYear.is_next ? 'Prête' : 'À préparer'}
+                        </Badge>
                       </>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Vous devez créer l'année suivante dans les paramètres
-                      </p>
+                      <>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          L'année suivante sera créée automatiquement
+                        </p>
+                        <Badge variant="secondary" className="mt-2">Auto-création</Badge>
+                      </>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-              {nextYear && (
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleInitialize}
-                    disabled={loading || !currentClasses || currentClasses.length === 0}
-                  >
-                    Démarrer la préparation
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleInitialize}
+                  disabled={loading || !currentClasses || currentClasses.length === 0}
+                >
+                  Démarrer la préparation
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
 

@@ -803,6 +803,7 @@ export type Database = {
           end_date: string
           id: string
           is_current: boolean | null
+          is_next: boolean | null
           name: string
           start_date: string
           updated_at: string | null
@@ -812,6 +813,7 @@ export type Database = {
           end_date: string
           id?: string
           is_current?: boolean | null
+          is_next?: boolean | null
           name: string
           start_date: string
           updated_at?: string | null
@@ -821,6 +823,7 @@ export type Database = {
           end_date?: string
           id?: string
           is_current?: boolean | null
+          is_next?: boolean | null
           name?: string
           start_date?: string
           updated_at?: string | null
@@ -1390,6 +1393,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_next_school_year: {
+        Args: { current_year_id: string }
+        Returns: string
+      }
       generate_random_password: { Args: { length?: number }; Returns: string }
       get_user_profile: {
         Args: { _user_id: string }
@@ -1410,6 +1417,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_next_school_year: { Args: { year_id: string }; Returns: undefined }
     }
     Enums: {
       app_role:

@@ -8,6 +8,7 @@ interface SchoolYear {
   start_date: string;
   end_date: string;
   is_current: boolean;
+  is_next?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -71,10 +72,16 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
           })
         );
 
-        const filteredYears = yearsWithData.filter((y): y is SchoolYear => y !== null);
-        setAvailableYears(filteredYears);
+        // Inclure aussi l'année suivante (is_next) même sans données
+        const allYears = (data as unknown as SchoolYear[]).filter(y => 
+          y.is_current || 
+          y.is_next || 
+          yearsWithData.some(yd => yd?.id === y.id)
+        );
         
-        const current = filteredYears.find(y => y.is_current);
+        setAvailableYears(allYears);
+        
+        const current = allYears.find(y => y.is_current);
         if (current) {
           setCurrentYearState(current);
           // Par défaut, afficher l'année courante
