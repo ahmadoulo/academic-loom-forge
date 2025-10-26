@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { User, Users, Shield, Bell, Palette, Database } from "lucide-react";
+import { User, Users, Shield, Bell, Palette, Database, Calendar } from "lucide-react";
 
 interface SettingsLayoutProps {
   children: ReactNode;
@@ -18,6 +18,7 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
     notifications: { label: "Notifications", icon: Bell },
     appearance: { label: "Apparence", icon: Palette },
     system: { label: "Système", icon: Database },
+    "school-years": { label: "Années scolaires", icon: Calendar },
   };
 
   return (

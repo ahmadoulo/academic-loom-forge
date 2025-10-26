@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, QrCode } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, QrCode, Lock } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
 import { QRCodeGenerator } from "./QRCodeGenerator";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Student {
   id: string;
@@ -43,6 +45,10 @@ export function SessionAttendanceManager({
   onBack,
 }: SessionAttendanceManagerProps) {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
+  const { selectedYear } = useAcademicYear();
+  
+  // Vérifier si l'année sélectionnée est l'année courante
+  const isCurrentYear = selectedYear?.is_current === true;
   
   // Utiliser subject_id en priorité, sinon subjects?.id
   const subjectId = assignment.subject_id || assignment.subjects?.id;
@@ -121,6 +127,16 @@ export function SessionAttendanceManager({
 
   return (
     <>
+      {/* Alert pour année non-courante */}
+      {!isCurrentYear && (
+        <Alert className="mb-6">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            Vous consultez une année scolaire non active. La prise de présence est désactivée pour préserver l'intégrité des données historiques. Seule l'année scolaire active peut être modifiée.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Card className="shadow-lg mb-6">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -147,7 +163,7 @@ export function SessionAttendanceManager({
                 )}
               </div>
             </div>
-            <Button onClick={handleGenerateQR} variant="outline" size="sm">
+            <Button onClick={handleGenerateQR} variant="outline" size="sm" disabled={!isCurrentYear}>
               <QrCode className="h-4 w-4 mr-2" />
               Générer QR Code
             </Button>
@@ -166,10 +182,10 @@ export function SessionAttendanceManager({
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleMarkAllPresent} variant="outline" size="sm">
+              <Button onClick={handleMarkAllPresent} variant="outline" size="sm" disabled={!isCurrentYear}>
                 Tout marquer présent
               </Button>
-              <Button onClick={handleMarkAllAbsent} variant="outline" size="sm">
+              <Button onClick={handleMarkAllAbsent} variant="outline" size="sm" disabled={!isCurrentYear}>
                 Tout marquer absent
               </Button>
             </div>
@@ -218,6 +234,7 @@ export function SessionAttendanceManager({
                         variant={status === 'present' ? 'default' : 'outline'}
                         size="sm"
                         className={status === 'present' ? 'bg-success hover:bg-success/90' : ''}
+                        disabled={!isCurrentYear}
                       >
                         <CheckCircle2 className="h-4 w-4 mr-1" />
                         Présent
@@ -227,6 +244,7 @@ export function SessionAttendanceManager({
                         variant={status === 'absent' ? 'default' : 'outline'}
                         size="sm"
                         className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                        disabled={!isCurrentYear}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
                         Absent

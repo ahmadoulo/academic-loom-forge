@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 
   Users, 
@@ -12,10 +13,12 @@ import {
   XCircle, 
   QrCode,
   Calendar,
-  Clock
+  Clock,
+  Lock
 } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
 import { QRCodeGenerator } from "./QRCodeGenerator";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface AttendanceManagerProps {
   classData: {
@@ -39,6 +42,10 @@ export const AttendanceManager = ({
 }: AttendanceManagerProps) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showQRGenerator, setShowQRGenerator] = useState(false);
+  const { selectedYear } = useAcademicYear();
+  
+  // Vérifier si l'année sélectionnée est l'année courante
+  const isCurrentYear = selectedYear?.is_current === true;
   
   const { 
     attendance, 
@@ -114,6 +121,16 @@ export const AttendanceManager = ({
 
   return (
     <div className="space-y-6">
+      {/* Alert pour année non-courante */}
+      {!isCurrentYear && (
+        <Alert>
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            Vous consultez une année scolaire non active. La prise de présence est désactivée pour préserver l'intégrité des données historiques. Seule l'année scolaire active peut être modifiée.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {/* Header */}
       <Card>
         <CardHeader>
@@ -159,15 +176,15 @@ export const AttendanceManager = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" onClick={handleMarkAllPresent} variant="outline" size="sm" className="flex items-center gap-1">
+              <Button type="button" onClick={handleMarkAllPresent} variant="outline" size="sm" className="flex items-center gap-1" disabled={!isCurrentYear}>
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 Tout présent
               </Button>
-              <Button type="button" onClick={handleMarkAllAbsent} variant="outline" size="sm" className="flex items-center gap-1">
+              <Button type="button" onClick={handleMarkAllAbsent} variant="outline" size="sm" className="flex items-center gap-1" disabled={!isCurrentYear}>
                 <XCircle className="h-4 w-4 text-red-600" />
                 Tout absent
               </Button>
-              <Button type="button" onClick={handleGenerateQR} className="flex items-center gap-2">
+              <Button type="button" onClick={handleGenerateQR} className="flex items-center gap-2" disabled={!isCurrentYear}>
                 <QrCode className="h-4 w-4" />
                 Générer QR Code
               </Button>
@@ -230,6 +247,7 @@ export const AttendanceManager = ({
                           size="sm"
                           onClick={() => handleAttendanceChange(student.id, 'present')}
                           className={isPresent ? "bg-green-600 hover:bg-green-700" : ""}
+                          disabled={!isCurrentYear}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Présent
@@ -240,6 +258,7 @@ export const AttendanceManager = ({
                           size="sm"
                           onClick={() => handleAttendanceChange(student.id, 'absent')}
                           className={!isPresent ? "bg-red-600 hover:bg-red-700" : ""}
+                          disabled={!isCurrentYear}
                         >
                           <XCircle className="h-4 w-4 mr-1" />
                           Absent

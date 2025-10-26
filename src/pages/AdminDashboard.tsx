@@ -8,6 +8,7 @@ import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { RoleManagement } from "@/components/settings/RoleManagement";
+import { SchoolYearManagement } from "@/components/settings/SchoolYearManagement";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("schools");
@@ -39,10 +40,11 @@ const AdminDashboard = () => {
           <SettingsLayout
             activeTab={settingsTab}
             onTabChange={setSettingsTab}
-            availableTabs={["users", "roles"]}
+            availableTabs={["users", "roles", "school-years"]}
           >
             {settingsTab === "users" && <UserManagement />}
             {settingsTab === "roles" && <RoleManagement />}
+            {settingsTab === "school-years" && <SchoolYearManagement />}
           </SettingsLayout>
         );
       case "support":

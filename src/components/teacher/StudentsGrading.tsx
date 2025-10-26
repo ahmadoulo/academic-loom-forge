@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, BookOpen, User, Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Plus, Trash2, BookOpen, User, Download, Lock } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
 import { generateTeacherGradesReport } from "@/utils/teacherGradesPdfExport";
 import { useSchools } from "@/hooks/useSchools";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Student {
   id: string;
@@ -61,6 +63,10 @@ export const StudentsGrading = ({
   const { getSchoolById } = useSchools();
   const [school, setSchool] = useState<any>(null);
   const [logoBase64, setLogoBase64] = useState<string>();
+  const { selectedYear } = useAcademicYear();
+  
+  // Vérifier si l'année sélectionnée est l'année courante
+  const isCurrentYear = selectedYear?.is_current === true;
   
   React.useEffect(() => {
     if (!schoolId) return;
@@ -166,6 +172,16 @@ export const StudentsGrading = ({
 
   return (
     <div className="space-y-6">
+      {/* Alert pour année non-courante */}
+      {!isCurrentYear && (
+        <Alert>
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            Vous consultez une année scolaire non active. La notation est désactivée pour préserver l'intégrité des données historiques. Seule l'année scolaire active peut être modifiée.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {/* Header */}
       <Card>
         <CardHeader>
@@ -240,6 +256,7 @@ export const StudentsGrading = ({
                                 onDeleteGrade(grade.id);
                               }
                             }}
+                            disabled={!isCurrentYear}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -262,6 +279,7 @@ export const StudentsGrading = ({
                       value={currentGrade.grade}
                       onChange={(e) => updateNewGrade(student.id, 'grade', e.target.value)}
                       className="w-full"
+                      disabled={!isCurrentYear}
                     />
                   </div>
                   
@@ -270,6 +288,7 @@ export const StudentsGrading = ({
                     <Select 
                       value={currentGrade.type} 
                       onValueChange={(value) => updateNewGrade(student.id, 'type', value)}
+                      disabled={!isCurrentYear}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Type" />
@@ -287,12 +306,13 @@ export const StudentsGrading = ({
                       placeholder="Commentaire..."
                       value={currentGrade.comment}
                       onChange={(e) => updateNewGrade(student.id, 'comment', e.target.value)}
+                      disabled={!isCurrentYear}
                     />
                   </div>
 
                   <Button
                     onClick={() => handleSaveGrade(student.id)}
-                    disabled={!currentGrade.grade || !currentGrade.type || saving === student.id}
+                    disabled={!isCurrentYear || !currentGrade.grade || !currentGrade.type || saving === student.id}
                     className="flex-shrink-0"
                   >
                     {saving === student.id ? (

@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen } from "lucide-react";
+import { Plus, BookOpen, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Subject {
   id: string;
@@ -43,6 +44,10 @@ export const GradeInput = ({ student, subjects, grades, onSaveGrade }: GradeInpu
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { selectedYear } = useAcademicYear();
+  
+  // Vérifier si l'année sélectionnée est l'année courante
+  const isCurrentYear = selectedYear?.is_current === true;
 
   const handleSaveGrade = async () => {
     const gradeValue = parseFloat(newGrade);
@@ -131,9 +136,9 @@ export const GradeInput = ({ student, subjects, grades, onSaveGrade }: GradeInpu
 
         {/* Grade input */}
         <div className="flex gap-2">
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+          <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={!isCurrentYear}>
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Matière" />
+              <SelectValue placeholder={isCurrentYear ? "Matière" : "Année non active"} />
             </SelectTrigger>
             <SelectContent>
               {subjects.map((subject) => (
@@ -153,14 +158,16 @@ export const GradeInput = ({ student, subjects, grades, onSaveGrade }: GradeInpu
             value={newGrade}
             onChange={(e) => setNewGrade(e.target.value)}
             className="w-24"
+            disabled={!isCurrentYear}
           />
           
           <Button
             size="sm"
             onClick={handleSaveGrade}
-            disabled={!newGrade || !selectedSubject || saving}
+            disabled={!isCurrentYear || !newGrade || !selectedSubject || saving}
+            title={!isCurrentYear ? "La notation est désactivée pour les années non actives" : ""}
           >
-            <Plus className="h-3 w-3" />
+            {!isCurrentYear ? <Lock className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
           </Button>
         </div>
       </CardContent>
