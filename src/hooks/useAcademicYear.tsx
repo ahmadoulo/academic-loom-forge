@@ -9,6 +9,7 @@ interface SchoolYear {
   end_date: string;
   is_current: boolean;
   is_next?: boolean;
+  school_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -35,9 +36,30 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchYears = async () => {
     try {
+      // Récupérer le school_id de l'utilisateur connecté
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: profileData } = await supabase
+        .from('profiles' as any)
+        .select('school_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const profile = profileData as any;
+
+      if (!profile?.school_id) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('school_years' as any)
         .select('*')
+        .eq('school_id', profile.school_id)
         .order('start_date', { ascending: true });
 
       if (error) throw error;
@@ -112,8 +134,23 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   // Fonction pour changer l'année courante (admin uniquement)
   const setCurrentYear = async (yearId: string) => {
     try {
+      // Récupérer le school_id de l'utilisateur connecté
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data: profileData } = await supabase
+        .from('profiles' as any)
+        .select('school_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const profile = profileData as any;
+
+      if (!profile?.school_id) throw new Error('School not found');
+
       const { error } = await supabase.rpc('set_current_school_year' as any, {
-        year_id: yearId
+        year_id: yearId,
+        p_school_id: profile.school_id
       });
 
       if (error) throw error;

@@ -18,7 +18,7 @@ interface CreateSchoolYearData {
   end_date: string;
 }
 
-export const useSchoolYears = () => {
+export const useSchoolYears = (schoolId?: string) => {
   const [schoolYears, setSchoolYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +28,16 @@ export const useSchoolYears = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('school_years' as any)
-        .select('*')
-        .order('start_date', { ascending: true });
+        .select('*');
+      
+      // Si school_id est fourni, filtrer par école
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+      
+      const { data, error: fetchError } = await query.order('start_date', { ascending: true });
 
       if (fetchError) throw fetchError;
 
@@ -48,7 +54,7 @@ export const useSchoolYears = () => {
     fetchSchoolYears();
   }, []);
 
-  const createSchoolYear = async (yearData: CreateSchoolYearData) => {
+  const createSchoolYear = async (yearData: CreateSchoolYearData & { school_id: string }) => {
     try {
       const { data, error: insertError } = await supabase
         .from('school_years' as any)
@@ -67,10 +73,11 @@ export const useSchoolYears = () => {
     }
   };
 
-  const setCurrentYear = async (yearId: string) => {
+  const setCurrentYear = async (yearId: string, schoolId: string) => {
     try {
       const { error: rpcError } = await supabase.rpc('set_current_school_year' as any, {
-        year_id: yearId
+        year_id: yearId,
+        p_school_id: schoolId
       });
 
       if (rpcError) throw rpcError;

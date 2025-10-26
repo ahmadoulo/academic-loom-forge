@@ -41,7 +41,8 @@ export const useYearTransition = (schoolId: string) => {
   const createNextYear = async (currentYearId: string) => {
     try {
       const { data, error } = await supabase.rpc('create_next_school_year' as any, {
-        current_year_id: currentYearId
+        current_year_id: currentYearId,
+        p_school_id: schoolId
       });
 
       if (error) throw error;

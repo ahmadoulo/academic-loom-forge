@@ -21,7 +21,7 @@ export const AcademicYearSelector = () => {
         value={selectedYear?.id || ""}
         onValueChange={(value) => {
           if (value === "all") {
-            setSelectedYear({ id: 'all', name: 'Toutes les années', start_date: '', end_date: '', is_current: false, created_at: '', updated_at: '' });
+            setSelectedYear({ id: 'all', name: 'Toutes les années', start_date: '', end_date: '', is_current: false, school_id: '', created_at: '', updated_at: '' });
           } else {
             const year = availableYears.find(y => y.id === value);
             setSelectedYear(year || null);
@@ -37,7 +37,8 @@ export const AcademicYearSelector = () => {
             <SelectItem key={year.id} value={year.id}>
               <span className="flex items-center gap-2">
                 {year.name}
-                {year.is_current && <span className="font-bold text-primary">(Actuel)</span>}
+                {year.is_current && <span className="text-xs font-semibold text-primary">(Actuelle)</span>}
+                {year.is_next && <span className="text-xs font-semibold text-secondary">(Prochaine)</span>}
               </span>
             </SelectItem>
           ))}
