@@ -8,6 +8,7 @@ interface SchoolYear {
   start_date: string;
   end_date: string;
   is_current: boolean;
+  is_next?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -1417,6 +1417,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_current_school_year: { Args: { year_id: string }; Returns: undefined }
       set_next_school_year: { Args: { year_id: string }; Returns: undefined }
     }
     Enums: {
