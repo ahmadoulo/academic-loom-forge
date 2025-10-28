@@ -41,7 +41,7 @@ interface SchoolSidebarProps {
 
 const menuStructure = [
   { 
-    title: "Analytics", 
+    title: "Tableau de bord", 
     value: "analytics",
     icon: BarChart3,
     href: "/school"
@@ -195,10 +195,6 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
       </div>
 
       <SidebarContent className="p-4">
-        <div className="mb-4">
-          <AcademicYearSidebarSection />
-        </div>
-        
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -275,6 +271,10 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
+        <div className="mt-auto pt-4 border-t">
+          <AcademicYearSidebarSection />
+        </div>
       </SidebarContent>
     </Sidebar>
   );

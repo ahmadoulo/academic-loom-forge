@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { UserPlus, X } from "lucide-react";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
-import { useClasses } from "@/hooks/useClasses";
+import { useClassesByYear } from "@/hooks/useClassesByYear";
 import { useTeachers } from "@/hooks/useTeachers";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { toast } from "sonner";
 
 interface TeacherClassAssignmentProps {
@@ -19,8 +20,11 @@ export const TeacherClassAssignment = ({ schoolId }: TeacherClassAssignmentProps
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const { getYearForDisplay } = useAcademicYear();
+  const displayYearId = getYearForDisplay();
+  
   const { teacherClasses, assignTeacherToClass, removeTeacherFromClass } = useTeacherClasses();
-  const { classes } = useClasses(schoolId);
+  const { classes } = useClassesByYear(schoolId, displayYearId);
   const { teachers } = useTeachers(schoolId);
 
   const handleAssignment = async () => {

@@ -29,7 +29,7 @@ const AcademicYearContext = createContext<AcademicYearContextType | undefined>(u
 
 export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const [currentYear, setCurrentYearState] = useState<SchoolYear | null>(null);
-  const [selectedYear, setSelectedYear] = useState<SchoolYear | null>(null);
+  const [selectedYear, setSelectedYearState] = useState<SchoolYear | null>(null);
   const [availableYears, setAvailableYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,8 +84,22 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
         const current = allYears.find(y => y.is_current);
         if (current) {
           setCurrentYearState(current);
-          // Par défaut, afficher l'année courante
-          setSelectedYear(current);
+          
+          // Restaurer l'année sélectionnée depuis localStorage si elle existe
+          const savedYearId = localStorage.getItem('selectedAcademicYearId');
+          if (savedYearId) {
+            const savedYear = allYears.find(y => y.id === savedYearId);
+            if (savedYear) {
+              setSelectedYearState(savedYear);
+            } else {
+              // Si l'année sauvegardée n'existe plus, nettoyer localStorage et utiliser current
+              localStorage.removeItem('selectedAcademicYearId');
+              setSelectedYearState(current);
+            }
+          } else {
+            // Par défaut, afficher l'année courante
+            setSelectedYearState(current);
+          }
         }
       }
     } catch (error) {
@@ -123,6 +137,16 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Erreur lors du changement d\'année courante:', error);
       toast.error('Erreur lors du changement d\'année courante');
+    }
+  };
+
+  // Fonction wrapper pour setSelectedYear avec localStorage
+  const setSelectedYear = (year: SchoolYear | null) => {
+    setSelectedYearState(year);
+    if (year) {
+      localStorage.setItem('selectedAcademicYearId', year.id);
+    } else {
+      localStorage.removeItem('selectedAcademicYearId');
     }
   };
 

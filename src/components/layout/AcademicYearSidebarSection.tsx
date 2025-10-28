@@ -20,11 +20,13 @@ export const AcademicYearSidebarSection = () => {
     const year = availableYears.find(y => y.id === tempYear);
     if (year) {
       setSelectedYear(year);
-      toast.success(`Année scolaire changée: ${year.name}`);
-      // Recharger la page pour afficher les données de la nouvelle année
+      toast.success(`Année scolaire changée vers ${year.name}`, {
+        description: "L'application va se recharger pour afficher les nouvelles données."
+      });
+      // Recharger après un court délai pour que l'utilisateur voie le toast
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 1000);
     }
   };
 
@@ -42,26 +44,35 @@ export const AcademicYearSidebarSection = () => {
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="px-3 py-2">
-      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md hover:bg-accent px-2 py-1.5">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="px-3 py-2 bg-muted/30 rounded-lg">
+      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md hover:bg-accent px-2 py-1.5 transition-colors">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          <span className="text-sm font-medium">Année scolaire</span>
+          <Calendar className="h-4 w-4 text-primary" />
+          <div className="flex flex-col items-start">
+            <span className="text-xs text-muted-foreground leading-none">Année scolaire</span>
+            <span className="text-sm font-semibold leading-tight">
+              {availableYears.find(y => y.id === tempYear)?.name || 'Sélectionner'}
+            </span>
+          </div>
         </div>
-        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${isOpen ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>
-      <CollapsibleContent className="pt-2 space-y-3">
+      <CollapsibleContent className="pt-3 space-y-3">
         <div className="space-y-2">
           <Select value={tempYear} onValueChange={setTempYear}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-background">
               <SelectValue placeholder="Sélectionner une année" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover">
               {availableYears.map((year) => (
                 <SelectItem key={year.id} value={year.id}>
                   <span className="flex items-center gap-2">
                     {year.name}
-                    {year.is_current && <span className="text-xs text-primary">(Actuel)</span>}
+                    {year.is_current && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                        Actuel
+                      </span>
+                    )}
                   </span>
                 </SelectItem>
               ))}
@@ -72,9 +83,9 @@ export const AcademicYearSidebarSection = () => {
             <Button
               onClick={handleValidate}
               size="sm"
-              className="w-full"
+              className="w-full gap-2"
             >
-              <Check className="h-3 w-3 mr-1" />
+              <Check className="h-4 w-4" />
               Valider le changement
             </Button>
           )}

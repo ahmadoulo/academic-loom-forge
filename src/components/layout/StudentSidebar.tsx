@@ -112,10 +112,6 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
       </div>
 
       <SidebarContent className="p-4">
-        <div className="mb-4">
-          <AcademicYearSidebarSection />
-        </div>
-        
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -192,6 +188,10 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
+        <div className="mt-auto pt-4 border-t">
+          <AcademicYearSidebarSection />
+        </div>
       </SidebarContent>
     </Sidebar>
   );
