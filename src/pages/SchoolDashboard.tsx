@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp } from "lucide-react";
+import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp, Archive } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
@@ -52,6 +52,7 @@ import { TimetableSection } from "@/components/school/TimetableSection";
 import { BulletinSection } from "@/components/school/BulletinSection";
 import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
 import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
+import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -129,7 +130,7 @@ const SchoolDashboard = () => {
   
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
-  const { subjects, loading: subjectsLoading, createSubject, deleteSubject } = useSubjects(school?.id);
+  const { subjects, loading: subjectsLoading, createSubject, archiveSubject } = useSubjects(school?.id);
   const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
@@ -320,7 +321,7 @@ const SchoolDashboard = () => {
           await deleteClass(deleteDialog.id);
           break;
         case 'subject':
-          await deleteSubject(deleteDialog.id);
+          await archiveSubject(deleteDialog.id);
           break;
       }
       setDeleteDialog({ open: false });
@@ -851,14 +852,17 @@ const SchoolDashboard = () => {
                                 id: subject.id,
                                 name: subject.name
                               })}
+                              title="Archiver cette matière"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Archive className="h-4 w-4" />
                             </Button>
                           </CardContent>
                         </Card>
                       );
                     })}
                   </div>
+                  
+                  <ArchivedSubjectsSection schoolId={school.id} />
                 </div>
               )}
               

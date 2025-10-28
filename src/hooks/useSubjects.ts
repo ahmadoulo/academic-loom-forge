@@ -10,6 +10,8 @@ export interface Subject {
   teacher_id?: string;
   created_at: string;
   updated_at: string;
+  archived?: boolean;
+  archived_at?: string;
 }
 
 export interface SubjectWithDetails extends Subject {
@@ -50,7 +52,8 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
             firstname,
             lastname
           )
-        `);
+        `)
+        .eq('archived', false);
 
       if (classId) {
         query = query.eq('class_id', classId);
@@ -142,19 +145,41 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     }
   };
 
-  const deleteSubject = async (id: string) => {
+  const archiveSubject = async (id: string) => {
     try {
       const { error } = await supabase
         .from('subjects')
-        .delete()
+        .update({ archived: true, archived_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
       
       setSubjects(prev => prev.filter(subject => subject.id !== id));
-      toast.success('Matière supprimée avec succès');
+      toast.success('Matière archivée avec succès');
+      
+      window.dispatchEvent(new CustomEvent('subject-archived', { detail: { id } }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la suppression de la matière';
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'archivage de la matière';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const restoreSubject = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .update({ archived: false, archived_at: null })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast.success('Matière restaurée avec succès');
+      
+      window.dispatchEvent(new CustomEvent('subject-restored', { detail: { id } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la restauration de la matière';
       setError(message);
       toast.error(message);
       throw err;
@@ -173,7 +198,8 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     error,
     createSubject,
     assignTeacher,
-    deleteSubject,
+    archiveSubject,
+    restoreSubject,
     refetch: fetchSubjects
   };
 };

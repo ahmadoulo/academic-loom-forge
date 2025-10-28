@@ -138,7 +138,8 @@ export const useYearTransition = (schoolId: string) => {
         .from('classes' as any)
         .select('*')
         .eq('school_id', schoolId)
-        .eq('school_year_id', fromYearId);
+        .eq('school_year_id', fromYearId)
+        .eq('archived', false);
 
       if (fetchError) throw fetchError;
 
@@ -151,7 +152,8 @@ export const useYearTransition = (schoolId: string) => {
       const newClasses = currentClasses.map((cls: any) => ({
         name: cls.name,
         school_id: schoolId,
-        school_year_id: toYearId
+        school_year_id: toYearId,
+        archived: false
       }));
 
       const { data: createdClasses, error: insertError } = await supabase
@@ -161,6 +163,11 @@ export const useYearTransition = (schoolId: string) => {
 
       if (insertError) throw insertError;
 
+      // Dupliquer les matières et assignations
+      if (createdClasses && createdClasses.length > 0) {
+        await duplicateSubjectsAndAssignments(currentClasses, createdClasses);
+      }
+
       toast.success(`${createdClasses?.length || 0} classes créées pour la nouvelle année`);
       return createdClasses;
     } catch (error: any) {
@@ -168,6 +175,101 @@ export const useYearTransition = (schoolId: string) => {
       throw error;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const duplicateSubjectsAndAssignments = async (
+    oldClasses: any[],
+    newClasses: any[]
+  ) => {
+    try {
+      // Créer un mapping entre anciennes et nouvelles classes par nom
+      const classMapping = new Map<string, string>();
+      oldClasses.forEach((oldClass, index) => {
+        if (newClasses[index]) {
+          classMapping.set(oldClass.id, newClasses[index].id);
+        }
+      });
+
+      console.log('Class mapping:', Object.fromEntries(classMapping));
+
+      // Récupérer toutes les matières des anciennes classes
+      const oldClassIds = oldClasses.map(c => c.id);
+      const { data: oldSubjects, error: subjectsError } = await supabase
+        .from('subjects' as any)
+        .select('*')
+        .in('class_id', oldClassIds)
+        .eq('archived', false);
+
+      if (subjectsError) throw subjectsError;
+
+      if (oldSubjects && oldSubjects.length > 0) {
+        console.log('Subjects à dupliquer:', oldSubjects);
+
+        // Créer les nouvelles matières pour les nouvelles classes
+        const newSubjects = oldSubjects.map((subject: any) => ({
+          name: subject.name,
+          class_id: classMapping.get(subject.class_id)!,
+          school_id: subject.school_id,
+          teacher_id: subject.teacher_id,
+          archived: false
+        }));
+
+        const { data: createdSubjects, error: createSubjectsError } = await supabase
+          .from('subjects' as any)
+          .insert(newSubjects)
+          .select();
+
+        if (createSubjectsError) throw createSubjectsError;
+
+        console.log('Subjects dupliqués:', createdSubjects);
+
+        // Créer les entrées class_subjects
+        if (createdSubjects) {
+          const classSubjectsEntries = createdSubjects.map((subject: any) => ({
+            class_id: subject.class_id,
+            subject_id: subject.id
+          }));
+
+          const { error: classSubjectsError } = await supabase
+            .from('class_subjects' as any)
+            .insert(classSubjectsEntries);
+
+          if (classSubjectsError) throw classSubjectsError;
+          console.log('class_subjects entries créées');
+        }
+      }
+
+      // Récupérer toutes les assignations teacher_classes des anciennes classes
+      const { data: oldTeacherClasses, error: teacherClassesError } = await supabase
+        .from('teacher_classes' as any)
+        .select('*')
+        .in('class_id', oldClassIds);
+
+      if (teacherClassesError) throw teacherClassesError;
+
+      if (oldTeacherClasses && oldTeacherClasses.length > 0) {
+        console.log('Teacher classes à dupliquer:', oldTeacherClasses);
+
+        // Créer les nouvelles assignations pour les nouvelles classes
+        const newTeacherClasses = oldTeacherClasses.map((tc: any) => ({
+          teacher_id: tc.teacher_id,
+          class_id: classMapping.get(tc.class_id)!
+        }));
+
+        const { error: createTCError } = await supabase
+          .from('teacher_classes' as any)
+          .insert(newTeacherClasses);
+
+        if (createTCError) throw createTCError;
+        console.log('Teacher classes dupliqués');
+      }
+
+      toast.success('Matières et assignations dupliquées avec succès');
+    } catch (error: any) {
+      console.error('Erreur lors de la duplication des matières:', error);
+      toast.error('Erreur lors de la duplication des matières et assignations');
+      throw error;
     }
   };
 
