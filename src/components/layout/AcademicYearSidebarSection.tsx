@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 
-export const AcademicYearSidebarSection = () => {
+interface AcademicYearSidebarSectionProps {
+  context?: string;
+}
+
+export const AcademicYearSidebarSection = ({ context }: AcademicYearSidebarSectionProps) => {
   const { selectedYear, setSelectedYear, availableYears, currentYear, loading } = useAcademicYear();
   const [tempYear, setTempYear] = useState<string>(selectedYear?.id || currentYear?.id || "");
   const [isOpen, setIsOpen] = useState(false);
@@ -26,14 +30,8 @@ export const AcademicYearSidebarSection = () => {
   const handleValidate = () => {
     const year = availableYears.find(y => y.id === tempYear);
     if (year) {
-      setSelectedYear(year);
-      toast.success(`Année scolaire changée vers ${year.name}`, {
-        description: "L'application va se recharger pour afficher les nouvelles données."
-      });
-      // Recharger après un court délai pour que l'utilisateur voie le toast
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      setSelectedYear(year, context);
+      toast.success(`Année scolaire changée vers ${year.name}`);
     }
   };
 

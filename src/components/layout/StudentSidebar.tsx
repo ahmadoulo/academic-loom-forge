@@ -190,7 +190,7 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
         </SidebarGroup>
         
         <div className="mt-auto pt-4 border-t">
-          <AcademicYearSidebarSection />
+          <AcademicYearSidebarSection context="student" />
         </div>
       </SidebarContent>
     </Sidebar>

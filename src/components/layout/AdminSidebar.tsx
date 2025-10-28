@@ -121,7 +121,7 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
       </SidebarContentUI>
 
       <div className="mt-auto p-4 border-t">
-        <AcademicYearSidebarSection />
+        <AcademicYearSidebarSection context="admin" />
       </div>
     </div>
   );

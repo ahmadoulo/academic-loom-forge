@@ -985,8 +985,9 @@ const SchoolDashboard = () => {
                 </div>
               )}
               
-              {activeTab === "users" && (
+              {activeTab === "settings" && (
                 <div className="space-y-6">
+                  <SchoolSettings schoolId={school.id} />
                   <StudentAccountsSection schoolId={school.id} />
                   <SchoolUserManagement schoolId={school?.id || ""} />
                 </div>
@@ -1002,12 +1003,6 @@ const SchoolDashboard = () => {
               
               {activeTab === "timetable" && school?.id && (
                 <TimetableSection schoolId={school.id} schoolName={school.name} />
-              )}
-              
-              {activeTab === "settings" && (
-                <div className="space-y-6">
-                  <SchoolSettings schoolId={school.id} />
-                </div>
               )}
               
               {activeTab === "year-transition" && school?.id && (

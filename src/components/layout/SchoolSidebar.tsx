@@ -74,12 +74,6 @@ const menuStructure = [
         icon: BookOpen,
         href: "/school"
       },
-      { 
-        title: "Utilisateurs", 
-        value: "users",
-        icon: Users,
-        href: "/school"
-      },
     ]
   },
   {
@@ -273,7 +267,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
         </SidebarGroup>
         
         <div className="mt-auto pt-4 border-t">
-          <AcademicYearSidebarSection />
+          <AcademicYearSidebarSection context="school" />
         </div>
       </SidebarContent>
     </Sidebar>
