@@ -206,10 +206,10 @@ export const useYearTransition = (schoolId: string) => {
       if (oldSubjects && oldSubjects.length > 0) {
         console.log('Subjects à dupliquer:', oldSubjects);
 
-        // Créer les nouvelles matières pour les nouvelles classes
+        // Créer les nouvelles matières SANS classe assignée (l'admin devra les assigner manuellement)
         const newSubjects = oldSubjects.map((subject: any) => ({
           name: subject.name,
-          class_id: classMapping.get(subject.class_id)!,
+          class_id: null, // Pas de classe assignée automatiquement
           school_id: subject.school_id,
           teacher_id: subject.teacher_id,
           archived: false
@@ -222,22 +222,10 @@ export const useYearTransition = (schoolId: string) => {
 
         if (createSubjectsError) throw createSubjectsError;
 
-        console.log('Subjects dupliqués:', createdSubjects);
+        console.log('Subjects dupliqués sans classe:', createdSubjects);
 
-        // Créer les entrées class_subjects
-        if (createdSubjects) {
-          const classSubjectsEntries = createdSubjects.map((subject: any) => ({
-            class_id: subject.class_id,
-            subject_id: subject.id
-          }));
-
-          const { error: classSubjectsError } = await supabase
-            .from('class_subjects' as any)
-            .insert(classSubjectsEntries);
-
-          if (classSubjectsError) throw classSubjectsError;
-          console.log('class_subjects entries créées');
-        }
+        // NE PAS créer les entrées class_subjects automatiquement
+        // L'admin devra assigner manuellement les matières aux classes
       }
 
       // Récupérer toutes les assignations teacher_classes des anciennes classes

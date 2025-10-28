@@ -2,107 +2,46 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen } from "lucide-react";
-
-interface Subject {
-  id: string;
-  name: string;
-}
 
 interface ClassFormProps {
   onSubmit: (classData: {
     name: string;
-    selectedSubjects: string[];
   }) => void;
-  subjects?: Subject[];
 }
 
-export const ClassForm = ({ onSubmit, subjects = [] }: ClassFormProps) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    selectedSubjects: [] as string[]
-  });
+export const ClassForm = ({ onSubmit }: ClassFormProps) => {
+  const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!name.trim()) return;
     
     onSubmit({
-      name: formData.name.trim(),
-      selectedSubjects: formData.selectedSubjects
+      name: name.trim()
     });
     
     // Reset form
-    setFormData({ name: "", selectedSubjects: [] });
-  };
-
-
-  const handleSubjectToggle = (subjectId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedSubjects: prev.selectedSubjects.includes(subjectId)
-        ? prev.selectedSubjects.filter(id => id !== subjectId)
-        : [...prev.selectedSubjects, subjectId]
-    }));
+    setName("");
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="name">Nom de la classe *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: 6ème A, Terminale S1..."
-              required
-            />
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Matières de la classe
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Sélectionnez les matières qui seront enseignées dans cette classe
-              </p>
-            </CardHeader>
-            <CardContent>
-              {subjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Aucune matière disponible. Créez d'abord des matières.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {subjects.map((subject) => (
-                    <div key={subject.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={subject.id}
-                        checked={formData.selectedSubjects.includes(subject.id)}
-                        onCheckedChange={() => handleSubjectToggle(subject.id)}
-                      />
-                      <Label
-                        htmlFor={subject.id}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        {subject.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="submit">
-              Créer la classe
-            </Button>
-          </div>
-        </form>
+      <div>
+        <Label htmlFor="name">Nom de la classe *</Label>
+        <Input
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: 6ème A, Terminale S1..."
+          required
+        />
+      </div>
+      
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button type="submit">
+          Créer la classe
+        </Button>
+      </div>
+    </form>
   );
 };

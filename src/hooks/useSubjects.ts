@@ -111,11 +111,11 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     }
   };
 
-  const assignTeacher = async (subjectId: string, teacherId: string) => {
+  const updateSubject = async (subjectId: string, updates: Partial<{ name: string; class_id: string | null; teacher_id: string | null }>) => {
     try {
       const { data, error } = await supabase
         .from('subjects')
-        .update({ teacher_id: teacherId })
+        .update(updates)
         .eq('id', subjectId)
         .select(`
           *,
@@ -135,14 +135,18 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
       setSubjects(prev => prev.map(subject => 
         subject.id === subjectId ? data : subject
       ));
-      toast.success('Professeur assigné avec succès');
+      toast.success('Matière mise à jour avec succès');
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de l\'assignation du professeur';
+      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la matière';
       setError(message);
       toast.error(message);
       throw err;
     }
+  };
+
+  const assignTeacher = async (subjectId: string, teacherId: string) => {
+    return updateSubject(subjectId, { teacher_id: teacherId });
   };
 
   const archiveSubject = async (id: string) => {
@@ -197,6 +201,7 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     loading,
     error,
     createSubject,
+    updateSubject,
     assignTeacher,
     archiveSubject,
     restoreSubject,

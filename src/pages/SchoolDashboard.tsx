@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { StudentImport } from "@/components/school/StudentImport";
 import { StudentForm } from "@/components/school/StudentForm";
 import { ClassForm } from "@/components/school/ClassForm";
+import { SubjectForm } from "@/components/school/SubjectForm";
 import { useClassSubjects } from "@/hooks/useClassSubjects";
 import { TeacherClassAssignment } from "@/components/admin/TeacherClassAssignment";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp, Archive } from "lucide-react";
+import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp, Archive, Pencil } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
@@ -67,7 +68,7 @@ const SchoolDashboard = () => {
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "", class_id: "" });
-  const [newSubject, setNewSubject] = useState({ name: "", class_id: "", teacher_id: "" });
+  const [editingSubject, setEditingSubject] = useState<any>(null);
   
   // Archive dialog states (for students)
   const [archiveDialog, setArchiveDialog] = useState<{
@@ -130,7 +131,7 @@ const SchoolDashboard = () => {
   
   const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
-  const { subjects, loading: subjectsLoading, createSubject, archiveSubject } = useSubjects(school?.id);
+  const { subjects, loading: subjectsLoading, createSubject, updateSubject, archiveSubject } = useSubjects(school?.id);
   const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
@@ -232,26 +233,25 @@ const SchoolDashboard = () => {
       title: "Nouvelle Matière",
       description: "Créer une matière",
       icon: BookOpen,
-      onClick: () => setIsSubjectDialogOpen(true),
+      onClick: () => {
+        setEditingSubject(null);
+        setIsSubjectDialogOpen(true);
+      },
       variant: "outline" as const
     }
   ];
 
   const handleCreateClass = async (classData: {
     name: string;
-    selectedSubjects: string[];
   }) => {
     if (!school?.id) return;
     
     try {
-      const newClass = await createClass({
+      await createClass({
         name: classData.name,
         school_id: school.id
       });
-      
-      if (classData.selectedSubjects.length > 0 && newClass) {
-        console.log('Assigning subjects to class:', classData.selectedSubjects);
-      }
+      setIsClassDialogOpen(false);
     } catch (error) {
       // Error handled by hook
     }
@@ -283,18 +283,32 @@ const SchoolDashboard = () => {
     }
   };
 
-  const handleCreateSubject = async () => {
-    if (!newSubject.name.trim() || !newSubject.class_id || !school?.id) return;
+  const handleCreateOrUpdateSubject = async (subjectData: {
+    name: string;
+    class_id?: string | null;
+    teacher_id?: string | null;
+  }) => {
+    if (!school?.id) return;
     
     try {
-      await createSubject({
-        name: newSubject.name,
-        class_id: newSubject.class_id,
-        school_id: school.id,
-        teacher_id: newSubject.teacher_id || undefined
-      });
-      setNewSubject({ name: "", class_id: "", teacher_id: "" });
+      if (editingSubject) {
+        // Update existing subject
+        await updateSubject(editingSubject.id, {
+          name: subjectData.name,
+          class_id: subjectData.class_id === 'none' ? null : (subjectData.class_id || null),
+          teacher_id: subjectData.teacher_id === 'none' ? null : (subjectData.teacher_id || null),
+        });
+      } else {
+        // Create new subject
+        await createSubject({
+          name: subjectData.name,
+          class_id: subjectData.class_id === 'none' ? undefined : (subjectData.class_id || undefined),
+          school_id: school.id,
+          teacher_id: subjectData.teacher_id === 'none' ? undefined : (subjectData.teacher_id || undefined)
+        });
+      }
       setIsSubjectDialogOpen(false);
+      setEditingSubject(null);
     } catch (error) {
       // Error handled by hook
     }
@@ -810,7 +824,10 @@ const SchoolDashboard = () => {
                 <div className="space-y-4 lg:space-y-6">
                   <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                     <h2 className="text-xl font-semibold">Matières Enseignées</h2>
-                    <Button onClick={() => setIsSubjectDialogOpen(true)} className="w-full sm:w-auto">
+                    <Button onClick={() => {
+                      setEditingSubject(null);
+                      setIsSubjectDialogOpen(true);
+                    }} className="w-full sm:w-auto">
                       <Plus className="h-4 w-4 mr-2" />
                       Nouvelle Matière
                     </Button>
@@ -842,20 +859,34 @@ const SchoolDashboard = () => {
                                 </p>
                               </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => setDeleteDialog({
-                                open: true,
-                                type: 'subject',
-                                id: subject.id,
-                                name: subject.name
-                              })}
-                              title="Archiver cette matière"
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+                            <div className="absolute top-2 right-2 flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                                onClick={() => {
+                                  setEditingSubject(subject);
+                                  setIsSubjectDialogOpen(true);
+                                }}
+                                title="Modifier cette matière"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={() => setDeleteDialog({
+                                  open: true,
+                                  type: 'subject',
+                                  id: subject.id,
+                                  name: subject.name
+                                })}
+                                title="Archiver cette matière"
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       );
@@ -1001,7 +1032,6 @@ const SchoolDashboard = () => {
           </DialogHeader>
           <ClassForm 
             onSubmit={handleCreateClass}
-            subjects={subjects}
           />
         </DialogContent>
       </Dialog>
@@ -1070,62 +1100,25 @@ const SchoolDashboard = () => {
       </Dialog>
 
       {/* Subject Dialog */}
-      <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
+      <Dialog open={isSubjectDialogOpen} onOpenChange={(open) => {
+        setIsSubjectDialogOpen(open);
+        if (!open) setEditingSubject(null);
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Créer une Matière</DialogTitle>
+            <DialogTitle>{editingSubject ? 'Modifier la Matière' : 'Créer une Matière'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="subject-name">Nom de la matière</Label>
-              <Input
-                id="subject-name"
-                value={newSubject.name}
-                onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                placeholder="Mathématiques, Français..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="subject-class">Classe</Label>
-              <select
-                id="subject-class"
-                className="w-full p-2 border rounded-md"
-                value={newSubject.class_id}
-                onChange={(e) => setNewSubject({ ...newSubject, class_id: e.target.value })}
-              >
-                <option value="">Sélectionner une classe</option>
-                {classes.map((classItem) => (
-                  <option key={classItem.id} value={classItem.id}>
-                    {classItem.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="subject-teacher">Professeur (optionnel)</Label>
-              <select
-                id="subject-teacher"
-                className="w-full p-2 border rounded-md"
-                value={newSubject.teacher_id}
-                onChange={(e) => setNewSubject({ ...newSubject, teacher_id: e.target.value })}
-              >
-                <option value="">Aucun professeur assigné</option>
-                {teachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.firstname} {teacher.lastname}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleCreateSubject}>
-                Créer
-              </Button>
-            </div>
-          </div>
+          <SubjectForm
+            onSubmit={handleCreateOrUpdateSubject}
+            onCancel={() => {
+              setIsSubjectDialogOpen(false);
+              setEditingSubject(null);
+            }}
+            classes={classes}
+            teachers={teachers}
+            initialData={editingSubject}
+            isEditing={!!editingSubject}
+          />
         </DialogContent>
       </Dialog>
 
