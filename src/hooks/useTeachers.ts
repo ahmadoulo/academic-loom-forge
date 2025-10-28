@@ -69,6 +69,31 @@ export const useTeachers = (schoolId?: string) => {
     }
   };
 
+  const updateTeacher = async (teacherId: string, updates: Partial<CreateTeacherData>) => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .update(updates)
+        .eq('id', teacherId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTeachers(prev => prev.map(t => t.id === teacherId ? { ...t, ...data } : t));
+      
+      // Dispatch custom event for real-time updates
+      window.dispatchEvent(new CustomEvent('teacher-updated', { detail: data }));
+      
+      toast.success('Professeur mis à jour avec succès');
+      return data;
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour du professeur:', err);
+      toast.error('Erreur lors de la mise à jour du professeur');
+      throw err;
+    }
+  };
+
   const archiveTeacher = async (id: string) => {
     try {
       const { error } = await supabase
@@ -128,6 +153,7 @@ export const useTeachers = (schoolId?: string) => {
     loading,
     error,
     createTeacher,
+    updateTeacher,
     archiveTeacher,
     restoreTeacher,
     refetch: fetchTeachers

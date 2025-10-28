@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 
 interface AdminSidebarProps {
   activeTab: string;
@@ -118,6 +119,10 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContentUI>
+
+      <div className="mt-auto p-4 border-t">
+        <AcademicYearSidebarSection />
+      </div>
     </div>
   );
 }

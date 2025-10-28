@@ -15,6 +15,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 export function SchoolsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newSchool, setNewSchool] = useState({ name: "", identifier: "" });
+  const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; schoolId?: string; schoolName?: string }>({ open: false });
 
@@ -23,27 +24,44 @@ export function SchoolsSection() {
   const { students } = useStudents();
   const { classes } = useClasses();
 
-  const handleCreateSchool = async (e: React.FormEvent) => {
+  const handleSubmitSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchool.name.trim()) return;
 
-    console.log('DEBUG: Formulaire soumis avec:', newSchool);
+    console.log('DEBUG: Formulaire soumis avec:', newSchool, 'Mode:', editingSchoolId ? 'édition' : 'création');
     
     setIsSubmitting(true);
     try {
-      const identifier = newSchool.identifier.trim() || `SCH${String(schools.length + 1).padStart(3, '0')}`;
-      
-      console.log('DEBUG: Identifier généré:', identifier);
-      
-      await createSchool({
-        name: newSchool.name,
-        identifier
-      });
+      if (editingSchoolId) {
+        // Mode édition - ne pas envoyer l'identifier s'il n'a pas changé
+        const updates: any = {
+          name: newSchool.name.trim(),
+        };
+        
+        // Seulement inclure l'identifier si l'utilisateur l'a modifié
+        const originalSchool = schools.find(s => s.id === editingSchoolId);
+        if (originalSchool && newSchool.identifier.trim() !== originalSchool.identifier) {
+          updates.identifier = newSchool.identifier.trim();
+        }
+        
+        await updateSchool(editingSchoolId, updates);
+      } else {
+        // Mode création
+        const identifier = newSchool.identifier.trim() || `SCH${String(schools.length + 1).padStart(3, '0')}`;
+        
+        console.log('DEBUG: Identifier généré:', identifier);
+        
+        await createSchool({
+          name: newSchool.name,
+          identifier
+        });
+      }
       
       setNewSchool({ name: "", identifier: "" });
+      setEditingSchoolId(null);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("DEBUG: Erreur lors de la création de l'école:", error);
+      console.error("DEBUG: Erreur lors de la sauvegarde de l'école:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -68,12 +86,18 @@ export function SchoolsSection() {
   };
 
   const handleEditSchool = (schoolId: string) => {
-    // Implement edit functionality - for now just show the school info
     const school = schools.find(s => s.id === schoolId);
     if (school) {
       setNewSchool({ name: school.name, identifier: school.identifier });
+      setEditingSchoolId(schoolId);
       setIsDialogOpen(true);
     }
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setNewSchool({ name: "", identifier: "" });
+    setEditingSchoolId(null);
   };
 
   if (loading) {
@@ -156,13 +180,15 @@ export function SchoolsSection() {
         </CardContent>
       </Card>
 
-      {/* Create School Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Create/Edit School Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Créer un Nouvel Établissement</DialogTitle>
+            <DialogTitle>
+              {editingSchoolId ? "Modifier l'Établissement" : "Créer un Nouvel Établissement"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateSchool} className="space-y-4">
+          <form onSubmit={handleSubmitSchool} className="space-y-4">
             <div>
               <Label htmlFor="school-name">Nom de l'établissement</Label>
               <Input
@@ -186,13 +212,13 @@ export function SchoolsSection() {
               <Button 
                 type="button"
                 variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
+                onClick={handleCloseDialog}
               >
                 Annuler
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Créer l'École
+                {editingSchoolId ? "Mettre à jour" : "Créer l'École"}
               </Button>
             </div>
           </form>

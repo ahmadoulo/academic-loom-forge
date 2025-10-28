@@ -56,6 +56,8 @@ import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSec
 import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
 import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
 import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
+import { TeacherForm } from "@/components/school/TeacherForm";
+import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -63,13 +65,16 @@ const SchoolDashboard = () => {
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [showClassDetails, setShowClassDetails] = useState(false);
   
+  // Check if read-only mode (viewing past year)
+  const { isReadOnly, selectedYear, currentYear } = useIsReadOnly();
+  
   // Dialog states
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
   const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
-  const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "", class_id: "" });
+  const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [editingSubject, setEditingSubject] = useState<any>(null);
   
   // Archive dialog states (for students)
@@ -254,32 +259,6 @@ const SchoolDashboard = () => {
         school_id: school.id
       });
       setIsClassDialogOpen(false);
-    } catch (error) {
-      // Error handled by hook
-    }
-  };
-
-  const handleCreateTeacher = async () => {
-    if (!newTeacher.firstname.trim() || !newTeacher.lastname.trim() || !school?.id) return;
-    
-    try {
-      const createdTeacher = await createTeacher({
-        firstname: newTeacher.firstname,
-        lastname: newTeacher.lastname,
-        email: newTeacher.email,
-        school_id: school.id
-      });
-      
-      // Si une classe est sélectionnée, assigner le professeur à cette classe
-      if (newTeacher.class_id && createdTeacher) {
-        await assignTeacherToClass({
-          teacher_id: createdTeacher.id,
-          class_id: newTeacher.class_id
-        });
-      }
-      
-      setNewTeacher({ firstname: "", lastname: "", email: "", class_id: "" });
-      setIsTeacherDialogOpen(false);
     } catch (error) {
       // Error handled by hook
     }
@@ -905,9 +884,23 @@ const SchoolDashboard = () => {
               
               {activeTab === "teachers" && (
                 <div className="space-y-6">
+                  {isReadOnly && (
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <p className="text-sm text-muted-foreground">
+                        📚 Mode consultation - Vous visualisez l'année scolaire <strong>{selectedYear?.name}</strong>. 
+                        Les modifications sont désactivées pour les années passées.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold">Corps Enseignant</h2>
-                    <Button onClick={() => setIsTeacherDialogOpen(true)}>
+                    <Button 
+                      onClick={() => {
+                        setEditingTeacher(null);
+                        setIsTeacherDialogOpen(true);
+                      }}
+                      disabled={isReadOnly}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Nouveau Professeur
                     </Button>
@@ -945,19 +938,36 @@ const SchoolDashboard = () => {
                                 Interface Professeur
                               </Button>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => setDeleteDialog({
-                                open: true,
-                                type: 'teacher',
-                                id: teacher.id,
-                                name: `${teacher.firstname} ${teacher.lastname}`
-                              })}
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+                            <div className="absolute top-2 right-2 flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                                onClick={() => {
+                                  setEditingTeacher(teacher);
+                                  setIsTeacherDialogOpen(true);
+                                }}
+                                disabled={isReadOnly}
+                                title="Modifier ce professeur"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={() => setDeleteDialog({
+                                  open: true,
+                                  type: 'teacher',
+                                  id: teacher.id,
+                                  name: `${teacher.firstname} ${teacher.lastname}`
+                                })}
+                                disabled={isReadOnly}
+                                title="Archiver ce professeur"
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       );
@@ -1044,68 +1054,19 @@ const SchoolDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Teacher Dialog */}
-      <Dialog open={isTeacherDialogOpen} onOpenChange={setIsTeacherDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ajouter un Professeur</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="teacher-firstname">Prénom</Label>
-              <Input
-                id="teacher-firstname"
-                value={newTeacher.firstname}
-                onChange={(e) => setNewTeacher({ ...newTeacher, firstname: e.target.value })}
-                placeholder="Prénom du professeur"
-              />
-            </div>
-            <div>
-              <Label htmlFor="teacher-lastname">Nom</Label>
-              <Input
-                id="teacher-lastname"
-                value={newTeacher.lastname}
-                onChange={(e) => setNewTeacher({ ...newTeacher, lastname: e.target.value })}
-                placeholder="Nom du professeur"
-              />
-            </div>
-            <div>
-              <Label htmlFor="teacher-email">Email (optionnel)</Label>
-              <Input
-                id="teacher-email"
-                type="email"
-                value={newTeacher.email}
-                onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
-                placeholder="email@exemple.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="teacher-class">Classe à assigner (optionnel)</Label>
-              <select
-                id="teacher-class"
-                className="w-full p-2 border rounded-md"
-                value={newTeacher.class_id}
-                onChange={(e) => setNewTeacher({ ...newTeacher, class_id: e.target.value })}
-              >
-                <option value="">Aucune classe assignée</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsTeacherDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleCreateTeacher}>
-                Créer
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Teacher Form */}
+      <TeacherForm
+        open={isTeacherDialogOpen}
+        onOpenChange={(open) => {
+          setIsTeacherDialogOpen(open);
+          if (!open) setEditingTeacher(null);
+        }}
+        schoolId={school?.id || ""}
+        teacher={editingTeacher}
+        onSuccess={() => {
+          setEditingTeacher(null);
+        }}
+      />
 
       {/* Subject Dialog */}
       <Dialog open={isSubjectDialogOpen} onOpenChange={(open) => {
