@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { 
   BookOpen, 
   Home,
@@ -6,7 +7,10 @@ import {
   ClipboardList,
   Calendar,
   Megaphone,
-  CalendarDays
+  CalendarDays,
+  ChevronDown,
+  Bell,
+  BookMarked
 } from "lucide-react";
 
 import {
@@ -18,33 +22,61 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const menuItems = [
+const menuStructure = [
   { 
     title: "Accueil", 
     value: "accueil",
     icon: Home,
     href: "/student"
   },
-  { 
-    title: "Calendrier", 
-    value: "calendar",
-    icon: Calendar,
-    href: "/student"
+  {
+    category: "Scolarité",
+    icon: BookMarked,
+    items: [
+      { 
+        title: "Mes Notes", 
+        value: "notes",
+        icon: BookOpen,
+        href: "/student"
+      },
+      { 
+        title: "Devoirs", 
+        value: "devoirs",
+        icon: ClipboardList,
+        href: "/student"
+      },
+    ]
   },
-  { 
-    title: "Mes Notes", 
-    value: "notes",
-    icon: BookOpen,
-    href: "/student"
-  },
-  { 
-    title: "Devoirs", 
-    value: "devoirs",
-    icon: ClipboardList,
-    href: "/student"
+  {
+    category: "Communication",
+    icon: Bell,
+    items: [
+      { 
+        title: "Calendrier", 
+        value: "calendar",
+        icon: Calendar,
+        href: "/student"
+      },
+      { 
+        title: "Événements", 
+        value: "events",
+        icon: CalendarDays,
+        href: "/student"
+      },
+      { 
+        title: "Annonces", 
+        value: "announcements",
+        icon: Megaphone,
+        href: "/student"
+      },
+    ]
   },
   { 
     title: "Demande Document", 
@@ -52,22 +84,18 @@ const menuItems = [
     icon: FileText,
     href: "/student"
   },
-  { 
-    title: "Événements", 
-    value: "events",
-    icon: CalendarDays,
-    href: "/student"
-  },
-  { 
-    title: "Annonces", 
-    value: "announcements",
-    icon: Megaphone,
-    href: "/student"
-  },
 ];
 
 export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const { open } = useSidebar();
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    "Scolarité": true,
+    "Communication": false,
+  });
+
+  const toggleCategory = (category: string) => {
+    setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
 
   return (
     <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
@@ -87,33 +115,75 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.value}>
-                  <SidebarMenuButton 
-                    asChild
-                    isActive={activeTab === item.value}
-                    className="w-full justify-start"
+              {menuStructure.map((item, index) => {
+                // Item simple sans catégorie
+                if ('value' in item) {
+                  return (
+                    <SidebarMenuItem key={item.value}>
+                      <SidebarMenuButton 
+                        asChild
+                        isActive={activeTab === item.value}
+                        className="w-full justify-start"
+                      >
+                        <button 
+                          onClick={() => onTabChange(item.value)}
+                          className="flex items-center gap-3 w-full text-left"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {open && <span>{item.title}</span>}
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
+
+                // Catégorie avec sous-menu
+                const isOpen = openCategories[item.category] ?? false;
+
+                return (
+                  <Collapsible
+                    key={item.category}
+                    open={isOpen}
+                    onOpenChange={() => toggleCategory(item.category)}
                   >
-                    {item.href && item.href !== "/student" ? (
-                      <a 
-                        href={item.href}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </a>
-                    ) : (
-                      <button 
-                        onClick={() => onTabChange(item.value)}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </button>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton className="w-full">
+                          <item.icon className="h-4 w-4" />
+                          {open && (
+                            <>
+                              <span className="flex-1">{item.category}</span>
+                              <ChevronDown 
+                                className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+                              />
+                            </>
+                          )}
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.items.map(subItem => (
+                            <SidebarMenuSubItem key={subItem.value}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={activeTab === subItem.value}
+                              >
+                                <button 
+                                  onClick={() => onTabChange(subItem.value)}
+                                  className="flex items-center gap-3 w-full text-left"
+                                >
+                                  <subItem.icon className="h-4 w-4" />
+                                  {open && <span>{subItem.title}</span>}
+                                </button>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

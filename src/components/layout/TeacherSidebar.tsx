@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
 import { 
   BookOpen, 
   Users, 
@@ -10,7 +9,10 @@ import {
   FileText,
   Calendar,
   Megaphone,
-  CalendarDays
+  CalendarDays,
+  ChevronDown,
+  ClipboardList,
+  Bell
 } from "lucide-react";
 
 import {
@@ -22,75 +24,105 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const menuItems = [
+const menuStructure = [
   { 
     title: "Tableau de bord", 
     value: "dashboard",
     icon: Home,
     href: "/teacher"
   },
-  { 
-    title: "Calendrier", 
-    value: "calendar",
-    icon: Calendar,
-    href: "/teacher"
+  {
+    category: "Enseignement",
+    icon: GraduationCap,
+    items: [
+      { 
+        title: "Mes Classes", 
+        value: "classes",
+        icon: Users,
+        href: "/teacher"
+      },
+      { 
+        title: "Mes Matières", 
+        value: "subjects",
+        icon: BookOpen,
+        href: "/teacher"
+      },
+      { 
+        title: "Publier un Devoir", 
+        value: "assignments",
+        icon: FileText,
+        href: "/teacher"
+      },
+    ]
   },
-  { 
-    title: "Mes Classes", 
-    value: "classes",
-    icon: Users,
-    href: "/teacher"
+  {
+    category: "Suivi",
+    icon: ClipboardList,
+    items: [
+      { 
+        title: "Présence", 
+        value: "attendance-view",
+        icon: UserCheck,
+        href: "/teacher"
+      },
+      { 
+        title: "Gestion des Notes", 
+        value: "grades",
+        icon: BookOpen,
+        href: "/teacher"
+      },
+      { 
+        title: "Analytics", 
+        value: "analytics",
+        icon: BarChart3,
+        href: "/teacher"
+      },
+    ]
   },
-  { 
-    title: "Présence", 
-    value: "attendance-view",
-    icon: UserCheck,
-    href: "/teacher"
-  },
-  { 
-    title: "Gestion des Notes", 
-    value: "grades",
-    icon: BookOpen,
-    href: "/teacher"
-  },
-  { 
-    title: "Publier un Devoir", 
-    value: "assignments",
-    icon: FileText,
-    href: "/teacher"
-  },
-  { 
-    title: "Mes Matières", 
-    value: "subjects",
-    icon: BookOpen,
-    href: "/teacher"
-  },
-  { 
-    title: "Analytics", 
-    value: "analytics",
-    icon: BarChart3,
-    href: "/teacher"
-  },
-  { 
-    title: "Événements", 
-    value: "events",
-    icon: CalendarDays,
-    href: "/teacher"
-  },
-  { 
-    title: "Annonces", 
-    value: "announcements",
-    icon: Megaphone,
-    href: "/teacher"
+  {
+    category: "Communication",
+    icon: Bell,
+    items: [
+      { 
+        title: "Calendrier", 
+        value: "calendar",
+        icon: Calendar,
+        href: "/teacher"
+      },
+      { 
+        title: "Événements", 
+        value: "events",
+        icon: CalendarDays,
+        href: "/teacher"
+      },
+      { 
+        title: "Annonces", 
+        value: "announcements",
+        icon: Megaphone,
+        href: "/teacher"
+      },
+    ]
   },
 ];
 
 export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const { open } = useSidebar();
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    "Enseignement": true,
+    "Suivi": true,
+    "Communication": false,
+  });
+
+  const toggleCategory = (category: string) => {
+    setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
 
   return (
     <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
@@ -110,33 +142,75 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.value}>
-                  <SidebarMenuButton 
-                    asChild
-                    isActive={activeTab === item.value}
-                    className="w-full justify-start"
+              {menuStructure.map((item, index) => {
+                // Item simple sans catégorie
+                if ('value' in item) {
+                  return (
+                    <SidebarMenuItem key={item.value}>
+                      <SidebarMenuButton 
+                        asChild
+                        isActive={activeTab === item.value}
+                        className="w-full justify-start"
+                      >
+                        <button 
+                          onClick={() => onTabChange(item.value)}
+                          className="flex items-center gap-3 w-full text-left"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {open && <span>{item.title}</span>}
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
+
+                // Catégorie avec sous-menu
+                const isOpen = openCategories[item.category] ?? false;
+
+                return (
+                  <Collapsible
+                    key={item.category}
+                    open={isOpen}
+                    onOpenChange={() => toggleCategory(item.category)}
                   >
-                    {item.href && item.href !== "/teacher" ? (
-                      <a 
-                        href={item.href}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </a>
-                    ) : (
-                      <button 
-                        onClick={() => onTabChange(item.value)}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </button>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton className="w-full">
+                          <item.icon className="h-4 w-4" />
+                          {open && (
+                            <>
+                              <span className="flex-1">{item.category}</span>
+                              <ChevronDown 
+                                className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+                              />
+                            </>
+                          )}
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.items.map(subItem => (
+                            <SidebarMenuSubItem key={subItem.value}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={activeTab === subItem.value}
+                              >
+                                <button 
+                                  onClick={() => onTabChange(subItem.value)}
+                                  className="flex items-center gap-3 w-full text-left"
+                                >
+                                  <subItem.icon className="h-4 w-4" />
+                                  {open && <span>{subItem.title}</span>}
+                                </button>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

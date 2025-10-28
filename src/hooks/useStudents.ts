@@ -146,50 +146,49 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       let studentId: string;
 
       if (existingStudent) {
-        // L'étudiant existe déjà, vérifier s'il est déjà inscrit cette année
-        const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
+        // L'étudiant existe déjà avec ce CIN, vérifier toutes ses inscriptions
+        const { data: allEnrollments, error: enrollmentCheckError } = await supabase
           .from('student_school')
-          .select('id, school_id, schools!inner(name)')
+          .select('id, school_id, school_year_id, is_active, schools!inner(name)')
           .eq('student_id', existingStudent.id)
-          .eq('school_year_id', currentYearId)
-          .eq('is_active', true)
-          .maybeSingle();
+          .eq('is_active', true);
 
-        if (enrollmentCheckError && enrollmentCheckError.code !== 'PGRST116') throw enrollmentCheckError;
+        if (enrollmentCheckError) throw enrollmentCheckError;
 
-        if (existingEnrollment) {
+        // Vérifier s'il est inscrit quelque part cette année
+        const currentYearEnrollment = allEnrollments?.find(
+          e => e.school_year_id === currentYearId
+        );
+
+        if (currentYearEnrollment) {
           // Déjà inscrit cette année
-          if (existingEnrollment.school_id !== data.school_id) {
-            // Inscrit dans une autre école cette année: bloquer
-            const schoolName = (existingEnrollment as any).schools?.name || 'une autre école';
+          const schoolName = (currentYearEnrollment as any).schools?.name || 'une école';
+          
+          if (currentYearEnrollment.school_id === data.school_id) {
             throw new Error(
-              `Cet étudiant (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans ${schoolName} pour l'année scolaire en cours. ` +
-              `Veuillez procéder à un transfert d'école si nécessaire.`
+              `Un étudiant avec le CIN ${data.cin_number} (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans cette école pour l'année scolaire en cours.`
             );
           } else {
-            // Déjà inscrit dans la même école cette année
             throw new Error(
-              `Cet étudiant (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans cette école pour l'année scolaire en cours.`
+              `Un étudiant avec le CIN ${data.cin_number} (${existingStudent.firstname} ${existingStudent.lastname}) est déjà inscrit dans ${schoolName} pour l'année scolaire en cours. Un étudiant ne peut pas être inscrit dans deux écoles simultanément.`
             );
           }
         }
 
-        // Pas d'inscription cette année, réutiliser le même ID
+        // Pas d'inscription active cette année, mais l'étudiant existe dans une autre école
+        // On doit bloquer pour éviter les conflits de données
+        if (allEnrollments && allEnrollments.length > 0) {
+          const otherSchoolName = (allEnrollments[0] as any).schools?.name || 'une autre école';
+          throw new Error(
+            `Un étudiant avec le CIN ${data.cin_number} existe déjà dans ${otherSchoolName}. ` +
+            `Pour l'inscrire dans votre école, veuillez d'abord procéder à un transfert officiel depuis l'autre établissement.`
+          );
+        }
+
+        // Cas très rare: étudiant existe mais n'a aucune inscription active
+        // On peut réutiliser mais sans modifier ses données
         studentId = existingStudent.id;
-        toast.info(`Étudiant existant trouvé: ${existingStudent.firstname} ${existingStudent.lastname}. Création de l'inscription pour la nouvelle année.`);
-        
-        // Mettre à jour les infos de l'étudiant si nécessaire
-        await supabase
-          .from('students')
-          .update({
-            firstname: data.firstname.trim(),
-            lastname: data.lastname.trim(),
-            email: data.email?.trim() || null,
-            birth_date: data.birth_date?.trim() || null,
-            student_phone: data.student_phone?.trim() || null,
-            parent_phone: data.parent_phone?.trim() || null,
-          })
-          .eq('id', studentId);
+        toast.info(`Réinscription de l'étudiant existant: ${existingStudent.firstname} ${existingStudent.lastname}`);
       } else {
         // Nouvel étudiant, créer l'entrée
         const { data: newStudent, error: studentError } = await supabase
