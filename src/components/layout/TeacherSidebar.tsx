@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 
 const menuStructure = [
   { 
@@ -138,6 +139,10 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
       </div>
 
       <SidebarContent className="p-4">
+        <div className="mb-4">
+          <AcademicYearSidebarSection />
+        </div>
+        
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>

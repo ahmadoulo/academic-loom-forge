@@ -33,6 +33,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 
 interface SchoolSidebarProps {
   schoolId: string;
@@ -194,6 +195,10 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
       </div>
 
       <SidebarContent className="p-4">
+        <div className="mb-4">
+          <AcademicYearSidebarSection />
+        </div>
+        
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>

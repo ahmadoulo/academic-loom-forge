@@ -30,8 +30,8 @@ export const ClassMappingStep = ({
   onComplete,
   onBack
 }: ClassMappingStepProps) => {
-  // Charger TOUTES les classes de l'école (anciennes années incluses) comme sources
-  const { classes: allClasses } = useClassesByYear(schoolId, undefined, true);
+  // Charger uniquement les classes de l'année actuelle comme sources
+  const { classes: allClasses } = useClassesByYear(schoolId, currentYearId);
   const { classes: nextClasses } = useClassesByYear(schoolId, nextYearId);
   const {
     createClassMapping,
