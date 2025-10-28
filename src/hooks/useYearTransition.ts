@@ -228,30 +228,9 @@ export const useYearTransition = (schoolId: string) => {
         // L'admin devra assigner manuellement les matières aux classes
       }
 
-      // Récupérer toutes les assignations teacher_classes des anciennes classes
-      const { data: oldTeacherClasses, error: teacherClassesError } = await supabase
-        .from('teacher_classes' as any)
-        .select('*')
-        .in('class_id', oldClassIds);
-
-      if (teacherClassesError) throw teacherClassesError;
-
-      if (oldTeacherClasses && oldTeacherClasses.length > 0) {
-        console.log('Teacher classes à dupliquer:', oldTeacherClasses);
-
-        // Créer les nouvelles assignations pour les nouvelles classes
-        const newTeacherClasses = oldTeacherClasses.map((tc: any) => ({
-          teacher_id: tc.teacher_id,
-          class_id: classMapping.get(tc.class_id)!
-        }));
-
-        const { error: createTCError } = await supabase
-          .from('teacher_classes' as any)
-          .insert(newTeacherClasses);
-
-        if (createTCError) throw createTCError;
-        console.log('Teacher classes dupliqués');
-      }
+      // NE PAS dupliquer les assignations teacher_classes automatiquement
+      // L'admin devra assigner manuellement les professeurs aux nouvelles classes
+      console.log('Les assignations professeur-classes ne sont pas dupliquées automatiquement');
 
       toast.success('Matières et assignations dupliquées avec succès');
     } catch (error: any) {

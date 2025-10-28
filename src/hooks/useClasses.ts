@@ -27,7 +27,8 @@ export const useClasses = (schoolId?: string) => {
       setLoading(true);
       let query = supabase
         .from('classes')
-        .select('*');
+        .select('*')
+        .eq('archived', false);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
@@ -72,19 +73,50 @@ export const useClasses = (schoolId?: string) => {
     }
   };
 
-  const deleteClass = async (id: string) => {
+  const archiveClass = async (id: string) => {
     try {
       const { error } = await supabase
         .from('classes')
-        .delete()
+        .update({ 
+          archived: true,
+          archived_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (error) throw error;
       
+      // Dispatch event for instant update
+      window.dispatchEvent(new CustomEvent('class-archived', { detail: { classId: id } }));
+      
       setClasses(prev => prev.filter(cls => cls.id !== id));
-      toast.success('Classe supprimée avec succès');
+      toast.success('Classe archivée avec succès');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la suppression de la classe';
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'archivage de la classe';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const restoreClass = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .update({ 
+          archived: false,
+          archived_at: null
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Dispatch event for instant update
+      window.dispatchEvent(new CustomEvent('class-restored', { detail: { classId: id } }));
+      
+      toast.success('Classe restaurée avec succès');
+      await fetchClasses();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la restauration de la classe';
       setError(message);
       toast.error(message);
       throw err;
@@ -102,7 +134,8 @@ export const useClasses = (schoolId?: string) => {
     loading,
     error,
     createClass,
-    deleteClass,
+    archiveClass,
+    restoreClass,
     refetch: fetchClasses
   };
 };

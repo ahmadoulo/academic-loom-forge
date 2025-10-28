@@ -17,7 +17,7 @@ interface SchoolYear {
 interface AcademicYearContextType {
   currentYear: SchoolYear | null;
   selectedYear: SchoolYear | null;
-  setSelectedYear: (year: SchoolYear | null) => void;
+  setSelectedYear: (year: SchoolYear | null, context?: string) => void;
   availableYears: SchoolYear[];
   loading: boolean;
   refetch: () => Promise<void>;
@@ -35,12 +35,11 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const [availableYears, setAvailableYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Clé localStorage unique par utilisateur - utiliser l'email comme fallback si user.id n'est pas disponible
-  const getStorageKey = () => {
-    if (!user) return 'selectedAcademicYearId_guest';
-    // Utiliser email qui est toujours disponible dans le contexte d'auth
+  // Clé localStorage unique par utilisateur ET par page/contexte
+  const getStorageKey = (context?: string) => {
+    if (!user) return `selectedAcademicYearId_guest${context ? `_${context}` : ''}`;
     const uniqueId = user.email || user.id || 'unknown';
-    return `selectedAcademicYearId_${uniqueId}`;
+    return `selectedAcademicYearId_${uniqueId}${context ? `_${context}` : ''}`;
   };
 
   const fetchYears = async () => {
@@ -151,10 +150,10 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Fonction wrapper pour setSelectedYear avec localStorage (unique par utilisateur)
-  const setSelectedYear = (year: SchoolYear | null) => {
+  // Fonction wrapper pour setSelectedYear avec localStorage (unique par utilisateur et contexte)
+  const setSelectedYear = (year: SchoolYear | null, context?: string) => {
     setSelectedYearState(year);
-    const storageKey = getStorageKey();
+    const storageKey = getStorageKey(context);
     if (year) {
       localStorage.setItem(storageKey, year.id);
     } else {

@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, Trash2, TrendingUp, Archive, Pencil } from "lucide-react";
+import { Users, BookOpen, School, GraduationCap, Plus, Loader2, UserPlus, TrendingUp, Archive, Pencil, RotateCcw } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
@@ -54,6 +54,8 @@ import { BulletinSection } from "@/components/school/BulletinSection";
 import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
 import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
 import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
+import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
+import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -114,7 +116,7 @@ const SchoolDashboard = () => {
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, archiveStudent, restoreStudent } = useStudents(school?.id);
   
   // Use filtered classes by selected year (or current if none selected)
-  const { createClass: createClassOriginal, deleteClass: deleteClassOriginal } = useClasses(school?.id);
+  const { createClass: createClassOriginal, archiveClass: archiveClassOriginal, restoreClass } = useClasses(school?.id);
   const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, displayYearId);
   
   // Wrapper functions to refresh filtered data after mutations
@@ -124,12 +126,12 @@ const SchoolDashboard = () => {
     return result;
   };
   
-  const deleteClass = async (id: string) => {
-    await deleteClassOriginal(id);
+  const archiveClass = async (id: string) => {
+    await archiveClassOriginal(id);
     await refetchClasses();
   };
   
-  const { teachers, loading: teachersLoading, createTeacher, deleteTeacher } = useTeachers(school?.id);
+  const { teachers, loading: teachersLoading, createTeacher, archiveTeacher, restoreTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, updateSubject, archiveSubject } = useSubjects(school?.id);
   const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
@@ -329,10 +331,10 @@ const SchoolDashboard = () => {
     try {
       switch (deleteDialog.type) {
         case 'teacher':
-          await deleteTeacher(deleteDialog.id);
+          await archiveTeacher(deleteDialog.id);
           break;
         case 'class':
-          await deleteClass(deleteDialog.id);
+          await archiveClass(deleteDialog.id);
           break;
         case 'subject':
           await archiveSubject(deleteDialog.id);
@@ -340,7 +342,7 @@ const SchoolDashboard = () => {
       }
       setDeleteDialog({ open: false });
     } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
+      console.error("Erreur lors de l'archivage:", error);
     }
   };
 
@@ -796,19 +798,23 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "classes" && !showClassDetails && (
-                <ClassesListSection
-                  classes={classes}
-                  students={students}
-                  loading={classesLoading}
-                  onDeleteClass={(id, name) => setDeleteDialog({
-                    open: true,
-                    type: 'class',
-                    id,
-                    name
-                  })}
-                  onViewClassDetails={handleViewClassDetails}
-                  onCreateClass={() => setIsClassDialogOpen(true)}
-                />
+                <div className="space-y-6">
+                  <ClassesListSection
+                    classes={classes}
+                    students={students}
+                    loading={classesLoading}
+                    onArchiveClass={(id, name) => setDeleteDialog({
+                      open: true,
+                      type: 'class',
+                      id,
+                      name
+                    })}
+                    onViewClassDetails={handleViewClassDetails}
+                    onCreateClass={() => setIsClassDialogOpen(true)}
+                  />
+                  
+                  <ArchivedClassesSection schoolId={school.id} />
+                </div>
               )}
 
               {activeTab === "classes" && showClassDetails && selectedClass && (
@@ -950,13 +956,15 @@ const SchoolDashboard = () => {
                                 name: `${teacher.firstname} ${teacher.lastname}`
                               })}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Archive className="h-4 w-4" />
                             </Button>
                           </CardContent>
                         </Card>
                       );
                     })}
                    </div>
+                  
+                  <ArchivedTeachersSection schoolId={school.id} />
                   
                   {/* Assignation Professeurs - Classes */}
                   {school?.id && (

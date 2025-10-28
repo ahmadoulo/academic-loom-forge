@@ -29,7 +29,8 @@ export const useTeachers = (schoolId?: string) => {
       setLoading(true);
       let query = supabase
         .from('teachers')
-        .select('*');
+        .select('*')
+        .eq('archived', false);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
@@ -68,19 +69,50 @@ export const useTeachers = (schoolId?: string) => {
     }
   };
 
-  const deleteTeacher = async (id: string) => {
+  const archiveTeacher = async (id: string) => {
     try {
       const { error } = await supabase
         .from('teachers')
-        .delete()
+        .update({ 
+          archived: true,
+          archived_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (error) throw error;
       
+      // Dispatch event for instant update
+      window.dispatchEvent(new CustomEvent('teacher-archived', { detail: { teacherId: id } }));
+      
       setTeachers(prev => prev.filter(teacher => teacher.id !== id));
-      toast.success('Professeur supprimé avec succès');
+      toast.success('Professeur archivé avec succès');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la suppression du professeur';
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'archivage du professeur';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const restoreTeacher = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('teachers')
+        .update({ 
+          archived: false,
+          archived_at: null
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Dispatch event for instant update
+      window.dispatchEvent(new CustomEvent('teacher-restored', { detail: { teacherId: id } }));
+      
+      toast.success('Professeur restauré avec succès');
+      await fetchTeachers();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la restauration du professeur';
       setError(message);
       toast.error(message);
       throw err;
@@ -96,7 +128,8 @@ export const useTeachers = (schoolId?: string) => {
     loading,
     error,
     createTeacher,
-    deleteTeacher,
+    archiveTeacher,
+    restoreTeacher,
     refetch: fetchTeachers
   };
 };
