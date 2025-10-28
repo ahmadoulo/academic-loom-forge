@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Calendar, Check } from "lucide-react";
@@ -15,6 +15,13 @@ export const AcademicYearSidebarSection = () => {
   const { selectedYear, setSelectedYear, availableYears, currentYear, loading } = useAcademicYear();
   const [tempYear, setTempYear] = useState<string>(selectedYear?.id || currentYear?.id || "");
   const [isOpen, setIsOpen] = useState(false);
+
+  // Synchroniser tempYear avec selectedYear quand il change
+  useEffect(() => {
+    if (selectedYear?.id) {
+      setTempYear(selectedYear.id);
+    }
+  }, [selectedYear?.id]);
 
   const handleValidate = () => {
     const year = availableYears.find(y => y.id === tempYear);

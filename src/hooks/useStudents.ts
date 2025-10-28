@@ -53,6 +53,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       // Utiliser student_school pour filtrer par année scolaire
       // Ne pas filtrer par is_active car on veut voir les étudiants de l'année sélectionnée
       // même s'ils ont été migrés (leurs notes doivent rester visibles)
+      // MAIS filtrer les étudiants archivés (archived=false)
       let query = supabase
         .from('student_school')
         .select(`
@@ -70,12 +71,14 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             student_phone,
             parent_phone,
             created_at,
-            updated_at
+            updated_at,
+            archived
           ),
           classes!inner (
             name
           )
-        `);
+        `)
+        .eq('students.archived', false);
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
@@ -448,8 +451,12 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
       if (error) throw error;
 
+      // Retirer immédiatement de la liste sans attendre fetchStudents
       setStudents(prev => prev.filter(student => student.id !== id));
       toast.success('Étudiant archivé avec succès');
+      
+      // Déclencher un événement pour notifier ArchivedStudentsSection
+      window.dispatchEvent(new CustomEvent('student-archived'));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'archivage de l\'étudiant';
       setError(message);
@@ -472,6 +479,9 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
       toast.success('Étudiant restauré avec succès');
       await fetchStudents();
+      
+      // Déclencher un événement pour notifier ArchivedStudentsSection
+      window.dispatchEvent(new CustomEvent('student-restored'));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la restauration de l\'étudiant';
       setError(message);

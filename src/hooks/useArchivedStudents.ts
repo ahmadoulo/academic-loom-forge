@@ -107,6 +107,9 @@ export const useArchivedStudents = (schoolId?: string) => {
 
       toast.success('Étudiant restauré avec succès');
       await fetchArchivedStudents();
+      
+      // Déclencher un événement pour notifier les autres composants
+      window.dispatchEvent(new CustomEvent('student-restored'));
     } catch (error: any) {
       console.error('Erreur lors de la restauration:', error);
       toast.error('Erreur lors de la restauration de l\'étudiant');
@@ -115,6 +118,19 @@ export const useArchivedStudents = (schoolId?: string) => {
 
   useEffect(() => {
     fetchArchivedStudents();
+    
+    // Écouter les événements d'archivage pour rafraîchir automatiquement
+    const handleStudentArchived = () => {
+      fetchArchivedStudents();
+    };
+    
+    window.addEventListener('student-archived', handleStudentArchived);
+    window.addEventListener('student-restored', handleStudentArchived);
+    
+    return () => {
+      window.removeEventListener('student-archived', handleStudentArchived);
+      window.removeEventListener('student-restored', handleStudentArchived);
+    };
   }, [schoolId]);
 
   return {

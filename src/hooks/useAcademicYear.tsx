@@ -35,9 +35,12 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const [availableYears, setAvailableYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Clé localStorage unique par utilisateur
+  // Clé localStorage unique par utilisateur - utiliser l'email comme fallback si user.id n'est pas disponible
   const getStorageKey = () => {
-    return user?.id ? `selectedAcademicYearId_${user.id}` : 'selectedAcademicYearId';
+    if (!user) return 'selectedAcademicYearId_guest';
+    // Utiliser email qui est toujours disponible dans le contexte d'auth
+    const uniqueId = user.email || user.id || 'unknown';
+    return `selectedAcademicYearId_${uniqueId}`;
   };
 
   const fetchYears = async () => {
@@ -120,7 +123,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchYears();
-  }, [user?.id]); // Re-fetch quand l'utilisateur change
+  }, [user?.email, user?.id]); // Re-fetch quand l'utilisateur change
 
   // Pour créer des données, toujours utiliser l'année courante
   const getYearForCreation = () => currentYear?.id || null;
