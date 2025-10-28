@@ -361,6 +361,8 @@ export type Database = {
       }
       classes: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           created_at: string
           id: string
           name: string
@@ -369,6 +371,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string
           id?: string
           name: string
@@ -377,6 +381,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -452,6 +458,8 @@ export type Database = {
       }
       classrooms: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           building: string | null
           capacity: number
           created_at: string
@@ -464,6 +472,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           building?: string | null
           capacity?: number
           created_at?: string
@@ -476,6 +486,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           building?: string | null
           capacity?: number
           created_at?: string
@@ -1068,6 +1080,8 @@ export type Database = {
       }
       students: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           birth_date: string | null
           cin_number: string
           created_at: string
@@ -1080,6 +1094,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           birth_date?: string | null
           cin_number: string
           created_at?: string
@@ -1092,6 +1108,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           birth_date?: string | null
           cin_number?: string
           created_at?: string
@@ -1107,6 +1125,8 @@ export type Database = {
       }
       subjects: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           class_id: string
           created_at: string
           id: string
@@ -1116,6 +1136,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           class_id: string
           created_at?: string
           id?: string
@@ -1125,6 +1147,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           class_id?: string
           created_at?: string
           id?: string
@@ -1198,6 +1222,8 @@ export type Database = {
       }
       teachers: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           created_at: string
           email: string | null
           firstname: string
@@ -1207,6 +1233,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string
           email?: string | null
           firstname: string
@@ -1216,6 +1244,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string
           email?: string | null
           firstname?: string

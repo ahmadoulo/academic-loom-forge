@@ -281,15 +281,9 @@ export const useYearTransition = (schoolId: string) => {
 
       const prepData = prep as unknown as { from_year_id: string; to_year_id: string };
 
-      // Désactiver tous les student_school de l'année précédente pour ces étudiants
-      const studentIds = transitions.map(t => t.student_id);
-      const { error: deactivateError } = await supabase
-        .from('student_school' as any)
-        .update({ is_active: false })
-        .eq('school_year_id', prepData.from_year_id)
-        .in('student_id', studentIds);
-
-      if (deactivateError) throw deactivateError;
+      // NE PAS désactiver les student_school de l'année précédente
+      // Les étudiants doivent conserver l'accès à leurs données historiques (notes, devoirs, etc.)
+      // L'année scolaire active ne détermine que les nouvelles inscriptions
 
       // Créer les enregistrements de transition
       const transitionRecords = transitions.map(t => ({

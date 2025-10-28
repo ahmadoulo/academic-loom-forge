@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
 
 interface SchoolYear {
   id: string;
@@ -28,10 +29,16 @@ interface AcademicYearContextType {
 const AcademicYearContext = createContext<AcademicYearContextType | undefined>(undefined);
 
 export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [currentYear, setCurrentYearState] = useState<SchoolYear | null>(null);
   const [selectedYear, setSelectedYearState] = useState<SchoolYear | null>(null);
   const [availableYears, setAvailableYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Clé localStorage unique par utilisateur
+  const getStorageKey = () => {
+    return user?.id ? `selectedAcademicYearId_${user.id}` : 'selectedAcademicYearId';
+  };
 
   const fetchYears = async () => {
     try {
@@ -85,15 +92,16 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
         if (current) {
           setCurrentYearState(current);
           
-          // Restaurer l'année sélectionnée depuis localStorage si elle existe
-          const savedYearId = localStorage.getItem('selectedAcademicYearId');
+          // Restaurer l'année sélectionnée depuis localStorage si elle existe (unique par utilisateur)
+          const storageKey = getStorageKey();
+          const savedYearId = localStorage.getItem(storageKey);
           if (savedYearId) {
             const savedYear = allYears.find(y => y.id === savedYearId);
             if (savedYear) {
               setSelectedYearState(savedYear);
             } else {
               // Si l'année sauvegardée n'existe plus, nettoyer localStorage et utiliser current
-              localStorage.removeItem('selectedAcademicYearId');
+              localStorage.removeItem(storageKey);
               setSelectedYearState(current);
             }
           } else {
@@ -112,7 +120,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchYears();
-  }, []);
+  }, [user?.id]); // Re-fetch quand l'utilisateur change
 
   // Pour créer des données, toujours utiliser l'année courante
   const getYearForCreation = () => currentYear?.id || null;
@@ -140,13 +148,14 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Fonction wrapper pour setSelectedYear avec localStorage
+  // Fonction wrapper pour setSelectedYear avec localStorage (unique par utilisateur)
   const setSelectedYear = (year: SchoolYear | null) => {
     setSelectedYearState(year);
+    const storageKey = getStorageKey();
     if (year) {
-      localStorage.setItem('selectedAcademicYearId', year.id);
+      localStorage.setItem(storageKey, year.id);
     } else {
-      localStorage.removeItem('selectedAcademicYearId');
+      localStorage.removeItem(storageKey);
     }
   };
 

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Trash2, Loader2, Filter, Pencil, ExternalLink } from "lucide-react";
+import { Users, Search, Archive, Loader2, Filter, Pencil, ExternalLink } from "lucide-react";
 import { StudentEditDialog } from "./StudentEditDialog";
 
 interface StudentWithClass {
@@ -30,11 +30,11 @@ interface StudentsListSectionProps {
   students: StudentWithClass[];
   classes: Class[];
   loading: boolean;
-  onDeleteStudent: (id: string, name: string) => void;
+  onArchiveStudent: (id: string, name: string) => void;
   onUpdateStudent: (id: string, data: Partial<StudentWithClass>) => Promise<void>;
 }
 
-export function StudentsListSection({ students, classes, loading, onDeleteStudent, onUpdateStudent }: StudentsListSectionProps) {
+export function StudentsListSection({ students, classes, loading, onArchiveStudent, onUpdateStudent }: StudentsListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [editingStudent, setEditingStudent] = useState<StudentWithClass | null>(null);
@@ -177,10 +177,10 @@ export function StudentsListSection({ students, classes, loading, onDeleteStuden
                             <Button
                               variant="outline"
                               size="sm"
-                              className="hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => onDeleteStudent(student.id, `${student.firstname} ${student.lastname}`)}
+                              className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
+                              onClick={() => onArchiveStudent(student.id, `${student.firstname} ${student.lastname}`)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Archive className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>

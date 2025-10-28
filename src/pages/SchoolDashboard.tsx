@@ -51,6 +51,7 @@ import { ClassroomManagement } from "@/components/school/ClassroomManagement";
 import { TimetableSection } from "@/components/school/TimetableSection";
 import { BulletinSection } from "@/components/school/BulletinSection";
 import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
+import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -67,10 +68,18 @@ const SchoolDashboard = () => {
   const [newTeacher, setNewTeacher] = useState({ firstname: "", lastname: "", email: "", class_id: "" });
   const [newSubject, setNewSubject] = useState({ name: "", class_id: "", teacher_id: "" });
   
-  // Delete dialog states
+  // Archive dialog states (for students)
+  const [archiveDialog, setArchiveDialog] = useState<{
+    open: boolean;
+    type?: 'student';
+    id?: string;
+    name?: string;
+  }>({ open: false });
+  
+  // Delete dialog states (for other entities)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
-    type?: 'student' | 'teacher' | 'class' | 'subject';
+    type?: 'teacher' | 'class' | 'subject';
     id?: string;
     name?: string;
   }>({ open: false });
@@ -100,7 +109,7 @@ const SchoolDashboard = () => {
   const { getYearForDisplay } = useAcademicYear();
   const displayYearId = getYearForDisplay();
   
-  const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, deleteStudent } = useStudents(school?.id);
+  const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, archiveStudent, restoreStudent } = useStudents(school?.id);
   
   // Use filtered classes by selected year (or current if none selected)
   const { createClass: createClassOriginal, deleteClass: deleteClassOriginal } = useClasses(school?.id);
@@ -290,14 +299,20 @@ const SchoolDashboard = () => {
     }
   };
 
+  const handleArchive = async () => {
+    if (!archiveDialog.id) return;
+    try {
+      await archiveStudent(archiveDialog.id);
+      setArchiveDialog({ open: false });
+    } catch (error) {
+      console.error("Erreur lors de l'archivage:", error);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteDialog.id || !deleteDialog.type) return;
-    
     try {
       switch (deleteDialog.type) {
-        case 'student':
-          await deleteStudent(deleteDialog.id);
-          break;
         case 'teacher':
           await deleteTeacher(deleteDialog.id);
           break;
@@ -745,7 +760,7 @@ const SchoolDashboard = () => {
                       students={students}
                       classes={classes}
                       loading={studentsLoading}
-                      onDeleteStudent={(id, name) => setDeleteDialog({
+                      onArchiveStudent={(id, name) => setArchiveDialog({
                         open: true,
                         type: 'student',
                         id,
@@ -759,6 +774,8 @@ const SchoolDashboard = () => {
                         }
                       }}
                     />
+                    
+                    <ArchivedStudentsSection schoolId={school.id} />
                   </div>
                 </div>
               )}
@@ -1107,6 +1124,15 @@ const SchoolDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Archive Confirmation Dialog */}
+      <ConfirmationDialog
+        open={archiveDialog.open}
+        onOpenChange={(open) => setArchiveDialog({ ...archiveDialog, open })}
+        title="Archiver l'étudiant"
+        description={`Êtes-vous sûr de vouloir archiver "${archiveDialog.name}" ? L'étudiant conservera l'accès à ses données historiques mais ne sera plus visible dans la liste principale.`}
+        onConfirm={handleArchive}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog

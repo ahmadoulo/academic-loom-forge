@@ -436,6 +436,50 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     }
   };
 
+  const archiveStudent = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ 
+          archived: true, 
+          archived_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setStudents(prev => prev.filter(student => student.id !== id));
+      toast.success('Étudiant archivé avec succès');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'archivage de l\'étudiant';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const restoreStudent = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ 
+          archived: false, 
+          archived_at: null 
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Étudiant restauré avec succès');
+      await fetchStudents();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la restauration de l\'étudiant';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
   const deleteStudent = async (id: string) => {
     try {
       const { error } = await supabase
@@ -446,7 +490,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       if (error) throw error;
       
       setStudents(prev => prev.filter(student => student.id !== id));
-      toast.success('Étudiant supprimé avec succès');
+      toast.success('Étudiant supprimé définitivement');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'étudiant';
       setError(message);
@@ -468,6 +512,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
     createStudent,
     updateStudent,
     importStudents,
+    archiveStudent,
+    restoreStudent,
     deleteStudent,
     refetch: fetchStudents
   };
