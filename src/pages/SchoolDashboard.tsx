@@ -124,6 +124,9 @@ const SchoolDashboard = () => {
   const { createClass: createClassOriginal, archiveClass: archiveClassOriginal, restoreClass } = useClasses(school?.id);
   const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, displayYearId);
   
+  // Get current year classes for forms (only current year classes should be available in forms)
+  const { classes: currentYearClasses, loading: currentYearClassesLoading } = useClassesByYear(school?.id, currentYear?.id);
+  
   // Wrapper functions to refresh filtered data after mutations
   const createClass = async (data: any) => {
     const result = await createClassOriginal(data);
@@ -709,7 +712,7 @@ const SchoolDashboard = () => {
               {activeTab === "calendar" && (
                 <SchoolCalendarSection 
                   schoolId={school.id}
-                  classes={classes}
+                  classes={currentYearClasses}
                   teachers={teachers}
                 />
               )}
@@ -749,7 +752,7 @@ const SchoolDashboard = () => {
                   <div className="space-y-6">
                     <StudentImport 
                       onImportComplete={handleImportStudents}
-                      classes={classes}
+                      classes={currentYearClasses}
                     />
                     
                     <StudentsListSection 
@@ -1078,7 +1081,7 @@ const SchoolDashboard = () => {
               setIsSubjectDialogOpen(false);
               setEditingSubject(null);
             }}
-            classes={classes}
+            classes={currentYearClasses}
             teachers={teachers}
             initialData={editingSubject}
             isEditing={!!editingSubject}
@@ -1112,7 +1115,7 @@ const SchoolDashboard = () => {
           </DialogHeader>
           <StudentForm
             onSubmit={handleCreateStudent}
-            classes={classes}
+            classes={currentYearClasses}
           />
         </DialogContent>
       </Dialog>
