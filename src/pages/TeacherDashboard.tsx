@@ -13,13 +13,12 @@ import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
-import { AttendanceManager } from "@/components/teacher/AttendanceManager";
-import { AttendanceHistory } from "@/components/teacher/AttendanceHistory";
 import { ActiveSessionsPanel } from "@/components/teacher/ActiveSessionsPanel";
 import { QRCodeGenerator } from "@/components/teacher/QRCodeGenerator";
 import { AssignmentForm } from "@/components/teacher/AssignmentForm";
 import { TeacherCalendarSection } from "@/components/teacher/TeacherCalendarSection";
-import { CalendarSummary } from "@/components/calendar/CalendarSummary";
+import { SessionsList } from "@/components/teacher/SessionsList";
+import { SessionAttendanceManager } from "@/components/teacher/SessionAttendanceManager";
 import { TeacherGradesView } from "@/components/teacher/TeacherGradesView";
 import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
 import { useAssignments } from "@/hooks/useAssignments";
@@ -34,7 +33,7 @@ const TeacherDashboard = () => {
 
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'attendance' | 'attendance-history' | 'qr-session'>('overview');
+  const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'session-attendance' | 'qr-session'>('overview');
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<any>(null);
@@ -93,19 +92,13 @@ const TeacherDashboard = () => {
     setCurrentView('qr-session');
   };
 
-  const handleTakeAttendance = (classId: string) => {
-    const classData = teacherClasses.find(tc => tc.class_id === classId);
+  const handleSelectSession = (assignment: any) => {
+    // Trouver la classe associée à cette séance
+    const classData = teacherClasses.find(tc => tc.class_id === assignment.class_id);
     if (classData) {
+      setSelectedSession(assignment);
       setSelectedClass(classData.classes);
-      setCurrentView('attendance');
-    }
-  };
-
-  const handleViewAttendanceHistory = (classId: string) => {
-    const classData = teacherClasses.find(tc => tc.class_id === classId);
-    if (classData) {
-      setSelectedClass(classData.classes);
-      setCurrentView('attendance-history');
+      setCurrentView('session-attendance');
     }
   };
 
@@ -242,18 +235,12 @@ const TeacherDashboard = () => {
             onSaveGrade={handleSaveGrade}
             onDeleteGrade={handleDeleteGrade}
           />
-        ) : currentView === 'attendance' && selectedClass ? (
-          <AttendanceManager
-            classData={selectedClass}
+        ) : currentView === 'session-attendance' && selectedSession && selectedClass ? (
+          <SessionAttendanceManager
+            assignment={selectedSession}
             students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
             teacherId={teacherId || ''}
-            onBack={handleBackToOverview}
-          />
-        ) : currentView === 'attendance-history' && selectedClass ? (
-          <AttendanceHistory
-            classData={selectedClass}
-            students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
-            teacherId={teacherId || ''}
+            classId={selectedClass.id}
             onBack={handleBackToOverview}
           />
         ) : currentView === 'qr-session' && selectedSession && selectedClass ? (
@@ -285,24 +272,14 @@ const TeacherDashboard = () => {
                         studentCount={classStudents.length}
                         subjects={classSubjects}
                         onViewStudents={handleViewStudents}
-                        onTakeAttendance={handleTakeAttendance}
-                        onViewAttendanceHistory={handleViewAttendanceHistory}
                       />
                     );
                   })}
                 </div>
                 
-                <CalendarSummary 
-                  events={assignments.map(a => ({
-                    id: a.id,
-                    title: a.title,
-                    session_date: a.session_date || a.due_date || "",
-                    start_time: a.start_time || null,
-                    end_time: a.end_time || null,
-                    type: a.type,
-                    class_name: a.classes?.name,
-                  }))}
-                  title="Mes séances à venir"
+                <SessionsList 
+                  assignments={assignments}
+                  onSelectSession={handleSelectSession}
                 />
               </div>
             )}
@@ -355,8 +332,6 @@ const TeacherDashboard = () => {
                           studentCount={classStudents.length}
                           subjects={classSubjects}
                           onViewStudents={handleViewStudents}
-                          onTakeAttendance={handleTakeAttendance}
-                          onViewAttendanceHistory={handleViewAttendanceHistory}
                         />
                       );
                     })}

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, BookOpen, ChevronRight, UserCheck, History } from "lucide-react";
+import { Users, BookOpen, ChevronRight } from "lucide-react";
 
 interface ClassCardProps {
   classData: {
@@ -14,11 +14,9 @@ interface ClassCardProps {
     name: string;
   }[];
   onViewStudents: (classId: string, subjectId: string) => void;
-  onTakeAttendance: (classId: string) => void;
-  onViewAttendanceHistory: (classId: string) => void;
 }
 
-export const ClassCard = ({ classData, studentCount, subjects, onViewStudents, onTakeAttendance, onViewAttendanceHistory }: ClassCardProps) => {
+export const ClassCard = ({ classData, studentCount, subjects, onViewStudents }: ClassCardProps) => {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
@@ -58,26 +56,6 @@ export const ClassCard = ({ classData, studentCount, subjects, onViewStudents, o
                   </Button>
                 </div>
               ))}
-              <div className="mt-3 pt-3 border-t space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onTakeAttendance(classData.id)}
-                  className="w-full flex items-center gap-2"
-                >
-                  <UserCheck className="h-4 w-4" />
-                  Prendre les présences
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onViewAttendanceHistory(classData.id)}
-                  className="w-full flex items-center gap-2"
-                >
-                  <History className="h-4 w-4" />
-                  Historique présences
-                </Button>
-              </div>
             </div>
           )}
         </div>
