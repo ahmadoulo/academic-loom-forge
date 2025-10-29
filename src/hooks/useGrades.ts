@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAcademicYear } from './useAcademicYear';
+import { useSemester } from './useSemester';
 
 export interface Grade {
   id: string;
@@ -45,6 +46,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getYearForCreation, getYearForDisplay } = useAcademicYear();
+  const { currentSemester } = useSemester();
   
   // Obtenir l'année d'affichage une fois pour la dépendance du useEffect
   const displayYearId = getYearForDisplay();
@@ -107,9 +109,17 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
         throw new Error('Aucune année scolaire active');
       }
 
+      if (!currentSemester) {
+        throw new Error('Aucun semestre actif');
+      }
+
       const { data, error } = await supabase
         .from('grades')
-        .insert([{ ...gradeData, school_year_id: currentYearId }])
+        .insert([{ 
+          ...gradeData, 
+          school_year_id: currentYearId,
+          school_semester_id: currentSemester.id 
+        }])
         .select(`
           *,
           students (

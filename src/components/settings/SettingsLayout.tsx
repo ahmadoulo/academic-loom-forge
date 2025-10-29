@@ -19,6 +19,7 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
     appearance: { label: "Apparence", icon: Palette },
     system: { label: "Système", icon: Database },
     "school-years": { label: "Années scolaires", icon: Calendar },
+    "semesters": { label: "Semestres", icon: Calendar },
   };
 
   return (

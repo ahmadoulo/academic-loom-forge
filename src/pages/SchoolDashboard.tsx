@@ -58,6 +58,8 @@ import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSec
 import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
 import { TeacherForm } from "@/components/school/TeacherForm";
 import { useIsReadOnly } from "@/hooks/useIsReadOnly";
+import { SemesterProvider } from "@/hooks/useSemester";
+import { SemesterManagement } from "@/components/settings/SemesterManagement";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -483,11 +485,12 @@ const SchoolDashboard = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <SchoolSidebar 
-          schoolId={school.identifier}
-          activeTab={activeTab}
+    <SemesterProvider schoolId={school?.id}>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <SchoolSidebar 
+            schoolId={school.identifier}
+            activeTab={activeTab}
           onTabChange={setActiveTab}
         />
         
@@ -1010,6 +1013,14 @@ const SchoolDashboard = () => {
               
               {activeTab === "year-transition" && school?.id && (
                 <YearPreparationWizard schoolId={school.id} />
+              )}
+              
+              {activeTab === "semesters" && school?.id && (
+                <SemesterManagement schoolId={school.id} />
+              )}
+              
+              {activeTab === "semesters" && school?.id && (
+                <SemesterManagement schoolId={school.id} />
               )}
               
               {activeTab === "events" && (

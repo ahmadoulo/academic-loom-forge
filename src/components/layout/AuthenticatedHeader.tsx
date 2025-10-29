@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AcademicYearDisplay } from "@/components/layout/AcademicYearDisplay";
+import { SemesterDisplay } from "@/components/layout/SemesterDisplay";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -203,6 +204,7 @@ export function AuthenticatedHeader({
 
         <div className="flex items-center space-x-2 lg:space-x-4">
           <AcademicYearDisplay />
+          <SemesterDisplay />
           <div className="hidden sm:block">
             {profile?.role && getRoleBadge(profile.role)}
           </div>

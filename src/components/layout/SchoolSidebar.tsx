@@ -74,6 +74,12 @@ const menuStructure = [
         icon: BookOpen,
         href: "/school"
       },
+      { 
+        title: "Semestres", 
+        value: "semesters",
+        icon: Calendar,
+        href: "/school"
+      },
     ]
   },
   {

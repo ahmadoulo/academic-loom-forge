@@ -693,6 +693,7 @@ export type Database = {
           grade: number
           grade_type: string
           id: string
+          school_semester_id: string | null
           school_year_id: string
           student_id: string
           subject_id: string
@@ -706,6 +707,7 @@ export type Database = {
           grade: number
           grade_type?: string
           id?: string
+          school_semester_id?: string | null
           school_year_id: string
           student_id: string
           subject_id: string
@@ -719,6 +721,7 @@ export type Database = {
           grade?: number
           grade_type?: string
           id?: string
+          school_semester_id?: string | null
           school_year_id?: string
           student_id?: string
           subject_id?: string
@@ -726,6 +729,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grades_school_semester_id_fkey"
+            columns: ["school_semester_id"]
+            isOneToOne: false
+            referencedRelation: "school_semester"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "grades_school_year_id_fkey"
             columns: ["school_year_id"]
@@ -805,6 +815,60 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_semester: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          is_actual: boolean | null
+          is_next: boolean | null
+          name: string
+          school_id: string
+          school_year_id: string
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_actual?: boolean | null
+          is_next?: boolean | null
+          name: string
+          school_id: string
+          school_year_id: string
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_actual?: boolean | null
+          is_next?: boolean | null
+          name?: string
+          school_id?: string
+          school_year_id?: string
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_semester_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_semester_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
             referencedColumns: ["id"]
           },
         ]
@@ -1415,6 +1479,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_transition_semesters: { Args: never; Returns: undefined }
       check_classroom_availability: {
         Args: {
           p_assignment_id: string
@@ -1448,6 +1513,10 @@ export type Database = {
         Returns: boolean
       }
       set_current_school_year: { Args: { year_id: string }; Returns: undefined }
+      set_current_semester: {
+        Args: { semester_id: string }
+        Returns: undefined
+      }
       set_next_school_year: { Args: { year_id: string }; Returns: undefined }
     }
     Enums: {
