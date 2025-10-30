@@ -141,8 +141,8 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
         </div>
       </div>
 
-      <SidebarContent className="p-4">
-        <div className="space-y-8">
+      <SidebarContent className="p-4 overflow-y-auto">
+        <div className="space-y-6">
           {menuStructure.map((item, index) => {
             // Item simple sans catégorie
             if ('value' in item) {
@@ -157,7 +157,7 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
                     }`}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {open && <span>{item.title}</span>}
+                    {open && <span className="truncate">{item.title}</span>}
                   </button>
                 </div>
               );
@@ -168,35 +168,35 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
             const CategoryIcon = item.icon;
 
             return (
-              <div key={item.category} className="space-y-3">
+              <div key={item.category} className="space-y-2">
                 <button
                   onClick={() => toggleCategory(item.category)}
-                  className="w-full flex items-center gap-3 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors"
                 >
-                  <CategoryIcon className="h-4 w-4" />
+                  <CategoryIcon className="h-4 w-4 shrink-0" />
                   {open && (
                     <>
-                      <span className="flex-1 text-left">{item.category}</span>
+                      <span className="flex-1 text-left truncate">{item.category}</span>
                       <ChevronDown 
-                        className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
                       />
                     </>
                   )}
                 </button>
                 {isOpen && (
-                  <div className="space-y-1">
+                  <div className="space-y-1 pl-2">
                     {item.items.map(subItem => (
                       <button
                         key={subItem.value}
                         onClick={() => onTabChange(subItem.value)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                           activeTab === subItem.value
                             ? 'bg-primary text-primary-foreground shadow-soft'
                             : 'hover:bg-secondary text-foreground hover:translate-x-1'
                         }`}
                       >
                         <subItem.icon className="h-4 w-4 shrink-0" />
-                        {open && <span>{subItem.title}</span>}
+                        {open && <span className="truncate">{subItem.title}</span>}
                       </button>
                     ))}
                   </div>
