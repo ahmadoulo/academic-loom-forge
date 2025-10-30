@@ -263,7 +263,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
               <div className="flex items-center gap-2 min-w-0">
                 <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="font-medium text-sm lg:text-base truncate">Notes:</span>
-                <span className="text-primary font-semibold flex-shrink-0">{grades.length}</span>
+                <span className="text-primary font-semibold flex-shrink-0">{filteredGrades.length}</span>
               </div>
             </div>
           </CardContent>
@@ -300,7 +300,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             subjectData={selectedSubject}
             schoolId={currentTeacher?.school_id}
             students={teacherStudents.filter(s => s.class_id === selectedClass.id)}
-            grades={grades}
+            grades={filteredGrades}
             onBack={handleBackToOverview}
             onSaveGrade={handleSaveGrade}
             onDeleteGrade={handleDeleteGrade}
@@ -422,7 +422,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     {subjects.map((subject) => {
-                      const subjectGrades = grades.filter(g => g.subject_id === subject.id);
+                      const subjectGrades = filteredGrades.filter(g => g.subject_id === subject.id);
                       const uniqueStudents = [...new Set(subjectGrades.map(g => g.student_id))].length;
                       const averageGrade = subjectGrades.length > 0 
                         ? (subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length).toFixed(1)
