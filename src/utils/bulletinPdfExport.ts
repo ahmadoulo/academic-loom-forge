@@ -33,7 +33,8 @@ export const generateStudentBulletinInDoc = async (
   subjectGrades: SubjectGrade[],
   overallAverage: number,
   schoolLogoBase64?: string,
-  academicYear?: string
+  academicYear?: string,
+  semesterName?: string
 ) => {
     
     // Configuration de base
@@ -71,6 +72,12 @@ export const generateStudentBulletinInDoc = async (
     doc.setFont('helvetica', 'normal');
     const displayYear = academicYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
     doc.text(`Année universitaire : ${displayYear}`, pageWidth / 2, yPosition, { align: 'center' });
+    
+    // Semestre si fourni
+    if (semesterName) {
+      yPosition += 6;
+      doc.text(`Semestre : ${semesterName}`, pageWidth / 2, yPosition, { align: 'center' });
+    }
     
     yPosition += 15;
     
@@ -178,11 +185,12 @@ export const generateStudentBulletin = async (
   subjectGrades: SubjectGrade[],
   overallAverage: number,
   schoolLogoBase64?: string,
-  academicYear?: string
+  academicYear?: string,
+  semesterName?: string
 ) => {
   try {
     const doc = new jsPDF();
-    await generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage, schoolLogoBase64, academicYear);
+    await generateStudentBulletinInDoc(doc, student, subjectGrades, overallAverage, schoolLogoBase64, academicYear, semesterName);
     
     const fileName = `Bulletin_${student.firstname}_${student.lastname}_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);

@@ -66,6 +66,7 @@ const SchoolDashboard = () => {
   const [activeTab, setActiveTab] = useState("analytics");
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [showClassDetails, setShowClassDetails] = useState(false);
+  const [selectedSemester, setSelectedSemester] = useState<string>("all");
   
   // Check if read-only mode (viewing past year)
   const { isReadOnly, selectedYear, currentYear } = useIsReadOnly();
@@ -144,7 +145,7 @@ const SchoolDashboard = () => {
   const { teachers, loading: teachersLoading, createTeacher, archiveTeacher, restoreTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, updateSubject, archiveSubject } = useSubjects(school?.id);
-  const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
+  const { grades } = useGrades(undefined, undefined, undefined, displayYearId, selectedSemester);
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
   const { 
@@ -729,6 +730,8 @@ const SchoolDashboard = () => {
                     grades={grades}
                     subjects={subjects}
                     loading={studentsLoading || subjectsLoading}
+                    selectedSemester={selectedSemester}
+                    onSemesterChange={setSelectedSemester}
                   />
                 </div>
               )}
@@ -1042,6 +1045,8 @@ const SchoolDashboard = () => {
                   grades={grades}
                   subjects={subjects}
                   loading={studentsLoading || subjectsLoading}
+                  selectedSemester={selectedSemester}
+                  onSemesterChange={setSelectedSemester}
                 />
               )}
             </div>

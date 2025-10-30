@@ -41,7 +41,7 @@ export interface CreateGradeData {
   exam_date?: string;
 }
 
-export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string, yearId?: string) => {
+export const useGrades = (subjectId?: string, studentId?: string, teacherId?: string, yearId?: string, semesterId?: string) => {
   const [grades, setGrades] = useState<GradeWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +88,11 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
       
       if (teacherId) {
         query = query.eq('teacher_id', teacherId);
+      }
+
+      // Filtrer par semestre si fourni (all = tous les semestres)
+      if (semesterId && semesterId !== 'all') {
+        query = query.eq('school_semester_id', semesterId);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -210,7 +215,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   useEffect(() => {
     fetchGrades();
-  }, [subjectId, studentId, teacherId, yearId, displayYearId]);
+  }, [subjectId, studentId, teacherId, yearId, displayYearId, semesterId]);
 
   return {
     grades,

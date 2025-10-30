@@ -27,7 +27,8 @@ export const generateSchoolGradesReport = (
   subjects: Subject[],
   schoolName: string,
   schoolLogoBase64?: string,
-  academicYear?: string
+  academicYear?: string,
+  semesterName?: string
 ) => {
   try {
     const doc = new jsPDF();
@@ -68,6 +69,7 @@ export const generateSchoolGradesReport = (
     const info = [
       `Classe : ${classData.name}`,
       academicYear ? `Année universitaire : ${academicYear}` : '',
+      semesterName ? `Semestre : ${semesterName}` : '',
       `Date d'édition : ${new Date().toLocaleDateString('fr-FR')}`,
       `Nombre d'étudiants : ${students.length}`
     ].filter(Boolean);

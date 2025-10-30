@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, FileText, Award, TrendingUp, Download, ArrowLeft, Users } from "lucide-react";
 import { generateStudentBulletin, generateStudentBulletinInDoc } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
+import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -20,6 +23,8 @@ interface BulletinSectionProps {
   grades: any[];
   subjects: any[];
   loading: boolean;
+  selectedSemester: string;
+  onSemesterChange: (semesterId: string) => void;
 }
 
 export const BulletinSection = ({
@@ -32,9 +37,13 @@ export const BulletinSection = ({
   grades,
   subjects,
   loading,
+  selectedSemester,
+  onSemesterChange,
 }: BulletinSectionProps) => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
+  const { selectedYear } = useAcademicYear();
+  const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
   
   // Convertir le logo en base64 au chargement
   React.useEffect(() => {
@@ -127,6 +136,9 @@ export const BulletinSection = ({
     try {
       const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
       const studentClass = classes.find(c => c.id === student.class_id);
+      const semesterData = selectedSemester === "all" 
+        ? { name: "Tous les semestres" }
+        : semesters.find(s => s.id === selectedSemester);
       
       const studentData = {
         id: student.id,
@@ -140,7 +152,7 @@ export const BulletinSection = ({
         schools: { name: schoolName },
       };
       
-      await generateStudentBulletin(studentData, subjectGrades, overallAverage, logoBase64, academicYear);
+      await generateStudentBulletin(studentData, subjectGrades, overallAverage, logoBase64, academicYear, semesterData?.name);
       toast.success("Bulletin généré avec succès");
     } catch (error) {
       console.error("Erreur génération PDF:", error);
@@ -158,6 +170,9 @@ export const BulletinSection = ({
 
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
+      const semesterData = selectedSemester === "all" 
+        ? { name: "Tous les semestres" }
+        : semesters.find(s => s.id === selectedSemester);
 
       for (let index = 0; index < classStudents.length; index++) {
         const student = classStudents[index];
@@ -180,7 +195,7 @@ export const BulletinSection = ({
         };
 
         // Générer le bulletin pour cet étudiant dans le doc existant
-        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, logoBase64, academicYear);
+        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, logoBase64, academicYear, semesterData?.name);
       }
 
       const className = studentClass?.name || 'Classe';
@@ -341,7 +356,7 @@ export const BulletinSection = ({
   // Vue liste des étudiants par classe
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Award className="h-6 w-6" />
@@ -351,6 +366,20 @@ export const BulletinSection = ({
             Consultez et téléchargez les bulletins des étudiants par classe
           </p>
         </div>
+        
+        <Select value={selectedSemester} onValueChange={onSemesterChange}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Filtrer par semestre" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les semestres</SelectItem>
+            {semesters.map((sem) => (
+              <SelectItem key={sem.id} value={sem.id}>
+                {sem.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue={classes[0]?.id} className="space-y-4">

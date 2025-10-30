@@ -9,6 +9,8 @@ import { generateSchoolGradesReport } from "@/utils/schoolGradesPdfExport";
 import { useToast } from "@/hooks/use-toast";
 import { useSchools } from "@/hooks/useSchools";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
+import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Student {
   id: string;
@@ -46,15 +48,19 @@ interface SchoolGradesViewProps {
   grades: Grade[];
   subjects: Subject[];
   loading: boolean;
+  selectedSemester: string;
+  onSemesterChange: (semesterId: string) => void;
 }
 
-export function SchoolGradesView({ schoolId, classes, students, grades, subjects, loading }: SchoolGradesViewProps) {
+export function SchoolGradesView({ schoolId, classes, students, grades, subjects, loading, selectedSemester, onSemesterChange }: SchoolGradesViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
   const { getSchoolById } = useSchools();
   const [school, setSchool] = useState<any>(null);
   const [logoBase64, setLogoBase64] = useState<string>();
+  const { selectedYear } = useAcademicYear();
+  const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
   
   React.useEffect(() => {
     const loadSchool = async () => {
@@ -99,6 +105,10 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
         ? { id: "all", name: "Toutes les classes" }
         : classes.find(c => c.id === selectedClass) || { id: "", name: "" };
 
+      const semesterData = selectedSemester === "all" 
+        ? { name: "Tous les semestres" }
+        : semesters.find(s => s.id === selectedSemester);
+
       await generateSchoolGradesReport(
         classData,
         filteredStudents,
@@ -106,7 +116,8 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
         subjects,
         school?.name || 'École',
         logoBase64,
-        school?.academic_year
+        school?.academic_year,
+        semesterData?.name
       );
       
       toast({
@@ -135,6 +146,20 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
           </CardTitle>
           
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <Select value={selectedSemester} onValueChange={onSemesterChange}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filtrer par semestre" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les semestres</SelectItem>
+                {semesters.map((sem) => (
+                  <SelectItem key={sem.id} value={sem.id}>
+                    {sem.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filtrer par classe" />
