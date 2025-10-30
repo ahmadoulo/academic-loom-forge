@@ -174,19 +174,31 @@ export function ModernCalendarView({
                       {format(day, 'd')}
                     </div>
                     
-                    <div className="space-y-1 mt-1">
+                     <div className="space-y-1 mt-1">
                       {dayEvents.slice(0, 2).map(event => (
                         <div
                           key={event.id}
                           className={cn(
-                            "text-xs p-1 rounded truncate",
+                            "text-xs p-1 rounded truncate flex items-center gap-1",
                             getEventColor(event.type)
                           )}
                         >
-                          {event.start_time && (
-                            <span className="font-medium">{event.start_time} </span>
+                          <div className="flex-1 truncate">
+                            {event.start_time && (
+                              <span className="font-medium">{event.start_time} </span>
+                            )}
+                            {event.title}
+                          </div>
+                          {event.reschedule_status === 'pending' && (
+                            <Badge variant="outline" className="text-[10px] px-1 bg-orange-50 text-orange-600 border-orange-200">
+                              Demandé
+                            </Badge>
                           )}
-                          {event.title}
+                          {event.reschedule_reason && !event.proposed_new_date && event.reschedule_status !== 'pending' && (
+                            <Badge variant="destructive" className="text-[10px] px-1 bg-red-100 text-red-700 border-red-300">
+                              Reporté
+                            </Badge>
+                          )}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
@@ -239,9 +251,14 @@ export function ModernCalendarView({
                               Report demandé
                             </Badge>
                           )}
-                          {event.is_rescheduled && event.reschedule_status === 'approved' && (
-                            <Badge variant="outline" className="mt-1 bg-blue-100 text-blue-700 border-blue-300">
+                          {event.reschedule_reason && !event.proposed_new_date && event.reschedule_status !== 'pending' && (
+                            <Badge variant="destructive" className="mt-1 bg-red-100 text-red-700 border-red-300">
                               Reporté
+                            </Badge>
+                          )}
+                          {event.is_rescheduled && event.reschedule_status === 'approved' && event.proposed_new_date && (
+                            <Badge variant="outline" className="mt-1 bg-blue-100 text-blue-700 border-blue-300">
+                              Reprogrammé
                             </Badge>
                           )}
                         </div>

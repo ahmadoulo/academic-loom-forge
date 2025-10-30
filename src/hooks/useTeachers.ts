@@ -8,15 +8,33 @@ export interface Teacher {
   lastname: string;
   email?: string;
   school_id: string;
+  gender?: string;
+  mobile?: string;
+  birth_date?: string;
+  qualification?: string;
+  address?: string;
+  salary?: number;
+  join_date?: string;
+  status?: string;
+  assigned_classes_count?: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateTeacherData {
+  school_id: string;
   firstname: string;
   lastname: string;
   email?: string;
-  school_id: string;
+  gender?: string;
+  mobile?: string;
+  birth_date?: string;
+  qualification?: string;
+  address?: string;
+  salary?: number;
+  join_date?: string;
+  status?: string;
 }
 
 export const useTeachers = (schoolId?: string) => {

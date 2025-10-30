@@ -1310,36 +1310,63 @@ export type Database = {
       }
       teachers: {
         Row: {
+          address: string | null
           archived: boolean | null
           archived_at: string | null
+          assigned_classes_count: number | null
+          birth_date: string | null
           created_at: string
           email: string | null
           firstname: string
+          gender: string | null
           id: string
+          join_date: string | null
           lastname: string
+          mobile: string | null
+          qualification: string | null
+          salary: number | null
           school_id: string
+          status: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           archived?: boolean | null
           archived_at?: string | null
+          assigned_classes_count?: number | null
+          birth_date?: string | null
           created_at?: string
           email?: string | null
           firstname: string
+          gender?: string | null
           id?: string
+          join_date?: string | null
           lastname: string
+          mobile?: string | null
+          qualification?: string | null
+          salary?: number | null
           school_id: string
+          status?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           archived?: boolean | null
           archived_at?: string | null
+          assigned_classes_count?: number | null
+          birth_date?: string | null
           created_at?: string
           email?: string | null
           firstname?: string
+          gender?: string | null
           id?: string
+          join_date?: string | null
           lastname?: string
+          mobile?: string | null
+          qualification?: string | null
+          salary?: number | null
           school_id?: string
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
