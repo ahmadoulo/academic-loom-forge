@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ModernCalendarView } from "@/components/calendar/ModernCalendarView";
+import { RescheduleSessionDialog } from "@/components/calendar/RescheduleSessionDialog";
+import { ApproveRescheduleDialog } from "@/components/calendar/ApproveRescheduleDialog";
 import { SessionForm, SessionFormData } from "./SessionForm";
 import { useAssignments } from "@/hooks/useAssignments";
 import { Plus } from "lucide-react";
@@ -17,7 +19,10 @@ interface SchoolCalendarSectionProps {
 export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCalendarSectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { assignments, createAssignment, loading } = useAssignments({ schoolId });
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const { assignments, createAssignment, rescheduleAssignment, approveReschedule, rejectReschedule, loading } = useAssignments({ schoolId });
 
   const calendarEvents = assignments.map((assignment) => ({
     id: assignment.id,
@@ -30,6 +35,11 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
     teacher_name: assignment.teachers 
       ? `${assignment.teachers.firstname} ${assignment.teachers.lastname}`
       : undefined,
+    is_rescheduled: assignment.is_rescheduled,
+    reschedule_reason: assignment.reschedule_reason,
+    reschedule_status: assignment.reschedule_status,
+    proposed_new_date: assignment.proposed_new_date,
+    original_session_date: assignment.original_session_date,
   }));
 
   const handleCreateSession = async (data: SessionFormData) => {
@@ -50,6 +60,57 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
       setIsDialogOpen(false);
     } catch (error) {
       toast.error("Erreur lors de la création de la séance");
+      console.error(error);
+    }
+  };
+
+  const handleReschedule = (sessionId: string) => {
+    const session = assignments.find((a) => a.id === sessionId);
+    if (session) {
+      setSelectedSession(session);
+      setRescheduleDialogOpen(true);
+    }
+  };
+
+  const handleApproveReschedule = (sessionId: string) => {
+    const session = assignments.find((a) => a.id === sessionId);
+    if (session) {
+      setSelectedSession(session);
+      setApproveDialogOpen(true);
+    }
+  };
+
+  const handleRescheduleSubmit = async (data: { sessionId: string; reason: string; newDate?: Date }) => {
+    try {
+      await rescheduleAssignment(data.sessionId, data.reason, data.newDate, false);
+      toast.success(data.newDate ? "Séance reportée avec succès" : "Report enregistré");
+      setRescheduleDialogOpen(false);
+    } catch (error) {
+      toast.error("Erreur lors du report de la séance");
+      console.error(error);
+    }
+  };
+
+  const handleApproveRescheduleSubmit = async () => {
+    if (!selectedSession) return;
+    try {
+      await approveReschedule(selectedSession.id);
+      toast.success("Report validé avec succès");
+      setApproveDialogOpen(false);
+    } catch (error) {
+      toast.error("Erreur lors de la validation");
+      console.error(error);
+    }
+  };
+
+  const handleRejectReschedule = async () => {
+    if (!selectedSession) return;
+    try {
+      await rejectReschedule(selectedSession.id);
+      toast.success("Demande de report refusée");
+      setApproveDialogOpen(false);
+    } catch (error) {
+      toast.error("Erreur lors du refus");
       console.error(error);
     }
   };
@@ -83,7 +144,42 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         events={calendarEvents}
         onDateSelect={setSelectedDate}
         selectedDate={selectedDate}
+        canManage={true}
+        isTeacher={false}
+        onReschedule={handleReschedule}
+        onApproveReschedule={handleApproveReschedule}
       />
+
+      {selectedSession && (
+        <>
+          <RescheduleSessionDialog
+            open={rescheduleDialogOpen}
+            onOpenChange={setRescheduleDialogOpen}
+            sessionId={selectedSession.id}
+            sessionTitle={selectedSession.title}
+            currentDate={selectedSession.session_date}
+            isTeacher={false}
+            onReschedule={handleRescheduleSubmit}
+          />
+
+          <ApproveRescheduleDialog
+            open={approveDialogOpen}
+            onOpenChange={setApproveDialogOpen}
+            sessionTitle={selectedSession.title}
+            originalDate={selectedSession.original_session_date || selectedSession.session_date}
+            proposedDate={selectedSession.proposed_new_date}
+            reason={selectedSession.reschedule_reason || ""}
+            teacherName={
+              selectedSession.teachers
+                ? `${selectedSession.teachers.firstname} ${selectedSession.teachers.lastname}`
+                : undefined
+            }
+            onApprove={handleApproveRescheduleSubmit}
+            onReject={handleRejectReschedule}
+            loading={loading}
+          />
+        </>
+      )}
     </div>
   );
 }

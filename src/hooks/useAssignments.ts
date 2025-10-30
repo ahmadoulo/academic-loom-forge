@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAcademicYear } from './useAcademicYear';
+import { format } from 'date-fns';
 
 export interface Assignment {
   id: string;
@@ -17,6 +18,13 @@ export interface Assignment {
   end_time?: string;
   created_at: string;
   updated_at: string;
+  is_rescheduled?: boolean;
+  reschedule_reason?: string;
+  original_session_date?: string;
+  proposed_new_date?: string;
+  reschedule_status?: string;
+  rescheduled_by?: string;
+  rescheduled_at?: string;
 }
 
 export interface AssignmentWithDetails extends Assignment {
@@ -189,6 +197,121 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     }
   };
 
+  const rescheduleAssignment = async (
+    assignmentId: string,
+    reason: string,
+    newDate?: Date,
+    isTeacher: boolean = false
+  ) => {
+    try {
+      // Get current assignment data
+      const { data: currentAssignment, error: fetchError } = await supabase
+        .from("assignments")
+        .select("session_date, original_session_date")
+        .eq("id", assignmentId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const updateData: any = {
+        reschedule_reason: reason,
+        rescheduled_at: new Date().toISOString(),
+      };
+
+      if (isTeacher) {
+        // Teacher proposes a new date - requires admin approval
+        updateData.reschedule_status = "pending";
+        if (newDate) {
+          updateData.proposed_new_date = format(newDate, "yyyy-MM-dd");
+        }
+        if (!currentAssignment.original_session_date) {
+          updateData.original_session_date = currentAssignment.session_date;
+        }
+      } else {
+        // Admin can directly reschedule
+        updateData.is_rescheduled = true;
+        updateData.reschedule_status = "approved";
+        if (!currentAssignment.original_session_date) {
+          updateData.original_session_date = currentAssignment.session_date;
+        }
+        if (newDate) {
+          updateData.session_date = format(newDate, "yyyy-MM-dd");
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from("assignments")
+        .update(updateData)
+        .eq("id", assignmentId);
+
+      if (updateError) throw updateError;
+      await fetchAssignments();
+      return { error: null };
+    } catch (err) {
+      console.error("Error rescheduling assignment:", err);
+      return {
+        error: err instanceof Error ? err.message : "An error occurred"
+      };
+    }
+  };
+
+  const approveReschedule = async (assignmentId: string) => {
+    try {
+      const { data: assignment, error: fetchError } = await supabase
+        .from("assignments")
+        .select("proposed_new_date")
+        .eq("id", assignmentId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const updateData: any = {
+        is_rescheduled: true,
+        reschedule_status: "approved",
+      };
+
+      if (assignment.proposed_new_date) {
+        updateData.session_date = assignment.proposed_new_date;
+        updateData.proposed_new_date = null;
+      }
+
+      const { error: updateError } = await supabase
+        .from("assignments")
+        .update(updateData)
+        .eq("id", assignmentId);
+
+      if (updateError) throw updateError;
+      await fetchAssignments();
+      return { error: null };
+    } catch (err) {
+      console.error("Error approving reschedule:", err);
+      return {
+        error: err instanceof Error ? err.message : "An error occurred"
+      };
+    }
+  };
+
+  const rejectReschedule = async (assignmentId: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("assignments")
+        .update({
+          reschedule_status: "rejected",
+          proposed_new_date: null,
+        })
+        .eq("id", assignmentId);
+
+      if (updateError) throw updateError;
+      await fetchAssignments();
+      return { error: null };
+    } catch (err) {
+      console.error("Error rejecting reschedule:", err);
+      return {
+        error: err instanceof Error ? err.message : "An error occurred"
+      };
+    }
+  };
+
   useEffect(() => {
     fetchAssignments();
   }, [classId, studentId, teacherId]);
@@ -200,6 +323,9 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     createAssignment,
     updateAssignment,
     deleteAssignment,
+    rescheduleAssignment,
+    approveReschedule,
+    rejectReschedule,
     refetch: fetchAssignments,
   };
 };

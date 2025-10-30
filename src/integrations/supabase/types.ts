@@ -82,6 +82,13 @@ export type Database = {
           due_date: string | null
           end_time: string | null
           id: string
+          is_rescheduled: boolean | null
+          original_session_date: string | null
+          proposed_new_date: string | null
+          reschedule_reason: string | null
+          reschedule_status: string | null
+          rescheduled_at: string | null
+          rescheduled_by: string | null
           school_id: string
           school_year_id: string
           session_date: string | null
@@ -99,6 +106,13 @@ export type Database = {
           due_date?: string | null
           end_time?: string | null
           id?: string
+          is_rescheduled?: boolean | null
+          original_session_date?: string | null
+          proposed_new_date?: string | null
+          reschedule_reason?: string | null
+          reschedule_status?: string | null
+          rescheduled_at?: string | null
+          rescheduled_by?: string | null
           school_id: string
           school_year_id: string
           session_date?: string | null
@@ -116,6 +130,13 @@ export type Database = {
           due_date?: string | null
           end_time?: string | null
           id?: string
+          is_rescheduled?: boolean | null
+          original_session_date?: string | null
+          proposed_new_date?: string | null
+          reschedule_reason?: string | null
+          reschedule_status?: string | null
+          rescheduled_at?: string | null
+          rescheduled_by?: string | null
           school_id?: string
           school_year_id?: string
           session_date?: string | null
