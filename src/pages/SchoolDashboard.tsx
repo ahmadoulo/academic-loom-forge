@@ -35,6 +35,7 @@ import { SchoolSidebar } from "@/components/layout/SchoolSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { StudentsListSection } from "@/components/school/StudentsListSection";
+import { StudentsManagementSection } from "@/components/school/StudentsManagementSection";
 import { ClassesListSection } from "@/components/school/ClassesListSection";
 import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
@@ -768,14 +769,10 @@ const SchoolDashboard = () => {
                   </div>
                   
                   <div className="space-y-6">
-                    <StudentImport 
-                      onImportComplete={handleImportStudents}
-                      classes={currentYearClasses}
-                    />
-                    
-                    <StudentsListSection 
+                    <StudentsManagementSection
+                      schoolId={school.id}
                       students={students}
-                      classes={classes}
+                      classes={currentYearClasses}
                       loading={studentsLoading}
                       onArchiveStudent={(id, name) => setArchiveDialog({
                         open: true,
@@ -790,9 +787,14 @@ const SchoolDashboard = () => {
                           console.error('Error updating student:', error);
                         }
                       }}
+                      onCreateStudent={async (data) => {
+                        try {
+                          await createStudent(data);
+                        } catch (error) {
+                          console.error('Error creating student:', error);
+                        }
+                      }}
                     />
-                    
-                    <ArchivedStudentsSection schoolId={school.id} />
                   </div>
                 </div>
               )}
@@ -948,6 +950,13 @@ const SchoolDashboard = () => {
                         await updateTeacher(teacherId, data);
                       } catch (error) {
                         console.error('Error updating teacher:', error);
+                      }
+                    }}
+                    onCreateTeacher={async (data) => {
+                      try {
+                        await createTeacher(data);
+                      } catch (error) {
+                        console.error('Error creating teacher:', error);
                       }
                     }}
                   />

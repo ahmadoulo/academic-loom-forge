@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserCog, Search, Archive, Loader2, Pencil, ExternalLink, Mail, Phone, Eye } from "lucide-react";
 import { Teacher } from "@/hooks/useTeachers";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface TeachersListSectionProps {
@@ -24,6 +25,30 @@ export function TeachersListSection({
   onViewTeacher
 }: TeachersListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [teacherClassCounts, setTeacherClassCounts] = useState<Record<string, number>>({});
+
+  // Fetch real class counts for all teachers
+  useEffect(() => {
+    const fetchClassCounts = async () => {
+      if (teachers.length === 0) return;
+      
+      const teacherIds = teachers.map(t => t.id);
+      const { data, error } = await supabase
+        .from('teacher_classes')
+        .select('teacher_id')
+        .in('teacher_id', teacherIds);
+
+      if (!error && data) {
+        const counts: Record<string, number> = {};
+        data.forEach(tc => {
+          counts[tc.teacher_id] = (counts[tc.teacher_id] || 0) + 1;
+        });
+        setTeacherClassCounts(counts);
+      }
+    };
+
+    fetchClassCounts();
+  }, [teachers]);
 
   const filteredTeachers = teachers.filter(teacher => {
     const fullName = `${teacher.firstname} ${teacher.lastname}`.toLowerCase();
@@ -146,7 +171,7 @@ export function TeachersListSection({
                         </TableCell>
                         <TableCell className="text-center whitespace-nowrap">
                           <Badge variant="outline" className="font-semibold">
-                            {teacher.assigned_classes_count || 0}
+                            {teacherClassCounts[teacher.id] || 0}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">

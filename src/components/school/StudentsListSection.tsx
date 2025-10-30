@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Archive, Loader2, Filter, Pencil, ExternalLink } from "lucide-react";
-import { StudentEditDialog } from "./StudentEditDialog";
+import { Users, Search, Archive, Loader2, Filter, Pencil, ExternalLink, Eye } from "lucide-react";
 
 interface StudentWithClass {
   id: string;
@@ -31,19 +30,20 @@ interface StudentsListSectionProps {
   classes: Class[];
   loading: boolean;
   onArchiveStudent: (id: string, name: string) => void;
-  onUpdateStudent: (id: string, data: Partial<StudentWithClass>) => Promise<void>;
+  onEditStudent?: (student: StudentWithClass) => void;
+  onViewStudent?: (student: StudentWithClass) => void;
 }
 
-export function StudentsListSection({ students, classes, loading, onArchiveStudent, onUpdateStudent }: StudentsListSectionProps) {
+export function StudentsListSection({ 
+  students, 
+  classes, 
+  loading, 
+  onArchiveStudent,
+  onEditStudent,
+  onViewStudent
+}: StudentsListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
-  const [editingStudent, setEditingStudent] = useState<StudentWithClass | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
-  const handleEditClick = (student: StudentWithClass) => {
-    setEditingStudent(student);
-    setIsEditDialogOpen(true);
-  };
 
   const filteredStudents = students.filter(student => {
     const fullName = `${student.firstname} ${student.lastname}`.toLowerCase();
@@ -59,9 +59,8 @@ export function StudentsListSection({ students, classes, loading, onArchiveStude
   });
 
   return (
-    <>
-      <Card className="shadow-lg">
-        <CardHeader className="pb-4">
+    <Card className="shadow-lg">
+      <CardHeader className="pb-4">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" />
             Base de données des Étudiants ({students.length})
@@ -161,7 +160,16 @@ export function StudentsListSection({ students, classes, loading, onArchiveStude
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditClick(student)}
+                              onClick={() => onViewStudent && onViewStudent(student)}
+                              className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
+                              title="Voir les détails"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onEditStudent && onEditStudent(student)}
                               className="hover:bg-primary hover:text-primary-foreground"
                             >
                               <Pencil className="h-4 w-4 mr-1" />
@@ -194,14 +202,5 @@ export function StudentsListSection({ students, classes, loading, onArchiveStude
         )}
       </CardContent>
     </Card>
-
-    <StudentEditDialog
-      student={editingStudent}
-      classes={classes}
-      open={isEditDialogOpen}
-      onOpenChange={setIsEditDialogOpen}
-      onSave={onUpdateStudent}
-    />
-    </>
   );
 }
