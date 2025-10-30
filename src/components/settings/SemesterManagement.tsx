@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Calendar, Plus, Archive, CheckCircle2, Edit } from "lucide-react";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useSchoolYears } from "@/hooks/useSchoolYears";
 import { format } from "date-fns";
@@ -28,10 +28,12 @@ interface SemesterManagementProps {
 }
 
 export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
-  const { semesters, loading, createSemester, setCurrentSemester, deleteSemester } = useSchoolSemesters(schoolId);
+  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester } = useSchoolSemesters(schoolId);
   const { schoolYears } = useSchoolYears();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingSemesterId, setEditingSemesterId] = useState<string | null>(null);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     school_year_id: "",
@@ -42,11 +44,17 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createSemester({
-        school_id: schoolId,
-        ...formData,
-      });
+      if (isEditMode && editingSemesterId) {
+        await updateSemester(editingSemesterId, formData);
+      } else {
+        await createSemester({
+          school_id: schoolId,
+          ...formData,
+        });
+      }
       setIsDialogOpen(false);
+      setIsEditMode(false);
+      setEditingSemesterId(null);
       setFormData({
         name: "",
         school_year_id: "",
@@ -54,8 +62,20 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
         end_date: "",
       });
     } catch (error) {
-      console.error('Error creating semester:', error);
+      console.error('Error saving semester:', error);
     }
+  };
+
+  const handleEdit = (semester: any) => {
+    setIsEditMode(true);
+    setEditingSemesterId(semester.id);
+    setFormData({
+      name: semester.name,
+      school_year_id: semester.school_year_id,
+      start_date: semester.start_date,
+      end_date: semester.end_date,
+    });
+    setIsDialogOpen(true);
   };
 
   const handleSetCurrent = async (semesterId: string) => {
@@ -66,12 +86,12 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
     }
   };
 
-  const handleDelete = async (semesterId: string) => {
+  const handleArchive = async (semesterId: string) => {
     try {
-      await deleteSemester(semesterId);
-      setDeleteConfirmId(null);
+      await archiveSemester(semesterId);
+      setArchiveConfirmId(null);
     } catch (error) {
-      console.error('Error deleting semester:', error);
+      console.error('Error archiving semester:', error);
     }
   };
 
@@ -103,7 +123,19 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                 Créez et gérez les semestres scolaires avec automatisation des transitions
               </CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setIsEditMode(false);
+                setEditingSemesterId(null);
+                setFormData({
+                  name: "",
+                  school_year_id: "",
+                  start_date: "",
+                  end_date: "",
+                });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -112,9 +144,9 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Créer un Semestre</DialogTitle>
+                  <DialogTitle>{isEditMode ? 'Modifier le Semestre' : 'Créer un Semestre'}</DialogTitle>
                   <DialogDescription>
-                    Définissez les informations du nouveau semestre
+                    {isEditMode ? 'Modifiez les informations du semestre' : 'Définissez les informations du nouveau semestre'}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -179,7 +211,7 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                       Annuler
                     </Button>
                     <Button type="submit">
-                      Créer le Semestre
+                      {isEditMode ? 'Modifier' : 'Créer le Semestre'}
                     </Button>
                   </div>
                 </form>
@@ -245,11 +277,18 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                         )}
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(semester)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
-                          onClick={() => setDeleteConfirmId(semester.id)}
+                          onClick={() => setArchiveConfirmId(semester.id)}
                           disabled={semester.is_actual}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -267,18 +306,18 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+      <AlertDialog open={!!archiveConfirmId} onOpenChange={() => setArchiveConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogTitle>Confirmer l'archivage</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce semestre ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir archiver ce semestre ? Les notes associées seront conservées mais le semestre ne sera plus sélectionnable.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}>
-              Supprimer
+            <AlertDialogAction onClick={() => archiveConfirmId && handleArchive(archiveConfirmId)}>
+              Archiver
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -10,6 +10,8 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSchools } from "@/hooks/useSchools";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { ClassCard } from "@/components/teacher/ClassCard";
 import { StudentsGrading } from "@/components/teacher/StudentsGrading";
@@ -37,6 +39,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [selectedSemester, setSelectedSemester] = useState<string>("all");
   
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
@@ -45,6 +48,9 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get school information
   const { schools } = useSchools();
   const school = schools.find(s => s.id === currentTeacher?.school_id);
+  
+  // Get semesters for filter
+  const { semesters } = useSchoolSemesters(currentTeacher?.school_id);
   
   // Get teacher's assigned classes
   const { teacherClasses } = useTeacherClasses(teacherId);
@@ -65,8 +71,8 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
-  // useGrades est maintenant appelé à l'intérieur du SemesterProvider
-  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId);
+  // useGrades avec filtrage par semestre
+  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId, selectedSemester);
 
   const handleViewStudents = (classId: string, subjectId: string) => {
     const classData = teacherClasses.find(tc => tc.class_id === classId);
@@ -222,6 +228,30 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             </div>
           </CardContent>
         </Card>
+
+        {/* Semester Filter */}
+        {semesters.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium whitespace-nowrap">Filtrer par semestre:</label>
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                  <SelectTrigger className="w-full sm:w-[300px]">
+                    <SelectValue placeholder="Sélectionner un semestre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les semestres</SelectItem>
+                    {semesters.map((semester) => (
+                      <SelectItem key={semester.id} value={semester.id}>
+                        {semester.name} {semester.is_actual && "(Actuel)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Main Content */}
         {currentView === 'grading' && selectedClass && selectedSubject ? (

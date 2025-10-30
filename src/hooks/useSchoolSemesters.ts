@@ -11,6 +11,7 @@ export interface SchoolSemester {
   end_date: string;
   is_actual: boolean;
   is_next: boolean;
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -28,7 +29,7 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSemesters = async () => {
+  const fetchSemesters = async (includeArchived = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -44,6 +45,11 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
 
       if (yearId) {
         query = query.eq('school_year_id', yearId);
+      }
+
+      // Exclure les semestres archivés par défaut
+      if (!includeArchived) {
+        query = query.eq('archived', false);
       }
 
       const { data, error: fetchError } = await query;
@@ -118,19 +124,31 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
     }
   };
 
-  const deleteSemester = async (semesterId: string) => {
+  const archiveSemester = async (semesterId: string) => {
     try {
-      const { error: deleteError } = await supabase
+      // Vérifier s'il y a des notes attachées à ce semestre
+      const { count, error: countError } = await supabase
+        .from('grades')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_semester_id', semesterId);
+
+      if (countError) throw countError;
+
+      if (count && count > 0) {
+        toast.info(`${count} note(s) attachée(s) à ce semestre seront conservées`);
+      }
+
+      const { error: updateError } = await supabase
         .from('school_semester' as any)
-        .delete()
+        .update({ archived: true })
         .eq('id', semesterId);
 
-      if (deleteError) throw deleteError;
+      if (updateError) throw updateError;
 
       setSemesters(semesters.filter(s => s.id !== semesterId));
-      toast.success('Semestre supprimé avec succès');
+      toast.success('Semestre archivé avec succès');
     } catch (err: any) {
-      toast.error('Erreur lors de la suppression du semestre');
+      toast.error(err.message || 'Erreur lors de l\'archivage du semestre');
       throw err;
     }
   };
@@ -142,7 +160,7 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
     createSemester,
     updateSemester,
     setCurrentSemester,
-    deleteSemester,
+    archiveSemester,
     refetch: fetchSemesters,
   };
 };
