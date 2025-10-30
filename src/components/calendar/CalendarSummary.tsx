@@ -12,6 +12,11 @@ interface CalendarEvent {
   end_time: string | null;
   type: string;
   class_name?: string;
+  is_rescheduled?: boolean;
+  reschedule_reason?: string;
+  reschedule_status?: string;
+  proposed_new_date?: string;
+  original_session_date?: string;
 }
 
 interface CalendarSummaryProps {
@@ -49,8 +54,13 @@ export function CalendarSummary({ events, title = "Séances à venir" }: Calenda
                 className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-medium truncate">{event.title}</span>
+                    {event.is_rescheduled && (
+                      <Badge variant="outline" className="shrink-0 bg-orange-500/10 text-orange-600 border-orange-600/20">
+                        Reporté
+                      </Badge>
+                    )}
                     <Badge 
                       variant={event.type === 'course' ? 'default' : event.type === 'exam' ? 'destructive' : 'secondary'}
                       className="shrink-0"
@@ -63,6 +73,11 @@ export function CalendarSummary({ events, title = "Séances à venir" }: Calenda
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       <span>{getDateLabel(event.session_date)}</span>
+                      {event.is_rescheduled && event.proposed_new_date && (
+                        <span className="text-orange-600 ml-2">
+                          → {format(parseISO(event.proposed_new_date), "d MMM", { locale: fr })}
+                        </span>
+                      )}
                     </div>
                     
                     {event.start_time && (
@@ -70,6 +85,12 @@ export function CalendarSummary({ events, title = "Séances à venir" }: Calenda
                         <Clock className="h-3 w-3" />
                         <span>{event.start_time}</span>
                         {event.end_time && <span> - {event.end_time}</span>}
+                      </div>
+                    )}
+                    
+                    {event.is_rescheduled && event.reschedule_reason && (
+                      <div className="mt-1 text-xs italic text-muted-foreground">
+                        Raison: {event.reschedule_reason}
                       </div>
                     )}
                     

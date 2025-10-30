@@ -15,12 +15,12 @@ export function MobileSidebar({ isOpen, onClose, children }: MobileSidebarProps)
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
         onClick={onClose}
       />
       
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 bottom-0 w-64 bg-card shadow-2xl z-50 lg:hidden transform transition-transform duration-300 ease-out">
+      <div className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar shadow-2xl z-50 lg:hidden transform transition-transform duration-300 ease-out border-r border-border">
         <div className="absolute top-4 right-4">
           <Button
             variant="ghost"

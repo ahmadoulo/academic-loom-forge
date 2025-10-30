@@ -33,8 +33,8 @@ export const StudentWelcomeSection = ({ studentId }: StudentWelcomeSectionProps)
 
   // Get upcoming assignments from real data
   const upcomingAssignments = assignments.filter(assignment => {
-    if (!assignment.due_date) return false;
-    const dueDate = new Date(assignment.due_date);
+    if (!assignment.due_date && !assignment.session_date) return false;
+    const dueDate = new Date(assignment.due_date || assignment.session_date);
     const today = new Date();
     return dueDate >= today;
   }).slice(0, 3);
@@ -205,18 +205,37 @@ export const StudentWelcomeSection = ({ studentId }: StudentWelcomeSectionProps)
                 upcomingAssignments.map((assignment) => (
                   <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
-                      <p className="font-medium">{assignment.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{assignment.title}</p>
+                        {assignment.is_rescheduled && (
+                          <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 border-orange-600/20">
+                            Reporté
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {assignment.teachers ? `${assignment.teachers.firstname} ${assignment.teachers.lastname}` : 'Professeur'}
                       </p>
+                      {assignment.is_rescheduled && assignment.reschedule_reason && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                          Raison: {assignment.reschedule_reason}
+                        </p>
+                      )}
                       <Badge variant="outline" className="text-xs mt-1">
                         {assignment.type === 'exam' ? 'Examen' : assignment.type === 'test' ? 'Contrôle' : 'Devoir'}
                       </Badge>
                     </div>
                     <div className="text-right">
                       <Badge variant="outline">
-                        {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'Non défini'}
+                        {(assignment.due_date || assignment.session_date) 
+                          ? new Date(assignment.due_date || assignment.session_date).toLocaleDateString() 
+                          : 'Non défini'}
                       </Badge>
+                      {assignment.is_rescheduled && assignment.proposed_new_date && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Nouvelle date: {new Date(assignment.proposed_new_date).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))

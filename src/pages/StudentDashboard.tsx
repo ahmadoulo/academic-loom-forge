@@ -50,6 +50,11 @@ export default function StudentDashboard() {
         start_time,
         end_time,
         type,
+        is_rescheduled,
+        reschedule_reason,
+        reschedule_status,
+        proposed_new_date,
+        original_session_date,
         classes (name)
       `)
       .eq("class_id", student.class_id)
@@ -74,6 +79,11 @@ export default function StudentDashboard() {
                 end_time: a.end_time || null,
                 type: a.type,
                 class_name: a.classes?.name,
+                is_rescheduled: a.is_rescheduled,
+                reschedule_reason: a.reschedule_reason,
+                reschedule_status: a.reschedule_status,
+                proposed_new_date: a.proposed_new_date,
+                original_session_date: a.original_session_date,
               }))}
               title="Mes séances à venir"
             />
@@ -107,7 +117,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full flex-col lg:flex-row">
         <div className="sidebar-container">
           <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />

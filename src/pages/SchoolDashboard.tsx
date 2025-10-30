@@ -492,7 +492,7 @@ const SchoolDashboard = () => {
 
   return (
     <SemesterProvider schoolId={school?.id}>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={true}>
         <div className="min-h-screen flex w-full flex-col lg:flex-row bg-background">
           <div className="sidebar-container">
             <SchoolSidebar 
