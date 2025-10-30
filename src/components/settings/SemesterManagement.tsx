@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Archive, CheckCircle2, Edit } from "lucide-react";
+import { Calendar, Plus, Archive, CheckCircle2, Edit, ArchiveRestore } from "lucide-react";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useSchoolYears } from "@/hooks/useSchoolYears";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import type { SchoolSemester } from "@/hooks/useSchoolSemesters";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -28,12 +30,14 @@ interface SemesterManagementProps {
 }
 
 export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
-  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester } = useSchoolSemesters(schoolId);
+  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId);
   const { schoolYears } = useSchoolYears();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingSemesterId, setEditingSemesterId] = useState<string | null>(null);
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [archivedSemesters, setArchivedSemesters] = useState<SchoolSemester[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     school_year_id: "",
@@ -90,10 +94,42 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
     try {
       await archiveSemester(semesterId);
       setArchiveConfirmId(null);
+      fetchArchivedSemesters();
     } catch (error) {
       console.error('Error archiving semester:', error);
     }
   };
+
+  const handleRestore = async (semesterId: string) => {
+    try {
+      await restoreSemester(semesterId);
+      fetchArchivedSemesters();
+    } catch (error) {
+      console.error('Error restoring semester:', error);
+    }
+  };
+
+  const fetchArchivedSemesters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('school_semester' as any)
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('archived', true)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      setArchivedSemesters((data as unknown as SchoolSemester[]) || []);
+    } catch (error) {
+      console.error('Error fetching archived semesters:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (showArchived) {
+      fetchArchivedSemesters();
+    }
+  }, [showArchived, schoolId]);
 
   if (loading) {
     return (
@@ -304,6 +340,67 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
             </AlertDescription>
           </Alert>
         </CardContent>
+      </Card>
+
+      {/* Section des semestres archivés */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5" />
+                Semestres Archivés
+              </CardTitle>
+              <CardDescription>
+                Consultez et restaurez les semestres archivés
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowArchived(!showArchived);
+                if (!showArchived) fetchArchivedSemesters();
+              }}
+            >
+              {showArchived ? 'Masquer' : 'Afficher'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showArchived && (
+          <CardContent className="space-y-3">
+            {archivedSemesters.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Aucun semestre archivé
+              </div>
+            ) : (
+              archivedSemesters.map((semester) => (
+                <Card key={semester.id} className="border-muted">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-muted-foreground">{semester.name}</h4>
+                          <Badge variant="secondary">Archivé</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(semester.start_date), 'dd MMM yyyy', { locale: fr })} - {format(new Date(semester.end_date), 'dd MMM yyyy', { locale: fr })}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRestore(semester.id)}
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-1" />
+                        Restaurer
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </CardContent>
+        )}
       </Card>
 
       <AlertDialog open={!!archiveConfirmId} onOpenChange={() => setArchiveConfirmId(null)}>

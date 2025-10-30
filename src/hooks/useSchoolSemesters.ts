@@ -153,6 +153,26 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
     }
   };
 
+  const restoreSemester = async (semesterId: string) => {
+    try {
+      const { data, error: updateError } = await supabase
+        .from('school_semester' as any)
+        .update({ archived: false })
+        .eq('id', semesterId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      await fetchSemesters();
+      toast.success('Semestre restauré avec succès');
+      return data as unknown as SchoolSemester;
+    } catch (err: any) {
+      toast.error('Erreur lors de la restauration du semestre');
+      throw err;
+    }
+  };
+
   return {
     semesters,
     loading,
@@ -161,6 +181,7 @@ export const useSchoolSemesters = (schoolId?: string, yearId?: string) => {
     updateSemester,
     setCurrentSemester,
     archiveSemester,
+    restoreSemester,
     refetch: fetchSemesters,
   };
 };
