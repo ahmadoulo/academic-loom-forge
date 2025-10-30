@@ -29,9 +29,7 @@ import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
 
-const TeacherDashboard = () => {
-  const { teacherId } = useParams();
-
+const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined }) => {
   const [teacher, setTeacher] = useState<any>(null);
   const [teacherLoading, setTeacherLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'overview' | 'grading' | 'session-attendance' | 'qr-session'>('overview');
@@ -67,6 +65,7 @@ const TeacherDashboard = () => {
   
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
+  // useGrades est maintenant appelé à l'intérieur du SemesterProvider
   const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId);
 
   const handleViewStudents = (classId: string, subjectId: string) => {
@@ -169,12 +168,11 @@ const TeacherDashboard = () => {
 
   return (
     <SidebarProvider>
-      <SemesterProvider schoolId={currentTeacher?.school_id}>
-        <div className="min-h-screen flex w-full bg-background">
-          <TeacherSidebar 
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
+      <div className="min-h-screen flex w-full bg-background">
+        <TeacherSidebar 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
           
           <div className="flex-1 flex flex-col">
             <AuthenticatedHeader 
@@ -409,8 +407,19 @@ const TeacherDashboard = () => {
           </main>
         </div>
       </div>
-      </SemesterProvider>
     </SidebarProvider>
+  );
+};
+
+const TeacherDashboard = () => {
+  const { teacherId } = useParams();
+  const { teachers } = useTeachers();
+  const currentTeacher = teachers.find(t => t.id === teacherId);
+
+  return (
+    <SemesterProvider schoolId={currentTeacher?.school_id}>
+      <TeacherDashboardContent teacherId={teacherId} />
+    </SemesterProvider>
   );
 };
 
