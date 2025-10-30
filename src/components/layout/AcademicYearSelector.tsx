@@ -2,7 +2,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "lucide-react";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 
-export const AcademicYearSelector = () => {
+interface AcademicYearSelectorProps {
+  showAllYearsOption?: boolean; // Option pour afficher "Toutes les années"
+}
+
+export const AcademicYearSelector = ({ showAllYearsOption = false }: AcademicYearSelectorProps) => {
   const { selectedYear, setSelectedYear, availableYears, currentYear, loading } = useAcademicYear();
 
   if (loading) {
@@ -32,7 +36,7 @@ export const AcademicYearSelector = () => {
           <SelectValue placeholder="Année scolaire" />
         </SelectTrigger>
         <SelectContent className="bg-background z-50">
-          <SelectItem value="all">Toutes les années</SelectItem>
+          {showAllYearsOption && <SelectItem value="all">Toutes les années</SelectItem>}
           {availableYears.map((year) => (
             <SelectItem key={year.id} value={year.id}>
               <span className="flex items-center gap-2">

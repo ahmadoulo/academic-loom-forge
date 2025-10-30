@@ -88,8 +88,9 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         query = query.eq('class_id', classId);
       }
 
-      // Filtrer par année scolaire sélectionnée (null = toutes les années)
-      if (yearId) {
+      // Filtrer par année scolaire sélectionnée (ne jamais afficher 'all')
+      // IMPORTANT: Toujours filtrer par une année spécifique pour éviter les duplicatas
+      if (yearId && yearId !== 'all') {
         query = query.eq('school_year_id', yearId);
       }
 

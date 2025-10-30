@@ -73,8 +73,9 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
         `);
 
       // Filtrer par année scolaire (utiliser l'année passée en paramètre ou l'année sélectionnée)
+      // IMPORTANT: Ne jamais afficher 'all' pour éviter les duplicatas
       const filterYearId = yearId || displayYearId;
-      if (filterYearId) {
+      if (filterYearId && filterYearId !== 'all') {
         query = query.eq('school_year_id', filterYearId);
       }
 

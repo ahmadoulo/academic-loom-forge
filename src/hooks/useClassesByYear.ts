@@ -39,7 +39,9 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
         query = query.eq('school_id', schoolId);
       }
 
-      if (yearId && !includeAllYears) {
+      // IMPORTANT: Toujours filtrer par année scolaire si fournie
+      // Ne jamais afficher toutes les années à la fois (sauf si explicitement demandé)
+      if (yearId && yearId !== 'all' && !includeAllYears) {
         query = query.eq('school_year_id', yearId);
       }
 

@@ -117,8 +117,11 @@ const SchoolDashboard = () => {
   }, [schoolId, getSchoolByIdentifier]);
 
   // Get academic year for filtering - use getYearForDisplay to respect user selection
-  const { getYearForDisplay } = useAcademicYear();
-  const displayYearId = getYearForDisplay();
+  const { getYearForDisplay, currentYear: contextCurrentYear, selectedYear: contextSelectedYear } = useAcademicYear();
+  // IMPORTANT: Ne jamais utiliser 'all' dans le dashboard école - toujours filtrer par une année spécifique
+  const displayYearId = contextSelectedYear?.id === 'all' 
+    ? contextCurrentYear?.id 
+    : (getYearForDisplay() || contextCurrentYear?.id);
   
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, archiveStudent, restoreStudent } = useStudents(school?.id);
   
