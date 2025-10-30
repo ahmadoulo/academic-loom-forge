@@ -55,6 +55,7 @@ import { BulletinSection } from "@/components/school/BulletinSection";
 import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
 import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
 import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
+import { TeachersManagementSection } from "@/components/school/TeachersManagementSection";
 import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
 import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
 import { TeacherForm } from "@/components/school/TeacherForm";
@@ -145,7 +146,7 @@ const SchoolDashboard = () => {
     await refetchClasses();
   };
   
-  const { teachers, loading: teachersLoading, createTeacher, archiveTeacher, restoreTeacher } = useTeachers(school?.id);
+  const { teachers, loading: teachersLoading, createTeacher, updateTeacher, archiveTeacher, restoreTeacher } = useTeachers(school?.id);
   const { assignTeacherToClass } = useTeacherClasses();
   const { subjects, loading: subjectsLoading, createSubject, updateSubject, archiveSubject } = useSubjects(school?.id);
   const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
@@ -912,96 +913,44 @@ const SchoolDashboard = () => {
                       </p>
                     </div>
                   )}
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">Corps Enseignant</h2>
+                  
+                  <div className="flex flex-col gap-4 items-start">
+                    <div className="w-full">
+                      <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gestion des Professeurs</h2>
+                      <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les professeurs, assignations et archives</p>
+                    </div>
                     <Button 
                       onClick={() => {
                         setEditingTeacher(null);
                         setIsTeacherDialogOpen(true);
-                      }}
+                      }} 
+                      size="lg" 
+                      className="gap-2 w-full sm:w-auto"
                       disabled={isReadOnly}
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nouveau Professeur
+                      <Plus className="h-5 w-5" />
+                      Ajouter un Professeur
                     </Button>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {teachers.map((teacher) => {
-                      const teacherSubjects = subjects.filter(s => s.teacher_id === teacher.id);
-                      return (
-                         <Card key={teacher.id} className="relative">
-                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                              <GraduationCap className="h-5 w-5" />
-                              {teacher.firstname} {teacher.lastname}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-2">
-                              <p className="text-sm text-muted-foreground">{teacher.email}</p>
-                              <div className="flex flex-wrap gap-1">
-                                {teacherSubjects.map((subject) => (
-                                  <Badge key={subject.id} variant="secondary" className="text-xs">
-                                    {subject.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                              {teacherSubjects.length === 0 && (
-                                <p className="text-xs text-muted-foreground">Aucune matière assignée</p>
-                              )}
-                              <Button 
-                                size="sm" 
-                                className="w-full mt-2"
-                                onClick={() => window.location.href = `/teacher/${teacher.id}`}
-                              >
-                                Interface Professeur
-                              </Button>
-                            </div>
-                            <div className="absolute top-2 right-2 flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
-                                onClick={() => {
-                                  setEditingTeacher(teacher);
-                                  setIsTeacherDialogOpen(true);
-                                }}
-                                disabled={isReadOnly}
-                                title="Modifier ce professeur"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                onClick={() => setDeleteDialog({
-                                  open: true,
-                                  type: 'teacher',
-                                  id: teacher.id,
-                                  name: `${teacher.firstname} ${teacher.lastname}`
-                                })}
-                                disabled={isReadOnly}
-                                title="Archiver ce professeur"
-                              >
-                                <Archive className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
+
+                  <TeachersManagementSection
+                    schoolId={school.id}
+                    teachers={teachers}
+                    loading={teachersLoading}
+                    onArchiveTeacher={(id, name) => setDeleteDialog({
+                      open: true,
+                      type: 'teacher',
+                      id,
+                      name
                     })}
-                   </div>
-                  
-                  <ArchivedTeachersSection schoolId={school.id} />
-                  
-                  {/* Assignation Professeurs - Classes */}
-                  {school?.id && (
-                    <div className="mt-8">
-                      <TeacherClassAssignment schoolId={school.id} />
-                    </div>
-                  )}
+                    onUpdateTeacher={async (teacherId, data) => {
+                      try {
+                        await updateTeacher(teacherId, data);
+                      } catch (error) {
+                        console.error('Error updating teacher:', error);
+                      }
+                    }}
+                  />
                 </div>
               )}
               
