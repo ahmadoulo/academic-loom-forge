@@ -64,3 +64,9 @@ export const useSemester = () => {
   }
   return context;
 };
+
+// Hook optionnel qui retourne null si pas de provider
+export const useOptionalSemester = () => {
+  const context = useContext(SemesterContext);
+  return context || null;
+};

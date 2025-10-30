@@ -1,10 +1,17 @@
 import { Calendar } from "lucide-react";
-import { useSemester } from "@/hooks/useSemester";
+import { useOptionalSemester } from "@/hooks/useSemester";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export const SemesterDisplay = () => {
-  const { currentSemester, loading } = useSemester();
+  const semesterContext = useOptionalSemester();
+  
+  // Si pas de provider, ne rien afficher
+  if (!semesterContext) {
+    return null;
+  }
+  
+  const { currentSemester, loading } = semesterContext;
 
   if (loading) {
     return (
