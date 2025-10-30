@@ -1131,6 +1131,7 @@ const SchoolDashboard = () => {
         </DialogContent>
       </Dialog>
     </SidebarProvider>
+    </SemesterProvider>
   );
 };
 
