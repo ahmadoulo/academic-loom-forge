@@ -294,8 +294,8 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
           </CardContent>
         </Card>
 
-        {/* Semester Filter */}
-        {semesters.length > 0 && (
+        {/* Semester Filter - Only show on grades page */}
+        {activeTab === "grades" && semesters.length > 0 && (
           <Card className="mb-6">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">

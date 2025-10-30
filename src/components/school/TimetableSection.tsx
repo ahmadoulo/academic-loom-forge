@@ -14,7 +14,8 @@ import { Download, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTimetable } from "@/hooks/useTimetable";
-import { useClasses } from "@/hooks/useClasses";
+import { useClassesByYear } from "@/hooks/useClassesByYear";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { exportTimetableToPDF } from "@/utils/timetablePdfExport";
 import { toast } from "sonner";
 import {
@@ -36,7 +37,13 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<Date | null>(null);
 
-  const { classes, loading: classesLoading } = useClasses(schoolId);
+  // Get current academic year
+  const { getYearForDisplay } = useAcademicYear();
+  const displayYearId = getYearForDisplay();
+
+  // Filter classes by current academic year
+  const { classes, loading: classesLoading } = useClassesByYear(schoolId, displayYearId);
+  
   const { data: timetableEntries, isLoading: timetableLoading } = useTimetable(
     schoolId,
     selectedClassId,
