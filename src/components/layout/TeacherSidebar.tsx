@@ -126,97 +126,87 @@ export function TeacherSidebar({ activeTab, onTabChange }: { activeTab: string; 
   };
 
   return (
-    <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
+    <Sidebar className={!open ? "w-16" : "w-72"} collapsible="icon">
+      <div className="p-6 border-b border-border/50">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
           {open && (
-            <span className="font-bold text-lg">Eduvate</span>
+            <div>
+              <span className="font-bold text-lg text-foreground">Eduvate</span>
+              <p className="text-xs text-muted-foreground">Professeur</p>
+            </div>
           )}
         </div>
       </div>
 
       <SidebarContent className="p-4">
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuStructure.map((item, index) => {
-                // Item simple sans catégorie
-                if ('value' in item) {
-                  return (
-                    <SidebarMenuItem key={item.value}>
-                      <SidebarMenuButton 
-                        asChild
-                        isActive={activeTab === item.value}
-                        className="w-full justify-start"
-                      >
-                        <button 
-                          onClick={() => onTabChange(item.value)}
-                          className="flex items-center gap-3 w-full text-left"
-                        >
-                          <item.icon className="h-4 w-4" />
-                          {open && <span>{item.title}</span>}
-                        </button>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                }
-
-                // Catégorie avec sous-menu
-                const isOpen = openCategories[item.category] ?? false;
-
-                return (
-                  <Collapsible
-                    key={item.category}
-                    open={isOpen}
-                    onOpenChange={() => toggleCategory(item.category)}
+        <div className="space-y-8">
+          {menuStructure.map((item, index) => {
+            // Item simple sans catégorie
+            if ('value' in item) {
+              return (
+                <div key={item.value} className="space-y-1">
+                  <button
+                    onClick={() => onTabChange(item.value)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      activeTab === item.value
+                        ? 'bg-primary text-primary-foreground shadow-soft'
+                        : 'hover:bg-secondary text-foreground hover:translate-x-1'
+                    }`}
                   >
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full">
-                          <item.icon className="h-4 w-4" />
-                          {open && (
-                            <>
-                              <span className="flex-1">{item.category}</span>
-                              <ChevronDown 
-                                className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-                              />
-                            </>
-                          )}
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {item.items.map(subItem => (
-                            <SidebarMenuSubItem key={subItem.value}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={activeTab === subItem.value}
-                              >
-                                <button 
-                                  onClick={() => onTabChange(subItem.value)}
-                                  className="flex items-center gap-3 w-full text-left"
-                                >
-                                  <subItem.icon className="h-4 w-4" />
-                                  {open && <span>{subItem.title}</span>}
-                                </button>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {open && <span>{item.title}</span>}
+                  </button>
+                </div>
+              );
+            }
+
+            // Catégorie avec sous-menu
+            const isOpen = openCategories[item.category] ?? false;
+            const CategoryIcon = item.icon;
+
+            return (
+              <div key={item.category} className="space-y-3">
+                <button
+                  onClick={() => toggleCategory(item.category)}
+                  className="w-full flex items-center gap-3 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <CategoryIcon className="h-4 w-4" />
+                  {open && (
+                    <>
+                      <span className="flex-1 text-left">{item.category}</span>
+                      <ChevronDown 
+                        className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+                      />
+                    </>
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="space-y-1">
+                    {item.items.map(subItem => (
+                      <button
+                        key={subItem.value}
+                        onClick={() => onTabChange(subItem.value)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          activeTab === subItem.value
+                            ? 'bg-primary text-primary-foreground shadow-soft'
+                            : 'hover:bg-secondary text-foreground hover:translate-x-1'
+                        }`}
+                      >
+                        <subItem.icon className="h-4 w-4 shrink-0" />
+                        {open && <span>{subItem.title}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
         
-        <div className="mt-auto pt-4 border-t">
+        <div className="mt-8 pt-6 border-t border-border/50">
           <AcademicYearSidebarSection context="teacher" />
         </div>
       </SidebarContent>

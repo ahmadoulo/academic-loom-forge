@@ -20,7 +20,7 @@ const sectionConfig = {
   academic: {
     title: "Gestion Académique",
     icon: Calendar,
-    tabs: ["school-years", "semesters"]
+    tabs: ["semesters"]
   },
   students: {
     title: "Comptes Étudiants",
@@ -36,7 +36,6 @@ const sectionConfig = {
 
 const tabLabels: Record<string, string> = {
   "school-info": "Informations de l'école",
-  "school-years": "Années scolaires",
   "semesters": "Semestres",
   "student-accounts": "Comptes étudiants",
   "users": "Gestion des utilisateurs",

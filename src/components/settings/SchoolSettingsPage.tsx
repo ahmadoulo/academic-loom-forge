@@ -15,7 +15,6 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
 
   const availableTabs = [
     "school-info",
-    "school-years",
     "semesters",
     "student-accounts",
     "users"
@@ -25,8 +24,6 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
     switch (activeTab) {
       case "school-info":
         return <SchoolSettings schoolId={schoolId} />;
-      case "school-years":
-        return <SchoolYearManagement />;
       case "semesters":
         return <SemesterManagement schoolId={schoolId} />;
       case "student-accounts":
