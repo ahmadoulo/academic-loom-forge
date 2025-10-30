@@ -145,35 +145,25 @@ Modern Blue & White Theme - All colors MUST be HSL */
 
 /* Responsive utilities */
 @layer utilities {
-  /* Mobile first responsive utilities */
-  .sidebar-mobile {
-    @apply fixed inset-y-0 left-0 z-50 transform transition-transform duration-300;
-  }
-  
-  .sidebar-mobile.closed {
-    @apply -translate-x-full;
+  /* Sidebar container - fixed positioning for proper layout */
+  .sidebar-container {
+    @apply relative shrink-0;
   }
 
-  /* Ensure proper layout on all devices */
-  @media (max-width: 768px) {
+  /* Main content - ensure it takes remaining space */
+  .main-content {
+    @apply w-full min-w-0;
+  }
+
+  /* Mobile: Stack layout */
+  @media (max-width: 1023px) {
     .sidebar-container {
-      @apply fixed z-50;
-    }
-    
-    .main-content {
-      @apply ml-0 w-full;
+      @apply fixed left-0 top-0 bottom-0 z-50 bg-background shadow-lg;
     }
   }
 
-  @media (min-width: 769px) and (max-width: 1024px) {
-    /* Tablet styles */
-    .sidebar-container {
-      @apply relative;
-    }
-  }
-
-  @media (min-width: 1025px) {
-    /* Desktop styles */
+  /* Desktop: Side-by-side layout */
+  @media (min-width: 1024px) {
     .sidebar-container {
       @apply relative;
     }

@@ -114,30 +114,44 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
 
   return (
     <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
-      <div className="p-4 border-b border-border/50 bg-card">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft">
+      <div className={`border-b border-border/50 bg-card transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft shrink-0">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             {open && (
-              <div>
-                <span className="font-bold text-lg text-foreground">Eduvate</span>
-                <p className="text-xs text-muted-foreground">Étudiant</p>
+              <div className="min-w-0 flex-1">
+                <span className="font-bold text-lg text-foreground block truncate">Eduvate</span>
+                <p className="text-xs text-muted-foreground truncate">Étudiant</p>
               </div>
             )}
           </div>
-          <button
-            onClick={() => setOpen(!open)}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
-            title={open ? "Réduire" : "Développer"}
-          >
-            {open ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-          </button>
+          {open && (
+            <button
+              onClick={() => setOpen(!open)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors shrink-0"
+              title="Réduire"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
         </div>
         
+        {!open && (
+          <div className="mt-2 flex justify-center">
+            <button
+              onClick={() => setOpen(!open)}
+              className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              title="Développer"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        
         {open && (
-          <div className="relative">
+          <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -150,22 +164,25 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
         )}
       </div>
 
-      <SidebarContent className="p-4 overflow-y-auto">
-        <div className="space-y-6">
+      <SidebarContent className={`overflow-y-auto transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
+        <div className="space-y-4">
           {filteredMenuStructure.map((item, index) => {
             // Item simple sans catégorie
             if ('value' in item) {
               return (
-                <div key={item.value} className="space-y-1">
+                <div key={item.value}>
                   <button
                     onClick={() => onTabChange(item.value)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`w-full flex items-center justify-center lg:justify-start gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      !open ? "p-3" : "px-4 py-3"
+                    } ${
                       activeTab === item.value
                         ? 'bg-primary text-primary-foreground shadow-soft'
-                        : 'hover:bg-secondary text-foreground hover:translate-x-1'
+                        : 'hover:bg-secondary text-foreground'
                     }`}
+                    title={!open ? item.title : undefined}
                   >
-                    <item.icon className="h-4 w-4 shrink-0" />
+                    <item.icon className="h-5 w-5 shrink-0" />
                     {open && <span className="truncate">{item.title}</span>}
                   </button>
                 </div>
@@ -178,37 +195,56 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
 
             return (
               <div key={item.category} className="space-y-2">
-                <button
-                  onClick={() => toggleCategory(item.category)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors"
-                >
-                  <CategoryIcon className="h-4 w-4 shrink-0" />
-                  {open && (
-                    <>
-                      <span className="flex-1 text-left truncate">{item.category}</span>
-                      <ChevronDown 
-                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
-                      />
-                    </>
-                  )}
-                </button>
-                {isOpen && (
-                  <div className="space-y-1 pl-2">
+                {!open ? (
+                  // Mode réduit : afficher les items directement
+                  <>
                     {item.items.map(subItem => (
                       <button
                         key={subItem.value}
                         onClick={() => onTabChange(subItem.value)}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        className={`w-full flex items-center justify-center p-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                           activeTab === subItem.value
                             ? 'bg-primary text-primary-foreground shadow-soft'
-                            : 'hover:bg-secondary text-foreground hover:translate-x-1'
+                            : 'hover:bg-secondary text-foreground'
                         }`}
+                        title={subItem.title}
                       >
-                        <subItem.icon className="h-4 w-4 shrink-0" />
-                        {open && <span className="truncate">{subItem.title}</span>}
+                        <subItem.icon className="h-5 w-5 shrink-0" />
                       </button>
                     ))}
-                  </div>
+                  </>
+                ) : (
+                  // Mode développé : afficher avec catégorie
+                  <>
+                    <button
+                      onClick={() => toggleCategory(item.category)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
+                    >
+                      <CategoryIcon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-left truncate">{item.category}</span>
+                      <ChevronDown 
+                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="space-y-1 pl-2 animate-accordion-down">
+                        {item.items.map(subItem => (
+                          <button
+                            key={subItem.value}
+                            onClick={() => onTabChange(subItem.value)}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                              activeTab === subItem.value
+                                ? 'bg-primary text-primary-foreground shadow-soft'
+                                : 'hover:bg-secondary text-foreground hover:translate-x-0.5'
+                            }`}
+                          >
+                            <subItem.icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{subItem.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );
