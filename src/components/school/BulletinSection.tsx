@@ -381,7 +381,7 @@ export const BulletinSection = ({
             <SelectValue placeholder="Filtrer par semestre" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tous les semestres</SelectItem>
+            <SelectItem value="all">Tous les semestres</SelectItem>
             {semesters.map((sem) => (
               <SelectItem key={sem.id} value={sem.id}>
                 {sem.name} {sem.is_actual && "(Actuel)"}
