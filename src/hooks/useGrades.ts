@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAcademicYear } from './useAcademicYear';
-import { useSemester } from './useSemester';
+import { useOptionalSemester } from './useSemester';
 
 export interface Grade {
   id: string;
@@ -46,7 +46,8 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getYearForCreation, getYearForDisplay } = useAcademicYear();
-  const { currentSemester } = useSemester();
+  const semesterContext = useOptionalSemester();
+  const currentSemester = semesterContext?.currentSemester || null;
   
   // Obtenir l'année d'affichage une fois pour la dépendance du useEffect
   const displayYearId = getYearForDisplay();
