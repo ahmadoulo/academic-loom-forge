@@ -30,6 +30,7 @@ import { QuickActions } from "@/components/analytics/QuickActions";
 import { RecentActivity } from "@/components/analytics/RecentActivity";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { SchoolSettings } from "@/components/settings/SchoolSettings";
+import { SchoolSettingsPage } from "@/components/settings/SchoolSettingsPage";
 import { SchoolSidebar } from "@/components/layout/SchoolSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -995,11 +996,7 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "settings" && (
-                <div className="space-y-6">
-                  <SchoolSettings schoolId={school.id} />
-                  <StudentAccountsSection schoolId={school.id} />
-                  <SchoolUserManagement schoolId={school?.id || ""} />
-                </div>
+                <SchoolSettingsPage schoolId={school.id} />
               )}
               
               {activeTab === "documents" && school?.id && (

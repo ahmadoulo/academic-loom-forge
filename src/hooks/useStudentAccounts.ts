@@ -25,22 +25,25 @@ export const useStudentAccounts = (schoolId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAccounts = async () => {
-    if (!schoolId) return;
+  const fetchAccounts = async (yearId?: string) => {
+    if (!schoolId) return [];
     
     try {
       setLoading(true);
-      // Récupérer tous les étudiants de l'école via student_school
-      const { data: enrollments, error: enrollmentsError } = await supabase
+      
+      // Construire la requête pour récupérer les étudiants
+      let query = supabase
         .from('student_school')
         .select(`
           student_id,
           class_id,
+          school_year_id,
           students!inner (
             id,
             firstname,
             lastname,
-            email
+            email,
+            archived
           ),
           classes (
             name
@@ -48,7 +51,14 @@ export const useStudentAccounts = (schoolId?: string) => {
         `)
         .eq('school_id', schoolId)
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('students.archived', false);
+
+      // Filtrer par année scolaire si spécifié
+      if (yearId && yearId !== 'all') {
+        query = query.eq('school_year_id', yearId);
+      }
+
+      const { data: enrollments, error: enrollmentsError } = await query.order('created_at', { ascending: false });
 
       if (enrollmentsError) throw enrollmentsError;
 
@@ -63,9 +73,24 @@ export const useStudentAccounts = (schoolId?: string) => {
       // Créer une map des comptes existants par student_id
       const accountsMap = new Map(studentAccounts?.map(acc => [acc.student_id, acc]) || []);
 
-      // Combiner les données
-      const combinedData: StudentAccount[] = (enrollments || []).map((enrollment: any) => {
+      // Dédupliquer les étudiants (1 étudiant = 1 compte, même avec plusieurs enrollments)
+      const uniqueStudents = new Map<string, any>();
+      
+      (enrollments || []).forEach((enrollment: any) => {
         const student = enrollment.students;
+        const studentId = student.id;
+        
+        // Si l'étudiant n'est pas encore dans la map, l'ajouter
+        if (!uniqueStudents.has(studentId)) {
+          uniqueStudents.set(studentId, {
+            student,
+            enrollment
+          });
+        }
+      });
+
+      // Combiner les données uniques
+      const combinedData: StudentAccount[] = Array.from(uniqueStudents.values()).map(({ student, enrollment }) => {
         const account = accountsMap.get(student.id);
         return {
           id: account?.id || student.id,
@@ -84,10 +109,16 @@ export const useStudentAccounts = (schoolId?: string) => {
         };
       });
 
-      setAccounts(combinedData);
+      // Mettre à jour l'état seulement si pas de yearId (appel par défaut)
+      if (!yearId) {
+        setAccounts(combinedData);
+      }
+      
+      return combinedData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des comptes');
       toast.error('Erreur lors du chargement des comptes étudiants');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -192,6 +223,7 @@ export const useStudentAccounts = (schoolId?: string) => {
     error,
     sendInvitation,
     createStudentAccount,
-    refetch: fetchAccounts
+    refetch: fetchAccounts,
+    fetchAccountsByYear: fetchAccounts
   };
 };
