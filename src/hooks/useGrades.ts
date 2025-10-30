@@ -105,12 +105,14 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
   const createGrade = async (gradeData: CreateGradeData) => {
     try {
       const currentYearId = getYearForCreation();
+      console.log('[useGrades] Creating grade - currentYearId:', currentYearId, 'currentSemester:', currentSemester);
 
       if (!currentYearId) {
         throw new Error('Aucune année scolaire active');
       }
 
       if (!currentSemester) {
+        console.error('[useGrades] No current semester available');
         throw new Error('Aucun semestre actif');
       }
 

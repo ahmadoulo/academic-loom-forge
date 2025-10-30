@@ -20,7 +20,9 @@ export const SemesterProvider = ({ children, schoolId }: SemesterProviderProps) 
   const [loading, setLoading] = useState(true);
 
   const fetchCurrentSemester = async () => {
+    console.log('[SemesterProvider] Fetching semester for schoolId:', schoolId);
     if (!schoolId) {
+      console.log('[SemesterProvider] No schoolId provided');
       setLoading(false);
       return;
     }
@@ -35,11 +37,14 @@ export const SemesterProvider = ({ children, schoolId }: SemesterProviderProps) 
         .eq('is_actual', true)
         .maybeSingle();
 
+      console.log('[SemesterProvider] Query result:', { data, error });
+
       if (error) throw error;
 
       setCurrentSemester(data as unknown as SchoolSemester);
+      console.log('[SemesterProvider] Current semester set:', data);
     } catch (err) {
-      console.error('Error fetching current semester:', err);
+      console.error('[SemesterProvider] Error fetching current semester:', err);
       setCurrentSemester(null);
     } finally {
       setLoading(false);
