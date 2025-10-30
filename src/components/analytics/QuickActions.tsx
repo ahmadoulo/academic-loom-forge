@@ -39,14 +39,22 @@ export function QuickActions({ actions, title = "Accès rapide" }: QuickActionsP
                   key={index}
                   variant={action.variant || "outline"}
                   onClick={action.onClick}
-                  className="flex items-center justify-start gap-3 h-auto p-4 text-left hover:shadow-md transition-all duration-200 border-2 hover:border-primary/30"
+                  className={`flex items-center justify-start gap-3 h-auto p-4 text-left hover:shadow-md transition-all duration-200 border-2 hover:border-primary/30 ${
+                    action.variant === "default" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+                  }`}
                 >
-                  <div className="flex-shrink-0 p-2 rounded-lg bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
+                  <div className={`flex-shrink-0 p-2 rounded-lg ${
+                    action.variant === "default" ? "bg-primary-foreground/20" : "bg-primary/10"
+                  }`}>
+                    <Icon className={`h-5 w-5 ${
+                      action.variant === "default" ? "text-primary-foreground" : "text-primary"
+                    }`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-base">{action.title}</h3>
-                    <p className="text-sm text-muted-foreground">{action.description}</p>
+                    <p className={`text-sm ${
+                      action.variant === "default" ? "text-primary-foreground/80" : "text-muted-foreground"
+                    }`}>{action.description}</p>
                   </div>
                 </Button>
               );

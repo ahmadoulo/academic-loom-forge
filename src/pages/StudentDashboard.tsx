@@ -108,9 +108,11 @@ export default function StudentDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <div className="flex-1 flex flex-col">
+      <div className="min-h-screen flex w-full flex-col lg:flex-row">
+        <div className="sidebar-container">
+          <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+        <div className="flex-1 flex flex-col min-w-0">
           <AuthenticatedHeader 
             title={`${student?.firstname || ''} ${student?.lastname || ''}`}
             onSettingsClick={() => {}}
@@ -121,7 +123,7 @@ export default function StudentDashboard() {
             schoolLogoUrl={school?.logo_url || undefined}
             userRole="student"
           />
-          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
+          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
             {renderContent()}
           </main>
         </div>

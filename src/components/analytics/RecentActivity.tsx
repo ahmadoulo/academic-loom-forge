@@ -64,7 +64,7 @@ export function RecentActivity({ activities, title = "Activité récente" }: Rec
             </div>
           ) : (
             activities.slice(0, 6).map((activity) => (
-              <div key={activity.id} className="flex items-center gap-4 p-4 rounded-xl border hover:shadow-md transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
+              <div key={activity.id} className="flex items-center gap-4 p-4 rounded-xl border border-border hover:shadow-md transition-all duration-200 bg-card">
                 {/* Avatar ou icône */}
                 <div className="flex-shrink-0">
                   {activity.type === "student" && activity.studentName ? (
@@ -80,7 +80,7 @@ export function RecentActivity({ activities, title = "Activité récente" }: Rec
                       </AvatarFallback>
                     </Avatar>
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border-2 border-background shadow-sm">
                       {getActivityIcon(activity.type)}
                     </div>
                   )}
@@ -89,7 +89,7 @@ export function RecentActivity({ activities, title = "Activité récente" }: Rec
                 {/* Contenu */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-base truncate text-gray-900">{activity.title}</h4>
+                    <h4 className="font-semibold text-base truncate text-foreground">{activity.title}</h4>
                     {activity.status && (
                       <Badge className={`text-xs font-medium border ${getStatusColor(activity.status)}`}>
                         {activity.status === "success" ? "Réussi" : 
@@ -98,7 +98,7 @@ export function RecentActivity({ activities, title = "Activité récente" }: Rec
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">{activity.description}</p>
+                  <p className="text-sm text-muted-foreground mb-2">{activity.description}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {formatDistanceToNow(new Date(activity.timestamp), { 

@@ -15,7 +15,10 @@ import {
   Award,
   ClipboardList,
   Clock,
-  Bell
+  Bell,
+  Search,
+  PanelLeftClose,
+  PanelLeft
 } from "lucide-react";
 
 import {
@@ -169,7 +172,8 @@ const menuStructure = [
 ];
 
 export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void }) {
-  const { open } = useSidebar();
+  const { open, setOpen } = useSidebar();
+  const [searchQuery, setSearchQuery] = useState("");
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Gestion académique": true,
     "Suivi pédagogique": true,
@@ -181,25 +185,57 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
     setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
+  const filteredMenuStructure = menuStructure.filter(item => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    if ('value' in item) {
+      return item.title.toLowerCase().includes(query);
+    }
+    return item.category.toLowerCase().includes(query) || 
+           item.items.some(subItem => subItem.title.toLowerCase().includes(query));
+  });
+
   return (
     <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
       <div className="p-4 border-b border-border/50 bg-card">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft">
-            <School className="h-5 w-5 text-primary-foreground" />
-          </div>
-          {open && (
-            <div>
-              <span className="font-bold text-lg text-foreground">Eduvate</span>
-              <p className="text-xs text-muted-foreground">École Admin</p>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft">
+              <School className="h-5 w-5 text-primary-foreground" />
             </div>
-          )}
+            {open && (
+              <div>
+                <span className="font-bold text-lg text-foreground">Eduvate</span>
+                <p className="text-xs text-muted-foreground">École Admin</p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setOpen(!open)}
+            className="p-2 hover:bg-secondary rounded-lg transition-colors"
+            title={open ? "Réduire" : "Développer"}
+          >
+            {open ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+          </button>
         </div>
+        
+        {open && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        )}
       </div>
 
       <SidebarContent className="p-4 overflow-y-auto">
         <div className="space-y-6">
-          {menuStructure.map((item, index) => {
+          {filteredMenuStructure.map((item, index) => {
             // Item simple sans catégorie
             if ('value' in item) {
               return (

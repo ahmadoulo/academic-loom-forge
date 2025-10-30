@@ -142,3 +142,40 @@ Modern Blue & White Theme - All colors MUST be HSL */
     @apply bg-background text-foreground;
   }
 }
+
+/* Responsive utilities */
+@layer utilities {
+  /* Mobile first responsive utilities */
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 z-50 transform transition-transform duration-300;
+  }
+  
+  .sidebar-mobile.closed {
+    @apply -translate-x-full;
+  }
+
+  /* Ensure proper layout on all devices */
+  @media (max-width: 768px) {
+    .sidebar-container {
+      @apply fixed z-50;
+    }
+    
+    .main-content {
+      @apply ml-0 w-full;
+    }
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+    /* Tablet styles */
+    .sidebar-container {
+      @apply relative;
+    }
+  }
+
+  @media (min-width: 1025px) {
+    /* Desktop styles */
+    .sidebar-container {
+      @apply relative;
+    }
+  }
+}

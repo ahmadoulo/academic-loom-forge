@@ -491,26 +491,28 @@ const SchoolDashboard = () => {
   return (
     <SemesterProvider schoolId={school?.id}>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <SchoolSidebar 
-            schoolId={school.identifier}
-            activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <div className="min-h-screen flex w-full flex-col lg:flex-row bg-background">
+          <div className="sidebar-container">
+            <SchoolSidebar 
+              schoolId={school.identifier}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
         
-        <div className="flex-1 flex flex-col">
-          <AuthenticatedHeader 
-            title={school.name}
-            onSettingsClick={handleSettingsClick}
-            showMobileMenu={true}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            schoolName={school.name}
-            schoolLogoUrl={school.logo_url || undefined}
-            userRole="admin"
-          />
+          <div className="flex-1 flex flex-col min-w-0">
+            <AuthenticatedHeader 
+              title={school.name}
+              onSettingsClick={handleSettingsClick}
+              showMobileMenu={true}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              schoolName={school.name}
+              schoolLogoUrl={school.logo_url || undefined}
+              userRole="admin"
+            />
           
-          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
+            <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
             {/* Enhanced Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
               <StatsCard 

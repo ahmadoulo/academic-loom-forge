@@ -214,25 +214,27 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <TeacherSidebar 
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+      <div className="min-h-screen flex w-full flex-col lg:flex-row bg-background">
+        <div className="sidebar-container">
+          <TeacherSidebar 
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        </div>
+        
+        <div className="flex-1 flex flex-col min-w-0">
+          <AuthenticatedHeader 
+            title={`Prof. ${teacher.firstname} ${teacher.lastname}`}
+            onSettingsClick={handleSettingsClick}
+            showMobileMenu={true}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            schoolName={school?.name}
+            schoolLogoUrl={school?.logo_url || undefined}
+            userRole="teacher"
+          />
           
-          <div className="flex-1 flex flex-col">
-            <AuthenticatedHeader 
-              title={`${teacher.firstname} ${teacher.lastname}`}
-              onSettingsClick={handleSettingsClick}
-              showMobileMenu={true}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              schoolName={school?.name}
-              schoolLogoUrl={school?.logo_url || undefined}
-              userRole="teacher"
-            />
-          
-          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
+          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
         {/* Teacher Info Card */}
         <Card className="mb-6 lg:mb-8">
           <CardHeader className="pb-3">
