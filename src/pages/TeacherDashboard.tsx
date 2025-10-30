@@ -27,6 +27,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { SemesterProvider } from "@/hooks/useSemester";
 
 const TeacherDashboard = () => {
   const { teacherId } = useParams();
@@ -168,23 +169,24 @@ const TeacherDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <TeacherSidebar 
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-        
-        <div className="flex-1 flex flex-col">
-          <AuthenticatedHeader 
-            title={`${teacher.firstname} ${teacher.lastname}`}
-            onSettingsClick={handleSettingsClick}
-            showMobileMenu={true}
+      <SemesterProvider schoolId={currentTeacher?.school_id}>
+        <div className="min-h-screen flex w-full bg-background">
+          <TeacherSidebar 
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            schoolName={school?.name}
-            schoolLogoUrl={school?.logo_url || undefined}
-            userRole="teacher"
           />
+          
+          <div className="flex-1 flex flex-col">
+            <AuthenticatedHeader 
+              title={`${teacher.firstname} ${teacher.lastname}`}
+              onSettingsClick={handleSettingsClick}
+              showMobileMenu={true}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              schoolName={school?.name}
+              schoolLogoUrl={school?.logo_url || undefined}
+              userRole="teacher"
+            />
           
           <main className="flex-1 p-4 lg:p-6">
         {/* Teacher Info Card */}
@@ -407,6 +409,7 @@ const TeacherDashboard = () => {
           </main>
         </div>
       </div>
+      </SemesterProvider>
     </SidebarProvider>
   );
 };
