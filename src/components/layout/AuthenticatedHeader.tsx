@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -9,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AcademicYearDisplay } from "@/components/layout/AcademicYearDisplay";
 import { SemesterDisplay } from "@/components/layout/SemesterDisplay";
 import { Badge } from "@/components/ui/badge";
+import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +37,7 @@ interface AuthenticatedHeaderProps {
   schoolName?: string;
   schoolLogoUrl?: string;
   userRole?: 'teacher' | 'student' | 'admin';
+  sidebarContent?: React.ReactNode;
 }
 
 export function AuthenticatedHeader({ 
@@ -46,8 +49,11 @@ export function AuthenticatedHeader({
   menuItems: customMenuItems,
   schoolName,
   schoolLogoUrl,
-  userRole
+  userRole,
+  sidebarContent
 }: AuthenticatedHeaderProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   // Mock user pour l'accès libre
   const profile = {
     first_name: "Admin",
@@ -96,62 +102,21 @@ export function AuthenticatedHeader({
     <header className="border-b border-border bg-card shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <div className="flex items-center space-x-3 lg:space-x-4 min-w-0 flex-1">
-          {showMobileMenu && activeTab && onTabChange && (
-            <div className="md:hidden flex-shrink-0">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0">
-                  <div className="flex flex-col h-full">
-                    <div className="p-4 border-b">
-                      <div className="flex items-center gap-3">
-                        {schoolLogoUrl ? (
-                          <img 
-                            src={schoolLogoUrl} 
-                            alt={schoolName || "École"} 
-                            className="h-10 w-10 rounded-lg object-cover ring-2 ring-primary/20"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary to-primary-dark rounded-lg flex items-center justify-center">
-                            <School className="h-6 w-6 text-primary-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <span className="font-bold text-base truncate block">{schoolName || "Admin Panel"}</span>
-                          <p className="text-xs text-muted-foreground truncate">Gestion système</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 p-4">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-4">Navigation</h3>
-                      <div className="space-y-2">
-                        {menuItems.map((item) => (
-                          <button
-                            key={item.value}
-                            onClick={() => onTabChange(item.value)}
-                            className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
-                              activeTab === item.value 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'hover:bg-muted'
-                            }`}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <div className="flex-1 min-w-0">
-                              <span className="block font-medium truncate">{item.title}</span>
-                              <span className="text-xs opacity-75 truncate block">{item.description}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
+          {showMobileMenu && sidebarContent && (
+            <div className="lg:hidden flex-shrink-0">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
             </div>
           )}
+          
+          <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+            {sidebarContent}
+          </MobileSidebar>
           
           {/* Logo and Branding */}
           <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">

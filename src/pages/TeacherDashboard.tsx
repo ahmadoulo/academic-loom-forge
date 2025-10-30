@@ -232,6 +232,12 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             schoolName={school?.name}
             schoolLogoUrl={school?.logo_url || undefined}
             userRole="teacher"
+            sidebarContent={
+              <TeacherSidebar 
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+              />
+            }
           />
           
           <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">

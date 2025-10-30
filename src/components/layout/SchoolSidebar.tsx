@@ -18,7 +18,9 @@ import {
   Bell,
   Search,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Pin,
+  PinOff
 } from "lucide-react";
 
 import {
@@ -40,6 +42,7 @@ import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 
 interface SchoolSidebarProps {
   schoolId: string;
+  isMobile?: boolean;
 }
 
 const menuStructure = [
@@ -171,9 +174,10 @@ const menuStructure = [
   },
 ];
 
-export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void }) {
+export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = false }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPinned, setIsPinned] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Gestion académique": true,
     "Suivi pédagogique": true,
@@ -183,6 +187,22 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
 
   const toggleCategory = (category: string) => {
     setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
+
+  const handleMouseEnter = () => {
+    if (!isPinned && !isMobile) {
+      setOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isPinned && !isMobile) {
+      setOpen(false);
+    }
+  };
+
+  const togglePin = () => {
+    setIsPinned(!isPinned);
   };
 
   const filteredMenuStructure = menuStructure.filter(item => {
@@ -195,33 +215,50 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
            item.items.some(subItem => subItem.title.toLowerCase().includes(query));
   });
 
+  // Sur mobile, toujours afficher en mode ouvert
+  const isOpen = isMobile ? true : open;
+
   return (
-    <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
-      <div className={`border-b border-border/50 bg-card transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
+    <Sidebar 
+      className={`${!isOpen ? "w-16" : "w-64"} ${isMobile ? '' : 'hidden lg:flex'}`} 
+      collapsible="icon"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className={`border-b border-border/50 bg-card transition-all duration-200 ${!isOpen ? "p-2" : "p-4"}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft shrink-0">
               <School className="h-5 w-5 text-primary-foreground" />
             </div>
-            {open && (
+            {isOpen && (
               <div className="min-w-0 flex-1">
                 <span className="font-bold text-lg text-foreground block truncate">Eduvate</span>
                 <p className="text-xs text-muted-foreground truncate">École Admin</p>
               </div>
             )}
           </div>
-          {open && (
-            <button
-              onClick={() => setOpen(!open)}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors shrink-0"
-              title="Réduire"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
+          {isOpen && !isMobile && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={togglePin}
+                className={`p-2 hover:bg-secondary rounded-lg transition-colors shrink-0 ${isPinned ? 'bg-primary/10 text-primary' : ''}`}
+                title={isPinned ? "Désépingler" : "Épingler"}
+              >
+                {isPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => setOpen(!open)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors shrink-0"
+                title="Réduire"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
         
-        {!open && (
+        {!isOpen && !isMobile && (
           <div className="mt-2 flex justify-center">
             <button
               onClick={() => setOpen(!open)}
@@ -233,7 +270,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
           </div>
         )}
         
-        {open && (
+        {isOpen && (
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -247,7 +284,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
         )}
       </div>
 
-      <SidebarContent className={`overflow-y-auto transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
+      <SidebarContent className={`overflow-y-auto transition-all duration-200 ${!isOpen ? "p-2" : "p-4"}`}>
         <div className="space-y-4">
           {filteredMenuStructure.map((item, index) => {
             // Item simple sans catégorie
@@ -257,28 +294,28 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
                   <button
                     onClick={() => onTabChange(item.value)}
                     className={`w-full flex items-center justify-center lg:justify-start gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      !open ? "p-3" : "px-4 py-3"
+                      !isOpen ? "p-3" : "px-4 py-3"
                     } ${
                       activeTab === item.value
                         ? 'bg-primary text-primary-foreground shadow-soft'
                         : 'hover:bg-secondary text-foreground'
                     }`}
-                    title={!open ? item.title : undefined}
+                    title={!isOpen ? item.title : undefined}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
-                    {open && <span className="truncate">{item.title}</span>}
+                    {isOpen && <span className="truncate">{item.title}</span>}
                   </button>
                 </div>
               );
             }
 
             // Catégorie avec sous-menu
-            const isOpen = openCategories[item.category] ?? false;
+            const isOpenCat = openCategories[item.category] ?? false;
             const CategoryIcon = item.icon;
 
             return (
               <div key={item.category} className="space-y-2">
-                {!open ? (
+                {!isOpen ? (
                   // Mode réduit : afficher les items directement
                   <>
                     {item.items.map(subItem => (
@@ -306,10 +343,10 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
                       <CategoryIcon className="h-4 w-4 shrink-0" />
                       <span className="flex-1 text-left truncate">{item.category}</span>
                       <ChevronDown 
-                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpenCat ? 'rotate-180' : ''}`} 
                       />
                     </button>
-                    {isOpen && (
+                    {isOpenCat && (
                       <div className="space-y-1 pl-2 animate-accordion-down">
                         {item.items.map(subItem => (
                           <button
@@ -334,9 +371,11 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange }: SchoolSideba
           })}
         </div>
         
-        <div className="mt-8 pt-6 border-t border-border/50">
-          <AcademicYearSidebarSection context="school" />
-        </div>
+        {!isMobile && (
+          <div className="mt-8 pt-6 border-t border-border/50">
+            <AcademicYearSidebarSection context="school" />
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );

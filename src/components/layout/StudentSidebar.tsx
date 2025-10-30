@@ -13,7 +13,9 @@ import {
   BookMarked,
   Search,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Pin,
+  PinOff
 } from "lucide-react";
 
 import {
@@ -93,6 +95,7 @@ const menuStructure = [
 export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPinned, setIsPinned] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Scolarité": true,
     "Communication": false,
@@ -100,6 +103,22 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
 
   const toggleCategory = (category: string) => {
     setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
+
+  const handleMouseEnter = () => {
+    if (!isPinned) {
+      setOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isPinned) {
+      setOpen(false);
+    }
+  };
+
+  const togglePin = () => {
+    setIsPinned(!isPinned);
   };
 
   const filteredMenuStructure = menuStructure.filter(item => {
@@ -113,7 +132,12 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
   });
 
   return (
-    <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
+    <Sidebar 
+      className={`${!open ? "w-16" : "w-64"} hidden lg:flex`} 
+      collapsible="icon"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className={`border-b border-border/50 bg-card transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -128,13 +152,22 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
             )}
           </div>
           {open && (
-            <button
-              onClick={() => setOpen(!open)}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors shrink-0"
-              title="Réduire"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={togglePin}
+                className={`p-2 hover:bg-secondary rounded-lg transition-colors shrink-0 ${isPinned ? 'bg-primary/10 text-primary' : ''}`}
+                title={isPinned ? "Désépingler" : "Épingler"}
+              >
+                {isPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => setOpen(!open)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors shrink-0"
+                title="Réduire"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
         

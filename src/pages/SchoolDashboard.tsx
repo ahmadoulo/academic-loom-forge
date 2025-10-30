@@ -501,16 +501,24 @@ const SchoolDashboard = () => {
           </div>
         
           <div className="flex-1 flex flex-col min-w-0">
-            <AuthenticatedHeader 
-              title={school.name}
-              onSettingsClick={handleSettingsClick}
-              showMobileMenu={true}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              schoolName={school.name}
-              schoolLogoUrl={school.logo_url || undefined}
-              userRole="admin"
-            />
+          <AuthenticatedHeader 
+            title={school.name}
+            onSettingsClick={handleSettingsClick}
+            showMobileMenu={true}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            schoolName={school.name}
+            schoolLogoUrl={school.logo_url || undefined}
+            userRole="admin"
+            sidebarContent={
+              <SchoolSidebar 
+                schoolId={school.identifier}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                isMobile={true}
+              />
+            }
+          />
           
             <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
             {/* Enhanced Stats Cards */}
