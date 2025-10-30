@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, FileDown } from "lucide-react";
 import { StudentsGrading } from "./StudentsGrading";
 
 interface Class {
@@ -41,6 +41,7 @@ interface TeacherGradesViewProps {
   grades: Grade[];
   onSaveGrade: (studentId: string, subjectId: string, grade: number, gradeType: string, comment?: string) => Promise<void>;
   onDeleteGrade: (gradeId: string) => Promise<void>;
+  onExportCSV: (classId: string, subjectId: string) => void;
 }
 
 export function TeacherGradesView({ 
@@ -49,7 +50,8 @@ export function TeacherGradesView({
   students, 
   grades,
   onSaveGrade,
-  onDeleteGrade 
+  onDeleteGrade,
+  onExportCSV 
 }: TeacherGradesViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -68,15 +70,35 @@ export function TeacherGradesView({
 
   if (showGrading && classData && subjectData) {
     return (
-      <StudentsGrading
-        classData={classData}
-        subjectData={subjectData}
-        students={classStudents}
-        grades={grades}
-        onBack={() => setShowGrading(false)}
-        onSaveGrade={onSaveGrade}
-        onDeleteGrade={onDeleteGrade}
-      />
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => setShowGrading(false)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Button>
+          <Button 
+            onClick={() => onExportCSV(selectedClass, selectedSubject)}
+            variant="outline"
+            className="gap-2"
+          >
+            <FileDown className="h-4 w-4" />
+            Exporter CSV
+          </Button>
+        </div>
+        <StudentsGrading
+          classData={classData}
+          subjectData={subjectData}
+          students={classStudents}
+          grades={grades}
+          onBack={() => setShowGrading(false)}
+          onSaveGrade={onSaveGrade}
+          onDeleteGrade={onDeleteGrade}
+        />
+      </div>
     );
   }
 

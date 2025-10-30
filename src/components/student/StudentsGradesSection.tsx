@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookOpen, TrendingUp, Calendar, User, Download, FileText } from "lucide-react";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useGrades } from "@/hooks/useGrades";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -27,7 +29,8 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { getYearForDisplay } = useAcademicYear();
   const displayYearId = getYearForDisplay();
-  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId);
+  const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId, selectedSemester || undefined);
   
   console.log('DEBUG StudentGradesSection:', { 
     studentId, 
@@ -36,6 +39,16 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     gradesCount: grades?.length,
     grades: grades
   });
+
+  const { semesters } = useSchoolSemesters(student?.school_id, displayYearId);
+  
+  // Définir le semestre actuel par défaut
+  useEffect(() => {
+    const currentSemester = semesters.find(s => s.is_actual);
+    if (currentSemester && !selectedSemester) {
+      setSelectedSemester(currentSemester.id);
+    }
+  }, [semesters]);
 
   // Créer une liste de matières basée sur les notes existantes et les matières de la classe
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
@@ -186,14 +199,27 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Mes Notes - Bulletin</h1>
           <p className="text-muted-foreground">
             {student.firstname} {student.lastname} - {student.classes.name} - {student.schools.name}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrer par semestre" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Tous les semestres</SelectItem>
+              {semesters.map((sem) => (
+                <SelectItem key={sem.id} value={sem.id}>
+                  {sem.name} {sem.is_actual && "(Actuel)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {grades.length > 0 && (
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-600" />

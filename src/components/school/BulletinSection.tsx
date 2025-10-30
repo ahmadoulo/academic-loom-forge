@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useGrades } from "@/hooks/useGrades";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -23,8 +24,6 @@ interface BulletinSectionProps {
   grades: any[];
   subjects: any[];
   loading: boolean;
-  selectedSemester: string;
-  onSemesterChange: (semesterId: string) => void;
 }
 
 export const BulletinSection = ({
@@ -37,13 +36,21 @@ export const BulletinSection = ({
   grades,
   subjects,
   loading,
-  selectedSemester,
-  onSemesterChange,
 }: BulletinSectionProps) => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedSemester, setSelectedSemester] = useState<string>("");
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
   const { selectedYear } = useAcademicYear();
   const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
+  const { grades: filteredGrades } = useGrades(undefined, undefined, undefined, selectedYear?.id, selectedSemester || undefined);
+  
+  // Définir le semestre actuel par défaut
+  React.useEffect(() => {
+    const currentSemester = semesters.find(s => s.is_actual);
+    if (currentSemester && !selectedSemester) {
+      setSelectedSemester(currentSemester.id);
+    }
+  }, [semesters]);
   
   // Convertir le logo en base64 au chargement
   React.useEffect(() => {
@@ -60,6 +67,8 @@ export const BulletinSection = ({
     convertLogo();
   }, [schoolLogoUrl]);
 
+  const displayGrades = filteredGrades.length > 0 ? filteredGrades : grades;
+
   // Grouper les étudiants par classe
   const studentsByClass = useMemo(() => {
     const grouped: Record<string, any[]> = {};
@@ -71,7 +80,7 @@ export const BulletinSection = ({
       }
       
       // Calculer les notes de l'étudiant
-      const studentGrades = grades.filter(g => g.student_id === student.id);
+      const studentGrades = displayGrades.filter(g => g.student_id === student.id);
       const average = studentGrades.length > 0
         ? studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length
         : 0;
@@ -89,11 +98,11 @@ export const BulletinSection = ({
     });
     
     return grouped;
-  }, [students, grades]);
+  }, [students, displayGrades]);
 
   // Calculer les détails de notes d'un étudiant
   const getStudentGradeDetails = (studentId: string) => {
-    const studentGrades = grades.filter(g => g.student_id === studentId);
+    const studentGrades = displayGrades.filter(g => g.student_id === studentId);
     
     // Grouper les notes par matière
     const gradesBySubject: Record<string, any[]> = {};
@@ -136,7 +145,7 @@ export const BulletinSection = ({
     try {
       const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
       const studentClass = classes.find(c => c.id === student.class_id);
-      const semesterData = selectedSemester === "all" 
+      const semesterData = !selectedSemester 
         ? { name: "Tous les semestres" }
         : semesters.find(s => s.id === selectedSemester);
       
@@ -170,7 +179,7 @@ export const BulletinSection = ({
 
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
-      const semesterData = selectedSemester === "all" 
+      const semesterData = !selectedSemester 
         ? { name: "Tous les semestres" }
         : semesters.find(s => s.id === selectedSemester);
 
@@ -367,15 +376,15 @@ export const BulletinSection = ({
           </p>
         </div>
         
-        <Select value={selectedSemester} onValueChange={onSemesterChange}>
+        <Select value={selectedSemester} onValueChange={setSelectedSemester}>
           <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Filtrer par semestre" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les semestres</SelectItem>
+            <SelectItem value="">Tous les semestres</SelectItem>
             {semesters.map((sem) => (
               <SelectItem key={sem.id} value={sem.id}>
-                {sem.name}
+                {sem.name} {sem.is_actual && "(Actuel)"}
               </SelectItem>
             ))}
           </SelectContent>

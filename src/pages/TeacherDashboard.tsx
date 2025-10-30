@@ -30,6 +30,7 @@ import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
+import { toast } from "sonner";
 
 const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined }) => {
   const [teacher, setTeacher] = useState<any>(null);
@@ -72,7 +73,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
   // useGrades avec filtrage par semestre
-  const { grades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId, selectedSemester);
+  const { grades: filteredGrades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId, selectedSemester);
 
   const handleViewStudents = (classId: string, subjectId: string) => {
     const classData = teacherClasses.find(tc => tc.class_id === classId);
@@ -110,6 +111,45 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
 
   const handleDeleteGrade = async (gradeId: string) => {
     await deleteGrade(gradeId);
+  };
+
+  const handleExportGradesCSV = (classId: string, subjectId: string) => {
+    try {
+      const classData = teacherClasses.find(tc => tc.class_id === classId);
+      const subjectData = subjects.find(s => s.id === subjectId);
+      const classStudents = students.filter(s => s.class_id === classId);
+      
+      const csvData = classStudents.map(student => {
+        const studentGrades = filteredGrades.filter(g => g.student_id === student.id && g.subject_id === subjectId);
+        const average = studentGrades.length > 0
+          ? (studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length).toFixed(2)
+          : 'N/A';
+        
+        return {
+          'Prénom': student.firstname,
+          'Nom': student.lastname,
+          'Nombre de notes': studentGrades.length,
+          'Moyenne': average
+        };
+      });
+
+      const headers = Object.keys(csvData[0] || {});
+      const csv = [
+        headers.join(','),
+        ...csvData.map(row => headers.map(header => `"${row[header as keyof typeof row]}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `notes_${classData?.classes.name}_${subjectData?.name}_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      
+      toast.success("CSV exporté avec succès");
+    } catch (error) {
+      console.error('Erreur export CSV:', error);
+      toast.error("Erreur lors de l'export CSV");
+    }
   };
 
   useEffect(() => {
@@ -327,9 +367,10 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                 teacherClasses={teacherClasses}
                 subjects={subjects}
                 students={teacherStudents}
-                grades={grades}
+                grades={filteredGrades}
                 onSaveGrade={handleSaveGrade}
                 onDeleteGrade={handleDeleteGrade}
+                onExportCSV={handleExportGradesCSV}
               />
             )}
 
