@@ -121,7 +121,7 @@ export default function StudentDashboard() {
             schoolLogoUrl={school?.logo_url || undefined}
             userRole="student"
           />
-          <main className="flex-1 p-4 lg:p-6 bg-background">
+          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
             {renderContent()}
           </main>
         </div>

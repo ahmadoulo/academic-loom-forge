@@ -99,8 +99,8 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
   };
 
   return (
-    <Sidebar className={!open ? "w-16" : "w-72"} collapsible="icon">
-      <div className="p-6 border-b border-border/50">
+    <Sidebar className={!open ? "w-16" : "w-64"} collapsible="icon">
+      <div className="p-4 border-b border-border/50 bg-card">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />

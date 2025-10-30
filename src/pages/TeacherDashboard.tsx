@@ -232,7 +232,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
               userRole="teacher"
             />
           
-          <main className="flex-1 p-4 lg:p-6">
+          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
         {/* Teacher Info Card */}
         <Card className="mb-6 lg:mb-8">
           <CardHeader className="pb-3">

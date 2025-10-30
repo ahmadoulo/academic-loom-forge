@@ -44,7 +44,7 @@ const tabLabels: Record<string, string> = {
 
 export function SettingsLayout({ children, activeTab, onTabChange, availableTabs }: SettingsLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-light via-background to-accent-light p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">
@@ -57,10 +57,10 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar */}
-          <div className="lg:w-72 shrink-0">
-            <Card className="shadow-soft border border-border bg-card/80 backdrop-blur-sm sticky top-6">
+          <div className="lg:w-64 shrink-0">
+            <Card className="border border-border bg-card/95 backdrop-blur-sm sticky top-6">
               <ScrollArea className="h-auto lg:h-[calc(100vh-12rem)]">
-                <div className="p-6 space-y-8">
+                <div className="p-4 space-y-6">
                   {Object.entries(sectionConfig).map(([key, section]) => {
                     const Icon = section.icon;
                     const sectionTabs = section.tabs.filter(tab => availableTabs.includes(tab));
@@ -68,8 +68,8 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
                     if (sectionTabs.length === 0) return null;
                     
                     return (
-                      <div key={key} className="space-y-3">
-                        <div className="flex items-center gap-3 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div key={key} className="space-y-2">
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90">
                           <Icon className="h-4 w-4" />
                           <span>{section.title}</span>
                         </div>
@@ -79,7 +79,7 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
                               key={tab}
                               onClick={() => onTabChange(tab)}
                               className={cn(
-                                "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                                "w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                                 activeTab === tab
                                   ? "bg-primary text-primary-foreground shadow-soft"
                                   : "hover:bg-secondary text-foreground hover:translate-x-1"
@@ -99,7 +99,7 @@ export function SettingsLayout({ children, activeTab, onTabChange, availableTabs
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
-            <Card className="shadow-soft border border-border bg-card/80 backdrop-blur-sm">
+            <Card className="border border-border bg-card">
               <div className="p-6 md:p-8">
                 {children}
               </div>

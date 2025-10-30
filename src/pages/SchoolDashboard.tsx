@@ -510,7 +510,7 @@ const SchoolDashboard = () => {
             userRole="admin"
           />
           
-          <main className="flex-1 p-4 lg:p-6">
+          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto">
             {/* Enhanced Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
               <StatsCard 
