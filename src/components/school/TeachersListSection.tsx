@@ -4,21 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserCog, Search, Archive, Loader2, Pencil, ExternalLink, Mail, Phone } from "lucide-react";
+import { UserCog, Search, Archive, Loader2, Pencil, ExternalLink, Mail, Phone, Eye } from "lucide-react";
 import { Teacher } from "@/hooks/useTeachers";
+import { toast } from "sonner";
 
 interface TeachersListSectionProps {
   teachers: Teacher[];
   loading: boolean;
   onArchiveTeacher: (id: string, name: string) => void;
   onEditTeacher: (teacher: Teacher) => void;
+  onViewTeacher: (teacher: Teacher) => void;
 }
 
 export function TeachersListSection({ 
   teachers, 
   loading, 
   onArchiveTeacher,
-  onEditTeacher 
+  onEditTeacher,
+  onViewTeacher
 }: TeachersListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -151,6 +154,15 @@ export function TeachersListSection({
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => onViewTeacher(teacher)}
+                              className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
+                              title="Voir les détails"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => onEditTeacher(teacher)}
                               className="hover:bg-primary hover:text-primary-foreground"
                             >
@@ -160,7 +172,16 @@ export function TeachersListSection({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(`/teacher-dashboard/${teacher.id}`, '_blank')}
+                              onClick={() => {
+                                if (teacher.status === 'inactive' || teacher.archived) {
+                                  toast.error('Accès refusé', {
+                                    description: 'Ce compte professeur est inactif ou archivé'
+                                  });
+                                  return;
+                                }
+                                window.open(`/teacher/${teacher.id}`, '_blank');
+                              }}
+                              disabled={teacher.status === 'inactive' || teacher.archived}
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>

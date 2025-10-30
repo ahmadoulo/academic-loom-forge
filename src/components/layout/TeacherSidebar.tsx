@@ -41,8 +41,7 @@ const menuStructure = [
   { 
     title: "Tableau de bord", 
     value: "dashboard",
-    icon: Home,
-    href: "/teacher"
+    icon: Home
   },
   {
     category: "Enseignement",
@@ -51,20 +50,17 @@ const menuStructure = [
       { 
         title: "Mes Classes", 
         value: "classes",
-        icon: Users,
-        href: "/teacher"
+        icon: Users
       },
       { 
         title: "Mes Matières", 
         value: "subjects",
-        icon: BookOpen,
-        href: "/teacher"
+        icon: BookOpen
       },
       { 
         title: "Publier un Devoir", 
         value: "assignments",
-        icon: FileText,
-        href: "/teacher"
+        icon: FileText
       },
     ]
   },
@@ -75,20 +71,17 @@ const menuStructure = [
       { 
         title: "Présence", 
         value: "attendance-view",
-        icon: UserCheck,
-        href: "/teacher"
+        icon: UserCheck
       },
       { 
         title: "Gestion des Notes", 
         value: "grades",
-        icon: BookOpen,
-        href: "/teacher"
+        icon: BookOpen
       },
       { 
         title: "Analytics", 
         value: "analytics",
-        icon: BarChart3,
-        href: "/teacher"
+        icon: BarChart3
       },
     ]
   },
@@ -99,20 +92,17 @@ const menuStructure = [
       { 
         title: "Calendrier", 
         value: "calendar",
-        icon: Calendar,
-        href: "/teacher"
+        icon: Calendar
       },
       { 
         title: "Événements", 
         value: "events",
-        icon: CalendarDays,
-        href: "/teacher"
+        icon: CalendarDays
       },
       { 
         title: "Annonces", 
         value: "announcements",
-        icon: Megaphone,
-        href: "/teacher"
+        icon: Megaphone
       },
     ]
   },

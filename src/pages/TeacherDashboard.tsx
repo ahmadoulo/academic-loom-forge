@@ -208,6 +208,23 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
     );
   }
 
+  // Check if account is inactive or archived
+  if (teacher.status === 'inactive' || teacher.archived) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2 text-destructive">Accès refusé</h1>
+          <p className="text-muted-foreground">
+            Ce compte professeur est {teacher.archived ? 'archivé' : 'inactif'} et n'a plus accès à l'interface.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Veuillez contacter l'administrateur pour plus d'informations.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const handleSettingsClick = () => {
     // Add settings functionality if needed
   };

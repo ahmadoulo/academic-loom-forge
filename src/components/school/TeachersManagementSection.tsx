@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserCog, Users, Archive } from "lucide-react";
 import { TeachersListSection } from "./TeachersListSection";
 import { TeacherDetailsDialog } from "./TeacherDetailsDialog";
+import { TeacherViewDialog } from "./TeacherViewDialog";
 import { TeacherClassAssignment } from "@/components/admin/TeacherClassAssignment";
 import { ArchivedTeachersSection } from "./ArchivedTeachersSection";
 import { Teacher } from "@/hooks/useTeachers";
@@ -25,10 +26,16 @@ export function TeachersManagementSection({
 }: TeachersManagementSectionProps) {
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
   const handleEditTeacher = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleViewTeacher = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setIsViewDialogOpen(true);
   };
 
   return (
@@ -57,6 +64,7 @@ export function TeachersManagementSection({
                 loading={loading}
                 onArchiveTeacher={onArchiveTeacher}
                 onEditTeacher={handleEditTeacher}
+                onViewTeacher={handleViewTeacher}
               />
             </TabsContent>
 
@@ -76,6 +84,12 @@ export function TeachersManagementSection({
         open={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         onSave={onUpdateTeacher}
+      />
+
+      <TeacherViewDialog
+        teacher={selectedTeacher}
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
       />
     </>
   );
