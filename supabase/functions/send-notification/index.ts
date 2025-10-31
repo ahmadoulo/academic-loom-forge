@@ -7,11 +7,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+interface NotificationRecipient {
+  email: string;
+  name: string;
+}
+
 interface NotificationRequest {
-  recipients: string[];
+  recipients: NotificationRecipient[];
   subject: string;
   message: string;
   schoolId: string;
+  recipientType: string;
+  classId?: string;
+  sentBy?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,30 +28,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { recipients, subject, message, schoolId }: NotificationRequest = await req.json();
+    const { recipients, subject, message, schoolId, recipientType, classId, sentBy }: NotificationRequest = await req.json();
 
     console.log(`Sending notification to ${recipients.length} recipient(s)`);
 
     // Initialize Supabase client
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     // Get school information
-    const { data: school, error: schoolError } = await supabaseClient
+    const { data: schoolData, error: schoolError } = await supabaseAdmin
       .from('schools')
-      .select('name, logo_url, city, phone, website')
+      .select('name, logo_url, address, phone, website')
       .eq('id', schoolId)
       .single();
 
-    if (schoolError || !school) {
+    if (schoolError || !schoolData) {
       console.error('School not found:', schoolError);
       throw new Error('École non trouvée');
     }
 
-    const schoolName = school.name;
-    console.log(`Sending from school: ${schoolName}`);
+    console.log(`Sending from school: ${schoolData.name}`);
 
     // Get Resend API key
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -51,140 +58,181 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('RESEND_API_KEY non configurée');
     }
 
-    // Create beautiful email HTML
-    const createEmailHtml = (recipientEmail: string) => `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject}</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa;">
-        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f7fa; padding: 40px 20px;">
-          <tr>
-            <td align="center">
-              <!-- Main Container -->
-              <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);">
-                
-                <!-- Header with gradient and logo -->
-                <tr>
-                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 50px 30px; text-align: center;">
-                    ${school.logo_url ? `<img src="${school.logo_url}" alt="${schoolName}" style="width: 80px; height: 80px; border-radius: 50%; background: white; padding: 10px; margin-bottom: 20px; object-fit: contain;" />` : ''}
-                    <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                      ${schoolName}
-                    </h1>
-                    <p style="margin: 12px 0 0 0; color: #e0e7ff; font-size: 15px; font-weight: 500;">
-                      📧 Notification officielle
-                    </p>
-                  </td>
-                </tr>
+    // Create beautiful email template
+    const createEmailTemplate = (schoolData: any, subject: string, message: string) => {
+      const schoolName = schoolData?.name || 'École';
+      const schoolAddress = schoolData?.address || '';
+      const schoolPhone = schoolData?.phone || '';
+      const schoolWebsite = schoolData?.website || '';
+      const schoolLogo = schoolData?.logo_url || '';
 
-                <!-- Subject Badge -->
-                <tr>
-                  <td style="padding: 40px 30px 0 30px;">
-                    <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                      <h2 style="margin: 0; color: #1f2937; font-size: 24px; font-weight: 700; line-height: 1.3;">
-                        ${subject}
-                      </h2>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Message Content -->
-                <tr>
-                  <td style="padding: 0 30px 40px 30px;">
-                    <div style="color: #4b5563; font-size: 16px; line-height: 1.8; white-space: pre-wrap;">
-                      ${message.replace(/\n/g, '<br>')}
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Decorative Divider -->
-                <tr>
-                  <td style="padding: 0 30px;">
-                    <div style="height: 2px; background: linear-gradient(90deg, transparent, #e5e7eb, transparent);"></div>
-                  </td>
-                </tr>
-
-                <!-- Footer with school details -->
-                <tr>
-                  <td style="padding: 40px 30px; background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);">
-                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                      <tr>
-                        <td style="text-align: center; padding-bottom: 20px;">
-                          <div style="display: inline-block; background: white; padding: 20px 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                            <p style="margin: 0 0 12px 0; color: #1f2937; font-size: 16px; font-weight: 700;">
-                              ${schoolName}
-                            </p>
-                            ${school.city ? `<p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">📍 ${school.city}</p>` : ''}
-                            ${school.phone ? `<p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">📞 ${school.phone}</p>` : ''}
-                            ${school.website ? `<p style="margin: 0; color: #667eea; font-size: 14px;"><a href="${school.website}" style="color: #667eea; text-decoration: none; font-weight: 500;">🌐 ${school.website}</a></p>` : ''}
+      return `
+        <!DOCTYPE html>
+        <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${subject}</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
+            <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse;">
+              <tr>
+                <td>
+                  <!-- Header Card -->
+                  <table role="presentation" style="width: 100%; background: white; border-radius: 16px 16px 0 0; overflow: hidden;">
+                    <tr>
+                      <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        ${schoolLogo ? `
+                          <div style="background: white; display: inline-block; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <img src="${schoolLogo}" alt="${schoolName}" style="max-width: 100px; height: auto; display: block;">
                           </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                          <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.6;">
-                            Cet email a été envoyé à <strong>${recipientEmail}</strong><br>
-                            Pour toute question, veuillez contacter l'administration de l'école.
+                        ` : ''}
+                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">Plateforme Scolaire</h1>
+                        <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 18px; font-weight: 500;">${schoolName}</p>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Content Card -->
+                  <table role="presentation" style="width: 100%; background: white;">
+                    <tr>
+                      <td style="padding: 40px 30px;">
+                        <!-- Subject -->
+                        <div style="background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 20px; border-radius: 12px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+                          <h2 style="margin: 0; color: #1a202c; font-size: 20px; font-weight: 600;">${subject}</h2>
+                        </div>
+
+                        <!-- Message -->
+                        <div style="color: #2d3748; font-size: 15px; line-height: 1.8; margin-bottom: 30px;">
+                          ${message.replace(/\n/g, '<br>')}
+                        </div>
+
+                        <!-- Divider -->
+                        <div style="border-top: 2px solid #e2e8f0; margin: 30px 0;"></div>
+
+                        <!-- Info Box -->
+                        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                          <p style="margin: 0 0 8px; color: #718096; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Information</p>
+                          <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.6;">
+                            Ce message a été envoyé automatiquement depuis la plateforme de gestion scolaire. Pour toute question, veuillez contacter l'établissement.
                           </p>
-                          <p style="margin: 16px 0 0 0; color: #d1d5db; font-size: 11px;">
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Footer Card -->
+                  <table role="presentation" style="width: 100%; background: #1a202c; border-radius: 0 0 16px 16px;">
+                    <tr>
+                      <td style="padding: 30px; text-align: center;">
+                        <p style="margin: 0 0 15px; color: #e2e8f0; font-size: 16px; font-weight: 600;">${schoolName}</p>
+                        
+                        ${schoolAddress ? `
+                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 14px; line-height: 1.6;">
+                            📍 ${schoolAddress}
+                          </p>
+                        ` : ''}
+                        
+                        ${schoolPhone ? `
+                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 14px;">
+                            📞 ${schoolPhone}
+                          </p>
+                        ` : ''}
+                        
+                        ${schoolWebsite ? `
+                          <p style="margin: 0 0 15px; color: #a0aec0; font-size: 14px;">
+                            🌐 <a href="${schoolWebsite}" style="color: #667eea; text-decoration: none;">${schoolWebsite}</a>
+                          </p>
+                        ` : ''}
+
+                        <div style="border-top: 1px solid #2d3748; margin: 20px 0; padding-top: 20px;">
+                          <p style="margin: 0; color: #718096; font-size: 12px;">
                             © ${new Date().getFullYear()} ${schoolName}. Tous droits réservés.
                           </p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `;
+    };
 
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
+    // Send emails and collect results
+    const results = [];
+    const notificationRecords = [];
 
-    // Send emails to all recipients using Resend API
-    const emailPromises = recipients.map(async (email) => {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: `${schoolName} <noreply@ndiambour-it.com>`,
-          to: [email],
-          subject: subject,
-          html: createEmailHtml(email),
-        }),
-      });
+    for (const recipient of recipients) {
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: `${schoolData.name} <noreply@ndiambour-it.com>`,
+            to: [recipient.email],
+            subject: subject,
+            html: createEmailTemplate(schoolData, subject, message),
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        console.error(`Failed to send email to ${email}:`, error);
-        throw new Error(`Failed to send email to ${email}`);
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`Failed to send email to ${recipient.email}:`, error);
+          results.push({ email: recipient.email, success: false, error: error.message });
+        } else {
+          const emailResponse = await response.json();
+          console.log(`Email sent to ${recipient.email}:`, emailResponse);
+          
+          results.push({ 
+            email: recipient.email, 
+            success: true,
+            id: emailResponse.id
+          });
+
+          // Store notification record
+          notificationRecords.push({
+            school_id: schoolId,
+            recipient_type: recipientType,
+            recipient_email: recipient.email,
+            recipient_name: recipient.name,
+            subject: subject,
+            message: message,
+            class_id: classId || null,
+            sent_by: sentBy || null
+          });
+        }
+      } catch (error: any) {
+        console.error(`Error sending to ${recipient.email}:`, error);
+        results.push({ email: recipient.email, success: false, error: error.message });
       }
+    }
 
-      return response.json();
-    });
+    // Save all notification records to database
+    if (notificationRecords.length > 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from('school_notifications')
+        .insert(notificationRecords);
+      
+      if (insertError) {
+        console.error('Error saving notification records:', insertError);
+      } else {
+        console.log(`Saved ${notificationRecords.length} notification records`);
+      }
+    }
 
-    const results = await Promise.allSettled(emailPromises);
-    
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
 
-    console.log(`Email results: ${successful} successful, ${failed} failed`);
+    console.log(`Successfully sent ${successful} notifications, ${failed} failed`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sent: successful,
-        failed: failed,
-        total: recipients.length
-      }), 
+      JSON.stringify({ success: true, results, sent: successful, failed }),
       {
         status: 200,
         headers: {

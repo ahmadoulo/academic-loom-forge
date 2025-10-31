@@ -163,6 +163,7 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
       firstname: p.tutor_name,
       lastname: "",
       email: p.tutor_email,
+      name: p.tutor_name
     }));
 
   if (loading) {
@@ -270,7 +271,7 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         recipients={selectedParentsList}
-        type="student"
+        type="parent"
         schoolId={schoolId}
       />
     </div>

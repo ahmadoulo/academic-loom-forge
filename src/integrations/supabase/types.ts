@@ -840,6 +840,63 @@ export type Database = {
           },
         ]
       }
+      school_notifications: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          id: string
+          message: string
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          school_id: string
+          sent_at: string
+          sent_by: string | null
+          subject: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          school_id: string
+          sent_at?: string
+          sent_by?: string | null
+          subject: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_email?: string
+          recipient_name?: string
+          recipient_type?: string
+          school_id?: string
+          sent_at?: string
+          sent_by?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_notifications_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_notifications_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_semester: {
         Row: {
           archived: boolean | null

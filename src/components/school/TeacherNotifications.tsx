@@ -112,7 +112,10 @@ export function TeacherNotifications({ schoolId }: TeacherNotificationsProps) {
     setDialogOpen(true);
   };
 
-  const selectedTeachersList = teachers.filter((t) => selectedTeachers.has(t.id));
+  const selectedTeachersList = teachers.filter((t) => selectedTeachers.has(t.id)).map(t => ({
+    ...t,
+    name: `${t.firstname} ${t.lastname}`
+  }));
 
   if (loading) {
     return <div className="p-4">Chargement...</div>;

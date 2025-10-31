@@ -17,8 +17,8 @@ import { toast } from "sonner";
 interface NotificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  recipients: Array<{ id: string; firstname: string; lastname: string; email?: string | null }>;
-  type: "student" | "teacher";
+  recipients: Array<{ id: string; firstname: string; lastname: string; email?: string | null; name?: string }>;
+  type: "student" | "teacher" | "parent";
   schoolId: string;
 }
 
@@ -47,12 +47,22 @@ export function NotificationDialog({
 
     setSending(true);
     try {
+      // Get current user for sent_by
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const recipientsList = validRecipients.map(r => ({
+        email: r.email!,
+        name: r.name || `${r.firstname} ${r.lastname}`
+      }));
+
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
-          recipients: validRecipients.map(r => r.email),
+          recipients: recipientsList,
           subject: subject.trim(),
           message: message.trim(),
           schoolId: schoolId,
+          recipientType: type,
+          sentBy: user?.id || null
         },
       });
 
@@ -76,7 +86,8 @@ export function NotificationDialog({
         <DialogHeader>
           <DialogTitle>Envoyer une notification</DialogTitle>
           <DialogDescription>
-            Notification sera envoyée à {recipients.length} {type === "student" ? "étudiant(s)" : "professeur(s)"}
+            Notification sera envoyée à {recipients.length}{" "}
+            {type === "student" ? "étudiant(s)" : type === "teacher" ? "professeur(s)" : "parent(s)"}
           </DialogDescription>
         </DialogHeader>
         

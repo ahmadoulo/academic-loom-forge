@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 import { StudentNotifications } from "./StudentNotifications";
 import { TeacherNotifications } from "./TeacherNotifications";
 import { ParentNotifications } from "./ParentNotifications";
+import { NotificationHistorySection } from "./NotificationHistorySection";
 
 interface NotificationsSectionProps {
   schoolId: string;
@@ -24,12 +25,13 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="students" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="students">Étudiants</TabsTrigger>
               <TabsTrigger value="teachers">Professeurs</TabsTrigger>
               <TabsTrigger value="parents">Parents</TabsTrigger>
+              <TabsTrigger value="history">Historique</TabsTrigger>
               <TabsTrigger value="staff" disabled>
-                Staff École
+                Staff
               </TabsTrigger>
             </TabsList>
 
@@ -43,6 +45,10 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
 
             <TabsContent value="parents" className="mt-6">
               <ParentNotifications schoolId={schoolId} />
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-6">
+              <NotificationHistorySection schoolId={schoolId} />
             </TabsContent>
 
             <TabsContent value="staff" className="mt-6">

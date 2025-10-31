@@ -149,7 +149,10 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
     setDialogOpen(true);
   };
 
-  const selectedStudentsList = students.filter((s) => selectedStudents.has(s.id));
+  const selectedStudentsList = students.filter((s) => selectedStudents.has(s.id)).map(s => ({
+    ...s,
+    name: `${s.firstname} ${s.lastname}`
+  }));
 
   if (loading) {
     return <div className="p-4">Chargement...</div>;

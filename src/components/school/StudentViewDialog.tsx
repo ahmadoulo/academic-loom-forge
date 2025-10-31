@@ -19,6 +19,8 @@ interface StudentData {
   birth_date?: string | null;
   student_phone?: string | null;
   parent_phone?: string | null;
+  tutor_name?: string | null;
+  tutor_email?: string | null;
   archived?: boolean;
 }
 
@@ -218,6 +220,34 @@ export function StudentViewDialog({
                   </div>
                 </div>
               </div>
+
+              {/* Tutor Information */}
+              {(student.tutor_name || student.tutor_email) && (
+                <>
+                  <Separator className="my-4" />
+                  <h4 className="text-sm font-semibold mb-3">Informations du tuteur</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {student.tutor_name && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Nom du tuteur</p>
+                          <p className="font-medium">{student.tutor_name}</p>
+                        </div>
+                      </div>
+                    )}
+                    {student.tutor_email && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Email du tuteur</p>
+                          <p className="font-medium">{student.tutor_email}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
