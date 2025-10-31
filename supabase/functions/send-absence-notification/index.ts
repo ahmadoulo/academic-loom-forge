@@ -7,23 +7,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface NotificationRecipient {
-  email: string;
-  name: string;
-}
-
-interface NotificationRequest {
-  recipients: NotificationRecipient[];
-  subject: string;
-  message: string;
+interface AbsenceNotificationRequest {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  tutorEmail?: string;
+  tutorName?: string;
   schoolId: string;
-  recipientType: string;
-  classId?: string;
-  sentBy?: string;
-  pdfAttachment?: {
-    filename: string;
-    content: string; // base64
-  };
+  subjectName: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  className: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -32,11 +27,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { recipients, subject, message, schoolId, recipientType, classId, sentBy, pdfAttachment }: NotificationRequest = await req.json();
+    const {
+      studentId,
+      studentName,
+      studentEmail,
+      tutorEmail,
+      tutorName,
+      schoolId,
+      subjectName,
+      sessionDate,
+      startTime,
+      endTime,
+      className
+    }: AbsenceNotificationRequest = await req.json();
 
-    console.log(`Sending notification to ${recipients.length} recipient(s)`);
+    console.log(`Sending absence notification for student: ${studentName}`);
 
-    // Initialize Supabase client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -54,16 +60,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('École non trouvée');
     }
 
-    console.log(`Sending from school: ${schoolData.name}`);
-
-    // Get Resend API key
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       throw new Error('RESEND_API_KEY non configurée');
     }
 
-    // Create beautiful email template
-    const createEmailTemplate = (schoolData: any, subject: string, message: string) => {
+    const createEmailTemplate = (schoolData: any, studentName: string, subjectName: string, sessionDate: string, startTime: string, endTime: string, className: string) => {
       const schoolName = schoolData?.name || 'École';
       const schoolAddress = schoolData?.address || '';
       const schoolPhone = schoolData?.phone || '';
@@ -76,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${subject}</title>
+            <title>Notification d'Absence</title>
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
             <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8fafc; padding: 40px 20px;">
@@ -85,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
                     
                     <tr>
-                      <td style="padding: 32px 32px 24px; text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                      <td style="padding: 32px 32px 24px; text-align: center; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                         ${schoolLogo ? `
                           <img src="${schoolLogo}" alt="${schoolName}" style="max-width: 80px; height: auto; display: block; margin: 0 auto 16px; border-radius: 8px; background-color: white; padding: 8px;">
                         ` : ''}
@@ -95,14 +97,36 @@ const handler = async (req: Request): Promise<Response> => {
 
                     <tr>
                       <td style="padding: 32px 32px 0;">
-                        <h1 style="margin: 0 0 24px; color: #1e293b; font-size: 24px; font-weight: 700; line-height: 1.3;">${subject}</h1>
+                        <h1 style="margin: 0 0 24px; color: #1e293b; font-size: 24px; font-weight: 700; line-height: 1.3;">Notification d'Absence</h1>
                       </td>
                     </tr>
 
                     <tr>
                       <td style="padding: 0 32px 32px;">
-                        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #3b82f6; padding: 24px; border-radius: 8px;">
-                          <p style="margin: 0; color: #1e293b; font-size: 15px; line-height: 1.7; white-space: pre-wrap;">${message}</p>
+                        <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 4px solid #ef4444; padding: 24px; border-radius: 8px;">
+                          <p style="margin: 0 0 16px; color: #1e293b; font-size: 15px; line-height: 1.7;">
+                            Nous vous informons que <strong>${studentName}</strong> a été marqué(e) absent(e) à la séance suivante :
+                          </p>
+                          <div style="background-color: white; padding: 20px; border-radius: 8px; margin-top: 16px;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                              <tr>
+                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Classe:</td>
+                                <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${className}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Matière:</td>
+                                <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${subjectName}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Date:</td>
+                                <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${new Date(sessionDate).toLocaleDateString('fr-FR')}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Horaire:</td>
+                                <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${startTime} - ${endTime}</td>
+                              </tr>
+                            </table>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -147,85 +171,79 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     };
 
-    // Send emails and collect results
     const results = [];
-    const notificationRecords = [];
+    const recipients: string[] = [];
 
-    for (const recipient of recipients) {
+    // Send to student
+    if (studentEmail) {
+      recipients.push(studentEmail);
       try {
-        const emailPayload: any = {
-          from: `${schoolData.name} <noreply@ndiambour-it.com>`,
-          to: [recipient.email],
-          subject: subject,
-          html: createEmailTemplate(schoolData, subject, message),
-        };
-
-        // Add PDF attachment if provided
-        if (pdfAttachment) {
-          emailPayload.attachments = [{
-            filename: pdfAttachment.filename,
-            content: pdfAttachment.content,
-          }];
-        }
-
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${resendApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(emailPayload),
+          body: JSON.stringify({
+            from: `${schoolData.name} <noreply@ndiambour-it.com>`,
+            to: [studentEmail],
+            subject: 'Notification d\'Absence',
+            html: createEmailTemplate(schoolData, studentName, subjectName, sessionDate, startTime, endTime, className),
+          }),
         });
 
         if (!response.ok) {
           const error = await response.json();
-          console.error(`Failed to send email to ${recipient.email}:`, error);
-          results.push({ email: recipient.email, success: false, error: error.message });
+          console.error(`Failed to send email to student:`, error);
+          results.push({ email: studentEmail, success: false, error: error.message });
         } else {
           const emailResponse = await response.json();
-          console.log(`Email sent to ${recipient.email}:`, emailResponse);
-          
-          results.push({ 
-            email: recipient.email, 
-            success: true,
-            id: emailResponse.id
-          });
-
-          // Store notification record
-          notificationRecords.push({
-            school_id: schoolId,
-            recipient_type: recipientType,
-            recipient_email: recipient.email,
-            recipient_name: recipient.name,
-            subject: subject,
-            message: message,
-            class_id: classId || null,
-            sent_by: sentBy || null
-          });
+          console.log(`Email sent to student:`, emailResponse);
+          results.push({ email: studentEmail, success: true });
         }
       } catch (error: any) {
-        console.error(`Error sending to ${recipient.email}:`, error);
-        results.push({ email: recipient.email, success: false, error: error.message });
+        console.error(`Error sending to student:`, error);
+        results.push({ email: studentEmail, success: false, error: error.message });
       }
     }
 
-    // Save all notification records to database
-    if (notificationRecords.length > 0) {
-      const { error: insertError } = await supabaseAdmin
-        .from('school_notifications')
-        .insert(notificationRecords);
-      
-      if (insertError) {
-        console.error('Error saving notification records:', insertError);
-      } else {
-        console.log(`Saved ${notificationRecords.length} notification records`);
+    // Send to tutor/parent
+    if (tutorEmail) {
+      recipients.push(tutorEmail);
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: `${schoolData.name} <noreply@ndiambour-it.com>`,
+            to: [tutorEmail],
+            subject: 'Notification d\'Absence de votre enfant',
+            html: createEmailTemplate(schoolData, studentName, subjectName, sessionDate, startTime, endTime, className),
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`Failed to send email to tutor:`, error);
+          results.push({ email: tutorEmail, success: false, error: error.message });
+        } else {
+          const emailResponse = await response.json();
+          console.log(`Email sent to tutor:`, emailResponse);
+          results.push({ email: tutorEmail, success: true });
+        }
+      } catch (error: any) {
+        console.error(`Error sending to tutor:`, error);
+        results.push({ email: tutorEmail, success: false, error: error.message });
       }
     }
 
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
 
-    console.log(`Successfully sent ${successful} notifications, ${failed} failed`);
+    console.log(`Sent ${successful} absence notifications, ${failed} failed`);
 
     return new Response(
       JSON.stringify({ success: true, results, sent: successful, failed }),
@@ -238,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-notification function:", error);
+    console.error("Error in send-absence-notification function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

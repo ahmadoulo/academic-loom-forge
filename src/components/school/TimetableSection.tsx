@@ -17,6 +17,8 @@ import { useTimetable } from "@/hooks/useTimetable";
 import { useClassesByYear } from "@/hooks/useClassesByYear";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { exportTimetableToPDF } from "@/utils/timetablePdfExport";
+import { generateTimetablePDFBase64 } from "@/utils/timetablePdfBase64";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { toast } from "sonner";
 import {
   Table,
@@ -91,7 +93,7 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
   };
 
   const handleNotifyClass = async () => {
-    if (!selectedClassId || !selectedWeek || !timetableEntries) return;
+    if (!selectedClassId || !selectedWeek || !timetableEntries || timetableEntries.length === 0) return;
 
     try {
       const selectedClass = classes?.find(c => c.id === selectedClassId);
@@ -100,7 +102,7 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
         return;
       }
 
-      toast.loading("Envoi des notifications en cours...");
+      toast.loading("Génération et envoi en cours...");
 
       // Fetch students from the selected class
       const { data: students, error: studentsError } = await supabase
@@ -127,22 +129,59 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
         })) || [];
 
       if (recipients.length === 0) {
+        toast.dismiss();
         toast.error("Aucun étudiant avec email trouvé dans cette classe");
         return;
       }
 
-      // Send notification
+      // Get school data
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('id', schoolId)
+        .single();
+
+      // Generate PDF as base64
+      let schoolLogoBase64 = undefined;
+      if (schoolData?.logo_url) {
+        try {
+          schoolLogoBase64 = await imageUrlToBase64(schoolData.logo_url);
+        } catch (error) {
+          console.error('Error converting logo:', error);
+        }
+      }
+
+      const pdfBase64 = generateTimetablePDFBase64(
+        timetableEntries,
+        selectedClass.name,
+        schoolName,
+        selectedWeek,
+        schoolLogoBase64,
+        currentYear?.name
+      );
+
+      const weekEnd = addDays(selectedWeek, 6);
+      const message = `Veuillez trouver ci-joint l'emploi du temps de votre classe ${selectedClass.name} pour la semaine du ${format(selectedWeek, 'dd/MM/yyyy', { locale: fr })} au ${format(weekEnd, 'dd/MM/yyyy', { locale: fr })}.
+
+Cordialement,
+${schoolName}`;
+
+      // Send notification with PDF attachment
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           recipients,
           subject: `Emploi du temps - ${selectedClass.name}`,
-          message: `Veuillez trouver ci-joint l'emploi du temps de la classe ${selectedClass.name} pour la semaine du ${format(selectedWeek, 'dd/MM/yyyy', { locale: fr })}.\n\nL'emploi du temps est disponible sur la plateforme.\n\nCordialement,\n${schoolName}`,
+          message,
           schoolId,
           recipientType: 'student',
           classId: selectedClassId,
-          sentBy: user?.id
+          sentBy: user?.id,
+          pdfAttachment: {
+            filename: `emploi_du_temps_${selectedClass.name.replace(/\s+/g, "_")}_${format(selectedWeek, "yyyy_MM_dd")}.pdf`,
+            content: pdfBase64
+          }
         }
       });
 

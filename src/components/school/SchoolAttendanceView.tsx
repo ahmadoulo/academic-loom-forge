@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter } from "lucide-react";
+import { Calendar, Download, Filter, Bell } from "lucide-react";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -15,6 +15,7 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { useSchools } from "@/hooks/useSchools";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SchoolAttendanceViewProps {
   schoolId: string;
@@ -24,6 +25,7 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [notifying, setNotifying] = useState(false);
   
   const { classes, loading: classesLoading } = useClasses(schoolId);
   const { students } = useStudents(schoolId);
@@ -109,6 +111,78 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const presentCount = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'present').length;
   const absentCount = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'absent').length;
 
+  const handleNotifyAbsences = async () => {
+    if (selectedClass === "all") {
+      toast.error("Veuillez sélectionner une classe spécifique");
+      return;
+    }
+
+    const absentStudents = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'absent');
+    
+    if (absentStudents.length === 0) {
+      toast.error("Aucun étudiant absent à notifier");
+      return;
+    }
+
+    setNotifying(true);
+    try {
+      const classData = classes.find(c => c.id === selectedClass);
+      if (!classData) throw new Error('Classe non trouvée');
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const student of absentStudents) {
+        if (!student.email && !student.tutor_email) {
+          console.log(`Skipping ${student.firstname} ${student.lastname} - no email`);
+          continue;
+        }
+
+        const subjectName = getSubjectName(student.id);
+
+        try {
+          const response = await supabase.functions.invoke('send-absence-notification', {
+            body: {
+              studentId: student.id,
+              studentName: `${student.firstname} ${student.lastname}`,
+              studentEmail: student.email || '',
+              tutorEmail: student.tutor_email || '',
+              tutorName: student.tutor_name || '',
+              schoolId: schoolId,
+              subjectName: subjectName || 'Cours',
+              sessionDate: selectedDate,
+              startTime: '08:00',
+              endTime: '17:00',
+              className: classData.name
+            }
+          });
+
+          if (response.error) {
+            console.error('Error notifying:', response.error);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } catch (error) {
+          console.error('Error notifying student:', error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
+      }
+      if (failCount > 0) {
+        toast.warning(`${failCount} notification(s) échouée(s)`);
+      }
+    } catch (error) {
+      console.error('Error notifying absences:', error);
+      toast.error("Erreur lors de l'envoi des notifications");
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -168,11 +242,20 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
             </Select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
+            <Button 
+              onClick={handleNotifyAbsences}
+              disabled={selectedClass === "all" || notifying || absentCount === 0}
+              variant="outline"
+              className="flex-1"
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              {notifying ? 'Envoi...' : 'Notifier Absences'}
+            </Button>
             <Button 
               onClick={handleExportPDF} 
               variant="outline" 
-              className="w-full"
+              className="flex-1"
               disabled={selectedClass === "all"}
             >
               <Download className="h-4 w-4 mr-2" />

@@ -3,15 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, QrCode, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, QrCode, Lock, Bell } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
 import { QRCodeGenerator } from "./QRCodeGenerator";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Student {
   id: string;
   firstname: string;
   lastname: string;
+  email?: string | null;
+  tutor_email?: string | null;
+  tutor_name?: string | null;
+  class_id: string;
 }
 
 interface Assignment {
@@ -45,6 +51,7 @@ export function SessionAttendanceManager({
   onBack,
 }: SessionAttendanceManagerProps) {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const { selectedYear } = useAcademicYear();
   
   // Vérifier si l'année sélectionnée est l'année courante
@@ -105,6 +112,77 @@ export function SessionAttendanceManager({
   const presentCount = students.filter(s => getAttendanceStatus(s.id) === 'present').length;
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
 
+  const handleNotifyAbsences = async () => {
+    const absentStudents = students.filter(s => getAttendanceStatus(s.id) === 'absent');
+    
+    if (absentStudents.length === 0) {
+      toast.error("Aucun étudiant absent à notifier");
+      return;
+    }
+
+    setNotifying(true);
+    try {
+      // Get school_id and class name
+      const { data: classData } = await supabase
+        .from('classes')
+        .select('school_id, name')
+        .eq('id', classId)
+        .single();
+
+      if (!classData) throw new Error('Classe non trouvée');
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const student of absentStudents) {
+        if (!student.email && !student.tutor_email) {
+          console.log(`Skipping ${student.firstname} ${student.lastname} - no email`);
+          continue;
+        }
+
+        try {
+          const response = await supabase.functions.invoke('send-absence-notification', {
+            body: {
+              studentId: student.id,
+              studentName: `${student.firstname} ${student.lastname}`,
+              studentEmail: student.email || '',
+              tutorEmail: student.tutor_email || '',
+              tutorName: student.tutor_name || '',
+              schoolId: classData.school_id,
+              subjectName: assignment.subjects?.name || 'Cours',
+              sessionDate: assignment.session_date || '',
+              startTime: assignment.start_time || '',
+              endTime: assignment.end_time || '',
+              className: classData.name
+            }
+          });
+
+          if (response.error) {
+            console.error('Error notifying:', response.error);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } catch (error) {
+          console.error('Error notifying student:', error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
+      }
+      if (failCount > 0) {
+        toast.warning(`${failCount} notification(s) échouée(s)`);
+      }
+    } catch (error) {
+      console.error('Error notifying absences:', error);
+      toast.error("Erreur lors de l'envoi des notifications");
+    } finally {
+      setNotifying(false);
+    }
+  };
+
   if (showQRGenerator && attendanceSessions.length > 0) {
     const session = attendanceSessions[0];
     return (
@@ -163,10 +241,21 @@ export function SessionAttendanceManager({
                 )}
               </div>
             </div>
-            <Button onClick={handleGenerateQR} variant="outline" size="sm" disabled={!isCurrentYear}>
-              <QrCode className="h-4 w-4 mr-2" />
-              Générer QR Code
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleGenerateQR} variant="outline" size="sm" disabled={!isCurrentYear}>
+                <QrCode className="h-4 w-4 mr-2" />
+                Générer QR Code
+              </Button>
+              <Button 
+                onClick={handleNotifyAbsences} 
+                variant="outline" 
+                size="sm" 
+                disabled={!isCurrentYear || notifying || absentCount === 0}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                {notifying ? 'Envoi...' : 'Notifier Absences'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
