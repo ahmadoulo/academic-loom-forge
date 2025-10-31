@@ -74,6 +74,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             cin_number,
             student_phone,
             parent_phone,
+            tutor_name,
+            tutor_email,
             created_at,
             updated_at,
             archived
@@ -114,6 +116,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         cin_number: item.students.cin_number,
         student_phone: item.students.student_phone,
         parent_phone: item.students.parent_phone,
+        tutor_name: item.students.tutor_name,
+        tutor_email: item.students.tutor_email,
         created_at: item.students.created_at,
         updated_at: item.students.updated_at,
         classes: {
@@ -209,6 +213,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             birth_date: data.birth_date?.trim() || null,
             student_phone: data.student_phone?.trim() || null,
             parent_phone: data.parent_phone?.trim() || null,
+            tutor_name: data.tutor_name?.trim() || null,
+            tutor_email: data.tutor_email?.trim() || null,
           }])
           .select('id')
           .single();
@@ -248,6 +254,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             cin_number,
             student_phone,
             parent_phone,
+            tutor_name,
+            tutor_email,
             created_at,
             updated_at
           ),
@@ -275,6 +283,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         cin_number: (completeData as any).students.cin_number,
         student_phone: (completeData as any).students.student_phone,
         parent_phone: (completeData as any).students.parent_phone,
+        tutor_name: (completeData as any).students.tutor_name,
+        tutor_email: (completeData as any).students.tutor_email,
         created_at: (completeData as any).students.created_at,
         updated_at: (completeData as any).students.updated_at,
         classes: {
@@ -361,6 +371,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
       if (studentData.cin_number !== undefined) updateData.cin_number = studentData.cin_number?.trim() || null;
       if (studentData.student_phone !== undefined) updateData.student_phone = studentData.student_phone?.trim() || null;
       if (studentData.parent_phone !== undefined) updateData.parent_phone = studentData.parent_phone?.trim() || null;
+      if (studentData.tutor_name !== undefined) updateData.tutor_name = studentData.tutor_name?.trim() || null;
+      if (studentData.tutor_email !== undefined) updateData.tutor_email = studentData.tutor_email?.trim() || null;
 
       // 1. Mettre à jour l'étudiant dans la table students
       const { error: studentError } = await supabase
@@ -400,6 +412,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
             cin_number,
             student_phone,
             parent_phone,
+            tutor_name,
+            tutor_email,
             created_at,
             updated_at
           ),
@@ -426,6 +440,8 @@ export const useStudents = (schoolId?: string, classId?: string) => {
         cin_number: (data as any).students.cin_number,
         student_phone: (data as any).students.student_phone,
         parent_phone: (data as any).students.parent_phone,
+        tutor_name: (data as any).students.tutor_name,
+        tutor_email: (data as any).students.tutor_email,
         created_at: (data as any).students.created_at,
         updated_at: (data as any).students.updated_at,
         classes: {

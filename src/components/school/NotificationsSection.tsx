@@ -1,64 +1,130 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell } from "lucide-react";
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Bell, History, Users, GraduationCap, UserCircle } from "lucide-react";
 import { StudentNotifications } from "./StudentNotifications";
 import { TeacherNotifications } from "./TeacherNotifications";
 import { ParentNotifications } from "./ParentNotifications";
 import { NotificationHistorySection } from "./NotificationHistorySection";
+import { cn } from "@/lib/utils";
 
 interface NotificationsSectionProps {
   schoolId: string;
 }
 
+type SectionType = "students" | "teachers" | "parents";
+type ViewType = "send" | "history";
+
 export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
+  const [activeSection, setActiveSection] = useState<SectionType>("students");
+  const [activeView, setActiveView] = useState<ViewType>("send");
+
+  const renderContent = () => {
+    if (activeView === "history") {
+      return <NotificationHistorySection schoolId={schoolId} />;
+    }
+
+    switch (activeSection) {
+      case "students":
+        return <StudentNotifications schoolId={schoolId} />;
+      case "teachers":
+        return <TeacherNotifications schoolId={schoolId} />;
+      case "parents":
+        return <ParentNotifications schoolId={schoolId} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            <CardTitle>Notifications</CardTitle>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30">
+          <Bell className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold">Notifications</h2>
+          <p className="text-muted-foreground">Gérer les communications avec les étudiants, enseignants et parents</p>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* Mini Sidebar */}
+        <Card className="w-64 p-4 space-y-2 h-fit">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground px-3 mb-2">ACTION</p>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3",
+                activeView === "send" && "bg-primary/10 text-primary hover:bg-primary/20"
+              )}
+              onClick={() => setActiveView("send")}
+            >
+              <Bell className="h-4 w-4" />
+              Envoyer
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3",
+                activeView === "history" && "bg-primary/10 text-primary hover:bg-primary/20"
+              )}
+              onClick={() => setActiveView("history")}
+            >
+              <History className="h-4 w-4" />
+              Historique
+            </Button>
           </div>
-          <CardDescription>
-            Envoyer des notifications par email aux étudiants et professeurs
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="students" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="students">Étudiants</TabsTrigger>
-              <TabsTrigger value="teachers">Professeurs</TabsTrigger>
-              <TabsTrigger value="parents">Parents</TabsTrigger>
-              <TabsTrigger value="history">Historique</TabsTrigger>
-              <TabsTrigger value="staff" disabled>
-                Staff
-              </TabsTrigger>
-            </TabsList>
 
-            <TabsContent value="students" className="mt-6">
-              <StudentNotifications schoolId={schoolId} />
-            </TabsContent>
-
-            <TabsContent value="teachers" className="mt-6">
-              <TeacherNotifications schoolId={schoolId} />
-            </TabsContent>
-
-            <TabsContent value="parents" className="mt-6">
-              <ParentNotifications schoolId={schoolId} />
-            </TabsContent>
-
-            <TabsContent value="history" className="mt-6">
-              <NotificationHistorySection schoolId={schoolId} />
-            </TabsContent>
-
-            <TabsContent value="staff" className="mt-6">
-              <div className="text-center text-muted-foreground py-8">
-                Fonctionnalité en développement
+          {activeView === "send" && (
+            <>
+              <div className="border-t my-3" />
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground px-3 mb-2">DESTINATAIRES</p>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-3",
+                    activeSection === "students" && "bg-primary/10 text-primary hover:bg-primary/20"
+                  )}
+                  onClick={() => setActiveSection("students")}
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  Étudiants
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-3",
+                    activeSection === "teachers" && "bg-primary/10 text-primary hover:bg-primary/20"
+                  )}
+                  onClick={() => setActiveSection("teachers")}
+                >
+                  <Users className="h-4 w-4" />
+                  Enseignants
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-3",
+                    activeSection === "parents" && "bg-primary/10 text-primary hover:bg-primary/20"
+                  )}
+                  onClick={() => setActiveSection("parents")}
+                >
+                  <UserCircle className="h-4 w-4" />
+                  Parents
+                </Button>
               </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Card>
+
+        {/* Main Content */}
+        <div className="flex-1">
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 }

@@ -73,81 +73,102 @@ const handler = async (req: Request): Promise<Response> => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>${subject}</title>
+            <style>
+              @media only screen and (max-width: 600px) {
+                .container { width: 100% !important; padding: 20px 10px !important; }
+                .content-padding { padding: 30px 20px !important; }
+                .button { padding: 14px 30px !important; font-size: 14px !important; }
+              }
+            </style>
           </head>
-          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
-            <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse;">
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4; padding: 40px 20px;">
               <tr>
-                <td>
-                  <!-- Header Card -->
-                  <table role="presentation" style="width: 100%; background: white; border-radius: 16px 16px 0 0; overflow: hidden;">
+                <td align="center">
+                  <!-- Main Container -->
+                  <table role="presentation" class="container" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    
+                    <!-- Logo Section -->
                     <tr>
-                      <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                      <td style="padding: 40px 20px 20px; text-align: center; background-color: #ffffff;">
                         ${schoolLogo ? `
-                          <div style="background: white; display: inline-block; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                            <img src="${schoolLogo}" alt="${schoolName}" style="max-width: 100px; height: auto; display: block;">
+                          <img src="${schoolLogo}" alt="${schoolName}" style="max-width: 80px; height: auto; display: inline-block; margin-bottom: 10px;">
+                        ` : `
+                          <div style="width: 60px; height: 60px; background-color: #667eea; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                            <span style="color: #ffffff; font-size: 24px; font-weight: bold;">📧</span>
                           </div>
-                        ` : ''}
-                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">Plateforme Scolaire</h1>
-                        <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 18px; font-weight: 500;">${schoolName}</p>
+                        `}
                       </td>
                     </tr>
-                  </table>
 
-                  <!-- Content Card -->
-                  <table role="presentation" style="width: 100%; background: white;">
+                    <!-- Message Icon -->
                     <tr>
-                      <td style="padding: 40px 30px;">
-                        <!-- Subject -->
-                        <div style="background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 20px; border-radius: 12px; margin-bottom: 30px; border-left: 4px solid #667eea;">
-                          <h2 style="margin: 0; color: #1a202c; font-size: 20px; font-weight: 600;">${subject}</h2>
-                        </div>
-
-                        <!-- Message -->
-                        <div style="color: #2d3748; font-size: 15px; line-height: 1.8; margin-bottom: 30px;">
-                          ${message.replace(/\n/g, '<br>')}
-                        </div>
-
-                        <!-- Divider -->
-                        <div style="border-top: 2px solid #e2e8f0; margin: 30px 0;"></div>
-
-                        <!-- Info Box -->
-                        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                          <p style="margin: 0 0 8px; color: #718096; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Information</p>
-                          <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.6;">
-                            Ce message a été envoyé automatiquement depuis la plateforme de gestion scolaire. Pour toute question, veuillez contacter l'établissement.
-                          </p>
+                      <td style="text-align: center; padding: 0 20px 20px;">
+                        <div style="width: 60px; height: 60px; background-color: #e8eeff; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                          <span style="font-size: 28px;">💬</span>
                         </div>
                       </td>
                     </tr>
-                  </table>
 
-                  <!-- Footer Card -->
-                  <table role="presentation" style="width: 100%; background: #1a202c; border-radius: 0 0 16px 16px;">
+                    <!-- Greeting -->
                     <tr>
-                      <td style="padding: 30px; text-align: center;">
-                        <p style="margin: 0 0 15px; color: #e2e8f0; font-size: 16px; font-weight: 600;">${schoolName}</p>
+                      <td style="padding: 0 20px; text-align: center;">
+                        <p style="margin: 0; color: #667eea; font-size: 16px; font-weight: 500;">Bonjour,</p>
+                      </td>
+                    </tr>
+
+                    <!-- Subject -->
+                    <tr>
+                      <td style="padding: 15px 20px; text-align: center;">
+                        <h1 style="margin: 0; color: #1a202c; font-size: 22px; font-weight: 600; line-height: 1.3;">${subject}</h1>
+                      </td>
+                    </tr>
+
+                    <!-- Message Content -->
+                    <tr>
+                      <td class="content-padding" style="padding: 20px 40px;">
+                        <div style="background-color: #f8f9fa; border-left: 3px solid #667eea; padding: 20px; border-radius: 4px;">
+                          <p style="margin: 0; color: #4a5568; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${message}</p>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Sender Info -->
+                    <tr>
+                      <td style="padding: 15px 40px 30px; text-align: center;">
+                        <p style="margin: 0; color: #718096; font-size: 13px;">Envoyé par <strong>${schoolName}</strong></p>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 30px 40px; background-color: #2d3748; text-align: center;">
+                        <p style="margin: 0 0 12px; color: #e2e8f0; font-size: 16px; font-weight: 600;">${schoolName}</p>
                         
                         ${schoolAddress ? `
-                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 14px; line-height: 1.6;">
+                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 13px;">
                             📍 ${schoolAddress}
                           </p>
                         ` : ''}
                         
                         ${schoolPhone ? `
-                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 14px;">
+                          <p style="margin: 0 0 8px; color: #a0aec0; font-size: 13px;">
                             📞 ${schoolPhone}
                           </p>
                         ` : ''}
                         
                         ${schoolWebsite ? `
-                          <p style="margin: 0 0 15px; color: #a0aec0; font-size: 14px;">
+                          <p style="margin: 0 0 15px; color: #a0aec0; font-size: 13px;">
                             🌐 <a href="${schoolWebsite}" style="color: #667eea; text-decoration: none;">${schoolWebsite}</a>
                           </p>
                         ` : ''}
 
-                        <div style="border-top: 1px solid #2d3748; margin: 20px 0; padding-top: 20px;">
-                          <p style="margin: 0; color: #718096; font-size: 12px;">
+                        <div style="border-top: 1px solid #4a5568; margin: 20px 0; padding-top: 20px;">
+                          <p style="margin: 0; color: #718096; font-size: 11px;">
                             © ${new Date().getFullYear()} ${schoolName}. Tous droits réservés.
+                          </p>
+                          <p style="margin: 8px 0 0; color: #718096; font-size: 11px;">
+                            Cet email a été envoyé automatiquement depuis la plateforme de gestion scolaire.
                           </p>
                         </div>
                       </td>
