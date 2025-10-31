@@ -57,6 +57,7 @@ import { YearPreparationWizard } from "@/components/school/YearPreparationWizard
 import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
 import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
 import { TeachersManagementSection } from "@/components/school/TeachersManagementSection";
+import { NotificationsSection } from "@/components/school/NotificationsSection";
 import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
 import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
 import { TeacherForm } from "@/components/school/TeacherForm";
@@ -993,6 +994,10 @@ const SchoolDashboard = () => {
 
               {activeTab === "announcements" && (
                 <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
+              )}
+              
+              {activeTab === "notifications" && school?.id && (
+                <NotificationsSection schoolId={school.id} />
               )}
               
               {activeTab === "bulletin" && (
