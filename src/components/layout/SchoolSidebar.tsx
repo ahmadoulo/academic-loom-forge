@@ -141,6 +141,12 @@ const menuStructure = [
     icon: Bell,
     items: [
       { 
+        title: "Notifications", 
+        value: "notifications",
+        icon: Bell,
+        href: "/school"
+      },
+      { 
         title: "Annonces", 
         value: "announcements",
         icon: Megaphone,
