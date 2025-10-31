@@ -39,7 +39,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30">
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
           <Bell className="h-6 w-6 text-white" />
         </div>
         <div>
@@ -61,7 +61,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
               )}
               onClick={() => setActiveView("send")}
             >
-              <Bell className="h-4 w-4" />
+              <Bell className="h-4 w-4 text-primary" />
               Envoyer
             </Button>
             <Button
@@ -72,7 +72,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
               )}
               onClick={() => setActiveView("history")}
             >
-              <History className="h-4 w-4" />
+              <History className="h-4 w-4 text-primary" />
               Historique
             </Button>
           </div>
@@ -90,7 +90,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
                   )}
                   onClick={() => setActiveSection("students")}
                 >
-                  <GraduationCap className="h-4 w-4" />
+                  <GraduationCap className="h-4 w-4 text-primary" />
                   Étudiants
                 </Button>
                 <Button
@@ -101,7 +101,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
                   )}
                   onClick={() => setActiveSection("teachers")}
                 >
-                  <Users className="h-4 w-4" />
+                  <Users className="h-4 w-4 text-primary" />
                   Enseignants
                 </Button>
                 <Button
@@ -112,7 +112,7 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
                   )}
                   onClick={() => setActiveSection("parents")}
                 >
-                  <UserCircle className="h-4 w-4" />
+                  <UserCircle className="h-4 w-4 text-primary" />
                   Parents
                 </Button>
               </div>

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { FileDown, Calendar as CalendarIcon, Loader2, Bell } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTimetable } from "@/hooks/useTimetable";
@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TimetableSectionProps {
   schoolId: string;
@@ -38,7 +39,7 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
   const [selectedWeek, setSelectedWeek] = useState<Date | null>(null);
 
   // Get current academic year
-  const { getYearForDisplay } = useAcademicYear();
+  const { getYearForDisplay, currentYear } = useAcademicYear();
   const displayYearId = getYearForDisplay();
 
   // Filter classes by current academic year
@@ -86,6 +87,73 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
     } catch (error) {
       toast.error("Erreur lors de l'export du PDF");
       console.error(error);
+    }
+  };
+
+  const handleNotifyClass = async () => {
+    if (!selectedClassId || !selectedWeek || !timetableEntries) return;
+
+    try {
+      const selectedClass = classes?.find(c => c.id === selectedClassId);
+      if (!selectedClass) {
+        toast.error("Classe non trouvée");
+        return;
+      }
+
+      toast.loading("Envoi des notifications en cours...");
+
+      // Fetch students from the selected class
+      const { data: students, error: studentsError } = await supabase
+        .from('student_school')
+        .select(`
+          student_id,
+          students (
+            firstname,
+            lastname,
+            email
+          )
+        `)
+        .eq('class_id', selectedClassId)
+        .eq('school_year_id', currentYear?.id)
+        .eq('is_active', true);
+
+      if (studentsError) throw studentsError;
+
+      const recipients = students
+        ?.filter(s => s.students?.email)
+        .map(s => ({
+          email: s.students.email,
+          name: `${s.students.firstname} ${s.students.lastname}`
+        })) || [];
+
+      if (recipients.length === 0) {
+        toast.error("Aucun étudiant avec email trouvé dans cette classe");
+        return;
+      }
+
+      // Send notification
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase.functions.invoke('send-notification', {
+        body: {
+          recipients,
+          subject: `Emploi du temps - ${selectedClass.name}`,
+          message: `Veuillez trouver ci-joint l'emploi du temps de la classe ${selectedClass.name} pour la semaine du ${format(selectedWeek, 'dd/MM/yyyy', { locale: fr })}.\n\nL'emploi du temps est disponible sur la plateforme.\n\nCordialement,\n${schoolName}`,
+          schoolId,
+          recipientType: 'student',
+          classId: selectedClassId,
+          sentBy: user?.id
+        }
+      });
+
+      if (error) throw error;
+
+      toast.dismiss();
+      toast.success(`Emploi du temps envoyé à ${recipients.length} étudiant(s)`);
+    } catch (error) {
+      console.error('Error notifying class:', error);
+      toast.dismiss();
+      toast.error("Erreur lors de l'envoi des notifications");
     }
   };
 
@@ -149,24 +217,36 @@ export function TimetableSection({ schoolId, schoolName }: TimetableSectionProps
             </div>
           </div>
 
-          {/* Bouton Export */}
-          <Button
-            onClick={handleExportPDF}
-            disabled={!selectedClassId || !selectedWeek || timetableLoading}
-            className="w-full md:w-auto"
-          >
-            {timetableLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Chargement...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Exporter en PDF
-              </>
-            )}
-          </Button>
+          {/* Boutons Export et Notification */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExportPDF}
+              disabled={!selectedClassId || !selectedWeek || timetableLoading}
+              className="flex-1"
+              variant="outline"
+            >
+              {timetableLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Chargement...
+                </>
+              ) : (
+                <>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exporter PDF
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleNotifyClass}
+              disabled={!selectedClassId || !selectedWeek || timetableLoading || !timetableEntries || timetableEntries.length === 0}
+              className="flex-1"
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              Notifier la classe
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
