@@ -203,6 +203,7 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
         onOpenChange={setDialogOpen}
         recipients={selectedStudentsList}
         type="student"
+        schoolId={schoolId}
       />
     </div>
   );

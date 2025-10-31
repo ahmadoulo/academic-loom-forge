@@ -199,6 +199,7 @@ export function TeacherNotifications({ schoolId }: TeacherNotificationsProps) {
         onOpenChange={setDialogOpen}
         recipients={selectedTeachersList}
         type="teacher"
+        schoolId={schoolId}
       />
     </div>
   );

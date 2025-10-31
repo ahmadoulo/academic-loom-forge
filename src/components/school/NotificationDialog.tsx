@@ -19,6 +19,7 @@ interface NotificationDialogProps {
   onOpenChange: (open: boolean) => void;
   recipients: Array<{ id: string; firstname: string; lastname: string; email?: string | null }>;
   type: "student" | "teacher";
+  schoolId: string;
 }
 
 export function NotificationDialog({
@@ -26,6 +27,7 @@ export function NotificationDialog({
   onOpenChange,
   recipients,
   type,
+  schoolId,
 }: NotificationDialogProps) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -50,7 +52,7 @@ export function NotificationDialog({
           recipients: validRecipients.map(r => r.email),
           subject: subject.trim(),
           message: message.trim(),
-          senderName: "Administration Scolaire",
+          schoolId: schoolId,
         },
       });
 
