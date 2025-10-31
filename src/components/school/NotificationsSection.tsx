@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bell } from "lucide-react";
 import { StudentNotifications } from "./StudentNotifications";
 import { TeacherNotifications } from "./TeacherNotifications";
+import { ParentNotifications } from "./ParentNotifications";
 
 interface NotificationsSectionProps {
   schoolId: string;
@@ -26,11 +27,9 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="students">Étudiants</TabsTrigger>
               <TabsTrigger value="teachers">Professeurs</TabsTrigger>
+              <TabsTrigger value="parents">Parents</TabsTrigger>
               <TabsTrigger value="staff" disabled>
                 Staff École
-              </TabsTrigger>
-              <TabsTrigger value="parents" disabled>
-                Parents
               </TabsTrigger>
             </TabsList>
 
@@ -42,13 +41,11 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
               <TeacherNotifications schoolId={schoolId} />
             </TabsContent>
 
-            <TabsContent value="staff" className="mt-6">
-              <div className="text-center text-muted-foreground py-8">
-                Fonctionnalité en développement
-              </div>
+            <TabsContent value="parents" className="mt-6">
+              <ParentNotifications schoolId={schoolId} />
             </TabsContent>
 
-            <TabsContent value="parents" className="mt-6">
+            <TabsContent value="staff" className="mt-6">
               <div className="text-center text-muted-foreground py-8">
                 Fonctionnalité en développement
               </div>

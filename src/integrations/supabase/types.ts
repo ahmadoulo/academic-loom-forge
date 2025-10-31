@@ -1179,6 +1179,8 @@ export type Database = {
           lastname: string
           parent_phone: string | null
           student_phone: string | null
+          tutor_email: string | null
+          tutor_name: string | null
           updated_at: string
         }
         Insert: {
@@ -1193,6 +1195,8 @@ export type Database = {
           lastname: string
           parent_phone?: string | null
           student_phone?: string | null
+          tutor_email?: string | null
+          tutor_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -1207,6 +1211,8 @@ export type Database = {
           lastname?: string
           parent_phone?: string | null
           student_phone?: string | null
+          tutor_email?: string | null
+          tutor_name?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Search } from "lucide-react";
+import { Send, Search, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationDialog } from "./NotificationDialog";
 
-interface Student {
+interface Parent {
   id: string;
-  firstname: string;
-  lastname: string;
-  email: string | null;
+  tutor_name: string;
+  tutor_email: string;
+  student_firstname: string;
+  student_lastname: string;
   class_name?: string;
   class_id?: string;
 }
@@ -23,14 +24,14 @@ interface ClassOption {
   name: string;
 }
 
-interface StudentNotificationsProps {
+interface ParentNotificationsProps {
   schoolId: string;
 }
 
-export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [filteredParents, setFilteredParents] = useState<Parent[]>([]);
+  const [selectedParents, setSelectedParents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -39,31 +40,32 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
 
   useEffect(() => {
     fetchClasses();
-    fetchStudents();
+    fetchParents();
   }, [schoolId]);
 
   useEffect(() => {
-    let filtered = students;
+    let filtered = parents;
 
     // Filter by class
     if (selectedClass !== "all") {
-      filtered = filtered.filter((s) => s.class_id === selectedClass);
+      filtered = filtered.filter((p) => p.class_id === selectedClass);
     }
 
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (s) =>
-          s.firstname.toLowerCase().includes(query) ||
-          s.lastname.toLowerCase().includes(query) ||
-          s.email?.toLowerCase().includes(query) ||
-          s.class_name?.toLowerCase().includes(query)
+        (p) =>
+          p.tutor_name?.toLowerCase().includes(query) ||
+          p.tutor_email?.toLowerCase().includes(query) ||
+          p.student_firstname.toLowerCase().includes(query) ||
+          p.student_lastname.toLowerCase().includes(query) ||
+          p.class_name?.toLowerCase().includes(query)
       );
     }
 
-    setFilteredStudents(filtered);
-  }, [searchQuery, students, selectedClass]);
+    setFilteredParents(filtered);
+  }, [searchQuery, parents, selectedClass]);
 
   const fetchClasses = async () => {
     try {
@@ -81,7 +83,7 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchParents = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -91,7 +93,8 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
           id,
           firstname,
           lastname,
-          email,
+          tutor_name,
+          tutor_email,
           student_school!inner(
             class_id,
             classes!inner(name)
@@ -100,56 +103,67 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
         )
         .eq("student_school.school_id", schoolId)
         .eq("archived", false)
-        .order("lastname", { ascending: true });
+        .not("tutor_email", "is", null)
+        .order("tutor_name", { ascending: true });
 
       if (error) throw error;
 
-      const studentsWithClass = data.map((student: any) => ({
-        id: student.id,
-        firstname: student.firstname,
-        lastname: student.lastname,
-        email: student.email,
-        class_name: student.student_school?.[0]?.classes?.name,
-        class_id: student.student_school?.[0]?.class_id,
-      }));
+      const parentsWithClass = data
+        .filter((student: any) => student.tutor_email && student.tutor_name)
+        .map((student: any) => ({
+          id: student.id,
+          tutor_name: student.tutor_name,
+          tutor_email: student.tutor_email,
+          student_firstname: student.firstname,
+          student_lastname: student.lastname,
+          class_name: student.student_school?.[0]?.classes?.name,
+          class_id: student.student_school?.[0]?.class_id,
+        }));
 
-      setStudents(studentsWithClass);
-      setFilteredStudents(studentsWithClass);
+      setParents(parentsWithClass);
+      setFilteredParents(parentsWithClass);
     } catch (error) {
-      console.error("Error fetching students:", error);
-      toast.error("Erreur lors du chargement des étudiants");
+      console.error("Error fetching parents:", error);
+      toast.error("Erreur lors du chargement des parents");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleStudent = (studentId: string) => {
-    const newSelected = new Set(selectedStudents);
-    if (newSelected.has(studentId)) {
-      newSelected.delete(studentId);
+  const toggleParent = (parentId: string) => {
+    const newSelected = new Set(selectedParents);
+    if (newSelected.has(parentId)) {
+      newSelected.delete(parentId);
     } else {
-      newSelected.add(studentId);
+      newSelected.add(parentId);
     }
-    setSelectedStudents(newSelected);
+    setSelectedParents(newSelected);
   };
 
   const toggleAll = () => {
-    if (selectedStudents.size === filteredStudents.length) {
-      setSelectedStudents(new Set());
+    if (selectedParents.size === filteredParents.length) {
+      setSelectedParents(new Set());
     } else {
-      setSelectedStudents(new Set(filteredStudents.map((s) => s.id)));
+      setSelectedParents(new Set(filteredParents.map((p) => p.id)));
     }
   };
 
   const handleSendNotification = () => {
-    if (selectedStudents.size === 0) {
-      toast.error("Veuillez sélectionner au moins un étudiant");
+    if (selectedParents.size === 0) {
+      toast.error("Veuillez sélectionner au moins un parent");
       return;
     }
     setDialogOpen(true);
   };
 
-  const selectedStudentsList = students.filter((s) => selectedStudents.has(s.id));
+  const selectedParentsList = parents
+    .filter((p) => selectedParents.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      firstname: p.tutor_name,
+      lastname: "",
+      email: p.tutor_email,
+    }));
 
   if (loading) {
     return <div className="p-4">Chargement...</div>;
@@ -162,7 +176,7 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher un étudiant..."
+              placeholder="Rechercher un parent..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -184,11 +198,11 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
         </div>
         <Button
           onClick={handleSendNotification}
-          disabled={selectedStudents.size === 0}
+          disabled={selectedParents.size === 0}
           className="gap-2"
         >
           <Send className="h-4 w-4" />
-          Envoyer notification ({selectedStudents.size})
+          Envoyer notification ({selectedParents.size})
         </Button>
       </div>
 
@@ -197,39 +211,45 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
           <div className="border-b p-4 flex items-center gap-3 bg-muted/50">
             <Checkbox
               checked={
-                filteredStudents.length > 0 &&
-                selectedStudents.size === filteredStudents.length
+                filteredParents.length > 0 &&
+                selectedParents.size === filteredParents.length
               }
               onCheckedChange={toggleAll}
             />
             <span className="font-medium">
-              Tout sélectionner ({filteredStudents.length})
+              Tout sélectionner ({filteredParents.length})
             </span>
           </div>
 
           <div className="divide-y max-h-[600px] overflow-y-auto">
-            {filteredStudents.map((student) => (
+            {filteredParents.map((parent) => (
               <div
-                key={student.id}
+                key={parent.id}
                 className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
               >
                 <Checkbox
-                  checked={selectedStudents.has(student.id)}
-                  onCheckedChange={() => toggleStudent(student.id)}
+                  checked={selectedParents.has(parent.id)}
+                  onCheckedChange={() => toggleParent(parent.id)}
                 />
                 <div className="flex-1">
-                  <p className="font-medium">
-                    {student.firstname} {student.lastname}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    {student.email ? (
-                      <span>{student.email}</span>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <p className="font-medium">{parent.tutor_name}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                    {parent.tutor_email ? (
+                      <span>{parent.tutor_email}</span>
                     ) : (
                       <span className="text-destructive">Pas d'email</span>
                     )}
-                    {student.class_name && (
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      Parent de: {parent.student_firstname} {parent.student_lastname}
+                    </span>
+                    {parent.class_name && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                        {student.class_name}
+                        {parent.class_name}
                       </span>
                     )}
                   </div>
@@ -237,9 +257,9 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
               </div>
             ))}
 
-            {filteredStudents.length === 0 && (
+            {filteredParents.length === 0 && (
               <div className="p-8 text-center text-muted-foreground">
-                Aucun étudiant trouvé
+                Aucun parent trouvé
               </div>
             )}
           </div>
@@ -249,7 +269,7 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
       <NotificationDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        recipients={selectedStudentsList}
+        recipients={selectedParentsList}
         type="student"
         schoolId={schoolId}
       />

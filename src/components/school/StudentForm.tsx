@@ -11,9 +11,11 @@ interface StudentFormProps {
     email?: string;
     class_id: string;
     birth_date?: string;
-    cin_number: string; // Requis maintenant
+    cin_number: string;
     student_phone?: string;
     parent_phone?: string;
+    tutor_name?: string;
+    tutor_email?: string;
   }) => void;
   classes: { id: string; name: string; }[];
 }
@@ -27,7 +29,9 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
     birth_date: "",
     cin_number: "",
     student_phone: "",
-    parent_phone: ""
+    parent_phone: "",
+    tutor_name: "",
+    tutor_email: ""
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,6 +69,8 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
       cin_number: formData.cin_number.trim(),
       student_phone: formData.student_phone.trim() || undefined,
       parent_phone: formData.parent_phone.trim() || undefined,
+      tutor_name: formData.tutor_name.trim() || undefined,
+      tutor_email: formData.tutor_email.trim() || undefined,
     };
     
     console.log('Données préparées pour onSubmit:', studentData);
@@ -83,7 +89,9 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
         birth_date: "",
         cin_number: "",
         student_phone: "",
-        parent_phone: ""
+        parent_phone: "",
+        tutor_name: "",
+        tutor_email: ""
       });
       console.log('✅ Formulaire réinitialisé');
     } catch (error) {
@@ -168,6 +176,27 @@ export const StudentForm = ({ onSubmit, classes }: StudentFormProps) => {
           value={formData.parent_phone}
           onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
           placeholder="+33 1 23 45 67 89"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="tutor_name">Nom du tuteur/parent</Label>
+        <Input
+          id="tutor_name"
+          value={formData.tutor_name}
+          onChange={(e) => setFormData({ ...formData, tutor_name: e.target.value })}
+          placeholder="Nom complet du tuteur"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="tutor_email">Email du tuteur/parent</Label>
+        <Input
+          id="tutor_email"
+          type="email"
+          value={formData.tutor_email}
+          onChange={(e) => setFormData({ ...formData, tutor_email: e.target.value })}
+          placeholder="email@exemple.com"
         />
       </div>
       

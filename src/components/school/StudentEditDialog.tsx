@@ -14,6 +14,8 @@ interface StudentWithClass {
   cin_number?: string | null;
   student_phone?: string | null;
   parent_phone?: string | null;
+  tutor_name?: string | null;
+  tutor_email?: string | null;
   birth_date?: string | null;
   class_id: string;
   classes?: { name: string };
@@ -42,6 +44,8 @@ export function StudentEditDialog({ student, classes, open, onOpenChange, onSave
     birth_date: "",
     student_phone: "",
     parent_phone: "",
+    tutor_name: "",
+    tutor_email: "",
     class_id: "",
   });
 
@@ -55,6 +59,8 @@ export function StudentEditDialog({ student, classes, open, onOpenChange, onSave
         birth_date: student.birth_date || "",
         student_phone: student.student_phone || "",
         parent_phone: student.parent_phone || "",
+        tutor_name: student.tutor_name || "",
+        tutor_email: student.tutor_email || "",
         class_id: student.class_id || "",
       });
     }
@@ -178,6 +184,27 @@ export function StudentEditDialog({ student, classes, open, onOpenChange, onSave
                 value={formData.parent_phone}
                 onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
                 placeholder="Ex: +212 6XX XXX XXX"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tutor_name">Nom du tuteur/parent</Label>
+              <Input
+                id="tutor_name"
+                value={formData.tutor_name}
+                onChange={(e) => setFormData({ ...formData, tutor_name: e.target.value })}
+                placeholder="Nom complet du tuteur"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tutor_email">Email du tuteur/parent</Label>
+              <Input
+                id="tutor_email"
+                type="email"
+                value={formData.tutor_email}
+                onChange={(e) => setFormData({ ...formData, tutor_email: e.target.value })}
+                placeholder="email@example.com"
               />
             </div>
           </div>

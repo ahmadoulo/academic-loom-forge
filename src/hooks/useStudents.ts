@@ -14,6 +14,8 @@ export interface Student {
   cin_number?: string;
   student_phone?: string;
   parent_phone?: string;
+  tutor_name?: string;
+  tutor_email?: string;
   created_at: string;
   updated_at: string;
 }
@@ -31,9 +33,11 @@ export interface CreateStudentData {
   class_id: string;
   school_id: string;
   birth_date?: string;
-  cin_number: string; // Requis maintenant
+  cin_number: string;
   student_phone?: string;
   parent_phone?: string;
+  tutor_name?: string;
+  tutor_email?: string;
 }
 
 export const useStudents = (schoolId?: string, classId?: string) => {
