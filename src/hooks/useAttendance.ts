@@ -136,6 +136,7 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
       });
       
       // Vérifier si un enregistrement existe déjà pour cet étudiant, cette classe, cette date ET cette matière
+      // Note: On ne filtre PAS par assignment_id car la contrainte d'unicité de la DB est sur student_id + class_id + date + subject_id
       let query = supabase
         .from('attendance')
         .select('id')
@@ -148,10 +149,6 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
         query = query.eq('subject_id', attendanceData.subject_id);
       } else {
         query = query.is('subject_id', null);
-      }
-
-      if (attendanceData.assignment_id) {
-        query = query.eq('assignment_id', attendanceData.assignment_id);
       }
 
       const { data: existingRecord } = await query.maybeSingle();
