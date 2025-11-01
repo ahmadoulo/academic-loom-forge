@@ -139,8 +139,8 @@ export function SessionAttendanceManager({
       // Ajouter 1 minute après la fin de la séance
       const notificationTime = new Date(sessionEnd.getTime() + 60000);
       
-      // Vérifier si nous sommes dans le créneau d'envoi (entre fin+1min et fin+2min)
-      const maxNotificationTime = new Date(sessionEnd.getTime() + 120000);
+      // Fenêtre d'envoi élargie à 5 minutes pour ne pas rater la notification
+      const maxNotificationTime = new Date(sessionEnd.getTime() + 360000); // +6 min
       
       if (now >= notificationTime && now <= maxNotificationTime) {
         console.log('🔔 Auto-notification: Fin de séance + 1 minute, envoi des notifications...');
@@ -148,8 +148,10 @@ export function SessionAttendanceManager({
       }
     };
 
-    // Ne PAS vérifier immédiatement au chargement
-    // Vérifier toutes les 30 secondes
+    // Vérifier immédiatement au chargement (mais seulement si on est dans le bon créneau)
+    checkAndSendNotifications();
+    
+    // Puis vérifier toutes les 30 secondes
     const interval = setInterval(checkAndSendNotifications, 30000);
 
     return () => clearInterval(interval);
