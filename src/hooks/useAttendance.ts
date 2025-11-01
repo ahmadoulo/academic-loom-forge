@@ -90,12 +90,22 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching attendance:', error);
+        throw error;
+      }
       
       setAttendance((data || []) as unknown as AttendanceRecord[]);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des présences');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des présences';
+      setError(errorMessage);
       console.error('Error fetching attendance:', err);
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
