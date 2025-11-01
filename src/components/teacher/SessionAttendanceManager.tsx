@@ -52,8 +52,13 @@ export function SessionAttendanceManager({
 }: SessionAttendanceManagerProps) {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [notifying, setNotifying] = useState(false);
-  const [autoNotificationSent, setAutoNotificationSent] = useState(false);
   const { selectedYear } = useAcademicYear();
+  
+  // Clé unique pour cette séance dans localStorage
+  const notificationKey = `notification_sent_${assignment.id}_${assignment.session_date}`;
+  const [autoNotificationSent, setAutoNotificationSent] = useState(() => {
+    return localStorage.getItem(notificationKey) === 'true';
+  });
   
   // Vérifier si l'année sélectionnée est l'année courante
   const isCurrentYear = selectedYear?.is_current === true;
@@ -205,6 +210,7 @@ export function SessionAttendanceManager({
         if (isAutomatic) {
           toast.success(`✅ Notifications d'absence envoyées automatiquement (${successCount})`);
           setAutoNotificationSent(true);
+          localStorage.setItem(notificationKey, 'true');
         } else {
           toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
         }
