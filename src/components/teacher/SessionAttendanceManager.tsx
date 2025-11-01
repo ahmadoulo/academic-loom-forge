@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,7 @@ export function SessionAttendanceManager({
 }: SessionAttendanceManagerProps) {
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [autoNotificationSent, setAutoNotificationSent] = useState(false);
   const { selectedYear } = useAcademicYear();
   
   // Vérifier si l'année sélectionnée est l'année courante
@@ -112,11 +113,13 @@ export function SessionAttendanceManager({
   const presentCount = students.filter(s => getAttendanceStatus(s.id) === 'present').length;
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
 
-  const handleNotifyAbsences = async () => {
+  const handleNotifyAbsences = async (isAutomatic = false) => {
     const absentStudents = students.filter(s => getAttendanceStatus(s.id) === 'absent');
     
     if (absentStudents.length === 0) {
-      toast.error("Aucun étudiant absent à notifier");
+      if (!isAutomatic) {
+        toast.error("Aucun étudiant absent à notifier");
+      }
       return;
     }
 
@@ -170,18 +173,56 @@ export function SessionAttendanceManager({
       }
 
       if (successCount > 0) {
-        toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
+        toast.success(`${successCount} notification(s) d'absence envoyée(s)${isAutomatic ? ' automatiquement' : ''}`);
       }
       if (failCount > 0) {
         toast.warning(`${failCount} notification(s) échouée(s)`);
       }
+      
+      if (isAutomatic && successCount > 0) {
+        setAutoNotificationSent(true);
+      }
     } catch (error) {
       console.error('Error notifying absences:', error);
-      toast.error("Erreur lors de l'envoi des notifications");
+      if (!isAutomatic) {
+        toast.error("Erreur lors de l'envoi des notifications");
+      }
     } finally {
       setNotifying(false);
     }
   };
+
+  // Auto-send absence notifications when session ends
+  useEffect(() => {
+    if (!assignment.session_date || !assignment.end_time || !isCurrentYear || autoNotificationSent) {
+      return;
+    }
+
+    const checkSessionEnd = () => {
+      const now = new Date();
+      const sessionDate = new Date(assignment.session_date!);
+      const [hours, minutes] = assignment.end_time!.split(':');
+      const sessionEndTime = new Date(sessionDate);
+      sessionEndTime.setHours(parseInt(hours), parseInt(minutes), 0);
+
+      // Check if session ended in the last 5 minutes
+      const timeDiff = now.getTime() - sessionEndTime.getTime();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (timeDiff >= 0 && timeDiff <= fiveMinutes && attendance.length > 0) {
+        console.log('Session ended, auto-sending absence notifications...');
+        handleNotifyAbsences(true);
+      }
+    };
+
+    // Check immediately
+    checkSessionEnd();
+
+    // Then check every minute
+    const interval = setInterval(checkSessionEnd, 60000);
+
+    return () => clearInterval(interval);
+  }, [assignment.session_date, assignment.end_time, attendance, autoNotificationSent, isCurrentYear]);
 
   if (showQRGenerator && attendanceSessions.length > 0) {
     const session = attendanceSessions[0];
@@ -247,7 +288,7 @@ export function SessionAttendanceManager({
                 Générer QR Code
               </Button>
               <Button 
-                onClick={handleNotifyAbsences} 
+                onClick={() => handleNotifyAbsences(false)} 
                 variant="outline" 
                 size="sm" 
                 disabled={!isCurrentYear || notifying || absentCount === 0}
