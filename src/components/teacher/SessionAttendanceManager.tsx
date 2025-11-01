@@ -54,12 +54,6 @@ export function SessionAttendanceManager({
   const [notifying, setNotifying] = useState(false);
   const { selectedYear } = useAcademicYear();
   
-  // Clé unique pour cette séance dans localStorage
-  const notificationKey = `notification_sent_${assignment.id}_${assignment.session_date}`;
-  const [autoNotificationSent, setAutoNotificationSent] = useState(() => {
-    return localStorage.getItem(notificationKey) === 'true';
-  });
-  
   // Vérifier si l'année sélectionnée est l'année courante
   const isCurrentYear = selectedYear?.is_current === true;
   
@@ -119,53 +113,7 @@ export function SessionAttendanceManager({
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
   const allMarked = students.length > 0 && (presentCount + absentCount) === students.length;
 
-  // Notification automatique 1 minute après la fin de la séance
-  useEffect(() => {
-    if (!assignment.session_date || !assignment.end_time || !isCurrentYear) {
-      return;
-    }
-
-    const checkAndSendNotifications = () => {
-      // Vérifier d'abord si déjà envoyé
-      if (autoNotificationSent) {
-        return;
-      }
-
-      // Vérifier les conditions de notification
-      const currentAllMarked = students.length > 0 && (presentCount + absentCount) === students.length;
-      const currentAbsentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
-      
-      if (!currentAllMarked || currentAbsentCount === 0) {
-        return;
-      }
-
-      const now = new Date();
-      const [hours, minutes] = assignment.end_time!.split(':').map(Number);
-      const sessionEnd = new Date(assignment.session_date!);
-      sessionEnd.setHours(hours, minutes, 0, 0);
-      
-      // Ajouter 1 minute après la fin de la séance
-      const notificationTime = new Date(sessionEnd.getTime() + 60000);
-      
-      // Fenêtre d'envoi élargie à 10 minutes pour garantir l'envoi
-      const maxNotificationTime = new Date(sessionEnd.getTime() + 660000); // +11 min
-      
-      if (now >= notificationTime && now <= maxNotificationTime) {
-        console.log('🔔 Auto-notification: Conditions remplies, envoi immédiat...');
-        handleNotifyAbsences(true);
-      }
-    };
-
-    // Vérifier immédiatement
-    checkAndSendNotifications();
-    
-    // Vérifier toutes les 10 secondes pour ne pas rater la fenêtre
-    const interval = setInterval(checkAndSendNotifications, 10000);
-
-    return () => clearInterval(interval);
-  }, [assignment.session_date, assignment.end_time, isCurrentYear, attendance, students]);
-
-  const handleNotifyAbsences = async (isAutomatic = false) => {
+  const handleNotifyAbsences = async () => {
     const absentStudents = students.filter(s => getAttendanceStatus(s.id) === 'absent');
     
     if (absentStudents.length === 0) {
@@ -223,22 +171,14 @@ export function SessionAttendanceManager({
       }
 
       if (successCount > 0) {
-        if (isAutomatic) {
-          toast.success(`✅ Notifications d'absence envoyées automatiquement (${successCount})`);
-          setAutoNotificationSent(true);
-          localStorage.setItem(notificationKey, 'true');
-        } else {
-          toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
-        }
+        toast.success(`${successCount} notification(s) d'absence envoyée(s)`);
       }
       if (failCount > 0) {
         toast.warning(`${failCount} notification(s) échouée(s)`);
       }
     } catch (error) {
       console.error('Error notifying absences:', error);
-      if (!isAutomatic) {
-        toast.error("Erreur lors de l'envoi des notifications");
-      }
+      toast.error("Erreur lors de l'envoi des notifications");
     } finally {
       setNotifying(false);
     }
@@ -308,7 +248,7 @@ export function SessionAttendanceManager({
                 Générer QR Code
               </Button>
               <Button 
-                onClick={() => handleNotifyAbsences(false)} 
+                onClick={handleNotifyAbsences} 
                 variant="outline" 
                 size="sm" 
                 disabled={!isCurrentYear || notifying || absentCount === 0}

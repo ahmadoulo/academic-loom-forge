@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      absence_notifications_log: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          id: string
+          sent_at: string
+          sent_count: number
+          session_date: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          sent_count?: number
+          session_date: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          sent_at?: string
+          sent_count?: number
+          session_date?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           body: string

@@ -48,6 +48,7 @@ import { SchoolAttendanceView } from "@/components/school/SchoolAttendanceView";
 import { useAttendance } from "@/hooks/useAttendance";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { useAutoAbsenceNotifications } from "@/hooks/useAutoAbsenceNotifications";
 import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 import { ClassroomManagement } from "@/components/school/ClassroomManagement";
@@ -102,6 +103,9 @@ const SchoolDashboard = () => {
   const { getSchoolByIdentifier } = useSchools();
   const [school, setSchool] = useState<any>(null);
   const [schoolLoading, setSchoolLoading] = useState(true);
+  
+  // Activer l'envoi automatique des notifications d'absence en arrière-plan
+  useAutoAbsenceNotifications();
   
   // Initialize school data
   React.useEffect(() => {
