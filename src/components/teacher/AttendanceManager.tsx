@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, 
   Users, 
@@ -14,11 +15,13 @@ import {
   QrCode,
   Calendar,
   Clock,
-  Lock
+  Lock,
+  Bell
 } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
 import { QRCodeGenerator } from "./QRCodeGenerator";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { AbsenceNotificationHistory } from "./AbsenceNotificationHistory";
 
 interface AttendanceManagerProps {
   classData: {
@@ -145,7 +148,7 @@ export const AttendanceManager = ({
                   Présence - {classData.name}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Gérer les présences des étudiants
+                  Gérer les présences et notifications
                 </p>
               </div>
             </div>
@@ -193,86 +196,106 @@ export const AttendanceManager = ({
         </CardContent>
       </Card>
 
-      {/* Students List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des étudiants ({students.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Chargement...</p>
-            </div>
-          ) : students.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Aucun étudiant dans cette classe</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {students.map((student, index) => {
-                const attendanceStatus = getAttendanceStatus(student.id);
-                const isPresent = attendanceStatus === 'present';
-                
-                return (
-                  <div key={student.id}>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium">{index + 1}</span>
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {student.firstname} {student.lastname}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge 
-                              variant={isPresent ? "default" : "secondary"}
-                              className={isPresent ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+      {/* Tabs for Attendance and History */}
+      <Tabs defaultValue="attendance" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="attendance" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Prise de Présence
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Historique Notifications
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attendance">
+          {/* Students List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Liste des étudiants ({students.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Chargement...</p>
+                </div>
+              ) : students.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Aucun étudiant dans cette classe</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {students.map((student, index) => {
+                    const attendanceStatus = getAttendanceStatus(student.id);
+                    const isPresent = attendanceStatus === 'present';
+                    
+                    return (
+                      <div key={student.id}>
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium">{index + 1}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {student.firstname} {student.lastname}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge 
+                                  variant={isPresent ? "default" : "secondary"}
+                                  className={isPresent ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+                                >
+                                  {isPresent ? 'Présent' : 'Absent'}
+                                </Badge>
+                                {attendance.find(a => a.student_id === student.id && a.date === selectedDate)?.method === 'qr_scan' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <QrCode className="h-3 w-3 mr-1" />
+                                    QR Scan
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant={isPresent ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleAttendanceChange(student.id, 'present')}
+                              className={isPresent ? "bg-green-600 hover:bg-green-700" : ""}
+                              disabled={!isCurrentYear}
                             >
-                              {isPresent ? 'Présent' : 'Absent'}
-                            </Badge>
-                            {attendance.find(a => a.student_id === student.id && a.date === selectedDate)?.method === 'qr_scan' && (
-                              <Badge variant="outline" className="text-xs">
-                                <QrCode className="h-3 w-3 mr-1" />
-                                QR Scan
-                              </Badge>
-                            )}
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Présent
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={!isPresent ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleAttendanceChange(student.id, 'absent')}
+                              className={!isPresent ? "bg-red-600 hover:bg-red-700" : ""}
+                              disabled={!isCurrentYear}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Absent
+                            </Button>
                           </div>
                         </div>
+                        {index < students.length - 1 && <Separator className="my-2" />}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant={isPresent ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleAttendanceChange(student.id, 'present')}
-                          className={isPresent ? "bg-green-600 hover:bg-green-700" : ""}
-                          disabled={!isCurrentYear}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Présent
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={!isPresent ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleAttendanceChange(student.id, 'absent')}
-                          className={!isPresent ? "bg-red-600 hover:bg-red-700" : ""}
-                          disabled={!isCurrentYear}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Absent
-                        </Button>
-                      </div>
-                    </div>
-                    {index < students.length - 1 && <Separator className="my-2" />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <AbsenceNotificationHistory teacherId={teacherId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

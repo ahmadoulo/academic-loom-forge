@@ -90,12 +90,28 @@ serve(async (req) => {
         continue;
       }
 
-      // Get all students in the class
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('id, firstname, lastname, email, tutor_email, tutor_name')
+      // Get all students in the class via student_school junction table
+      const { data: studentSchool, error: studentsError } = await supabase
+        .from('student_school')
+        .select(`
+          student_id,
+          students!inner(
+            id,
+            firstname,
+            lastname,
+            email,
+            tutor_email,
+            tutor_name,
+            archived
+          )
+        `)
         .eq('class_id', assignment.class_id)
-        .eq('archived', false);
+        .eq('is_active', true)
+        .eq('students.archived', false);
+
+      const students = studentSchool?.map(ss => ss.students).flat() || [];
+      
+      console.log(`👥 Found ${students.length} active students in class ${assignment.class_id}`);
 
       if (studentsError) {
         console.error('Error fetching students:', studentsError);
@@ -119,6 +135,8 @@ serve(async (req) => {
         continue;
       }
 
+      console.log(`📊 Attendance records: ${attendance?.length || 0} out of ${students.length} students`);
+
       // Check if all students have been marked
       const markedCount = attendance?.length || 0;
       if (markedCount !== students.length) {
@@ -131,6 +149,8 @@ serve(async (req) => {
         const record = attendance?.find(a => a.student_id === student.id);
         return record?.status === 'absent';
       });
+
+      console.log(`📋 Found ${absentStudents.length} absent students`);
 
       if (absentStudents.length === 0) {
         console.log(`✅ No absences for assignment ${assignment.id}, recording log`);
