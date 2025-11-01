@@ -114,13 +114,35 @@ export function SessionAttendanceManager({
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
   const allMarked = students.length > 0 && (presentCount + absentCount) === students.length;
 
-  // Notification automatique quand tous les étudiants sont marqués
+  // Notification automatique 1 minute après la fin de la séance
   useEffect(() => {
-    if (allMarked && absentCount > 0 && !autoNotificationSent && isCurrentYear) {
-      console.log('🔔 Auto-notification: Tous les étudiants marqués, envoi des notifications...');
-      handleNotifyAbsences(true);
+    if (!assignment.session_date || !assignment.end_time || !isCurrentYear || autoNotificationSent) {
+      return;
     }
-  }, [allMarked, absentCount, autoNotificationSent, isCurrentYear]);
+
+    const checkAndSendNotifications = () => {
+      const now = new Date();
+      const [hours, minutes] = assignment.end_time!.split(':').map(Number);
+      const sessionEnd = new Date(assignment.session_date!);
+      sessionEnd.setHours(hours, minutes, 0, 0);
+      
+      // Ajouter 1 minute après la fin de la séance
+      const notificationTime = new Date(sessionEnd.getTime() + 60000);
+      
+      if (now >= notificationTime && absentCount > 0 && allMarked) {
+        console.log('🔔 Auto-notification: Fin de séance + 1 minute, envoi des notifications...');
+        handleNotifyAbsences(true);
+      }
+    };
+
+    // Vérifier immédiatement
+    checkAndSendNotifications();
+
+    // Vérifier toutes les 30 secondes
+    const interval = setInterval(checkAndSendNotifications, 30000);
+
+    return () => clearInterval(interval);
+  }, [assignment.session_date, assignment.end_time, absentCount, allMarked, autoNotificationSent, isCurrentYear]);
 
   const handleNotifyAbsences = async (isAutomatic = false) => {
     const absentStudents = students.filter(s => getAttendanceStatus(s.id) === 'absent');
