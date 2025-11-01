@@ -121,13 +121,21 @@ export function SessionAttendanceManager({
 
   // Notification automatique 1 minute après la fin de la séance
   useEffect(() => {
-    if (!assignment.session_date || !assignment.end_time || !isCurrentYear || autoNotificationSent) {
+    if (!assignment.session_date || !assignment.end_time || !isCurrentYear) {
       return;
     }
 
     const checkAndSendNotifications = () => {
-      // Ne vérifier que si tous les étudiants sont marqués et qu'il y a des absents
-      if (!allMarked || absentCount === 0) {
+      // Vérifier d'abord si déjà envoyé
+      if (autoNotificationSent) {
+        return;
+      }
+
+      // Vérifier les conditions de notification
+      const currentAllMarked = students.length > 0 && (presentCount + absentCount) === students.length;
+      const currentAbsentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
+      
+      if (!currentAllMarked || currentAbsentCount === 0) {
         return;
       }
 
@@ -139,23 +147,23 @@ export function SessionAttendanceManager({
       // Ajouter 1 minute après la fin de la séance
       const notificationTime = new Date(sessionEnd.getTime() + 60000);
       
-      // Fenêtre d'envoi élargie à 5 minutes pour ne pas rater la notification
-      const maxNotificationTime = new Date(sessionEnd.getTime() + 360000); // +6 min
+      // Fenêtre d'envoi élargie à 10 minutes pour garantir l'envoi
+      const maxNotificationTime = new Date(sessionEnd.getTime() + 660000); // +11 min
       
       if (now >= notificationTime && now <= maxNotificationTime) {
-        console.log('🔔 Auto-notification: Fin de séance + 1 minute, envoi des notifications...');
+        console.log('🔔 Auto-notification: Conditions remplies, envoi immédiat...');
         handleNotifyAbsences(true);
       }
     };
 
-    // Vérifier immédiatement au chargement (mais seulement si on est dans le bon créneau)
+    // Vérifier immédiatement
     checkAndSendNotifications();
     
-    // Puis vérifier toutes les 30 secondes
-    const interval = setInterval(checkAndSendNotifications, 30000);
+    // Vérifier toutes les 10 secondes pour ne pas rater la fenêtre
+    const interval = setInterval(checkAndSendNotifications, 10000);
 
     return () => clearInterval(interval);
-  }, [assignment.session_date, assignment.end_time, absentCount, allMarked, autoNotificationSent, isCurrentYear]);
+  }, [assignment.session_date, assignment.end_time, isCurrentYear, attendance, students]);
 
   const handleNotifyAbsences = async (isAutomatic = false) => {
     const absentStudents = students.filter(s => getAttendanceStatus(s.id) === 'absent');
