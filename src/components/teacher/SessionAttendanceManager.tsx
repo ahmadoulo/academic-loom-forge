@@ -126,6 +126,11 @@ export function SessionAttendanceManager({
     }
 
     const checkAndSendNotifications = () => {
+      // Ne vérifier que si tous les étudiants sont marqués et qu'il y a des absents
+      if (!allMarked || absentCount === 0) {
+        return;
+      }
+
       const now = new Date();
       const [hours, minutes] = assignment.end_time!.split(':').map(Number);
       const sessionEnd = new Date(assignment.session_date!);
@@ -134,15 +139,16 @@ export function SessionAttendanceManager({
       // Ajouter 1 minute après la fin de la séance
       const notificationTime = new Date(sessionEnd.getTime() + 60000);
       
-      if (now >= notificationTime && absentCount > 0 && allMarked) {
+      // Vérifier si nous sommes dans le créneau d'envoi (entre fin+1min et fin+2min)
+      const maxNotificationTime = new Date(sessionEnd.getTime() + 120000);
+      
+      if (now >= notificationTime && now <= maxNotificationTime) {
         console.log('🔔 Auto-notification: Fin de séance + 1 minute, envoi des notifications...');
         handleNotifyAbsences(true);
       }
     };
 
-    // Vérifier immédiatement
-    checkAndSendNotifications();
-
+    // Ne PAS vérifier immédiatement au chargement
     // Vérifier toutes les 30 secondes
     const interval = setInterval(checkAndSendNotifications, 30000);
 
