@@ -4,7 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter, Bell } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, Download, Filter, Bell, History } from "lucide-react";
+import { AbsenceNotificationHistory } from "@/components/teacher/AbsenceNotificationHistory";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -188,10 +190,23 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          Historique des Présences
+          Gestion des Présences
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        <Tabs defaultValue="attendance" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="attendance">
+              <Calendar className="h-4 w-4 mr-2" />
+              Présences
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="h-4 w-4 mr-2" />
+              Historique Notifications
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="attendance" className="space-y-6 mt-6">
         {/* Filtres */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
           <div>
@@ -344,6 +359,12 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
             </Table>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            <AbsenceNotificationHistory schoolId={schoolId} />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

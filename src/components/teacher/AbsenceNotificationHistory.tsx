@@ -29,17 +29,18 @@ interface AbsenceLog {
 }
 
 interface AbsenceNotificationHistoryProps {
-  teacherId: string;
+  teacherId?: string;
+  schoolId?: string;
 }
 
-export const AbsenceNotificationHistory = ({ teacherId }: AbsenceNotificationHistoryProps) => {
+export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotificationHistoryProps) => {
   const [logs, setLogs] = useState<AbsenceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState("");
 
   useEffect(() => {
     fetchLogs();
-  }, [teacherId]);
+  }, [teacherId, schoolId]);
 
   const fetchLogs = async () => {
     try {
@@ -62,7 +63,7 @@ export const AbsenceNotificationHistory = ({ teacherId }: AbsenceNotificationHis
       const assignmentIds = [...new Set(logsData.map(log => log.assignment_id))];
 
       // Fetch assignment details
-      const { data: assignmentsData, error: assignmentsError } = await supabase
+      let query = supabase
         .from('assignments')
         .select(`
           id,
@@ -70,6 +71,7 @@ export const AbsenceNotificationHistory = ({ teacherId }: AbsenceNotificationHis
           start_time,
           end_time,
           teacher_id,
+          school_id,
           classes!inner(
             name
           ),
@@ -77,8 +79,16 @@ export const AbsenceNotificationHistory = ({ teacherId }: AbsenceNotificationHis
             name
           )
         `)
-        .in('id', assignmentIds)
-        .eq('teacher_id', teacherId);
+        .in('id', assignmentIds);
+
+      // Filter by teacherId if provided, otherwise by schoolId
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
+      } else if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+
+      const { data: assignmentsData, error: assignmentsError } = await query;
 
       if (assignmentsError) throw assignmentsError;
 

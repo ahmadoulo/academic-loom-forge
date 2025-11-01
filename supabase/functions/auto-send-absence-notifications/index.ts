@@ -67,14 +67,23 @@ serve(async (req) => {
     let notificationsSent = 0;
 
     for (const assignment of assignments) {
+      console.log(`📝 Checking assignment ${assignment.id}: ${assignment.title}`);
+      console.log(`   Session date: ${assignment.session_date}, End time: ${assignment.end_time}`);
+      
       // Check if session has ended more than 1 minute ago
       const [hours, minutes] = assignment.end_time.split(':').map(Number);
       const sessionEnd = new Date(assignment.session_date);
       sessionEnd.setHours(hours, minutes, 0, 0);
       const notificationTime = new Date(sessionEnd.getTime() + 60000);
 
+      console.log(`   Session ended at: ${sessionEnd.toISOString()}`);
+      console.log(`   Notification time: ${notificationTime.toISOString()}`);
+      console.log(`   Current time: ${now.toISOString()}`);
+      console.log(`   Can send notification: ${now >= notificationTime}`);
+
       if (now < notificationTime) {
-        continue; // Session hasn't ended + 1 minute yet
+        console.log(`⏳ Skipping - session hasn't ended + 1 minute yet`);
+        continue;
       }
 
       // Check if notifications already sent for this session
@@ -139,10 +148,12 @@ serve(async (req) => {
 
       // Check if all students have been marked
       const markedCount = attendance?.length || 0;
+      console.log(`   Marked students: ${markedCount}/${students.length}`);
       if (markedCount !== students.length) {
         console.log(`⏳ Not all students marked yet for assignment ${assignment.id} (${markedCount}/${students.length})`);
         continue;
       }
+      console.log(`✅ All students marked, proceeding...`);
 
       // Find absent students
       const absentStudents = students.filter(student => {
