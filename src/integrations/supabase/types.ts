@@ -260,13 +260,6 @@ export type Database = {
             referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_attendance_class_id"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
         ]
       }
       attendance_sessions: {
