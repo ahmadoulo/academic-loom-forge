@@ -172,7 +172,8 @@ serve(async (req) => {
           .insert({
             assignment_id: assignment.id,
             session_date: assignment.session_date,
-            sent_count: 0
+            sent_count: 0,
+            school_id: assignment.classes.school_id
           });
         
         continue;
@@ -222,7 +223,8 @@ serve(async (req) => {
         .insert({
           assignment_id: assignment.id,
           session_date: assignment.session_date,
-          sent_count: successCount
+          sent_count: successCount,
+          school_id: assignment.classes.school_id
         });
 
       processedCount++;

@@ -19,6 +19,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           id: string
+          school_id: string | null
           sent_at: string
           sent_count: number
           session_date: string
@@ -27,6 +28,7 @@ export type Database = {
           assignment_id: string
           created_at?: string
           id?: string
+          school_id?: string | null
           sent_at?: string
           sent_count?: number
           session_date: string
@@ -35,6 +37,7 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           id?: string
+          school_id?: string | null
           sent_at?: string
           sent_count?: number
           session_date?: string
