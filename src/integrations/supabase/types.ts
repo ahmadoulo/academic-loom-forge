@@ -39,7 +39,15 @@ export type Database = {
           sent_count?: number
           session_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "absence_notifications_log_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       announcements: {
         Row: {

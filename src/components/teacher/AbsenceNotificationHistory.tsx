@@ -53,8 +53,13 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
         .order('sent_at', { ascending: false })
         .limit(50);
 
-      if (logsError) throw logsError;
+      if (logsError) {
+        console.error('Error fetching logs:', logsError);
+        throw logsError;
+      }
+      
       if (!logsData || logsData.length === 0) {
+        console.log('No logs found');
         setLogs([]);
         return;
       }
@@ -62,8 +67,8 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
       // Get unique assignment IDs
       const assignmentIds = [...new Set(logsData.map(log => log.assignment_id))];
 
-      // Fetch assignment details
-      let query = supabase
+      // Fetch assignment details with filter
+      let assignmentsQuery = supabase
         .from('assignments')
         .select(`
           id,
@@ -81,23 +86,26 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
         `)
         .in('id', assignmentIds);
 
-      // Filter by teacherId if provided, otherwise by schoolId
+      // Filter by teacherId or schoolId
       if (teacherId) {
-        query = query.eq('teacher_id', teacherId);
+        assignmentsQuery = assignmentsQuery.eq('teacher_id', teacherId);
       } else if (schoolId) {
-        query = query.eq('school_id', schoolId);
+        assignmentsQuery = assignmentsQuery.eq('school_id', schoolId);
       }
 
-      const { data: assignmentsData, error: assignmentsError } = await query;
+      const { data: assignmentsData, error: assignmentsError } = await assignmentsQuery;
 
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) {
+        console.error('Error fetching assignments:', assignmentsError);
+        throw assignmentsError;
+      }
 
       // Create a map of assignments
       const assignmentsMap = new Map(
         assignmentsData?.map(a => [a.id, a]) || []
       );
 
-      // Transform the data structure
+      // Transform the data structure, filtering out logs without matching assignments
       const transformedLogs = logsData
         .map(log => {
           const assignment = assignmentsMap.get(log.assignment_id);
@@ -120,11 +128,13 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
             }
           };
         })
-        .filter(log => log !== null) as AbsenceLog[];
+        .filter((log): log is AbsenceLog => log !== null);
 
+      console.log(`Found ${transformedLogs.length} notification logs`);
       setLogs(transformedLogs);
     } catch (error) {
       console.error('Error fetching absence notification logs:', error);
+      setLogs([]);
     } finally {
       setLoading(false);
     }

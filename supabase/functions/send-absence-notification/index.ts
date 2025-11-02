@@ -245,6 +245,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sent ${successful} absence notifications, ${failed} failed`);
 
+    // Log the notification to absence_notifications_log table
+    // This requires the assignmentId to be passed in the request
+    // For now, we'll skip this as manual notifications don't have assignment context
+    // The auto notification function will handle logging
+
     return new Response(
       JSON.stringify({ success: true, results, sent: successful, failed }),
       {
