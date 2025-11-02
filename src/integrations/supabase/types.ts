@@ -23,6 +23,7 @@ export type Database = {
           sent_at: string
           sent_count: number
           session_date: string
+          student_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -32,6 +33,7 @@ export type Database = {
           sent_at?: string
           sent_count?: number
           session_date: string
+          student_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -41,6 +43,7 @@ export type Database = {
           sent_at?: string
           sent_count?: number
           session_date?: string
+          student_id?: string | null
         }
         Relationships: [
           {
@@ -48,6 +51,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "absence_notifications_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
