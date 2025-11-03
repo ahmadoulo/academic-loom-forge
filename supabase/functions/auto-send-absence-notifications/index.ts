@@ -89,12 +89,14 @@ serve(async (req) => {
       // Get list of students who already received notifications for this session
       const { data: existingLogs } = await supabase
         .from('absence_notifications_log')
-        .select('student_id')
+        .select('student_id, sent_count')
         .eq('assignment_id', assignment.id)
         .eq('session_date', assignment.session_date)
         .not('student_id', 'is', null);
 
-      const notifiedStudentIds = new Set(existingLogs?.map(log => log.student_id) || []);
+      const notifiedStudentIds = new Set(
+        existingLogs?.filter(log => log.sent_count && log.sent_count > 0).map(log => log.student_id) || []
+      );
       console.log(`📋 Already notified ${notifiedStudentIds.size} students for this session`);
 
       // Get all students in the class via student_school junction table
@@ -177,7 +179,7 @@ serve(async (req) => {
         if (!student.email && !student.tutor_email) {
           console.log(`⚠️ No email for student ${student.firstname} ${student.lastname}`);
           
-          // Log even failed attempts
+          // Log failed attempt (no email available) to prevent retries
           await supabase
             .from('absence_notifications_log')
             .insert({
@@ -192,7 +194,6 @@ serve(async (req) => {
         }
 
         let emailsSent = 0;
-        let notificationSuccess = false;
 
         try {
           const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('send-absence-notification', {
@@ -213,30 +214,45 @@ serve(async (req) => {
 
           if (notificationError) {
             console.error(`❌ Error sending notification for ${student.firstname} ${student.lastname}:`, notificationError);
+            // Log failed attempt to prevent retries
+            await supabase
+              .from('absence_notifications_log')
+              .insert({
+                assignment_id: assignment.id,
+                session_date: assignment.session_date,
+                student_id: student.id,
+                sent_count: 0,
+                school_id: assignment.classes.school_id
+              });
           } else {
             emailsSent = notificationResult?.sent || 0;
-            notificationSuccess = true;
             console.log(`✅ Sent ${emailsSent} email(s) for ${student.firstname} ${student.lastname}`);
             successCount += emailsSent;
+            
+            // ONLY log if notification was successfully sent
+            await supabase
+              .from('absence_notifications_log')
+              .insert({
+                assignment_id: assignment.id,
+                session_date: assignment.session_date,
+                student_id: student.id,
+                sent_count: emailsSent,
+                school_id: assignment.classes.school_id
+              });
+            console.log(`📝 Logged notification success for ${student.firstname} ${student.lastname} (sent: ${emailsSent})`);
           }
         } catch (error) {
           console.error(`❌ Exception sending notification for ${student.firstname} ${student.lastname}:`, error);
-        }
-
-        // ALWAYS log the attempt, whether successful or not, to prevent retries
-        try {
+          // Log failed attempt to prevent retries
           await supabase
             .from('absence_notifications_log')
             .insert({
               assignment_id: assignment.id,
               session_date: assignment.session_date,
               student_id: student.id,
-              sent_count: emailsSent,
+              sent_count: 0,
               school_id: assignment.classes.school_id
             });
-          console.log(`📝 Logged notification attempt for ${student.firstname} ${student.lastname} (sent: ${emailsSent})`);
-        } catch (logError) {
-          console.error(`❌ Failed to log notification for ${student.firstname} ${student.lastname}:`, logError);
         }
       }
 

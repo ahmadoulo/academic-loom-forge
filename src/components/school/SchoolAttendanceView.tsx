@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Download, Filter, Bell, History } from "lucide-react";
 import { AbsenceNotificationHistory } from "@/components/teacher/AbsenceNotificationHistory";
-import { useClasses } from "@/hooks/useClasses";
+import { useClassesByYear } from "@/hooks/useClassesByYear";
 import { useStudents } from "@/hooks/useStudents";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useAttendance } from "@/hooks/useAttendance";
 import { generateSchoolAttendanceReport } from "@/utils/attendancePdfExport";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -29,7 +30,8 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [notifying, setNotifying] = useState(false);
   
-  const { classes, loading: classesLoading } = useClasses(schoolId);
+  const { selectedYear } = useAcademicYear();
+  const { classes, loading: classesLoading } = useClassesByYear(schoolId, selectedYear?.id);
   const { students } = useStudents(schoolId);
   const { subjects } = useSubjects(schoolId, selectedClass !== "all" ? selectedClass : undefined);
   const { getSchoolById } = useSchools();
