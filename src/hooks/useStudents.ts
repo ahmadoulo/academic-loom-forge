@@ -361,26 +361,29 @@ export const useStudents = (schoolId?: string, classId?: string) => {
 
   const updateStudent = async (id: string, studentData: Partial<CreateStudentData>) => {
     try {
-      const updateData: any = {};
+      // Séparer les données pour students et student_school
+      const studentUpdateData: any = {};
       
-      if (studentData.firstname !== undefined) updateData.firstname = studentData.firstname.trim();
-      if (studentData.lastname !== undefined) updateData.lastname = studentData.lastname.trim();
-      if (studentData.email !== undefined) updateData.email = studentData.email?.trim() || null;
-      if (studentData.class_id !== undefined) updateData.class_id = studentData.class_id;
-      if (studentData.birth_date !== undefined) updateData.birth_date = studentData.birth_date?.trim() || null;
-      if (studentData.cin_number !== undefined) updateData.cin_number = studentData.cin_number?.trim() || null;
-      if (studentData.student_phone !== undefined) updateData.student_phone = studentData.student_phone?.trim() || null;
-      if (studentData.parent_phone !== undefined) updateData.parent_phone = studentData.parent_phone?.trim() || null;
-      if (studentData.tutor_name !== undefined) updateData.tutor_name = studentData.tutor_name?.trim() || null;
-      if (studentData.tutor_email !== undefined) updateData.tutor_email = studentData.tutor_email?.trim() || null;
+      // Données pour la table students (sans class_id qui est dans student_school)
+      if (studentData.firstname !== undefined) studentUpdateData.firstname = studentData.firstname.trim();
+      if (studentData.lastname !== undefined) studentUpdateData.lastname = studentData.lastname.trim();
+      if (studentData.email !== undefined) studentUpdateData.email = studentData.email?.trim() || null;
+      if (studentData.birth_date !== undefined) studentUpdateData.birth_date = studentData.birth_date?.trim() || null;
+      if (studentData.cin_number !== undefined) studentUpdateData.cin_number = studentData.cin_number?.trim() || null;
+      if (studentData.student_phone !== undefined) studentUpdateData.student_phone = studentData.student_phone?.trim() || null;
+      if (studentData.parent_phone !== undefined) studentUpdateData.parent_phone = studentData.parent_phone?.trim() || null;
+      if (studentData.tutor_name !== undefined) studentUpdateData.tutor_name = studentData.tutor_name?.trim() || null;
+      if (studentData.tutor_email !== undefined) studentUpdateData.tutor_email = studentData.tutor_email?.trim() || null;
 
-      // 1. Mettre à jour l'étudiant dans la table students
-      const { error: studentError } = await supabase
-        .from('students')
-        .update(updateData)
-        .eq('id', id);
+      // 1. Mettre à jour l'étudiant dans la table students (sans class_id)
+      if (Object.keys(studentUpdateData).length > 0) {
+        const { error: studentError } = await supabase
+          .from('students')
+          .update(studentUpdateData)
+          .eq('id', id);
 
-      if (studentError) throw studentError;
+        if (studentError) throw studentError;
+      }
 
       // 2. Si la classe a changé, mettre à jour student_school aussi
       if (studentData.class_id !== undefined) {

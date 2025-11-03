@@ -103,20 +103,23 @@ export function AuthenticatedHeader({
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <div className="flex items-center space-x-3 lg:space-x-4 min-w-0 flex-1">
           {showMobileMenu && sidebarContent && (
-            <div className="lg:hidden flex-shrink-0">
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setMobileMenuOpen(true)}
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          
-          <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+          <div className="lg:hidden flex-shrink-0">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Ouvrir le menu"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
+        <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+          <div onClick={() => setMobileMenuOpen(false)}>
             {sidebarContent}
-          </MobileSidebar>
+          </div>
+        </MobileSidebar>
           
           {/* Logo and Branding */}
           <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
