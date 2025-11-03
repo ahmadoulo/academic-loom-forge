@@ -191,6 +191,9 @@ serve(async (req) => {
           continue;
         }
 
+        let emailsSent = 0;
+        let notificationSuccess = false;
+
         try {
           const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('send-absence-notification', {
             body: {
@@ -211,23 +214,29 @@ serve(async (req) => {
           if (notificationError) {
             console.error(`❌ Error sending notification for ${student.firstname} ${student.lastname}:`, notificationError);
           } else {
-            const emailsSent = notificationResult?.sent || 0;
+            emailsSent = notificationResult?.sent || 0;
+            notificationSuccess = true;
             console.log(`✅ Sent ${emailsSent} email(s) for ${student.firstname} ${student.lastname}`);
             successCount += emailsSent;
-            
-            // Log successful notification for this student
-            await supabase
-              .from('absence_notifications_log')
-              .insert({
-                assignment_id: assignment.id,
-                session_date: assignment.session_date,
-                student_id: student.id,
-                sent_count: emailsSent,
-                school_id: assignment.classes.school_id
-              });
           }
         } catch (error) {
           console.error(`❌ Exception sending notification for ${student.firstname} ${student.lastname}:`, error);
+        }
+
+        // ALWAYS log the attempt, whether successful or not, to prevent retries
+        try {
+          await supabase
+            .from('absence_notifications_log')
+            .insert({
+              assignment_id: assignment.id,
+              session_date: assignment.session_date,
+              student_id: student.id,
+              sent_count: emailsSent,
+              school_id: assignment.classes.school_id
+            });
+          console.log(`📝 Logged notification attempt for ${student.firstname} ${student.lastname} (sent: ${emailsSent})`);
+        } catch (logError) {
+          console.error(`❌ Failed to log notification for ${student.firstname} ${student.lastname}:`, logError);
         }
       }
 
