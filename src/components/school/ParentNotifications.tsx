@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Send, Search, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationDialog } from "./NotificationDialog";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Parent {
   id: string;
@@ -29,6 +32,7 @@ interface ParentNotificationsProps {
 }
 
 export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
+  const { currentYear } = useAcademicYear();
   const [parents, setParents] = useState<Parent[]>([]);
   const [filteredParents, setFilteredParents] = useState<Parent[]>([]);
   const [selectedParents, setSelectedParents] = useState<Set<string>>(new Set());
@@ -37,11 +41,14 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [showAllYears, setShowAllYears] = useState(false);
 
   useEffect(() => {
-    fetchClasses();
-    fetchParents();
-  }, [schoolId]);
+    if (currentYear) {
+      fetchClasses();
+      fetchParents();
+    }
+  }, [schoolId, currentYear, showAllYears]);
 
   useEffect(() => {
     let filtered = parents;
@@ -69,12 +76,18 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
 
   const fetchClasses = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("classes")
         .select("id, name")
         .eq("school_id", schoolId)
-        .eq("archived", false)
-        .order("name", { ascending: true });
+        .eq("archived", false);
+
+      // Filter by current year if toggle is off
+      if (!showAllYears && currentYear) {
+        query = query.eq("school_year_id", currentYear.id);
+      }
+
+      const { data, error } = await query.order("name", { ascending: true });
 
       if (error) throw error;
       setClasses(data || []);
@@ -86,7 +99,7 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
   const fetchParents = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("students")
         .select(
           `
@@ -97,14 +110,21 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
           tutor_email,
           student_school!inner(
             class_id,
+            school_year_id,
             classes!inner(name)
           )
         `
         )
         .eq("student_school.school_id", schoolId)
         .eq("archived", false)
-        .not("tutor_email", "is", null)
-        .order("tutor_name", { ascending: true });
+        .not("tutor_email", "is", null);
+
+      // Filter by current year if toggle is off
+      if (!showAllYears && currentYear) {
+        query = query.eq("student_school.school_year_id", currentYear.id);
+      }
+
+      const { data, error } = await query.order("tutor_name", { ascending: true });
 
       if (error) throw error;
 
@@ -196,6 +216,16 @@ export function ParentNotifications({ schoolId }: ParentNotificationsProps) {
               ))}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="all-years-parents"
+              checked={showAllYears}
+              onCheckedChange={setShowAllYears}
+            />
+            <Label htmlFor="all-years-parents" className="text-sm whitespace-nowrap cursor-pointer">
+              Toutes les années
+            </Label>
+          </div>
         </div>
         <Button
           onClick={handleSendNotification}

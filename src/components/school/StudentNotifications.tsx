@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Send, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NotificationDialog } from "./NotificationDialog";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface Student {
   id: string;
@@ -28,6 +31,7 @@ interface StudentNotificationsProps {
 }
 
 export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
+  const { currentYear } = useAcademicYear();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
@@ -36,11 +40,14 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [showAllYears, setShowAllYears] = useState(false);
 
   useEffect(() => {
-    fetchClasses();
-    fetchStudents();
-  }, [schoolId]);
+    if (currentYear) {
+      fetchClasses();
+      fetchStudents();
+    }
+  }, [schoolId, currentYear, showAllYears]);
 
   useEffect(() => {
     let filtered = students;
@@ -67,12 +74,18 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
 
   const fetchClasses = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("classes")
         .select("id, name")
         .eq("school_id", schoolId)
-        .eq("archived", false)
-        .order("name", { ascending: true });
+        .eq("archived", false);
+
+      // Filter by current year if toggle is off
+      if (!showAllYears && currentYear) {
+        query = query.eq("school_year_id", currentYear.id);
+      }
+
+      const { data, error } = await query.order("name", { ascending: true });
 
       if (error) throw error;
       setClasses(data || []);
@@ -84,7 +97,7 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("students")
         .select(
           `
@@ -94,13 +107,20 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
           email,
           student_school!inner(
             class_id,
+            school_year_id,
             classes!inner(name)
           )
         `
         )
         .eq("student_school.school_id", schoolId)
-        .eq("archived", false)
-        .order("lastname", { ascending: true });
+        .eq("archived", false);
+
+      // Filter by current year if toggle is off
+      if (!showAllYears && currentYear) {
+        query = query.eq("student_school.school_year_id", currentYear.id);
+      }
+
+      const { data, error } = await query.order("lastname", { ascending: true });
 
       if (error) throw error;
 
@@ -184,6 +204,16 @@ export function StudentNotifications({ schoolId }: StudentNotificationsProps) {
               ))}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="all-years-students"
+              checked={showAllYears}
+              onCheckedChange={setShowAllYears}
+            />
+            <Label htmlFor="all-years-students" className="text-sm whitespace-nowrap cursor-pointer">
+              Toutes les années
+            </Label>
+          </div>
         </div>
         <Button
           onClick={handleSendNotification}
