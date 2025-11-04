@@ -124,6 +124,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          absence_notification_sent: boolean | null
           class_id: string
           created_at: string
           description: string | null
@@ -148,6 +149,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          absence_notification_sent?: boolean | null
           class_id: string
           created_at?: string
           description?: string | null
@@ -172,6 +174,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          absence_notification_sent?: boolean | null
           class_id?: string
           created_at?: string
           description?: string | null

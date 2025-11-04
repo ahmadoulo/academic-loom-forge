@@ -24,6 +24,7 @@ serve(async (req) => {
     const tenMinutesAgo = new Date(now.getTime() - 600000); // 10 minutes ago
 
     // Find assignments (sessions) that ended between 1-10 minutes ago
+    // AND where absence notifications haven't been sent yet
     const { data: assignments, error: assignmentsError } = await supabase
       .from('assignments')
       .select(`
@@ -34,6 +35,7 @@ serve(async (req) => {
         end_time,
         class_id,
         subject_id,
+        absence_notification_sent,
         classes!inner(
           id,
           name,
@@ -46,6 +48,7 @@ serve(async (req) => {
       `)
       .not('session_date', 'is', null)
       .not('end_time', 'is', null)
+      .eq('absence_notification_sent', false)
       .gte('session_date', tenMinutesAgo.toISOString().split('T')[0])
       .lte('session_date', now.toISOString().split('T')[0]);
 
@@ -256,10 +259,18 @@ serve(async (req) => {
         }
       }
 
+      // Marquer l'assignment comme ayant eu ses notifications envoyées
+      // Cela empêche l'envoi répété lors des prochaines exécutions
+      await supabase
+        .from('assignments')
+        .update({ absence_notification_sent: true })
+        .eq('id', assignment.id);
+
       processedCount++;
       notificationsSent += successCount;
 
       console.log(`✅ Sent ${successCount} notifications for assignment ${assignment.id}`);
+      console.log(`📌 Marked assignment ${assignment.id} as notification sent`);
     }
 
     const message = `Processed ${processedCount} sessions, sent ${notificationsSent} absence notifications`;
