@@ -131,9 +131,14 @@ export type Database = {
           due_date: string | null
           end_time: string | null
           id: string
+          is_recurring: boolean | null
           is_rescheduled: boolean | null
           original_session_date: string | null
+          parent_assignment_id: string | null
           proposed_new_date: string | null
+          recurrence_day: number | null
+          recurrence_end_date: string | null
+          recurrence_pattern: string | null
           reschedule_reason: string | null
           reschedule_status: string | null
           rescheduled_at: string | null
@@ -156,9 +161,14 @@ export type Database = {
           due_date?: string | null
           end_time?: string | null
           id?: string
+          is_recurring?: boolean | null
           is_rescheduled?: boolean | null
           original_session_date?: string | null
+          parent_assignment_id?: string | null
           proposed_new_date?: string | null
+          recurrence_day?: number | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
           reschedule_reason?: string | null
           reschedule_status?: string | null
           rescheduled_at?: string | null
@@ -181,9 +191,14 @@ export type Database = {
           due_date?: string | null
           end_time?: string | null
           id?: string
+          is_recurring?: boolean | null
           is_rescheduled?: boolean | null
           original_session_date?: string | null
+          parent_assignment_id?: string | null
           proposed_new_date?: string | null
+          recurrence_day?: number | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
           reschedule_reason?: string | null
           reschedule_status?: string | null
           rescheduled_at?: string | null
@@ -199,6 +214,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assignments_parent_assignment_id_fkey"
+            columns: ["parent_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assignments_school_year_id_fkey"
             columns: ["school_year_id"]

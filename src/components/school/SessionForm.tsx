@@ -6,11 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CalendarIcon, Info } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useSubjects } from "@/hooks/useSubjects";
+import { useOptionalSemester } from "@/hooks/useSemester";
 import { toast } from "sonner";
 
 interface SessionFormProps {
@@ -32,14 +34,21 @@ export interface SessionFormData {
   start_time: string;
   end_time: string;
   type: 'course' | 'exam' | 'assignment';
+  is_recurring?: boolean;
+  recurrence_pattern?: 'weekly' | 'monthly' | 'none';
+  recurrence_day?: number;
 }
 
 export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, schoolId }: SessionFormProps) {
   const [formData, setFormData] = useState<Partial<SessionFormData>>({
     type: 'course',
+    is_recurring: false,
+    recurrence_pattern: 'none',
   });
   
   const { subjects } = useSubjects(schoolId, formData.class_id, formData.teacher_id);
+  const semesterContext = useOptionalSemester();
+  const currentSemester = semesterContext?.currentSemester;
   
   // Filtrer les subjects en fonction de la classe et du professeur sélectionnés
   const availableSubjects = subjects.filter(subject => {
@@ -60,6 +69,18 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, sc
       
       if (startMinutes >= endMinutes) {
         toast.error("L'heure de début doit être avant l'heure de fin");
+        return;
+      }
+    }
+
+    // Validation récurrence
+    if (formData.is_recurring) {
+      if (!formData.recurrence_pattern || formData.recurrence_pattern === 'none') {
+        toast.error("Veuillez sélectionner une fréquence de récurrence");
+        return;
+      }
+      if (formData.recurrence_day === undefined) {
+        toast.error("Veuillez sélectionner un jour de la semaine");
         return;
       }
     }
@@ -240,6 +261,94 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, sc
             required
           />
         </div>
+      </div>
+
+      {/* Section Récurrence */}
+      <div className="space-y-4 rounded-lg border border-border bg-muted/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="recurring" className="text-base font-semibold">
+              Répéter cette séance
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Créer automatiquement cette séance de façon récurrente
+            </p>
+          </div>
+          <Switch
+            id="recurring"
+            checked={formData.is_recurring || false}
+            onCheckedChange={(checked) => 
+              setFormData({ 
+                ...formData, 
+                is_recurring: checked,
+                recurrence_pattern: checked ? 'weekly' : 'none'
+              })
+            }
+          />
+        </div>
+
+        {formData.is_recurring && (
+          <div className="space-y-4 pl-4 border-l-2 border-primary/20">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pattern">Fréquence *</Label>
+                <Select
+                  value={formData.recurrence_pattern}
+                  onValueChange={(value: 'weekly' | 'monthly') => 
+                    setFormData({ ...formData, recurrence_pattern: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Chaque semaine</SelectItem>
+                    <SelectItem value="monthly">Chaque mois</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="day">Jour de la semaine *</Label>
+                <Select
+                  value={formData.recurrence_day?.toString()}
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, recurrence_day: parseInt(value) })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un jour" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Lundi</SelectItem>
+                    <SelectItem value="2">Mardi</SelectItem>
+                    <SelectItem value="3">Mercredi</SelectItem>
+                    <SelectItem value="4">Jeudi</SelectItem>
+                    <SelectItem value="5">Vendredi</SelectItem>
+                    <SelectItem value="6">Samedi</SelectItem>
+                    <SelectItem value="0">Dimanche</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {currentSemester && (
+              <div className="flex items-start gap-2 rounded-md bg-primary/10 p-3 text-sm">
+                <Info className="h-4 w-4 mt-0.5 text-primary" />
+                <div>
+                  <p className="font-medium">Période de récurrence</p>
+                  <p className="text-muted-foreground">
+                    Du {format(new Date(formData.session_date || new Date()), "d MMM yyyy", { locale: fr })} au{" "}
+                    {format(new Date(currentSemester.end_date), "d MMM yyyy", { locale: fr })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Les séances seront créées automatiquement selon le semestre actuel
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

@@ -6,6 +6,7 @@ import { RescheduleSessionDialog } from "@/components/calendar/RescheduleSession
 import { ApproveRescheduleDialog } from "@/components/calendar/ApproveRescheduleDialog";
 import { SessionForm, SessionFormData } from "./SessionForm";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useOptionalSemester } from "@/hooks/useSemester";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -23,6 +24,8 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const { assignments, createAssignment, rescheduleAssignment, approveReschedule, rejectReschedule, loading } = useAssignments({ schoolId });
+  const semesterContext = useOptionalSemester();
+  const currentSemester = semesterContext?.currentSemester;
 
   const calendarEvents = assignments.map((assignment) => ({
     id: assignment.id,
@@ -44,7 +47,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
 
   const handleCreateSession = async (data: SessionFormData) => {
     try {
-      await createAssignment({
+      const assignmentData: any = {
         school_id: schoolId,
         title: data.title,
         description: data.description,
@@ -55,9 +58,25 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         start_time: data.start_time,
         end_time: data.end_time,
         type: data.type,
-      });
-      toast.success("Séance créée avec succès");
-      setIsDialogOpen(false);
+      };
+
+      // Add recurrence data if enabled
+      if (data.is_recurring) {
+        assignmentData.is_recurring = true;
+        assignmentData.recurrence_pattern = data.recurrence_pattern;
+        assignmentData.recurrence_day = data.recurrence_day;
+        assignmentData.recurrence_end_date = currentSemester?.end_date || format(data.session_date, "yyyy-MM-dd");
+      }
+
+      const result = await createAssignment(assignmentData);
+      
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        const message = (result as any).message || "Séance créée avec succès";
+        toast.success(message);
+        setIsDialogOpen(false);
+      }
     } catch (error) {
       toast.error("Erreur lors de la création de la séance");
       console.error(error);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAcademicYear } from './useAcademicYear';
-import { format } from 'date-fns';
+import { format, addWeeks, addMonths, isBefore, isAfter, setDay, startOfDay } from 'date-fns';
 
 export interface Assignment {
   id: string;
@@ -53,6 +53,10 @@ export interface CreateAssignmentData {
   session_date?: string;
   start_time?: string;
   end_time?: string;
+  is_recurring?: boolean;
+  recurrence_pattern?: 'weekly' | 'monthly' | 'none';
+  recurrence_day?: number;
+  recurrence_end_date?: string;
 }
 
 interface UseAssignmentsOptions {
@@ -129,6 +133,46 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     }
   };
 
+  /**
+   * Generate recurring dates based on pattern
+   */
+  const generateRecurringDates = (
+    startDate: Date,
+    endDate: Date,
+    pattern: 'weekly' | 'monthly',
+    dayOfWeek: number
+  ): Date[] => {
+    const dates: Date[] = [];
+    let currentDate = startOfDay(new Date(startDate));
+    const finalDate = startOfDay(new Date(endDate));
+
+    // Adjust first occurrence to match the desired day of week
+    currentDate = setDay(currentDate, dayOfWeek, { weekStartsOn: 0 });
+    
+    // If the adjusted date is before the start date, move to next occurrence
+    if (isBefore(currentDate, startDate)) {
+      if (pattern === 'weekly') {
+        currentDate = addWeeks(currentDate, 1);
+      } else {
+        currentDate = addMonths(currentDate, 1);
+      }
+    }
+
+    // Generate all occurrences until end date
+    while (isBefore(currentDate, finalDate) || currentDate.getTime() === finalDate.getTime()) {
+      dates.push(new Date(currentDate));
+      
+      if (pattern === 'weekly') {
+        currentDate = addWeeks(currentDate, 1);
+      } else {
+        currentDate = addMonths(currentDate, 1);
+        currentDate = setDay(currentDate, dayOfWeek, { weekStartsOn: 0 });
+      }
+    }
+
+    return dates;
+  };
+
   const createAssignment = async (assignmentData: CreateAssignmentData) => {
     try {
       const currentYearId = getYearForCreation();
@@ -137,16 +181,89 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
         throw new Error('Aucune année scolaire active');
       }
 
-      const { data, error } = await supabase
-        .from('assignments')
-        .insert([{ ...assignmentData, school_year_id: currentYearId }])
-        .select()
-        .single();
+      // Check if this is a recurring assignment
+      if (assignmentData.is_recurring && 
+          assignmentData.recurrence_pattern && 
+          assignmentData.recurrence_pattern !== 'none' &&
+          assignmentData.recurrence_day !== undefined &&
+          assignmentData.session_date &&
+          assignmentData.recurrence_end_date) {
+        
+        // Generate all recurring dates
+        const startDate = new Date(assignmentData.session_date);
+        const endDate = new Date(assignmentData.recurrence_end_date);
+        const recurringDates = generateRecurringDates(
+          startDate,
+          endDate,
+          assignmentData.recurrence_pattern,
+          assignmentData.recurrence_day
+        );
 
-      if (error) throw error;
+        console.log(`Generating ${recurringDates.length} recurring sessions`);
 
-      await fetchAssignments();
-      return { data, error: null };
+        // Create the parent assignment first
+        const parentData = {
+          ...assignmentData,
+          school_year_id: currentYearId,
+          session_date: format(recurringDates[0], 'yyyy-MM-dd'),
+        };
+
+        // Remove recurrence-specific fields that shouldn't be in the insert
+        const { is_recurring, recurrence_pattern, recurrence_day, recurrence_end_date, ...baseData } = parentData;
+
+        const { data: parentAssignment, error: parentError } = await supabase
+          .from('assignments')
+          .insert([{
+            ...baseData,
+            is_recurring: true,
+            recurrence_pattern: assignmentData.recurrence_pattern,
+            recurrence_day: assignmentData.recurrence_day,
+            recurrence_end_date: assignmentData.recurrence_end_date,
+            parent_assignment_id: null,
+          }])
+          .select()
+          .single();
+
+        if (parentError) throw parentError;
+
+        // Create all child occurrences (skip first one as it's the parent)
+        if (recurringDates.length > 1) {
+          const childAssignments = recurringDates.slice(1).map(date => ({
+            ...baseData,
+            session_date: format(date, 'yyyy-MM-dd'),
+            is_recurring: true,
+            recurrence_pattern: assignmentData.recurrence_pattern,
+            recurrence_day: assignmentData.recurrence_day,
+            recurrence_end_date: assignmentData.recurrence_end_date,
+            parent_assignment_id: parentAssignment.id,
+          }));
+
+          const { error: childrenError } = await supabase
+            .from('assignments')
+            .insert(childAssignments);
+
+          if (childrenError) throw childrenError;
+        }
+
+        await fetchAssignments();
+        return { 
+          data: parentAssignment, 
+          error: null,
+          message: `${recurringDates.length} séance(s) créée(s) avec succès`
+        };
+      } else {
+        // Non-recurring assignment - standard creation
+        const { data, error } = await supabase
+          .from('assignments')
+          .insert([{ ...assignmentData, school_year_id: currentYearId }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        await fetchAssignments();
+        return { data, error: null };
+      }
     } catch (err) {
       console.error('Erreur lors de la création du devoir:', err);
       return { 
