@@ -58,6 +58,7 @@ export default function StudentDashboard() {
         classes (name)
       `)
       .eq("class_id", student.class_id)
+      .in("type", ["homework", "exam"])
       .gte("session_date", new Date().toISOString().split('T')[0])
       .order("session_date", { ascending: true });
     
