@@ -59,8 +59,8 @@ export default function StudentDashboard() {
       `)
       .eq("class_id", student.class_id)
       .in("type", ["homework", "exam"])
-      .gte("session_date", new Date().toISOString().split('T')[0])
-      .order("session_date", { ascending: true });
+      .gte("due_date", new Date().toISOString().split('T')[0])
+      .order("due_date", { ascending: true });
     
     setAssignments(data || []);
   };
@@ -75,7 +75,7 @@ export default function StudentDashboard() {
               events={assignments.map(a => ({
                 id: a.id,
                 title: a.title,
-                session_date: a.session_date || a.due_date || "",
+                session_date: a.due_date || a.session_date || "",
                 start_time: a.start_time || null,
                 end_time: a.end_time || null,
                 type: a.type,
@@ -86,7 +86,7 @@ export default function StudentDashboard() {
                 proposed_new_date: a.proposed_new_date,
                 original_session_date: a.original_session_date,
               }))}
-              title="Mes séances à venir"
+              title="Prochains devoirs et examens"
             />
           </div>
         );

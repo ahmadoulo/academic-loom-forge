@@ -31,6 +31,7 @@ import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { toast } from "sonner";
+import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 
 const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined }) => {
   const [teacher, setTeacher] = useState<any>(null);
@@ -372,9 +373,22 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                   })}
                 </div>
                 
-                <SessionsList 
-                  assignments={assignments}
-                  onSelectSession={handleSelectSession}
+                <CalendarSummary 
+                  events={assignments.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    session_date: a.session_date || a.due_date || "",
+                    start_time: a.start_time || null,
+                    end_time: a.end_time || null,
+                    type: a.type,
+                    class_name: a.classes?.name,
+                    is_rescheduled: a.is_rescheduled,
+                    reschedule_reason: a.reschedule_reason,
+                    reschedule_status: a.reschedule_status,
+                    proposed_new_date: a.proposed_new_date,
+                    original_session_date: a.original_session_date,
+                  }))}
+                  title="Mes séances à venir"
                 />
               </div>
             )}
