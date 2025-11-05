@@ -183,7 +183,7 @@ const menuStructure = [
 export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = false }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Gestion académique": true,
     "Suivi pédagogique": true,

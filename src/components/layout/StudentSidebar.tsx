@@ -95,7 +95,7 @@ const menuStructure = [
 export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Scolarité": true,
     "Communication": false,
@@ -141,8 +141,8 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
       <div className={`border-b border-border/50 bg-card transition-all duration-200 ${!open ? "p-2" : "p-4"}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-soft shrink-0">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
+            <div className="h-10 w-10 bg-gradient-to-br from-primary via-primary-accent to-accent rounded-xl flex items-center justify-center shadow-md shrink-0">
+              <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
             {open && (
               <div className="min-w-0 flex-1">
@@ -206,7 +206,7 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
                 <div key={item.value}>
                   <button
                     onClick={() => onTabChange(item.value)}
-                    className={`w-full flex items-center justify-center lg:justify-start gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    className={`w-full flex items-center ${!open ? 'justify-center' : 'justify-start'} gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       !open ? "p-3" : "px-4 py-3"
                     } ${
                       activeTab === item.value

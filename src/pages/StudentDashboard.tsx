@@ -119,12 +119,11 @@ export default function StudentDashboard() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full flex-col lg:flex-row">
-        <div className="sidebar-container">
-          <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
+      <div className="min-h-screen flex w-full bg-background">
+        <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
         <div className="flex-1 flex flex-col min-w-0">
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             title={`${student?.firstname || ''} ${student?.lastname || ''}`}
             onSettingsClick={() => {}}
             showMobileMenu={true}
@@ -137,7 +136,7 @@ export default function StudentDashboard() {
               <StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
             }
           />
-          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
+          <main className="flex-1 p-3 sm:p-4 lg:p-6 bg-background overflow-y-auto">
             {renderContent()}
           </main>
         </div>

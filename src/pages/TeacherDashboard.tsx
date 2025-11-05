@@ -73,7 +73,13 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get subjects assigned to this teacher
   const { subjects } = useSubjects(currentTeacher?.school_id, undefined, teacherId);
   // useGrades avec filtrage par semestre
-  const { grades: filteredGrades, createGrade, deleteGrade } = useGrades(undefined, undefined, teacherId, displayYearId, selectedSemester);
+  const { grades: filteredGrades, createGrade, deleteGrade } = useGrades(
+    undefined, 
+    undefined, 
+    teacherId, 
+    displayYearId, 
+    selectedSemester === "all" ? undefined : selectedSemester
+  );
 
   const handleViewStudents = (classId: string, subjectId: string) => {
     const classData = teacherClasses.find(tc => tc.class_id === classId);
@@ -231,16 +237,14 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full flex-col lg:flex-row bg-background">
-        <div className="sidebar-container">
-          <TeacherSidebar 
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        </div>
+      <div className="min-h-screen flex w-full bg-background">
+        <TeacherSidebar 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
         
         <div className="flex-1 flex flex-col min-w-0">
-          <AuthenticatedHeader 
+          <AuthenticatedHeader
             title={`Prof. ${teacher.firstname} ${teacher.lastname}`}
             onSettingsClick={handleSettingsClick}
             showMobileMenu={true}
@@ -257,38 +261,48 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             }
           />
           
-          <main className="flex-1 p-4 lg:p-6 bg-background overflow-y-auto main-content">
+          <main className="flex-1 p-3 sm:p-4 lg:p-6 bg-background overflow-y-auto">
         {/* Teacher Info Card */}
-        <Card className="mb-6 lg:mb-8">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
-              <GraduationCap className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
-              <span className="hidden sm:inline">Interface Professeur - </span>
-              <span className="sm:hidden">Prof. </span>
-              {teacher.firstname} {teacher.lastname}
+        <Card className="mb-4 lg:mb-6">
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-base sm:text-lg lg:text-xl">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
+                <span className="hidden sm:inline">Interface Professeur - </span>
+                <span className="sm:hidden">Prof. </span>
+              </div>
+              <span className="truncate">{teacher.firstname} {teacher.lastname}</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-              <div className="flex items-center gap-2 min-w-0">
-                <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm lg:text-base truncate">Matières:</span>
-                <Badge variant="secondary" className="flex-shrink-0">{subjects.length}</Badge>
+          <CardContent className="px-3 sm:px-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm lg:text-base">Matières:</span>
+                </div>
+                <Badge variant="secondary" className="text-xs flex-shrink-0">{subjects.length}</Badge>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm lg:text-base truncate">Étudiants:</span>
-                <span className="text-primary font-semibold flex-shrink-0">{teacherStudents.length}</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm lg:text-base">Élèves:</span>
+                </div>
+                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherStudents.length}</span>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm lg:text-base truncate">Classes:</span>
-                <span className="text-primary font-semibold flex-shrink-0">{teacherClasses.length}</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm lg:text-base">Classes:</span>
+                </div>
+                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherClasses.length}</span>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium text-sm lg:text-base truncate">Notes:</span>
-                <span className="text-primary font-semibold flex-shrink-0">{filteredGrades.length}</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm lg:text-base">Notes:</span>
+                </div>
+                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{filteredGrades.length}</span>
               </div>
             </div>
           </CardContent>

@@ -55,7 +55,7 @@ interface SchoolGradesViewProps {
 export function SchoolGradesView({ schoolId, classes, students, grades, subjects, loading }: SchoolGradesViewProps) {
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [selectedSemester, setSelectedSemester] = useState<string>("all");
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
   const { getSchoolById } = useSchools();
@@ -63,15 +63,13 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
   const [logoBase64, setLogoBase64] = useState<string>();
   const { selectedYear } = useAcademicYear();
   const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
-  const { grades: filteredGrades } = useGrades(undefined, undefined, undefined, selectedYear?.id, selectedSemester || undefined);
-  
-  // Définir le semestre actuel par défaut
-  React.useEffect(() => {
-    const currentSemester = semesters.find(s => s.is_actual);
-    if (currentSemester && !selectedSemester) {
-      setSelectedSemester(currentSemester.id);
-    }
-  }, [semesters]);
+  const { grades: filteredGrades } = useGrades(
+    undefined, 
+    undefined, 
+    undefined, 
+    selectedYear?.id, 
+    selectedSemester === "all" ? undefined : selectedSemester
+  );
 
   React.useEffect(() => {
     const loadSchool = async () => {
