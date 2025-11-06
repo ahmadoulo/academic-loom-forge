@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, MapPin, User, MoreVertical, Edit, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, User, MoreVertical, Edit, AlertTriangle, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CalendarEvent {
   id: string;
@@ -44,6 +45,8 @@ export function ModernCalendarView({
   onApproveReschedule,
 }: ModernCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [currentWeek, setCurrentWeek] = useState(new Date());
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -68,7 +71,16 @@ export function ModernCalendarView({
   const handleToday = () => {
     const today = new Date();
     setCurrentMonth(today);
+    setCurrentWeek(today);
     onDateSelect(today);
+  };
+
+  const handlePreviousWeek = () => {
+    setCurrentWeek(subWeeks(currentWeek, 1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentWeek(addWeeks(currentWeek, 1));
   };
 
   const getEventColor = (type: string) => {
@@ -95,6 +107,30 @@ export function ModernCalendarView({
 
   const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
+  // Week view helpers
+  const weekStart = startOfWeek(currentWeek, { locale: fr });
+  const weekEnd = endOfWeek(currentWeek, { locale: fr });
+  const weekDaysArray = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6h to 21h
+
+  const getEventsForDateAndHour = (date: Date, hour: number) => {
+    return events.filter(event => {
+      if (!event.session_date || !isSameDay(new Date(event.session_date), date)) {
+        return false;
+      }
+      if (!event.start_time) return false;
+      const eventHour = parseInt(event.start_time.split(':')[0]);
+      return eventHour === hour;
+    });
+  };
+
+  const getEventDuration = (event: CalendarEvent) => {
+    if (!event.start_time || !event.end_time) return 1;
+    const startHour = parseInt(event.start_time.split(':')[0]);
+    const endHour = parseInt(event.end_time.split(':')[0]);
+    return Math.max(1, endHour - startHour);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -105,7 +141,7 @@ export function ModernCalendarView({
             {format(currentMonth, 'MMMM yyyy', { locale: fr })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={handleToday} size="sm">
             Aujourd'hui
           </Button>
@@ -113,21 +149,42 @@ export function ModernCalendarView({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handlePreviousMonth}
+              onClick={viewMode === 'month' ? handlePreviousMonth : handlePreviousWeek}
               className="h-9 w-9"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="px-3 text-sm font-medium min-w-[120px] text-center">
-              {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+            <div className="px-3 text-sm font-medium min-w-[140px] text-center">
+              {viewMode === 'month' 
+                ? format(currentMonth, 'MMMM yyyy', { locale: fr })
+                : `${format(weekStart, 'd', { locale: fr })} - ${format(weekEnd, 'd MMM yyyy', { locale: fr })}`
+              }
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={handleNextMonth}
+              onClick={viewMode === 'month' ? handleNextMonth : handleNextWeek}
               className="h-9 w-9"
             >
               <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button
+              variant={viewMode === 'month' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('month')}
+              className="h-8 px-3 text-xs font-medium"
+            >
+              MOIS
+            </Button>
+            <Button
+              variant={viewMode === 'week' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('week')}
+              className="h-8 px-3 text-xs font-medium"
+            >
+              SEMAINE
             </Button>
           </div>
         </div>
@@ -138,17 +195,19 @@ export function ModernCalendarView({
         {/* Calendar */}
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            {/* Week days header */}
-            <div className="grid grid-cols-7 border-b bg-muted/50">
-              {weekDays.map(day => (
-                <div key={day} className="p-3 text-center text-sm font-medium text-muted-foreground">
-                  {day}
+            {viewMode === 'month' ? (
+              <>
+                {/* Week days header */}
+                <div className="grid grid-cols-7 border-b bg-muted/50">
+                  {weekDays.map(day => (
+                    <div key={day} className="p-3 text-center text-sm font-medium text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            
-            {/* Calendar days */}
-            <div className="grid grid-cols-7 auto-rows-[minmax(100px,1fr)]">
+                
+                {/* Calendar days */}
+                <div className="grid grid-cols-7 auto-rows-[minmax(100px,1fr)]">
               {calendarDays.map((day, idx) => {
                 const dayEvents = getEventsForDate(day);
                 const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -211,6 +270,93 @@ export function ModernCalendarView({
                 );
               })}
             </div>
+            </>
+            ) : (
+              // Week View
+              <ScrollArea className="h-[600px]">
+                <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/50">
+                  <div className="p-3 border-r" />
+                  {weekDaysArray.map((day) => (
+                    <div 
+                      key={day.toISOString()} 
+                      className={cn(
+                        "p-3 text-center border-r",
+                        isToday(day) && "bg-primary/10"
+                      )}
+                    >
+                      <div className="text-xs text-muted-foreground font-medium">
+                        {format(day, 'EEE', { locale: fr })}
+                      </div>
+                      <div className={cn(
+                        "text-lg font-semibold mt-1",
+                        isToday(day) && "text-primary"
+                      )}>
+                        {format(day, 'd')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="relative">
+                  {hours.map((hour) => (
+                    <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b min-h-[80px]">
+                      <div className="p-2 text-sm font-medium text-muted-foreground border-r bg-muted/30 sticky left-0">
+                        {hour.toString().padStart(2, '0')} h
+                      </div>
+                      {weekDaysArray.map((day) => {
+                        const cellEvents = getEventsForDateAndHour(day, hour);
+                        const isCurrentDay = isToday(day);
+                        
+                        return (
+                          <div
+                            key={`${day.toISOString()}-${hour}`}
+                            className={cn(
+                              "border-r p-1 relative min-h-[80px]",
+                              isCurrentDay && "bg-primary/5"
+                            )}
+                            onClick={() => onDateSelect(day)}
+                          >
+                            {cellEvents.map((event) => {
+                              const duration = getEventDuration(event);
+                              return (
+                                <div
+                                  key={event.id}
+                                  className={cn(
+                                    "text-xs p-2 rounded mb-1 cursor-pointer hover:opacity-90 transition-opacity",
+                                    getEventColor(event.type),
+                                    duration > 1 && "mb-2"
+                                  )}
+                                  style={{
+                                    minHeight: `${duration * 60}px`
+                                  }}
+                                >
+                                  <div className="font-semibold truncate">{event.title}</div>
+                                  {event.start_time && event.end_time && (
+                                    <div className="text-[10px] opacity-80 mt-0.5">
+                                      {event.start_time} - {event.end_time}
+                                    </div>
+                                  )}
+                                  {event.class_name && (
+                                    <div className="text-[10px] opacity-70 truncate mt-0.5">
+                                      {event.class_name}
+                                    </div>
+                                  )}
+                                  {event.reschedule_status === 'pending' && (
+                                    <Badge variant="outline" className="text-[9px] px-1 mt-1 bg-orange-50 text-orange-600 border-orange-200">
+                                      Demandé
+                                    </Badge>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
 
