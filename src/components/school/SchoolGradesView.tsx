@@ -244,7 +244,7 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                 </CardTitle>
                 {currentSemesterInfo && (
                   <Badge variant="outline" className="mt-2 border-primary/40 text-primary font-medium">
-                    📅 {currentSemesterInfo.name}
+                    {currentSemesterInfo.name}
                   </Badge>
                 )}
               </div>
@@ -290,16 +290,16 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                       >
                         <div className="flex items-center justify-between mb-3">
                           <Badge variant="secondary" className="text-xs font-medium">
-                            {grade.grade_type === 'examen' ? '📝 Examen' : 
-                             grade.grade_type === 'controle' ? '✍️ Contrôle' : 
-                             '📄 Devoir'}
+                            {grade.grade_type === 'examen' ? 'Examen' : 
+                             grade.grade_type === 'controle' ? 'Contrôle' : 
+                             'Devoir'}
                           </Badge>
                           <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                             {Number(grade.grade).toFixed(1)}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground font-medium">
-                          📅 {grade.exam_date 
+                          {grade.exam_date 
                             ? new Date(grade.exam_date).toLocaleDateString('fr-FR', { 
                                 day: 'numeric', 
                                 month: 'long', 
@@ -314,7 +314,7 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                         </p>
                         {grade.comment && (
                           <p className="text-sm mt-3 pt-3 border-t text-muted-foreground italic">
-                            💬 "{grade.comment}"
+                            "{grade.comment}"
                           </p>
                         )}
                       </div>
@@ -383,10 +383,10 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                   <SelectValue placeholder="Filtrer par semestre" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">📚 Tous les semestres</SelectItem>
+                  <SelectItem value="all">Tous les semestres</SelectItem>
                   {semesters.map((sem) => (
                     <SelectItem key={sem.id} value={sem.id}>
-                      {sem.is_actual && "✨ "}{sem.name}
+                      {sem.name}{sem.is_actual && " (Actuel)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -397,7 +397,7 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                 <SelectValue placeholder="Filtrer par classe" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">🎓 Toutes les classes</SelectItem>
+                <SelectItem value="all">Toutes les classes</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {cls.name}
@@ -461,11 +461,11 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                     <div className="px-6 pt-6 pb-2">
                       <div className="flex items-center gap-3">
                         <Badge variant="default" className="text-base px-4 py-1.5">
-                          📅 {semesterInfo.semester.name}
+                          {semesterInfo.semester.name}
                         </Badge>
                         {semesterInfo.semester.is_actual && (
                           <Badge variant="secondary" className="text-sm">
-                            ✨ Actuel
+                            Actuel
                           </Badge>
                         )}
                       </div>
@@ -477,12 +477,12 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/50 hover:bg-muted/50">
-                              <TableHead className="min-w-[180px] font-semibold">👤 Étudiant</TableHead>
-                              <TableHead className="min-w-[130px] font-semibold">🎓 Classe</TableHead>
-                              <TableHead className="min-w-[120px] text-center font-semibold">📊 Notes</TableHead>
-                              <TableHead className="min-w-[120px] text-center font-semibold">📈 Moyenne</TableHead>
-                              <TableHead className="min-w-[320px] font-semibold">📝 Dernières notes</TableHead>
-                              <TableHead className="min-w-[100px] text-center font-semibold">⚡ Actions</TableHead>
+                              <TableHead className="min-w-[180px] font-semibold">Étudiant</TableHead>
+                              <TableHead className="min-w-[130px] font-semibold">Classe</TableHead>
+                              <TableHead className="min-w-[120px] text-center font-semibold">Notes</TableHead>
+                              <TableHead className="min-w-[120px] text-center font-semibold">Moyenne</TableHead>
+                              <TableHead className="min-w-[320px] font-semibold">Dernières notes</TableHead>
+                              <TableHead className="min-w-[100px] text-center font-semibold">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
