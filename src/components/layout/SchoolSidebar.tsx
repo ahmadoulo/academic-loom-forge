@@ -43,6 +43,7 @@ import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 interface SchoolSidebarProps {
   schoolId: string;
   isMobile?: boolean;
+  onClose?: () => void;
 }
 
 const menuStructure = [
@@ -180,7 +181,7 @@ const menuStructure = [
   },
 ];
 
-export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = false }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean }) {
+export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = false, onClose }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean; onClose?: () => void }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const [isPinned, setIsPinned] = useState(true);
@@ -259,7 +260,10 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
                 return (
                   <div key={item.value}>
                     <button
-                      onClick={() => onTabChange(item.value)}
+                      onClick={() => {
+                        onTabChange(item.value);
+                        if (isMobile && onClose) onClose();
+                      }}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                         activeTab === item.value
                           ? 'bg-primary text-primary-foreground shadow-soft'
@@ -280,7 +284,12 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
               return (
                 <div key={item.category} className="space-y-2">
                   <button
-                    onClick={() => toggleCategory(item.category)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleCategory(item.category);
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
                   >
                     <CategoryIcon className="h-4 w-4 shrink-0" />
@@ -293,8 +302,14 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
                     <div className="space-y-1 pl-2 animate-accordion-down">
                       {item.items.map(subItem => (
                         <button
+                          type="button"
                           key={subItem.value}
-                          onClick={() => onTabChange(subItem.value)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onTabChange(subItem.value);
+                            if (isMobile && onClose) onClose();
+                          }}
                           className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                             activeTab === subItem.value
                               ? 'bg-primary text-primary-foreground shadow-soft'

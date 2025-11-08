@@ -92,7 +92,7 @@ const menuStructure = [
   },
 ];
 
-export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
+export function StudentSidebar({ activeTab, onTabChange, isMobile = false, onClose }: { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean; onClose?: () => void }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const [isPinned, setIsPinned] = useState(true);
@@ -205,7 +205,10 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
               return (
                 <div key={item.value}>
                   <button
-                    onClick={() => onTabChange(item.value)}
+                    onClick={() => {
+                      onTabChange(item.value);
+                      if (isMobile && onClose) onClose();
+                    }}
                     className={`w-full flex items-center ${!open ? 'justify-center' : 'justify-start'} gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       !open ? "p-3" : "px-4 py-3"
                     } ${
@@ -264,7 +267,10 @@ export function StudentSidebar({ activeTab, onTabChange }: { activeTab: string; 
                         {item.items.map(subItem => (
                           <button
                             key={subItem.value}
-                            onClick={() => onTabChange(subItem.value)}
+                            onClick={() => {
+                              onTabChange(subItem.value);
+                              if (isMobile && onClose) onClose();
+                            }}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                               activeTab === subItem.value
                                 ? 'bg-primary text-primary-foreground shadow-soft'

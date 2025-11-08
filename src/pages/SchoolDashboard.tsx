@@ -520,7 +520,6 @@ const SchoolDashboard = () => {
                 schoolId={school.identifier}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                isMobile={true}
               />
             }
           />

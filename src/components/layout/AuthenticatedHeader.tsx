@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -53,6 +54,18 @@ export function AuthenticatedHeader({
   sidebarContent
 }: AuthenticatedHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const handleCloseMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+  
+  // Clone sidebarContent with mobile props if it exists
+  const mobileSidebarContent = sidebarContent && React.isValidElement(sidebarContent)
+    ? React.cloneElement(sidebarContent as React.ReactElement<any>, {
+        isMobile: true,
+        onClose: handleCloseMobileMenu
+      })
+    : sidebarContent;
   
   // Mock user pour l'accès libre
   const profile = {
@@ -116,9 +129,7 @@ export function AuthenticatedHeader({
         )}
         
         <MobileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
-          <div onClick={() => setMobileMenuOpen(false)}>
-            {sidebarContent}
-          </div>
+          {mobileSidebarContent}
         </MobileSidebar>
           
           {/* Logo and Branding */}
