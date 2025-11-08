@@ -5,14 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Award, TrendingUp, Download, ArrowLeft, Users } from "lucide-react";
+import { Loader2, FileText, Award, Download, ArrowLeft, Users } from "lucide-react";
 import { generateStudentBulletin, generateStudentBulletinInDoc } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
-import { useGrades } from "@/hooks/useGrades";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -42,7 +41,6 @@ export const BulletinSection = ({
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
   const { selectedYear } = useAcademicYear();
   const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
-  const { grades: filteredGrades } = useGrades(undefined, undefined, undefined, selectedYear?.id, selectedSemester || undefined);
   
   // Définir le semestre actuel par défaut
   React.useEffect(() => {
@@ -50,7 +48,7 @@ export const BulletinSection = ({
     if (currentSemester && !selectedSemester) {
       setSelectedSemester(currentSemester.id);
     }
-  }, [semesters]);
+  }, [semesters, selectedSemester]);
   
   // Convertir le logo en base64 au chargement
   React.useEffect(() => {
@@ -67,7 +65,14 @@ export const BulletinSection = ({
     convertLogo();
   }, [schoolLogoUrl]);
 
-  const displayGrades = filteredGrades.length > 0 ? filteredGrades : grades;
+  // Filtrer les notes selon le semestre et l'année scolaire sélectionnés
+  const displayGrades = useMemo(() => {
+    return grades.filter(grade => {
+      const matchesYear = !selectedYear || grade.school_year_id === selectedYear.id;
+      const matchesSemester = !selectedSemester || selectedSemester === 'all' || grade.school_semester_id === selectedSemester;
+      return matchesYear && matchesSemester;
+    });
+  }, [grades, selectedYear, selectedSemester]);
 
   // Grouper les étudiants par classe
   const studentsByClass = useMemo(() => {
@@ -294,11 +299,16 @@ export const BulletinSection = ({
                 <p className="text-3xl font-bold">{rank}</p>
                 <p className="text-muted-foreground">/ {totalStudents}</p>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {rank === 1 ? "🏆 Premier de la classe" : 
-                 rank <= 3 ? "🥈 Parmi les meilleurs" : 
-                 ""}
-              </p>
+              {rank === 1 && (
+                <Badge variant="default" className="mt-2">
+                  Premier de la classe
+                </Badge>
+              )}
+              {rank > 1 && rank <= 3 && (
+                <Badge variant="secondary" className="mt-2">
+                  Parmi les meilleurs
+                </Badge>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -321,22 +331,22 @@ export const BulletinSection = ({
                     )}
                   </div>
                   
-                  {subjectGrade.hasGrades ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {subjectGrade.grades.map((grade: any, index: number) => (
-                        <div 
-                          key={grade.id} 
-                          className="flex items-center justify-between p-2 border rounded bg-accent/50"
-                        >
-                          <span className="text-sm text-muted-foreground">
-                            {grade.grade_type === 'examen' ? '📝 Examen' : 
-                             grade.grade_type === 'controle' ? '📋 Contrôle' : 
-                             '✏️ Devoir'}
-                          </span>
-                          <span className="font-semibold">{Number(grade.grade).toFixed(1)}/20</span>
-                        </div>
-                      ))}
-                    </div>
+                    {subjectGrade.hasGrades ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {subjectGrade.grades.map((grade: any, index: number) => (
+                          <div 
+                            key={grade.id} 
+                            className="flex flex-col p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                          >
+                            <span className="text-xs text-muted-foreground mb-1">
+                              {grade.grade_type === 'examen' ? 'Examen' : 
+                               grade.grade_type === 'controle' ? 'Contrôle' : 
+                               'Devoir'}
+                            </span>
+                            <span className="font-bold text-lg">{Number(grade.grade).toFixed(1)}<span className="text-sm text-muted-foreground">/20</span></span>
+                          </div>
+                        ))}
+                      </div>
                   ) : (
                     <p className="text-sm text-muted-foreground italic">Aucune note enregistrée</p>
                   )}
@@ -365,31 +375,35 @@ export const BulletinSection = ({
   // Vue liste des étudiants par classe
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Award className="h-6 w-6" />
-            Bulletins de Notes
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Consultez et téléchargez les bulletins des étudiants par classe
-          </p>
-        </div>
-        
-        <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Filtrer par semestre" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les semestres</SelectItem>
-            {semesters.map((sem) => (
-              <SelectItem key={sem.id} value={sem.id}>
-                {sem.name} {sem.is_actual && "(Actuel)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Award className="h-6 w-6 text-primary" />
+                Bulletins de Notes
+              </CardTitle>
+              <CardDescription className="mt-2">
+                Consultez et téléchargez les bulletins des étudiants par classe
+              </CardDescription>
+            </div>
+            
+            <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+              <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectValue placeholder="Filtrer par semestre" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les semestres</SelectItem>
+                {semesters.map((sem) => (
+                  <SelectItem key={sem.id} value={sem.id}>
+                    {sem.name} {sem.is_actual && "(Actuel)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
 
       <Tabs defaultValue={classes[0]?.id} className="space-y-4">
         <TabsList className="flex-wrap h-auto">
@@ -403,85 +417,104 @@ export const BulletinSection = ({
           ))}
         </TabsList>
 
+        {!selectedYear && (
+          <div className="p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground text-center">
+              Veuillez sélectionner une année scolaire pour afficher les bulletins
+            </p>
+          </div>
+        )}
+
         {classes.map((classItem) => (
           <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
-            {studentsByClass[classItem.id]?.length > 0 ? (
+            {selectedYear && studentsByClass[classItem.id]?.length > 0 ? (
               <>
-                <div className="flex justify-end mb-4">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{studentsByClass[classItem.id].length} étudiant{studentsByClass[classItem.id].length > 1 ? 's' : ''}</span>
+                  </div>
                   <Button 
                     onClick={() => handleGenerateClassBulletins(classItem.id)}
                     className="gap-2"
+                    variant="default"
                   >
                     <Download className="h-4 w-4" />
-                    Télécharger tous les bulletins ({studentsByClass[classItem.id].length})
+                    Télécharger tous les bulletins
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {studentsByClass[classItem.id].map((student, index) => (
-                  <Card 
-                    key={student.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">
-                            {student.firstname} {student.lastname}
-                          </CardTitle>
-                          <CardDescription className="text-xs mt-1">
-                            {student.email || 'Pas d\'email'}
-                          </CardDescription>
+                  {studentsByClass[classItem.id].map((student, index) => (
+                    <Card 
+                      key={student.id} 
+                      className="group hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
+                      onClick={() => setSelectedStudent(student)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CardTitle className="text-base truncate">
+                                {student.firstname} {student.lastname}
+                              </CardTitle>
+                              {index === 0 && (
+                                <Badge variant="default" className="shrink-0 h-5">
+                                  Top 1
+                                </Badge>
+                              )}
+                              {index > 0 && index < 3 && (
+                                <Badge variant="secondary" className="shrink-0 h-5">
+                                  Top {index + 1}
+                                </Badge>
+                              )}
+                            </div>
+                            <CardDescription className="text-xs truncate">
+                              {student.email || 'Pas d\'email'}
+                            </CardDescription>
+                          </div>
                         </div>
-                        <Badge 
-                          variant={index === 0 ? "default" : index < 3 ? "outline" : "secondary"}
-                          className="shrink-0"
-                        >
-                          #{index + 1}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Moyenne</span>
-                          <span className="font-bold text-lg">
-                            {student.average > 0 ? student.average.toFixed(2) : '--'}/20
-                          </span>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <span className="text-sm font-medium text-muted-foreground">Moyenne</span>
+                            <span className="text-xl font-bold text-foreground">
+                              {student.average > 0 ? student.average.toFixed(2) : '--'}<span className="text-sm text-muted-foreground">/20</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{student.totalGrades} note{student.totalGrades > 1 ? 's' : ''}</span>
+                            <Badge 
+                              variant={student.average >= 14 ? "default" : student.average >= 10 ? "secondary" : "destructive"}
+                              className="h-5"
+                            >
+                              {student.average >= 14 ? "Excellent" : student.average >= 10 ? "Bien" : "À améliorer"}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Notes</span>
-                          <Badge variant="outline">{student.totalGrades}</Badge>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full mt-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedStudent(student);
-                          }}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Voir le bulletin
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Aucun étudiant dans cette classe</p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Aucun étudiant</h3>
+                <p className="text-sm text-muted-foreground">
+                  {!selectedYear 
+                    ? "Veuillez sélectionner une année scolaire" 
+                    : "Aucun étudiant dans cette classe pour l'année et le semestre sélectionnés"}
+                </p>
+              </div>
             )}
           </TabsContent>
         ))}
       </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
