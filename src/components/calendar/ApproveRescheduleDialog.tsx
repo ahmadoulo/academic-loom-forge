@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, Calendar, User } from "lucide-react";
+import { AlertCircle, Calendar, User, Clock } from "lucide-react";
+import { useMemo } from "react";
 
 interface ApproveRescheduleDialogProps {
   open: boolean;
@@ -30,6 +31,20 @@ export function ApproveRescheduleDialog({
   onReject,
   loading,
 }: ApproveRescheduleDialogProps) {
+  // Parse reason to extract text and times if JSON
+  const parsedReason = useMemo(() => {
+    try {
+      const parsed = JSON.parse(reason);
+      return {
+        text: parsed.reason || reason,
+        startTime: parsed.proposedStartTime,
+        endTime: parsed.proposedEndTime
+      };
+    } catch {
+      return { text: reason };
+    }
+  }, [reason]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -73,10 +88,30 @@ export function ApproveRescheduleDialog({
               </div>
             </div>
 
+            {(parsedReason.startTime || parsedReason.endTime) && (
+              <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <div className="flex-1 space-y-1">
+                  {parsedReason.startTime && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Heure de début proposée: </span>
+                      <span className="font-medium text-primary">{parsedReason.startTime}</span>
+                    </div>
+                  )}
+                  {parsedReason.endTime && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Heure de fin proposée: </span>
+                      <span className="font-medium text-primary">{parsedReason.endTime}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium mb-2 block">Motif</label>
-              <div className="p-3 bg-muted rounded-lg text-sm">
-                {reason}
+              <div className="p-3 bg-muted rounded-lg text-sm whitespace-pre-wrap">
+                {parsedReason.text}
               </div>
             </div>
           </div>

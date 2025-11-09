@@ -393,7 +393,7 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     try {
       const { data: assignment, error: fetchError } = await supabase
         .from("assignments")
-        .select("proposed_new_date")
+        .select("proposed_new_date, reschedule_reason")
         .eq("id", assignmentId)
         .single();
 
@@ -407,6 +407,23 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
       if (assignment.proposed_new_date) {
         updateData.session_date = assignment.proposed_new_date;
         updateData.proposed_new_date = null;
+      }
+
+      // Extract proposed times from reschedule_reason if it's JSON
+      if (assignment.reschedule_reason) {
+        try {
+          const parsed = JSON.parse(assignment.reschedule_reason);
+          if (parsed.proposedStartTime) {
+            updateData.start_time = parsed.proposedStartTime;
+          }
+          if (parsed.proposedEndTime) {
+            updateData.end_time = parsed.proposedEndTime;
+          }
+          // Keep only the text reason
+          updateData.reschedule_reason = parsed.reason || assignment.reschedule_reason;
+        } catch {
+          // Not JSON, keep as is
+        }
       }
 
       const { error: updateError } = await supabase
