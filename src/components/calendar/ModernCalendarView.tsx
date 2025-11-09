@@ -118,9 +118,16 @@ export function ModernCalendarView({
       if (!event.session_date || !isSameDay(new Date(event.session_date), date)) {
         return false;
       }
-      if (!event.start_time) return false;
-      const eventHour = parseInt(event.start_time.split(':')[0]);
-      return eventHour === hour;
+      if (!event.start_time || !event.end_time) return false;
+      
+      const [startHour, startMinute] = event.start_time.split(':').map(Number);
+      const [endHour, endMinute] = event.end_time.split(':').map(Number);
+      
+      // Check if the event overlaps with this hour slot
+      const eventStartsBeforeOrDuringHour = startHour <= hour;
+      const eventEndsAfterHourStarts = endHour > hour || (endHour === hour && endMinute > 0);
+      
+      return eventStartsBeforeOrDuringHour && eventEndsAfterHourStarts && startHour === hour;
     });
   };
 

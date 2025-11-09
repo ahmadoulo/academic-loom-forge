@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ interface RescheduleSessionDialogProps {
     sessionId: string;
     reason: string;
     newDate?: Date;
+    newStartTime?: string;
+    newEndTime?: string;
   }) => Promise<void>;
 }
 
@@ -35,6 +38,8 @@ export function RescheduleSessionDialog({
 }: RescheduleSessionDialogProps) {
   const [reason, setReason] = useState("");
   const [newDate, setNewDate] = useState<Date>();
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -46,9 +51,13 @@ export function RescheduleSessionDialog({
         sessionId,
         reason: reason.trim(),
         newDate,
+        newStartTime: newStartTime || undefined,
+        newEndTime: newEndTime || undefined,
       });
       setReason("");
       setNewDate(undefined);
+      setNewStartTime("");
+      setNewEndTime("");
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -105,6 +114,7 @@ export function RescheduleSessionDialog({
                   disabled={(date) => date < new Date()}
                   initialFocus
                   locale={fr}
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -113,6 +123,39 @@ export function RescheduleSessionDialog({
                 Si vous proposez une date, l'administration devra valider le changement.
               </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="start-time">
+                {isTeacher ? "Heure de début proposée (optionnel)" : "Heure de début (optionnel)"}
+              </Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={newStartTime}
+                  onChange={(e) => setNewStartTime(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end-time">
+                {isTeacher ? "Heure de fin proposée (optionnel)" : "Heure de fin (optionnel)"}
+              </Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={newEndTime}
+                  onChange={(e) => setNewEndTime(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
           </div>
         </div>
 

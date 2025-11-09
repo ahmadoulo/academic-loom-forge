@@ -76,13 +76,17 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     return classroomAssignments.filter((ca) => ca.classroom_id === classroomId);
   };
 
-  // Filtrer les séances non assignées ou les séances du type "course"
+  // Filtrer les séances non assignées ou les séances du type "course" - uniquement les séances à venir
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   const availableSessions = assignments.filter(
     (assignment) =>
       assignment.type === "course" &&
       assignment.session_date &&
       assignment.start_time &&
-      assignment.end_time
+      assignment.end_time &&
+      new Date(assignment.session_date) >= today
   );
 
   return (

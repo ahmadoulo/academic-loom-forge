@@ -318,7 +318,9 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
     assignmentId: string,
     reason: string,
     newDate?: Date,
-    isTeacher: boolean = false
+    isTeacher: boolean = false,
+    newStartTime?: string,
+    newEndTime?: string
   ) => {
     try {
       // Get current assignment data
@@ -344,6 +346,15 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
         if (!currentAssignment.original_session_date) {
           updateData.original_session_date = currentAssignment.session_date;
         }
+        // Store proposed times in the reschedule_reason as JSON
+        if (newStartTime || newEndTime) {
+          const timeProposal = {
+            reason,
+            proposedStartTime: newStartTime,
+            proposedEndTime: newEndTime
+          };
+          updateData.reschedule_reason = JSON.stringify(timeProposal);
+        }
       } else {
         // Admin can directly reschedule
         updateData.is_rescheduled = true;
@@ -353,6 +364,12 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
         }
         if (newDate) {
           updateData.session_date = format(newDate, "yyyy-MM-dd");
+        }
+        if (newStartTime) {
+          updateData.start_time = newStartTime;
+        }
+        if (newEndTime) {
+          updateData.end_time = newEndTime;
         }
       }
 

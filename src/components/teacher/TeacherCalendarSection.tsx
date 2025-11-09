@@ -41,9 +41,9 @@ export function TeacherCalendarSection({ teacherId }: TeacherCalendarSectionProp
     }
   };
 
-  const handleRescheduleSubmit = async (data: { sessionId: string; reason: string; newDate?: Date }) => {
+  const handleRescheduleSubmit = async (data: { sessionId: string; reason: string; newDate?: Date; newStartTime?: string; newEndTime?: string }) => {
     try {
-      await rescheduleAssignment(data.sessionId, data.reason, data.newDate, true);
+      await rescheduleAssignment(data.sessionId, data.reason, data.newDate, true, data.newStartTime, data.newEndTime);
       toast.success(data.newDate ? "Demande de report envoyée avec succès" : "Motif enregistré");
       setRescheduleDialogOpen(false);
     } catch (error) {

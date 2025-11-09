@@ -99,9 +99,9 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
     }
   };
 
-  const handleRescheduleSubmit = async (data: { sessionId: string; reason: string; newDate?: Date }) => {
+  const handleRescheduleSubmit = async (data: { sessionId: string; reason: string; newDate?: Date; newStartTime?: string; newEndTime?: string }) => {
     try {
-      await rescheduleAssignment(data.sessionId, data.reason, data.newDate, false);
+      await rescheduleAssignment(data.sessionId, data.reason, data.newDate, false, data.newStartTime, data.newEndTime);
       toast.success(data.newDate ? "Séance reportée avec succès" : "Report enregistré");
       setRescheduleDialogOpen(false);
     } catch (error) {
