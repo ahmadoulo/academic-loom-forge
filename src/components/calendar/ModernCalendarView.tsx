@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,22 @@ export function ModernCalendarView({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [currentWeek, setCurrentWeek] = useState(new Date());
+
+  // Helper function to parse reschedule reason
+  const parseRescheduleReason = (reason: string | undefined) => {
+    if (!reason) return { text: '', startTime: undefined, endTime: undefined };
+    
+    try {
+      const parsed = JSON.parse(reason);
+      return {
+        text: parsed.reason || reason,
+        startTime: parsed.proposedStartTime,
+        endTime: parsed.proposedEndTime
+      };
+    } catch {
+      return { text: reason, startTime: undefined, endTime: undefined };
+    }
+  };
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -482,11 +498,32 @@ export function ModernCalendarView({
                             <p className="text-sm font-semibold">
                               {format(new Date(event.proposed_new_date), "EEEE dd MMMM yyyy", { locale: fr })}
                             </p>
-                            {event.reschedule_reason && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Motif: {event.reschedule_reason}
-                              </p>
-                            )}
+                            {event.reschedule_reason && (() => {
+                              const parsed = parseRescheduleReason(event.reschedule_reason);
+                              return (
+                                <>
+                                  {(parsed.startTime || parsed.endTime) && (
+                                    <div className="text-xs mt-2 space-y-0.5">
+                                      {parsed.startTime && (
+                                        <p className="text-orange-700 dark:text-orange-300">
+                                          Heure de début: <span className="font-medium">{parsed.startTime}</span>
+                                        </p>
+                                      )}
+                                      {parsed.endTime && (
+                                        <p className="text-orange-700 dark:text-orange-300">
+                                          Heure de fin: <span className="font-medium">{parsed.endTime}</span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  {parsed.text && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Motif: {parsed.text}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -495,11 +532,14 @@ export function ModernCalendarView({
                             <p className="text-xs text-blue-700 dark:text-blue-300">
                               Date originale: {format(new Date(event.original_session_date), "dd/MM/yyyy", { locale: fr })}
                             </p>
-                            {event.reschedule_reason && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Motif: {event.reschedule_reason}
-                              </p>
-                            )}
+                            {event.reschedule_reason && (() => {
+                              const parsed = parseRescheduleReason(event.reschedule_reason);
+                              return parsed.text && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Motif: {parsed.text}
+                                </p>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
