@@ -140,10 +140,11 @@ export function ModernCalendarView({
       const [endHour, endMinute] = event.end_time.split(':').map(Number);
       
       // Check if the event overlaps with this hour slot
+      // Event overlaps if it starts at or before this hour and ends after this hour starts
       const eventStartsBeforeOrDuringHour = startHour <= hour;
       const eventEndsAfterHourStarts = endHour > hour || (endHour === hour && endMinute > 0);
       
-      return eventStartsBeforeOrDuringHour && eventEndsAfterHourStarts && startHour === hour;
+      return eventStartsBeforeOrDuringHour && eventEndsAfterHourStarts;
     });
   };
 

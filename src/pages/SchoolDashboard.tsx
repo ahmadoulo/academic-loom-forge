@@ -525,41 +525,43 @@ const SchoolDashboard = () => {
           />
           
             <main className="flex-1 p-3 sm:p-4 lg:p-6 bg-background overflow-y-auto">
-            {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 lg:mb-6">
-              <StatsCard
-                title="Étudiants"
-                value={stats.totalStudents}
-                icon={Users}
-                description="Inscrits dans l'école"
-                change={`Moyenne ${stats.avgStudentsPerClass} par classe`}
-                changeType="positive"
-              />
-              <StatsCard 
-                title="Classes"
-                value={stats.totalClasses}
-                icon={School}
-                description="Classes actives"
-                change={`${stats.totalSubjects} matières total`}
-                changeType="neutral"
-              />
-              <StatsCard 
-                title="Professeurs"
-                value={stats.totalTeachers}
-                icon={GraduationCap}
-                description="Enseignants actifs"
-                change={`${stats.totalSubjects} matières assignées`}
-                changeType="positive"
-              />
-              <StatsCard 
-                title="Moyenne Générale"
-                value={`${stats.avgGrade}/20`}
-                icon={TrendingUp}
-                description="Performance globale"
-                change={`${stats.totalGrades} notes saisies`}
-                changeType={Number(stats.avgGrade) >= 10 ? "positive" : "negative"}
-              />
-            </div>
+            {/* Enhanced Stats Cards - Only on Analytics Dashboard */}
+            {activeTab === "analytics" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 lg:mb-6">
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.totalStudents}
+                  icon={Users}
+                  description="Inscrits dans l'école"
+                  change={`Moyenne ${stats.avgStudentsPerClass} par classe`}
+                  changeType="positive"
+                />
+                <StatsCard 
+                  title="Classes"
+                  value={stats.totalClasses}
+                  icon={School}
+                  description="Classes actives"
+                  change={`${stats.totalSubjects} matières total`}
+                  changeType="neutral"
+                />
+                <StatsCard 
+                  title="Professeurs"
+                  value={stats.totalTeachers}
+                  icon={GraduationCap}
+                  description="Enseignants actifs"
+                  change={`${stats.totalSubjects} matières assignées`}
+                  changeType="positive"
+                />
+                <StatsCard 
+                  title="Moyenne Générale"
+                  value={`${stats.avgGrade}/20`}
+                  icon={TrendingUp}
+                  description="Performance globale"
+                  change={`${stats.totalGrades} notes saisies`}
+                  changeType={Number(stats.avgGrade) >= 10 ? "positive" : "negative"}
+                />
+              </div>
+            )}
 
             {/* Main Content */}
             <div className="space-y-6 lg:space-y-8">

@@ -213,65 +213,126 @@ export const AnalyticsDashboard = ({
         </TabsContent>
 
         <TabsContent value="insights" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommandations</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+          <Card>
+            <CardHeader>
+              <CardTitle>Analyse et Recommandations</CardTitle>
+              <CardDescription>Insights basés sur les données réelles de l'établissement</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Analyse de la performance globale */}
+              {overallStats.averageGrade >= 14 ? (
+                <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Performance en hausse</p>
-                    <p className="text-xs text-muted-foreground">Les résultats en mathématiques s'améliorent</p>
+                    <p className="text-sm font-medium">Excellente performance globale</p>
+                    <p className="text-xs text-muted-foreground">
+                      La moyenne générale de {overallStats.averageGrade}/20 indique d'excellents résultats
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              ) : overallStats.averageGrade >= 12 ? (
+                <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Bonne performance générale</p>
+                    <p className="text-xs text-muted-foreground">
+                      Moyenne de {overallStats.averageGrade}/20 - Continuez sur cette lancée
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Amélioration nécessaire</p>
+                    <p className="text-xs text-muted-foreground">
+                      Moyenne de {overallStats.averageGrade}/20 - Un soutien pédagogique serait bénéfique
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Analyse du taux de réussite */}
+              {overallStats.successRate >= 80 ? (
+                <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                  <Award className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Excellent taux de réussite</p>
+                    <p className="text-xs text-muted-foreground">
+                      {overallStats.successRate}% des étudiants ont une moyenne ≥ 10
+                    </p>
+                  </div>
+                </div>
+              ) : overallStats.successRate >= 60 ? (
+                <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium">Attention requise</p>
-                    <p className="text-xs text-muted-foreground">3 étudiants ont des difficultés en français</p>
+                    <p className="text-xs text-muted-foreground">
+                      {overallStats.studentsInDifficulty} étudiants en difficulté - Un accompagnement est recommandé
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                  <Users className="h-5 w-5 text-blue-600 mt-0.5" />
+              ) : (
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Excellente participation</p>
-                    <p className="text-xs text-muted-foreground">Taux de participation élevé cette semaine</p>
+                    <p className="text-sm font-medium">Intervention urgente</p>
+                    <p className="text-xs text-muted-foreground">
+                      Taux de réussite faible ({overallStats.successRate}%) - Action immédiate nécessaire
+                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Étudiants à Suivre</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+              {/* Analyse de l'assiduité */}
+              {overallStats.attendanceRate >= 90 ? (
+                <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
                   <div>
-                    <p className="font-medium">Marie Dupont</p>
-                    <p className="text-sm text-muted-foreground">Baisse en mathématiques</p>
+                    <p className="text-sm font-medium">Excellente assiduité</p>
+                    <p className="text-xs text-muted-foreground">
+                      Taux de présence de {overallStats.attendanceRate}% - À maintenir
+                    </p>
                   </div>
-                  <Badge variant="destructive">Critique</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+              ) : overallStats.attendanceRate >= 75 ? (
+                <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                   <div>
-                    <p className="font-medium">Jean Martin</p>
-                    <p className="text-sm text-muted-foreground">Absences répétées</p>
+                    <p className="text-sm font-medium">Assiduité à surveiller</p>
+                    <p className="text-xs text-muted-foreground">
+                      Taux de présence de {overallStats.attendanceRate}% - Sensibilisation recommandée
+                    </p>
                   </div>
-                  <Badge variant="outline">À surveiller</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+              ) : (
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                   <div>
-                    <p className="font-medium">Sophie Moreau</p>
-                    <p className="text-sm text-muted-foreground">Progrès remarquable</p>
+                    <p className="text-sm font-medium">Absentéisme préoccupant</p>
+                    <p className="text-xs text-muted-foreground">
+                      Taux de présence faible ({overallStats.attendanceRate}%) - Mesures urgentes
+                    </p>
                   </div>
-                  <Badge variant="default">Excellence</Badge>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+
+              {/* Analyse des matières */}
+              {performanceBySubject.length > 0 && (
+                <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Points forts et faibles par matière</p>
+                    <p className="text-xs text-muted-foreground">
+                      {performanceBySubject.filter(s => s.average >= 14).length} matières excellentes, {' '}
+                      {performanceBySubject.filter(s => s.average < 10).length} nécessitent un renforcement
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

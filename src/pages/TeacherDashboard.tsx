@@ -262,51 +262,53 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
           />
           
           <main className="flex-1 p-3 sm:p-4 lg:p-6 bg-background overflow-y-auto">
-        {/* Teacher Info Card */}
-        <Card className="mb-4 lg:mb-6">
-          <CardHeader className="pb-3 px-3 sm:px-6">
-            <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-base sm:text-lg lg:text-xl">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
-                <span className="hidden sm:inline">Interface Professeur - </span>
-                <span className="sm:hidden">Prof. </span>
-              </div>
-              <span className="truncate">{teacher.firstname} {teacher.lastname}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm lg:text-base">Matières:</span>
+        {/* Teacher Info Card - Only on Dashboard */}
+        {activeTab === "dashboard" && (
+          <Card className="mb-4 lg:mb-6">
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-base sm:text-lg lg:text-xl">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
+                  <span className="hidden sm:inline">Interface Professeur - </span>
+                  <span className="sm:hidden">Prof. </span>
                 </div>
-                <Badge variant="secondary" className="text-xs flex-shrink-0">{subjects.length}</Badge>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm lg:text-base">Élèves:</span>
+                <span className="truncate">{teacher.firstname} {teacher.lastname}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm lg:text-base">Matières:</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">{subjects.length}</Badge>
                 </div>
-                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherStudents.length}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm lg:text-base">Classes:</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm lg:text-base">Élèves:</span>
+                  </div>
+                  <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherStudents.length}</span>
                 </div>
-                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherClasses.length}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm lg:text-base">Notes:</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm lg:text-base">Classes:</span>
+                  </div>
+                  <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{teacherClasses.length}</span>
                 </div>
-                <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{filteredGrades.length}</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm lg:text-base">Notes:</span>
+                  </div>
+                  <span className="text-primary font-semibold text-xs sm:text-sm flex-shrink-0">{filteredGrades.length}</span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Semester Filter - Only show on grades page */}
         {activeTab === "grades" && semesters.length > 0 && (
