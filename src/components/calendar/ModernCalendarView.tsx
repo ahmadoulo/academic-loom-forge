@@ -129,31 +129,25 @@ export function ModernCalendarView({
   const weekDaysArray = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6h to 21h
 
-  const getEventsForDateAndHour = (date: Date, hour: number) => {
-    return events.filter(event => {
-      if (!event.session_date || !isSameDay(new Date(event.session_date), date)) {
-        return false;
-      }
-      if (!event.start_time) return false;
-      
-      const [startHour] = event.start_time.split(':').map(Number);
-      
-      // Only show event in the hour it starts
-      return startHour === hour;
-    });
+  const getEventsForDay = (date: Date) => {
+    return events.filter(event => 
+      event.session_date && isSameDay(new Date(event.session_date), date)
+    );
   };
 
-  const getEventDurationInMinutes = (event: CalendarEvent) => {
-    if (!event.start_time || !event.end_time) return 60;
+  const getEventStartHour = (event: CalendarEvent) => {
+    if (!event.start_time) return 0;
+    const [hour] = event.start_time.split(':').map(Number);
+    return hour;
+  };
+
+  const getEventDurationInHours = (event: CalendarEvent) => {
+    if (!event.start_time || !event.end_time) return 1;
     const [startHour, startMinute] = event.start_time.split(':').map(Number);
     const [endHour, endMinute] = event.end_time.split(':').map(Number);
-    return (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-  };
-
-  const getEventTopOffset = (event: CalendarEvent) => {
-    if (!event.start_time) return 0;
-    const [, startMinute] = event.start_time.split(':').map(Number);
-    return (startMinute / 60) * 80; // 80px is the min-height of each hour cell
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    return (endMinutes - startMinutes) / 60;
   };
 
   return (
@@ -299,17 +293,17 @@ export function ModernCalendarView({
             ) : (
               // Week View
               <ScrollArea className="h-[600px]">
-                <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/50">
-                  <div className="p-3 border-r" />
+                <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/50 sticky top-0 z-20">
+                  <div className="p-3 border-r bg-background" />
                   {weekDaysArray.map((day) => (
                     <div 
                       key={day.toISOString()} 
                       className={cn(
-                        "p-3 text-center border-r",
-                        isToday(day) && "bg-primary/10"
+                        "p-3 text-center border-r bg-background",
+                        isToday(day) && "bg-primary/5"
                       )}
                     >
-                      <div className="text-xs text-muted-foreground font-medium">
+                      <div className="text-xs text-muted-foreground font-medium uppercase">
                         {format(day, 'EEE', { locale: fr })}
                       </div>
                       <div className={cn(
@@ -322,67 +316,91 @@ export function ModernCalendarView({
                   ))}
                 </div>
                 
-                <div className="relative">
-                  {hours.map((hour) => (
-                    <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b min-h-[80px]">
-                      <div className="p-2 text-sm font-medium text-muted-foreground border-r bg-muted/30 sticky left-0">
-                        {hour.toString().padStart(2, '0')} h
+                <div className="relative grid grid-cols-[60px_repeat(7,1fr)]">
+                  {/* Time column */}
+                  <div className="sticky left-0 z-10 bg-background">
+                    {hours.map((hour) => (
+                      <div 
+                        key={hour} 
+                        className="h-20 border-b border-r bg-muted/30 p-2 text-sm font-medium text-muted-foreground"
+                      >
+                        {hour.toString().padStart(2, '0')}:00
                       </div>
-                      {weekDaysArray.map((day) => {
-                        const cellEvents = getEventsForDateAndHour(day, hour);
-                        const isCurrentDay = isToday(day);
-                        
-                        return (
+                    ))}
+                  </div>
+                  
+                  {/* Days columns */}
+                  {weekDaysArray.map((day) => {
+                    const dayEvents = getEventsForDay(day);
+                    const isCurrentDay = isToday(day);
+                    
+                    return (
+                      <div
+                        key={day.toISOString()}
+                        className={cn(
+                          "relative border-r",
+                          isCurrentDay && "bg-primary/5"
+                        )}
+                      >
+                        {/* Hour grid lines */}
+                        {hours.map((hour) => (
                           <div
-                            key={`${day.toISOString()}-${hour}`}
-                            className={cn(
-                              "border-r relative min-h-[80px]",
-                              isCurrentDay && "bg-primary/5"
-                            )}
+                            key={hour}
+                            className="h-20 border-b hover:bg-muted/30 cursor-pointer transition-colors"
                             onClick={() => onDateSelect(day)}
-                          >
-                            {cellEvents.map((event) => {
-                              const durationMinutes = getEventDurationInMinutes(event);
-                              const topOffset = getEventTopOffset(event);
-                              const heightPx = (durationMinutes / 60) * 80; // 80px per hour
-                              
-                              return (
-                                <div
-                                  key={event.id}
-                                  className={cn(
-                                    "absolute left-1 right-1 text-xs p-2 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden",
-                                    getEventColor(event.type)
-                                  )}
-                                  style={{
-                                    top: `${topOffset}px`,
-                                    height: `${heightPx}px`,
-                                    zIndex: 10
-                                  }}
-                                >
-                                  <div className="font-semibold truncate text-xs">{event.title}</div>
+                          />
+                        ))}
+                        
+                        {/* Events overlay */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {dayEvents.map((event, idx) => {
+                            const startHour = getEventStartHour(event);
+                            const duration = getEventDurationInHours(event);
+                            const topPosition = (startHour - 6) * 80; // 6 is the first hour (6h), 80px per hour
+                            const height = duration * 80;
+                            
+                            return (
+                              <div
+                                key={event.id}
+                                className={cn(
+                                  "absolute left-1 right-1 rounded-lg shadow-sm pointer-events-auto cursor-pointer hover:shadow-md transition-shadow overflow-hidden",
+                                  getEventColor(event.type).replace('border-l-4', '')
+                                )}
+                                style={{
+                                  top: `${topPosition}px`,
+                                  height: `${height}px`,
+                                  zIndex: 5 + idx
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDateSelect(day);
+                                }}
+                              >
+                                <div className="p-2 h-full flex flex-col">
+                                  <div className="font-semibold text-sm truncate">{event.title}</div>
                                   {event.start_time && event.end_time && (
-                                    <div className="text-[10px] opacity-90 mt-0.5">
+                                    <div className="text-xs opacity-90 mt-0.5">
                                       {event.start_time} - {event.end_time}
                                     </div>
                                   )}
                                   {event.class_name && (
-                                    <div className="text-[10px] opacity-80 truncate mt-0.5">
-                                      {event.class_name}
+                                    <div className="text-xs font-medium mt-1 truncate">
+                                      📚 {event.class_name}
                                     </div>
                                   )}
                                   {event.reschedule_status === 'pending' && (
-                                    <Badge variant="outline" className="text-[9px] px-1 mt-1 bg-orange-50 text-orange-600 border-orange-200">
-                                      Demandé
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 mt-auto bg-orange-100/80 text-orange-700 border-orange-300 w-fit">
+                                      En attente
                                     </Badge>
                                   )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             )}
