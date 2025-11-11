@@ -134,25 +134,26 @@ export function ModernCalendarView({
       if (!event.session_date || !isSameDay(new Date(event.session_date), date)) {
         return false;
       }
-      if (!event.start_time || !event.end_time) return false;
+      if (!event.start_time) return false;
       
-      const [startHour, startMinute] = event.start_time.split(':').map(Number);
-      const [endHour, endMinute] = event.end_time.split(':').map(Number);
+      const [startHour] = event.start_time.split(':').map(Number);
       
-      // Check if the event overlaps with this hour slot
-      // Event overlaps if it starts at or before this hour and ends after this hour starts
-      const eventStartsBeforeOrDuringHour = startHour <= hour;
-      const eventEndsAfterHourStarts = endHour > hour || (endHour === hour && endMinute > 0);
-      
-      return eventStartsBeforeOrDuringHour && eventEndsAfterHourStarts;
+      // Only show event in the hour it starts
+      return startHour === hour;
     });
   };
 
-  const getEventDuration = (event: CalendarEvent) => {
-    if (!event.start_time || !event.end_time) return 1;
-    const startHour = parseInt(event.start_time.split(':')[0]);
-    const endHour = parseInt(event.end_time.split(':')[0]);
-    return Math.max(1, endHour - startHour);
+  const getEventDurationInMinutes = (event: CalendarEvent) => {
+    if (!event.start_time || !event.end_time) return 60;
+    const [startHour, startMinute] = event.start_time.split(':').map(Number);
+    const [endHour, endMinute] = event.end_time.split(':').map(Number);
+    return (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+  };
+
+  const getEventTopOffset = (event: CalendarEvent) => {
+    if (!event.start_time) return 0;
+    const [, startMinute] = event.start_time.split(':').map(Number);
+    return (startMinute / 60) * 80; // 80px is the min-height of each hour cell
   };
 
   return (
@@ -335,33 +336,37 @@ export function ModernCalendarView({
                           <div
                             key={`${day.toISOString()}-${hour}`}
                             className={cn(
-                              "border-r p-1 relative min-h-[80px]",
+                              "border-r relative min-h-[80px]",
                               isCurrentDay && "bg-primary/5"
                             )}
                             onClick={() => onDateSelect(day)}
                           >
                             {cellEvents.map((event) => {
-                              const duration = getEventDuration(event);
+                              const durationMinutes = getEventDurationInMinutes(event);
+                              const topOffset = getEventTopOffset(event);
+                              const heightPx = (durationMinutes / 60) * 80; // 80px per hour
+                              
                               return (
                                 <div
                                   key={event.id}
                                   className={cn(
-                                    "text-xs p-2 rounded mb-1 cursor-pointer hover:opacity-90 transition-opacity",
-                                    getEventColor(event.type),
-                                    duration > 1 && "mb-2"
+                                    "absolute left-1 right-1 text-xs p-2 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden",
+                                    getEventColor(event.type)
                                   )}
                                   style={{
-                                    minHeight: `${duration * 60}px`
+                                    top: `${topOffset}px`,
+                                    height: `${heightPx}px`,
+                                    zIndex: 10
                                   }}
                                 >
-                                  <div className="font-semibold truncate">{event.title}</div>
+                                  <div className="font-semibold truncate text-xs">{event.title}</div>
                                   {event.start_time && event.end_time && (
-                                    <div className="text-[10px] opacity-80 mt-0.5">
+                                    <div className="text-[10px] opacity-90 mt-0.5">
                                       {event.start_time} - {event.end_time}
                                     </div>
                                   )}
                                   {event.class_name && (
-                                    <div className="text-[10px] opacity-70 truncate mt-0.5">
+                                    <div className="text-[10px] opacity-80 truncate mt-0.5">
                                       {event.class_name}
                                     </div>
                                   )}
