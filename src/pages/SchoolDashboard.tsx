@@ -40,6 +40,7 @@ import { ClassesListSection } from "@/components/school/ClassesListSection";
 import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
+import { DocumentsManagementSection } from "@/components/school/DocumentsManagementSection";
 import { StudentAccountsSection } from "@/components/school/StudentAccountsSection";
 import { SchoolCalendarSection } from "@/components/school/SchoolCalendarSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
@@ -971,8 +972,12 @@ const SchoolDashboard = () => {
                 <SchoolSettingsPage schoolId={school.id} />
               )}
               
-              {activeTab === "documents" && school?.id && (
+              {activeTab === "document-requests" && school?.id && (
                 <DocumentRequestsManagement schoolId={school.id} />
+              )}
+              
+              {activeTab === "documents" && school?.id && (
+                <DocumentsManagementSection schoolId={school.id} />
               )}
               
               {activeTab === "classrooms" && school?.id && (

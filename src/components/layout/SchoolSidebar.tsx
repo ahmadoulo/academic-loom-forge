@@ -161,6 +161,12 @@ const menuStructure = [
       },
       { 
         title: "Demandes Document", 
+        value: "document-requests",
+        icon: FileText,
+        href: "/school"
+      },
+      { 
+        title: "Documents", 
         value: "documents",
         icon: FileText,
         href: "/school"
