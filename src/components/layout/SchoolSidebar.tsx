@@ -166,7 +166,7 @@ const menuStructure = [
         href: "/school"
       },
       { 
-        title: "Documents", 
+        title: "Générateur de document", 
         value: "documents",
         icon: FileText,
         href: "/school"

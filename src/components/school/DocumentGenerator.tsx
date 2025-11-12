@@ -6,10 +6,13 @@ import { DocumentTemplate } from "@/hooks/useDocumentTemplates";
 import { useStudents } from "@/hooks/useStudents";
 import { useSchoolYears } from "@/hooks/useSchoolYears";
 import { useSchools } from "@/hooks/useSchools";
+import { useClasses } from "@/hooks/useClasses";
 import { downloadDocumentPDF, previewDocumentPDF } from "@/utils/documentPdfExport";
 import { Download, Eye, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface DocumentGeneratorProps {
@@ -27,10 +30,12 @@ export const DocumentGenerator = ({
 }: DocumentGeneratorProps) => {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
   
   const { students, loading } = useStudents(schoolId);
   const { schoolYears } = useSchoolYears();
   const { schools } = useSchools();
+  const { classes } = useClasses(schoolId);
   
   const currentYear = schoolYears.find(y => y.is_current);
   const school = schools.find(s => s.id === schoolId);
@@ -38,7 +43,9 @@ export const DocumentGenerator = ({
   const filteredStudents = students.filter((student) => {
     const fullName = `${student.firstname} ${student.lastname}`.toLowerCase();
     const query = searchQuery.toLowerCase();
-    return fullName.includes(query) || student.cin_number.toLowerCase().includes(query);
+    const matchesSearch = fullName.includes(query) || student.cin_number.toLowerCase().includes(query);
+    const matchesClass = selectedClassId === "all" || student.class_id === selectedClassId;
+    return matchesSearch && matchesClass;
   });
 
   const toggleStudent = (studentId: string) => {
@@ -72,34 +79,39 @@ export const DocumentGenerator = ({
         school_name: school?.name,
         school_address: school?.address,
         school_phone: school?.phone,
+        school_website: school?.website,
+        school_city: school?.city,
+        school_country: school?.country,
       }));
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (selectedStudents.size === 0) {
       toast.error("Veuillez sélectionner au moins un étudiant");
       return;
     }
 
     const studentsData = getSelectedStudentsData();
-    previewDocumentPDF(
-      { content: template.content, name: template.name },
+    await previewDocumentPDF(
+      { content: template.content, name: template.name, footer_color: template.footer_color },
       studentsData,
-      currentYear?.name || ""
+      currentYear?.name || "",
+      school?.logo_url || undefined
     );
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (selectedStudents.size === 0) {
       toast.error("Veuillez sélectionner au moins un étudiant");
       return;
     }
 
     const studentsData = getSelectedStudentsData();
-    downloadDocumentPDF(
-      { content: template.content, name: template.name },
+    await downloadDocumentPDF(
+      { content: template.content, name: template.name, footer_color: template.footer_color },
       studentsData,
-      currentYear?.name || ""
+      currentYear?.name || "",
+      school?.logo_url || undefined
     );
     toast.success("Document téléchargé avec succès");
   };
@@ -112,7 +124,24 @@ export const DocumentGenerator = ({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-hidden flex flex-col">
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Filtrer par classe</Label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input

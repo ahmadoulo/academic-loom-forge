@@ -9,6 +9,7 @@ export interface DocumentTemplate {
   type: string;
   content: string;
   is_active: boolean;
+  footer_color?: string;
   created_at: string;
   updated_at: string;
 }

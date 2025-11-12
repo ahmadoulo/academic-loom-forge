@@ -50,16 +50,19 @@ export const DocumentTemplateForm = ({
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [content, setContent] = useState("");
+  const [footerColor, setFooterColor] = useState("#1e40af");
 
   useEffect(() => {
     if (template) {
       setName(template.name);
       setType(template.type);
       setContent(template.content);
+      setFooterColor(template.footer_color || "#1e40af");
     } else {
       setName("");
       setType("");
       setContent("");
+      setFooterColor("#1e40af");
     }
   }, [template, open]);
 
@@ -77,6 +80,7 @@ export const DocumentTemplateForm = ({
       name,
       type,
       content,
+      footer_color: footerColor,
       is_active: true,
     });
     onOpenChange(false);
@@ -119,6 +123,25 @@ export const DocumentTemplateForm = ({
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="footer_color">Couleur du pied de page</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                id="footer_color"
+                type="color"
+                value={footerColor}
+                onChange={(e) => setFooterColor(e.target.value)}
+                className="w-20 h-10"
+              />
+              <Input
+                value={footerColor}
+                onChange={(e) => setFooterColor(e.target.value)}
+                placeholder="#1e40af"
+                className="flex-1"
+              />
+            </div>
+          </div>
+
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -133,6 +156,7 @@ export const DocumentTemplateForm = ({
                 <code>{"{{school_name}}"}</code>
                 <code>{"{{school_address}}"}</code>
                 <code>{"{{school_phone}}"}</code>
+                <code>{"{{school_website}}"}</code>
                 <code>{"{{school_year}}"}</code>
                 <code>{"{{date}}"}</code>
               </div>
