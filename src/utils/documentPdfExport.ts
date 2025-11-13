@@ -117,24 +117,6 @@ export const generateDocumentPDF = async (
       doc.setTextColor(40, 40, 40);
       doc.text(student.school_name.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
       currentY += 8;
-
-      if (student.school_address) {
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(80, 80, 80);
-        doc.text(student.school_address, pageWidth / 2, currentY, { align: "center" });
-        currentY += 5;
-      }
-
-      if (student.school_phone || student.school_website) {
-        const contactInfo: string[] = [];
-        if (student.school_phone) contactInfo.push(`Tél: ${student.school_phone}`);
-        if (student.school_website) contactInfo.push(student.school_website);
-        doc.text(contactInfo.join(" | "), pageWidth / 2, currentY, { align: "center" });
-        currentY += 10;
-      } else {
-        currentY += 5;
-      }
     }
 
     // Decorative line
@@ -180,36 +162,43 @@ export const generateDocumentPDF = async (
     doc.text("Signature et cachet de l'établissement", pageWidth - margin - 65, currentY);
     currentY += 15;
 
-    // Footer with colored background
-    const footerHeight = 25;
+    // Footer with colored rectangle background
+    const footerHeight = 30;
     const footerY = pageHeight - footerHeight;
     
+    // Draw colored rectangle for footer
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
     doc.rect(0, footerY, pageWidth, footerHeight, "F");
     
-    // Footer text - use custom footer content if available
+    // Footer text - ALWAYS use custom footer content if available
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     
-    if (template.footer_content) {
+    if (template.footer_content && template.footer_content.trim()) {
+      // Use custom footer content
       const processedFooterContent = replacePlaceholders(template.footer_content, student, schoolYear);
-      const footerLines = doc.splitTextToSize(processedFooterContent, contentWidth);
-      let footerY1 = footerY + 8;
+      const footerLines = doc.splitTextToSize(processedFooterContent, contentWidth - 20);
+      let footerTextY = footerY + 10;
       
       footerLines.forEach((line: string, index: number) => {
         if (index < 3) { // Limit to 3 lines to fit in footer
-          doc.text(line, pageWidth / 2, footerY1, { align: "center" });
-          footerY1 += 4;
+          doc.text(line, pageWidth / 2, footerTextY, { align: "center" });
+          footerTextY += 5;
         }
       });
     } else {
       // Default footer if no custom content
-      let footerY1 = footerY + 8;
+      let footerTextY = footerY + 10;
       if (student.school_name) {
-        doc.text(student.school_name, pageWidth / 2, footerY1, { align: "center" });
-        footerY1 += 4;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(student.school_name, pageWidth / 2, footerTextY, { align: "center" });
+        footerTextY += 6;
       }
+      
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
       
       const addressLine: string[] = [];
       if (student.school_address) addressLine.push(student.school_address);
@@ -217,16 +206,7 @@ export const generateDocumentPDF = async (
       if (student.school_country) addressLine.push(student.school_country);
       
       if (addressLine.length > 0) {
-        doc.text(addressLine.join(", "), pageWidth / 2, footerY1, { align: "center" });
-        footerY1 += 4;
-      }
-      
-      const contactLine: string[] = [];
-      if (student.school_phone) contactLine.push(`Tél: ${student.school_phone}`);
-      if (student.school_website) contactLine.push(`Web: ${student.school_website}`);
-      
-      if (contactLine.length > 0) {
-        doc.text(contactLine.join(" | "), pageWidth / 2, footerY1, { align: "center" });
+        doc.text(addressLine.join(", "), pageWidth / 2, footerTextY, { align: "center" });
       }
     }
   }

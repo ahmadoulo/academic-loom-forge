@@ -54,8 +54,6 @@ export const DocumentTemplatePreview = ({
             {schoolName && (
               <div>
                 <h3 className="text-lg font-bold text-gray-800 uppercase mb-2">{schoolName}</h3>
-                <p className="text-xs text-gray-600">123 Rue de l'École</p>
-                <p className="text-xs text-gray-600">Tél: +212 5XX-XXXXXX | www.ecole.ma</p>
               </div>
             )}
           </div>
@@ -91,16 +89,15 @@ export const DocumentTemplatePreview = ({
 
           {/* Footer */}
           <div 
-            className="absolute bottom-0 left-0 right-0 py-3 px-8 text-white text-center"
+            className="absolute bottom-0 left-0 right-0 py-4 px-8 text-white text-center"
             style={{ backgroundColor: footerColor }}
           >
             {previewFooter ? (
-              <div className="text-xs whitespace-pre-wrap">{previewFooter}</div>
+              <div className="text-xs whitespace-pre-wrap leading-relaxed">{previewFooter}</div>
             ) : (
               <div className="text-xs">
-                <p>{schoolName || "Nom de l'école"}</p>
+                <p className="font-bold text-sm mb-1">{schoolName || "Nom de l'école"}</p>
                 <p>123 Rue de l'École, Casablanca, Maroc</p>
-                <p>Tél: +212 5XX-XXXXXX | Web: www.ecole.ma</p>
               </div>
             )}
           </div>
