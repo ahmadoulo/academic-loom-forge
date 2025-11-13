@@ -93,7 +93,12 @@ export const DocumentGenerator = ({
 
     const studentsData = getSelectedStudentsData();
     await previewDocumentPDF(
-      { content: template.content, name: template.name, footer_color: template.footer_color },
+      { 
+        content: template.content, 
+        name: template.name, 
+        footer_color: template.footer_color,
+        footer_content: template.footer_content 
+      },
       studentsData,
       currentYear?.name || "",
       school?.logo_url || undefined
@@ -108,7 +113,12 @@ export const DocumentGenerator = ({
 
     const studentsData = getSelectedStudentsData();
     await downloadDocumentPDF(
-      { content: template.content, name: template.name, footer_color: template.footer_color },
+      { 
+        content: template.content, 
+        name: template.name, 
+        footer_color: template.footer_color,
+        footer_content: template.footer_content 
+      },
       studentsData,
       currentYear?.name || "",
       school?.logo_url || undefined

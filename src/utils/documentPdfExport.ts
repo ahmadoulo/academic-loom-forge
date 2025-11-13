@@ -21,6 +21,7 @@ interface TemplateData {
   content: string;
   name: string;
   footer_color?: string;
+  footer_content?: string;
 }
 
 // Convert hex color to RGB
@@ -102,8 +103,8 @@ export const generateDocumentPDF = async (
     // Header with logo and school info
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, "PNG", margin, currentY, 40, 20);
-        currentY += 25;
+        doc.addImage(logoBase64, "PNG", margin, currentY, 50, 25);
+        currentY += 30;
       } catch (error) {
         console.error("Error adding logo:", error);
         currentY += 5;
@@ -158,7 +159,7 @@ export const generateDocumentPDF = async (
     const lines = doc.splitTextToSize(processedContent, contentWidth);
     
     lines.forEach((line: string) => {
-      if (currentY > pageHeight - 60) {
+      if (currentY > pageHeight - 80) {
         doc.addPage();
         currentY = margin;
       }
@@ -166,8 +167,8 @@ export const generateDocumentPDF = async (
       currentY += 6;
     });
 
-    // Signature area
-    currentY = Math.max(currentY + 15, pageHeight - 50);
+    // Signature area - positioned right after content
+    currentY += 20;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(40, 40, 40);
@@ -177,6 +178,7 @@ export const generateDocumentPDF = async (
     currentY += 10;
     doc.setFont("helvetica", "italic");
     doc.text("Signature et cachet de l'établissement", pageWidth - margin - 65, currentY);
+    currentY += 15;
 
     // Footer with colored background
     const footerHeight = 25;
@@ -185,33 +187,47 @@ export const generateDocumentPDF = async (
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
     doc.rect(0, footerY, pageWidth, footerHeight, "F");
     
-    // Footer text
+    // Footer text - use custom footer content if available
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     
-    let footerY1 = footerY + 8;
-    if (student.school_name) {
-      doc.text(student.school_name, pageWidth / 2, footerY1, { align: "center" });
-      footerY1 += 4;
-    }
-    
-    const addressLine: string[] = [];
-    if (student.school_address) addressLine.push(student.school_address);
-    if (student.school_city) addressLine.push(student.school_city);
-    if (student.school_country) addressLine.push(student.school_country);
-    
-    if (addressLine.length > 0) {
-      doc.text(addressLine.join(", "), pageWidth / 2, footerY1, { align: "center" });
-      footerY1 += 4;
-    }
-    
-    const contactLine: string[] = [];
-    if (student.school_phone) contactLine.push(`Tél: ${student.school_phone}`);
-    if (student.school_website) contactLine.push(`Web: ${student.school_website}`);
-    
-    if (contactLine.length > 0) {
-      doc.text(contactLine.join(" | "), pageWidth / 2, footerY1, { align: "center" });
+    if (template.footer_content) {
+      const processedFooterContent = replacePlaceholders(template.footer_content, student, schoolYear);
+      const footerLines = doc.splitTextToSize(processedFooterContent, contentWidth);
+      let footerY1 = footerY + 8;
+      
+      footerLines.forEach((line: string, index: number) => {
+        if (index < 3) { // Limit to 3 lines to fit in footer
+          doc.text(line, pageWidth / 2, footerY1, { align: "center" });
+          footerY1 += 4;
+        }
+      });
+    } else {
+      // Default footer if no custom content
+      let footerY1 = footerY + 8;
+      if (student.school_name) {
+        doc.text(student.school_name, pageWidth / 2, footerY1, { align: "center" });
+        footerY1 += 4;
+      }
+      
+      const addressLine: string[] = [];
+      if (student.school_address) addressLine.push(student.school_address);
+      if (student.school_city) addressLine.push(student.school_city);
+      if (student.school_country) addressLine.push(student.school_country);
+      
+      if (addressLine.length > 0) {
+        doc.text(addressLine.join(", "), pageWidth / 2, footerY1, { align: "center" });
+        footerY1 += 4;
+      }
+      
+      const contactLine: string[] = [];
+      if (student.school_phone) contactLine.push(`Tél: ${student.school_phone}`);
+      if (student.school_website) contactLine.push(`Web: ${student.school_website}`);
+      
+      if (contactLine.length > 0) {
+        doc.text(contactLine.join(" | "), pageWidth / 2, footerY1, { align: "center" });
+      }
     }
   }
 

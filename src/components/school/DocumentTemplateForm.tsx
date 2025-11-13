@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DocumentTemplate } from "@/hooks/useDocumentTemplates";
 import { Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DocumentTemplatePreview } from "./DocumentTemplatePreview";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocumentTemplateFormProps {
   open: boolean;
@@ -51,6 +54,10 @@ export const DocumentTemplateForm = ({
   const [type, setType] = useState("");
   const [content, setContent] = useState("");
   const [footerColor, setFooterColor] = useState("#1e40af");
+  const [footerContent, setFooterContent] = useState("");
+  const [schoolName, setSchoolName] = useState("");
+  const [schoolLogo, setSchoolLogo] = useState("");
+  const { user } = useCustomAuth();
 
   useEffect(() => {
     if (template) {
@@ -58,13 +65,34 @@ export const DocumentTemplateForm = ({
       setType(template.type);
       setContent(template.content);
       setFooterColor(template.footer_color || "#1e40af");
+      setFooterContent(template.footer_content || "");
     } else {
       setName("");
       setType("");
       setContent("");
       setFooterColor("#1e40af");
+      setFooterContent("");
     }
   }, [template, open]);
+
+  useEffect(() => {
+    const fetchSchoolData = async () => {
+      if (!user?.school_id) return;
+      
+      const { data: school } = await supabase
+        .from("schools")
+        .select("name, logo_url")
+        .eq("id", user.school_id)
+        .single();
+      
+      if (school) {
+        setSchoolName(school.name);
+        setSchoolLogo(school.logo_url || "");
+      }
+    };
+    
+    fetchSchoolData();
+  }, [user]);
 
   const handleTypeChange = (value: string) => {
     setType(value);
@@ -81,6 +109,7 @@ export const DocumentTemplateForm = ({
       type,
       content,
       footer_color: footerColor,
+      footer_content: footerContent,
       is_active: true,
     });
     onOpenChange(false);
@@ -88,14 +117,17 @@ export const DocumentTemplateForm = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {template ? "Modifier le modèle" : "Créer un nouveau modèle"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-6 h-[calc(90vh-120px)]">
+          {/* Form Section */}
+          <div className="overflow-y-auto pr-4">
+            <form onSubmit={handleSubmit} className="space-y-4" id="template-form">
           <div className="space-y-2">
             <Label htmlFor="name">Nom du document</Label>
             <Input
@@ -163,27 +195,58 @@ export const DocumentTemplateForm = ({
             </AlertDescription>
           </Alert>
 
-          <div className="space-y-2">
-            <Label htmlFor="content">Contenu du document</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Saisir le contenu du document avec les variables..."
-              className="min-h-[300px] font-mono text-sm"
-              required
-            />
+              <div className="space-y-2">
+                <Label htmlFor="content">Contenu du document</Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Saisir le contenu du document avec les variables..."
+                  className="min-h-[200px] font-mono text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="footer_content">Contenu du pied de page (optionnel)</Label>
+                <Textarea
+                  id="footer_content"
+                  value={footerContent}
+                  onChange={(e) => setFooterContent(e.target.value)}
+                  placeholder="Ex: {{school_name}} - {{school_address}}, {{school_city}}, {{school_country}}\nTél: {{school_phone}} | Web: {{school_website}}"
+                  className="min-h-[80px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si vide, le pied de page par défaut sera utilisé avec les informations de l'école.
+                </p>
+              </div>
+            </form>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit">
-              {template ? "Mettre à jour" : "Créer"}
-            </Button>
+          {/* Preview Section */}
+          <div className="overflow-y-auto">
+            <div className="sticky top-0 bg-background z-10 pb-2">
+              <h3 className="text-sm font-semibold">Aperçu en direct</h3>
+            </div>
+            <DocumentTemplatePreview
+              name={name}
+              content={content}
+              footerColor={footerColor}
+              footerContent={footerContent}
+              schoolName={schoolName}
+              schoolLogo={schoolLogo}
+            />
           </div>
-        </form>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Annuler
+          </Button>
+          <Button type="submit" form="template-form">
+            {template ? "Mettre à jour" : "Créer"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

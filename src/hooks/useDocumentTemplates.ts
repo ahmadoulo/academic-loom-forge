@@ -10,6 +10,7 @@ export interface DocumentTemplate {
   content: string;
   is_active: boolean;
   footer_color?: string;
+  footer_content?: string;
   created_at: string;
   updated_at: string;
 }
