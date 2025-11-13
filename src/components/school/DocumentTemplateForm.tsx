@@ -9,6 +9,7 @@ import { DocumentTemplate } from "@/hooks/useDocumentTemplates";
 import { Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DocumentTemplatePreview } from "./DocumentTemplatePreview";
+import { DocumentTemplatePresets, documentPresets } from "./DocumentTemplatePresets";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -57,6 +58,7 @@ export const DocumentTemplateForm = ({
   const [footerContent, setFooterContent] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolLogo, setSchoolLogo] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<string>(template ? "custom" : "");
   const { user } = useCustomAuth();
 
   useEffect(() => {
@@ -101,6 +103,15 @@ export const DocumentTemplateForm = ({
     }
   };
 
+  const handlePresetSelect = (preset: typeof documentPresets[0]) => {
+    setSelectedPreset(preset.id);
+    if (preset.id !== "custom") {
+      setContent(preset.contentTemplate);
+      setFooterColor(preset.footerColor);
+      setFooterContent(preset.footerTemplate);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
@@ -128,6 +139,15 @@ export const DocumentTemplateForm = ({
           {/* Form Section */}
           <div className="overflow-y-auto pr-4">
             <form onSubmit={handleSubmit} className="space-y-4" id="template-form">
+              {!template && (
+                <div className="mb-6">
+                  <DocumentTemplatePresets
+                    selectedPreset={selectedPreset}
+                    onSelectPreset={handlePresetSelect}
+                  />
+                </div>
+              )}
+              
           <div className="space-y-2">
             <Label htmlFor="name">Nom du document</Label>
             <Input
