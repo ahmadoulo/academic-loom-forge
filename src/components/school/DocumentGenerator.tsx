@@ -97,7 +97,8 @@ export const DocumentGenerator = ({
         content: template.content, 
         name: template.name, 
         footer_color: template.footer_color,
-        footer_content: template.footer_content 
+        footer_content: template.footer_content,
+        header_style: template.header_style
       },
       studentsData,
       currentYear?.name || "",
@@ -117,7 +118,8 @@ export const DocumentGenerator = ({
         content: template.content, 
         name: template.name, 
         footer_color: template.footer_color,
-        footer_content: template.footer_content 
+        footer_content: template.footer_content,
+        header_style: template.header_style
       },
       studentsData,
       currentYear?.name || "",

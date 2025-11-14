@@ -11,6 +11,7 @@ export interface DocumentTemplate {
   is_active: boolean;
   footer_color?: string;
   footer_content?: string;
+  header_style?: string;
   created_at: string;
   updated_at: string;
 }

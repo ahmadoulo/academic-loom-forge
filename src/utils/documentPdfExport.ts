@@ -22,6 +22,7 @@ interface TemplateData {
   name: string;
   footer_color?: string;
   footer_content?: string;
+  header_style?: string;
 }
 
 // Convert hex color to RGB
@@ -71,6 +72,149 @@ const replacePlaceholders = (content: string, student: StudentData, schoolYear: 
     .replace(/\{\{date\}\}/g, today);
 };
 
+const renderDocumentHeader = (
+  doc: jsPDF,
+  headerStyle: string,
+  student: StudentData,
+  template: TemplateData,
+  logoBase64: string | null,
+  rgb: { r: number; g: number; b: number },
+  margin: number,
+  pageWidth: number
+): number => {
+  let currentY = 15;
+
+  switch (headerStyle) {
+    case "modern":
+      // Modern: Blue gradient effect with logo
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin, currentY, 50, 25);
+        } catch (error) {
+          console.error("Error adding logo:", error);
+        }
+      }
+      
+      if (student.school_name) {
+        doc.setFillColor(240, 245, 255);
+        doc.rect(0, currentY, pageWidth, 35, "F");
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.text(student.school_name.toUpperCase(), pageWidth / 2, currentY + 22, { align: "center" });
+      }
+      currentY += 40;
+      
+      doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+      doc.setLineWidth(1);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 15;
+      break;
+
+    case "classic":
+      // Classic: Centered with decorative border
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", (pageWidth - 50) / 2, currentY, 50, 25);
+          currentY += 30;
+        } catch (error) {
+          console.error("Error adding logo:", error);
+        }
+      }
+      
+      if (student.school_name) {
+        doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+        doc.setLineWidth(2);
+        doc.rect(margin, currentY, pageWidth - 2 * margin, 25);
+        
+        doc.setFontSize(14);
+        doc.setFont("times", "bold");
+        doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.text(student.school_name.toUpperCase(), pageWidth / 2, currentY + 16, { align: "center" });
+      }
+      currentY += 35;
+      break;
+
+    case "minimal":
+      // Minimal: Simple line with school name
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin, currentY, 40, 20);
+          currentY += 25;
+        } catch (error) {
+          console.error("Error adding logo:", error);
+        }
+      }
+      
+      if (student.school_name) {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+        doc.text(student.school_name, margin, currentY);
+      }
+      currentY += 10;
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 15;
+      break;
+
+    case "elegant":
+      // Elegant: Accent line with sophisticated layout
+      doc.setFillColor(rgb.r, rgb.g, rgb.b);
+      doc.rect(0, currentY, 5, 40, "F");
+      
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin + 5, currentY + 5, 45, 22);
+        } catch (error) {
+          console.error("Error adding logo:", error);
+        }
+      }
+      
+      if (student.school_name) {
+        doc.setFontSize(15);
+        doc.setFont("times", "bold");
+        doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.text(student.school_name.toUpperCase(), margin + 5, currentY + 32);
+      }
+      currentY += 45;
+      
+      doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+      doc.setLineWidth(0.5);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 12;
+      break;
+
+    default:
+      // Default fallback
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin, currentY, 50, 25);
+          currentY += 30;
+        } catch (error) {
+          console.error("Error adding logo:", error);
+        }
+      }
+      
+      if (student.school_name) {
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(40, 40, 40);
+        doc.text(student.school_name.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
+        currentY += 8;
+      }
+      
+      doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+      doc.setLineWidth(0.8);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 15;
+  }
+
+  return currentY;
+};
+
 export const generateDocumentPDF = async (
   template: TemplateData,
   students: StudentData[],
@@ -98,32 +242,18 @@ export const generateDocumentPDF = async (
       doc.addPage();
     }
 
-    let currentY = 15;
-
-    // Header with logo and school info
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, "PNG", margin, currentY, 50, 25);
-        currentY += 30;
-      } catch (error) {
-        console.error("Error adding logo:", error);
-        currentY += 5;
-      }
-    }
-
-    if (student.school_name) {
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(40, 40, 40);
-      doc.text(student.school_name.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
-      currentY += 8;
-    }
-
-    // Decorative line
-    doc.setDrawColor(rgb.r, rgb.g, rgb.b);
-    doc.setLineWidth(0.8);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
-    currentY += 15;
+    // Render header based on header style
+    const headerStyle = template.header_style || "modern";
+    let currentY = renderDocumentHeader(
+      doc,
+      headerStyle,
+      student,
+      template,
+      logoBase64,
+      rgb,
+      margin,
+      pageWidth
+    );
 
     // Document title
     doc.setFontSize(20);
