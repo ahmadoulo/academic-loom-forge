@@ -56,6 +56,7 @@ export const DocumentTemplateForm = ({
   const [content, setContent] = useState("");
   const [footerColor, setFooterColor] = useState("#1e40af");
   const [footerContent, setFooterContent] = useState("");
+  const [headerStyle, setHeaderStyle] = useState<string>("modern");
   const [schoolName, setSchoolName] = useState("");
   const [schoolLogo, setSchoolLogo] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<string>(template ? "custom" : "");
@@ -68,12 +69,14 @@ export const DocumentTemplateForm = ({
       setContent(template.content);
       setFooterColor(template.footer_color || "#1e40af");
       setFooterContent(template.footer_content || "");
+      setHeaderStyle(template.header_style || "modern");
     } else {
       setName("");
       setType("");
       setContent("");
       setFooterColor("#1e40af");
       setFooterContent("");
+      setHeaderStyle("modern");
     }
   }, [template, open]);
 
@@ -109,6 +112,7 @@ export const DocumentTemplateForm = ({
       setContent(preset.contentTemplate);
       setFooterColor(preset.footerColor);
       setFooterContent(preset.footerTemplate);
+      setHeaderStyle(preset.headerStyle);
     }
   };
 
@@ -121,6 +125,7 @@ export const DocumentTemplateForm = ({
       content,
       footer_color: footerColor,
       footer_content: footerContent,
+      header_style: headerStyle,
       is_active: true,
     });
     onOpenChange(false);
