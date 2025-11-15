@@ -465,8 +465,10 @@ export type Database = {
           archived: boolean | null
           archived_at: string | null
           created_at: string
+          cycle_id: string | null
           id: string
           name: string
+          option_id: string | null
           school_id: string
           school_year_id: string
           updated_at: string
@@ -475,8 +477,10 @@ export type Database = {
           archived?: boolean | null
           archived_at?: string | null
           created_at?: string
+          cycle_id?: string | null
           id?: string
           name: string
+          option_id?: string | null
           school_id: string
           school_year_id: string
           updated_at?: string
@@ -485,13 +489,29 @@ export type Database = {
           archived?: boolean | null
           archived_at?: string | null
           created_at?: string
+          cycle_id?: string | null
           id?: string
           name?: string
+          option_id?: string | null
           school_id?: string
           school_year_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "classes_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "options"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "classes_school_id_fkey"
             columns: ["school_id"]
@@ -603,6 +623,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classrooms_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cycles: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_years: number | null
+          id: string
+          is_active: boolean
+          level: string | null
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_years?: number | null
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_years?: number | null
+          id?: string
+          is_active?: boolean
+          level?: string | null
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -913,6 +977,57 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      options: {
+        Row: {
+          code: string | null
+          created_at: string
+          cycle_id: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          cycle_id: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          cycle_id?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "options_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "options_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
