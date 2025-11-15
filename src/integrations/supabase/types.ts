@@ -719,6 +719,7 @@ export type Database = {
           created_at: string
           footer_color: string | null
           footer_content: string | null
+          header_style: string | null
           id: string
           is_active: boolean
           name: string
@@ -731,6 +732,7 @@ export type Database = {
           created_at?: string
           footer_color?: string | null
           footer_content?: string | null
+          header_style?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -743,6 +745,7 @@ export type Database = {
           created_at?: string
           footer_color?: string | null
           footer_content?: string | null
+          header_style?: string | null
           id?: string
           is_active?: boolean
           name?: string

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useDocumentTemplates } from "@/hooks/useDocumentTemplates";
 import { DocumentTemplateForm } from "./DocumentTemplateForm";
 import { DocumentGenerator } from "./DocumentGenerator";
-import { Plus, FileText, Edit, Trash2, Download } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { DocumentTemplate } from "@/hooks/useDocumentTemplates";
+import { DocumentTemplateCard } from "./DocumentTemplateCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,42 +106,13 @@ export const DocumentsManagementSection = ({ schoolId }: DocumentsManagementSect
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
-            <Card key={template.id} className="group hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <FileText className="h-8 w-8 text-primary" />
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEditTemplate(template)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setTemplateToDelete(template.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-                <CardTitle className="text-lg">{template.name}</CardTitle>
-                <CardDescription>
-                  {TEMPLATE_TYPE_LABELS[template.type] || template.type}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="w-full"
-                  onClick={() => handleGenerateDocument(template)}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Générer un document
-                </Button>
-              </CardContent>
-            </Card>
+            <DocumentTemplateCard
+              key={template.id}
+              template={template}
+              onEdit={handleEditTemplate}
+              onDelete={setTemplateToDelete}
+              onGenerate={handleGenerateDocument}
+            />
           ))}
         </div>
       )}
