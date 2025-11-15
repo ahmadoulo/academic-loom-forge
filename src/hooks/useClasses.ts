@@ -14,6 +14,8 @@ export interface Class {
 export interface CreateClassData {
   name: string;
   school_id: string;
+  cycle_id?: string;
+  option_id?: string;
 }
 
 export const useClasses = (schoolId?: string) => {

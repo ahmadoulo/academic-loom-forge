@@ -5,6 +5,8 @@ import { StudentAccountsSection } from "../school/StudentAccountsSection";
 import { SchoolUserManagement } from "./SchoolUserManagement";
 import { SchoolYearManagement } from "./SchoolYearManagement";
 import { SemesterManagement } from "./SemesterManagement";
+import { CyclesManagement } from "../school/CyclesManagement";
+import { OptionsManagement } from "../school/OptionsManagement";
 
 interface SchoolSettingsPageProps {
   schoolId: string;
@@ -16,6 +18,8 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
   const availableTabs = [
     "school-info",
     "semesters",
+    "cycles",
+    "options",
     "student-accounts",
     "users"
   ];
@@ -26,6 +30,10 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
         return <SchoolSettings schoolId={schoolId} />;
       case "semesters":
         return <SemesterManagement schoolId={schoolId} />;
+      case "cycles":
+        return <CyclesManagement schoolId={schoolId} />;
+      case "options":
+        return <OptionsManagement schoolId={schoolId} />;
       case "student-accounts":
         return <StudentAccountsSection schoolId={schoolId} />;
       case "users":

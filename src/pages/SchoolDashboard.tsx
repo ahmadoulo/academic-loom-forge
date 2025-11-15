@@ -267,13 +267,17 @@ const SchoolDashboard = () => {
 
   const handleCreateClass = async (classData: {
     name: string;
+    cycle_id?: string;
+    option_id?: string;
   }) => {
     if (!school?.id) return;
     
     try {
       await createClass({
         name: classData.name,
-        school_id: school.id
+        school_id: school.id,
+        cycle_id: classData.cycle_id,
+        option_id: classData.option_id,
       });
       setIsClassDialogOpen(false);
     } catch (error) {
@@ -1035,6 +1039,7 @@ const SchoolDashboard = () => {
             <DialogTitle>Créer une Classe</DialogTitle>
           </DialogHeader>
           <ClassForm 
+            schoolId={school?.id || ''}
             onSubmit={handleCreateClass}
           />
         </DialogContent>
