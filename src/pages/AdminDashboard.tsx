@@ -4,6 +4,7 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { SchoolsSection } from "@/components/admin/SchoolsSection";
 import { SupportSection } from "@/components/admin/SupportSection";
+import { ExamDocumentsManagement } from "@/components/school/ExamDocumentsManagement";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
@@ -35,6 +36,8 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case "schools":
         return <SchoolsSection />;
+      case "exams":
+        return <ExamDocumentsManagement />;
       case "settings":
         return (
           <SettingsLayout
