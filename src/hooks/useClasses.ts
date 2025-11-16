@@ -16,6 +16,8 @@ export interface CreateClassData {
   school_id: string;
   cycle_id?: string;
   option_id?: string;
+  year_level?: number;
+  is_specialization?: boolean;
 }
 
 export const useClasses = (schoolId?: string) => {
@@ -69,6 +71,25 @@ export const useClasses = (schoolId?: string) => {
       return data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de la classe';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const updateClass = async (id: string, classData: Partial<CreateClassData>) => {
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .update(classData)
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast.success('Classe mise à jour avec succès');
+      await fetchClasses();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la classe';
       setError(message);
       toast.error(message);
       throw err;
@@ -136,6 +157,7 @@ export const useClasses = (schoolId?: string) => {
     loading,
     error,
     createClass,
+    updateClass,
     archiveClass,
     restoreClass,
     refetch: fetchClasses

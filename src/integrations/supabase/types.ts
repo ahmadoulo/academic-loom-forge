@@ -467,11 +467,13 @@ export type Database = {
           created_at: string
           cycle_id: string | null
           id: string
+          is_specialization: boolean | null
           name: string
           option_id: string | null
           school_id: string
           school_year_id: string
           updated_at: string
+          year_level: number | null
         }
         Insert: {
           archived?: boolean | null
@@ -479,11 +481,13 @@ export type Database = {
           created_at?: string
           cycle_id?: string | null
           id?: string
+          is_specialization?: boolean | null
           name: string
           option_id?: string | null
           school_id: string
           school_year_id: string
           updated_at?: string
+          year_level?: number | null
         }
         Update: {
           archived?: boolean | null
@@ -491,11 +495,13 @@ export type Database = {
           created_at?: string
           cycle_id?: string | null
           id?: string
+          is_specialization?: boolean | null
           name?: string
           option_id?: string | null
           school_id?: string
           school_year_id?: string
           updated_at?: string
+          year_level?: number | null
         }
         Relationships: [
           {

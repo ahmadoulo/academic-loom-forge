@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { School, Search, Archive, Users, ArrowRight, Plus } from "lucide-react";
+import { School, Search, Archive, Users, ArrowRight, Plus, Pencil } from "lucide-react";
 
 interface Class {
   id: string;
@@ -28,6 +28,7 @@ interface ClassesListSectionProps {
   onArchiveClass: (id: string, name: string) => void;
   onViewClassDetails: (classItem: Class) => void;
   onCreateClass: () => void;
+  onEditClass: (classItem: Class) => void;
 }
 
 export function ClassesListSection({ 
@@ -36,7 +37,8 @@ export function ClassesListSection({
   loading, 
   onArchiveClass, 
   onViewClassDetails,
-  onCreateClass 
+  onCreateClass,
+  onEditClass
 }: ClassesListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -121,17 +123,31 @@ export function ClassesListSection({
                             {classItem.name}
                           </CardTitle>
                           
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onArchiveClass(classItem.id, classItem.name);
-                            }}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditClass(classItem);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onArchiveClass(classItem.id, classItem.name);
+                              }}
+                            >
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
                       
