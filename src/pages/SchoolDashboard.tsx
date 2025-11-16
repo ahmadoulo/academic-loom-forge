@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { StudentImport } from "@/components/school/StudentImport";
 import { StudentForm } from "@/components/school/StudentForm";
 import { ClassForm } from "@/components/school/ClassForm";
+import { ClassEditDialog } from "@/components/school/ClassEditDialog";
 import { SubjectForm } from "@/components/school/SubjectForm";
 import { useClassSubjects } from "@/hooks/useClassSubjects";
 import { TeacherClassAssignment } from "@/components/admin/TeacherClassAssignment";
@@ -84,6 +85,7 @@ const SchoolDashboard = () => {
   const [newClassName, setNewClassName] = useState("");
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [editingClass, setEditingClass] = useState<any>(null);
   
   // Archive dialog states (for students)
   const [archiveDialog, setArchiveDialog] = useState<{
@@ -135,7 +137,7 @@ const SchoolDashboard = () => {
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, archiveStudent, restoreStudent } = useStudents(school?.id);
   
   // Use filtered classes by selected year (or current if none selected)
-  const { createClass: createClassOriginal, archiveClass: archiveClassOriginal, restoreClass } = useClasses(school?.id);
+  const { createClass: createClassOriginal, updateClass: updateClassOriginal, archiveClass: archiveClassOriginal, restoreClass } = useClasses(school?.id);
   const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, displayYearId);
   
   // Get current year classes for forms (only current year classes should be available in forms)
@@ -144,6 +146,12 @@ const SchoolDashboard = () => {
   // Wrapper functions to refresh filtered data after mutations
   const createClass = async (data: any) => {
     const result = await createClassOriginal(data);
+    await refetchClasses();
+    return result;
+  };
+  
+  const updateClass = async (id: string, data: any) => {
+    const result = await updateClassOriginal(id, data);
     await refetchClasses();
     return result;
   };
@@ -269,6 +277,8 @@ const SchoolDashboard = () => {
     name: string;
     cycle_id?: string;
     option_id?: string;
+    year_level?: number;
+    is_specialization?: boolean;
   }) => {
     if (!school?.id) return;
     
@@ -278,8 +288,28 @@ const SchoolDashboard = () => {
         school_id: school.id,
         cycle_id: classData.cycle_id,
         option_id: classData.option_id,
+        year_level: classData.year_level,
+        is_specialization: classData.is_specialization,
       });
       setIsClassDialogOpen(false);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleUpdateClass = async (classData: {
+    name: string;
+    cycle_id?: string;
+    option_id?: string;
+    year_level?: number;
+    is_specialization?: boolean;
+  }) => {
+    if (!editingClass?.id) return;
+    
+    try {
+      await updateClass(editingClass.id, classData);
+      setEditingClass(null);
+      toast.success('Classe mise à jour avec succès');
     } catch (error) {
       // Error handled by hook
     }
@@ -822,6 +852,7 @@ const SchoolDashboard = () => {
                     })}
                     onViewClassDetails={handleViewClassDetails}
                     onCreateClass={() => setIsClassDialogOpen(true)}
+                    onEditClass={(classItem) => setEditingClass(classItem)}
                   />
                   
                   <ArchivedClassesSection schoolId={school.id} />
@@ -1112,6 +1143,14 @@ const SchoolDashboard = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Class Edit Dialog */}
+      <ClassEditDialog
+        classToEdit={editingClass}
+        schoolId={school?.id || ''}
+        onClose={() => setEditingClass(null)}
+        onUpdate={handleUpdateClass}
+      />
     </SidebarProvider>
     </SemesterProvider>
   );
