@@ -47,7 +47,12 @@ export const ExamDocumentsSection = () => {
         console.error("Error fetching teacher subjects:", error);
         throw error;
       }
-      return data || [];
+      
+      // Transform data to match form expectations
+      return (data || []).map(subject => ({
+        ...subject,
+        class_name: (subject.classes as any)?.name || '',
+      }));
     },
     enabled: !!teacher?.id && !!school?.id,
   });
