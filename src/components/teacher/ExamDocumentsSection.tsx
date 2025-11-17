@@ -6,7 +6,6 @@ import { Plus, FileText, Download, Eye, Trash2 } from "lucide-react";
 import { useExamDocuments, useExamQuestions } from "@/hooks/useExamDocuments";
 import { useCurrentTeacher } from "@/hooks/useCurrentTeacher";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubjects } from "@/hooks/useSubjects";
 import { useSchools } from "@/hooks/useSchools";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useSemester } from "@/hooks/useSemester";
@@ -167,7 +166,7 @@ export const ExamDocumentsSection = () => {
             Créez et gérez vos documents d'examens et devoirs surveillés
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} disabled={!teacherSubjects || teacherSubjects.length === 0}>
           <Plus className="h-4 w-4 mr-2" />
           Créer un document
         </Button>
