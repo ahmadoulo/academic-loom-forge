@@ -18,15 +18,15 @@ import { toast } from "sonner";
 export const ExamDocumentsSection = () => {
   const { user } = useAuth();
   const { teacher } = useCurrentTeacher();
-  const { getYearForDisplay } = useAcademicYear();
-  const schoolYear = getYearForDisplay();
+  const { selectedYear, currentYear } = useAcademicYear();
+  const schoolYear = selectedYear || currentYear;
   const { currentSemester } = useSemester();
   const [showForm, setShowForm] = useState(false);
 
   const { schools } = useSchools();
   const school = schools?.[0];
 
-  const { subjects } = useSubjects(school?.id, schoolYear);
+  const { subjects } = useSubjects(school?.id, schoolYear?.id);
   const teacherSubjects = subjects?.filter((s) => s.teacher_id === teacher?.id);
 
   const { examDocuments, isLoading, createExamDocument, submitExamDocument, deleteExamDocument } =
@@ -38,7 +38,7 @@ export const ExamDocumentsSection = () => {
     await createExamDocument.mutateAsync({
       school_id: school.id,
       teacher_id: teacher.id,
-      school_year_id: schoolYear,
+      school_year_id: schoolYear.id,
       school_semester_id: currentSemester?.id,
       ...data,
     });
@@ -121,7 +121,7 @@ export const ExamDocumentsSection = () => {
         <ExamDocumentForm
           teacherId={teacher?.id || ""}
           schoolId={school?.id || ""}
-          schoolYearId={schoolYear || ""}
+          schoolYearId={schoolYear?.id || ""}
           semesterId={currentSemester?.id}
           subjects={teacherSubjects || []}
           onSubmit={handleCreateExam}
