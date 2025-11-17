@@ -516,7 +516,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
               <AnnouncementsSection schoolId={currentTeacher.school_id} isAdmin={false} userRole="teacher" />
             )}
             
-            {activeTab === "documents-examen" && (
+            {activeTab === "exams" && (
               <ExamDocumentsSection />
             )}
           </div>

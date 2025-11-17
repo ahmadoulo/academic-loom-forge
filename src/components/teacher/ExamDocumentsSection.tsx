@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Download, Eye, Trash2 } from "lucide-react";
-import { useExamDocuments, useExamQuestions } from "@/hooks/useExamDocuments";
+import { useExamDocuments } from "@/hooks/useExamDocuments";
 import { useCurrentTeacher } from "@/hooks/useCurrentTeacher";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -14,6 +14,7 @@ import { ExamDocumentForm } from "./ExamDocumentForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { downloadExamPDF, previewExamPDF } from "@/utils/examPdfExport";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const ExamDocumentsSection = () => {
   const { user } = useAuth();
@@ -26,7 +27,7 @@ export const ExamDocumentsSection = () => {
   const { schools } = useSchools();
   const school = schools?.[0];
 
-  const { subjects } = useSubjects(school?.id, schoolYear?.id);
+  const { subjects } = useSubjects(school?.id);
   const teacherSubjects = subjects?.filter((s) => s.teacher_id === teacher?.id);
 
   const { examDocuments, isLoading, createExamDocument, submitExamDocument, deleteExamDocument } =
@@ -50,15 +51,35 @@ export const ExamDocumentsSection = () => {
     const exam = examDocuments.find((e) => e.id === examId);
     if (!exam || !school || !teacher || !schoolYear) return;
 
-    const { data: questions } = await useExamQuestions(examId).refetch();
-    if (!questions) return;
-
-    const subject = subjects?.find((s) => s.id === exam.subject_id);
-    const classData = subjects?.find((s) => s.id === exam.subject_id);
-
-    if (!subject || !classData) return;
-
     try {
+      // Récupérer les questions depuis la base de données
+      const { data: questions, error: questionsError } = await supabase
+        .from("exam_questions")
+        .select(`
+          *,
+          exam_answers (*)
+        `)
+        .eq("exam_document_id", examId)
+        .order("question_number", { ascending: true });
+
+      if (questionsError) throw questionsError;
+      if (!questions) return;
+
+      // Récupérer les détails de la classe
+      const { data: classData, error: classError } = await supabase
+        .from("classes")
+        .select("name")
+        .eq("id", exam.class_id)
+        .single();
+
+      if (classError) throw classError;
+
+      const subject = subjects?.find((s) => s.id === exam.subject_id);
+      if (!subject) {
+        toast.error("Matière introuvable");
+        return;
+      }
+
       await downloadExamPDF(
         {
           exam,
@@ -71,7 +92,7 @@ export const ExamDocumentsSection = () => {
             name: subject.name,
           },
           class: {
-            name: classData.name || "",
+            name: classData?.name || "",
           },
           teacher: {
             firstname: teacher.firstname,
