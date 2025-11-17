@@ -12,11 +12,11 @@ import { useSemester } from "@/hooks/useSemester";
 export const ExamDocumentsManagement = () => {
   const { schools } = useSchools();
   const school = schools?.[0];
-  const { getYearForDisplay } = useAcademicYear();
-  const schoolYear = getYearForDisplay();
+  const { selectedYear, currentYear } = useAcademicYear();
+  const schoolYear = selectedYear || currentYear;
   const { currentSemester } = useSemester();
 
-  const { subjects } = useSubjects(school?.id, schoolYear);
+  const { subjects } = useSubjects(school?.id);
   const { teachers } = useTeachers(school?.id);
 
   const { examDocuments, isLoading } = useExamDocuments(school?.id);
