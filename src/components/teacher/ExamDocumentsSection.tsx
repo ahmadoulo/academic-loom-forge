@@ -28,8 +28,33 @@ export const ExamDocumentsSection = () => {
   const { schools } = useSchools();
   const school = schools?.[0];
 
-  const { subjects } = useSubjects(school?.id, schoolYear?.id);
-  const teacherSubjects = subjects?.filter((s) => s.teacher_id === teacher?.id);
+  // Get subjects with classes for the teacher
+  const { data: teacherSubjectsData } = useQuery({
+    queryKey: ["teacher-subjects", teacher?.id, school?.id],
+    queryFn: async () => {
+      if (!teacher?.id || !school?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("subjects")
+        .select(`
+          *,
+          classes!inner(id, name, school_id)
+        `)
+        .eq("teacher_id", teacher.id)
+        .eq("school_id", school.id)
+        .eq("archived", false);
+      
+      if (error) {
+        console.error("Error fetching teacher subjects:", error);
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!teacher?.id && !!school?.id,
+  });
+  
+  const teacherSubjects = teacherSubjectsData || [];
+  const subjects = teacherSubjectsData || [];
 
   const { examDocuments, isLoading, createExamDocument, submitExamDocument, deleteExamDocument } =
     useExamDocuments(school?.id, teacher?.id);
@@ -148,7 +173,16 @@ export const ExamDocumentsSection = () => {
         </Button>
       </div>
 
-      {isLoading ? (
+      {!teacherSubjects || teacherSubjects.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              Vous n'avez aucune matière assignée. Contactez l'administration pour vous assigner des matières.
+            </p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="text-center py-8">Chargement...</div>
       ) : examDocuments.length === 0 ? (
         <Card>
@@ -157,6 +191,10 @@ export const ExamDocumentsSection = () => {
             <p className="text-muted-foreground">
               Aucun document d'examen créé. Commencez par créer votre premier document.
             </p>
+            <Button onClick={() => setShowForm(true)} className="mt-4">
+              <Plus className="h-4 w-4 mr-2" />
+              Créer votre premier document
+            </Button>
           </CardContent>
         </Card>
       ) : (
