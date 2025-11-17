@@ -80,9 +80,14 @@ export const ExamDocumentsSection = () => {
     if (!questions) return;
 
     const subject = subjects?.find((s) => s.id === exam.subject_id);
-    const classData = subjects?.find((s) => s.id === exam.subject_id);
+    
+    // Get class data from subject
+    const classData = subject?.classes;
 
-    if (!subject || !classData) return;
+    if (!subject || !classData) {
+      toast.error("Impossible de récupérer les informations de la matière ou de la classe");
+      return;
+    }
 
     try {
       await downloadExamPDF(
@@ -112,6 +117,7 @@ export const ExamDocumentsSection = () => {
         },
         `examen_${exam.exam_type}_${subject.name}.pdf`
       );
+      toast.success("PDF exporté avec succès");
     } catch (error) {
       toast.error("Erreur lors de l'export PDF");
       console.error(error);
