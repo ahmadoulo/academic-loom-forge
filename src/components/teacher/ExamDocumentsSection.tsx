@@ -10,6 +10,8 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useSchools } from "@/hooks/useSchools";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useSemester } from "@/hooks/useSemester";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { ExamDocumentForm } from "./ExamDocumentForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { downloadExamPDF, previewExamPDF } from "@/utils/examPdfExport";
