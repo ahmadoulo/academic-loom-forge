@@ -29,6 +29,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { ExamDocumentsSection } from "@/components/teacher/ExamDocumentsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { toast } from "sonner";
 
@@ -513,6 +514,10 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             
             {activeTab === "announcements" && currentTeacher && (
               <AnnouncementsSection schoolId={currentTeacher.school_id} isAdmin={false} userRole="teacher" />
+            )}
+            
+            {activeTab === "documents-examen" && (
+              <ExamDocumentsSection />
             )}
           </div>
         )}
