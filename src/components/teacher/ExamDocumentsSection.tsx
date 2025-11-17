@@ -27,8 +27,8 @@ export const ExamDocumentsSection = () => {
   const { schools } = useSchools();
   const school = schools?.[0];
 
-  const { subjects } = useSubjects(school?.id);
-  const teacherSubjects = subjects?.filter((s) => s.teacher_id === teacher?.id);
+  // Récupérer toutes les matières assignées au professeur (comme dans StudentsGrading)
+  const { subjects: teacherSubjects } = useSubjects(undefined, undefined, teacher?.id);
 
   const { examDocuments, isLoading, createExamDocument, submitExamDocument, deleteExamDocument } =
     useExamDocuments(school?.id, teacher?.id);
@@ -74,7 +74,7 @@ export const ExamDocumentsSection = () => {
 
       if (classError) throw classError;
 
-      const subject = subjects?.find((s) => s.id === exam.subject_id);
+      const subject = teacherSubjects?.find((s) => s.id === exam.subject_id);
       if (!subject) {
         toast.error("Matière introuvable");
         return;
@@ -133,24 +133,12 @@ export const ExamDocumentsSection = () => {
     return labels[type] || type;
   };
 
-  if (showForm) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Créer un document d'examen</h2>
-        </div>
-        <ExamDocumentForm
-          teacherId={teacher?.id || ""}
-          schoolId={school?.id || ""}
-          schoolYearId={schoolYear?.id || ""}
-          semesterId={currentSemester?.id}
-          subjects={teacherSubjects || []}
-          onSubmit={handleCreateExam}
-          onCancel={() => setShowForm(false)}
-        />
-      </div>
-    );
+  if (!teacher) {
+    return <div>Chargement...</div>;
   }
+
+  // Vérifier si le professeur a des matières assignées
+  const hasSubjects = teacherSubjects && teacherSubjects.length > 0;
 
   return (
     <div className="space-y-6">
@@ -161,74 +149,107 @@ export const ExamDocumentsSection = () => {
             Créez et gérez vos documents d'examens et devoirs surveillés
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Créer un document
-        </Button>
+        {!showForm && (
+          <Button 
+            onClick={() => setShowForm(true)}
+            disabled={!hasSubjects}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Créer un document
+          </Button>
+        )}
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8">Chargement...</div>
-      ) : examDocuments.length === 0 ? (
+      {!hasSubjects && !showForm && (
         <Card>
-          <CardContent className="py-8 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Aucun document d'examen créé. Commencez par créer votre premier document.
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              Aucune matière assignée. Contactez l'administration pour vous assigner des matières.
             </p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {examDocuments.map((exam) => {
-            const subject = subjects?.find((s) => s.id === exam.subject_id);
-            return (
-              <Card key={exam.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {getExamTypeLabel(exam.exam_type)}
-                        {getStatusBadge(exam.status)}
-                      </CardTitle>
-                      <CardDescription>
-                        {subject?.name} • {exam.duration_minutes} minutes
-                        {exam.documents_allowed && " • Documents autorisés"}
-                      </CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleExportPDF(exam.id)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      {exam.status === "draft" && (
-                        <>
+      )}
+
+      {showForm && hasSubjects ? (
+        <ExamDocumentForm
+          teacherId={teacher.id}
+          schoolId={school?.id || ""}
+          schoolYearId={schoolYear?.id || ""}
+          semesterId={currentSemester?.id}
+          subjects={teacherSubjects.map(s => ({
+            id: s.id,
+            name: s.name,
+            class_id: s.class_id,
+          }))}
+          onSubmit={handleCreateExam}
+          onCancel={() => setShowForm(false)}
+        />
+      ) : !showForm && hasSubjects && (
+        <>
+          {isLoading ? (
+            <div className="text-center py-8">Chargement...</div>
+          ) : examDocuments.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Aucun document d'examen créé. Commencez par créer votre premier document.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {examDocuments.map((exam) => {
+                const subject = teacherSubjects?.find((s) => s.id === exam.subject_id);
+                return (
+                  <Card key={exam.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {getExamTypeLabel(exam.exam_type)}
+                            {getStatusBadge(exam.status)}
+                          </CardTitle>
+                          <CardDescription>
+                            {subject?.name} • {exam.duration_minutes} minutes
+                            {exam.documents_allowed && " • Documents autorisés"}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => submitExamDocument.mutate(exam.id)}
+                            onClick={() => handleExportPDF(exam.id)}
                           >
-                            Soumettre
+                            <Download className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteExamDocument.mutate(exam.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            );
-          })}
-        </div>
+                          {exam.status === "draft" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => submitExamDocument.mutate(exam.id)}
+                              >
+                                Soumettre
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteExamDocument.mutate(exam.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
