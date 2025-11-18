@@ -27,8 +27,12 @@ export const ExamDocumentsSection = () => {
   const { schools } = useSchools();
   const school = schools?.[0];
 
-  // Récupérer toutes les matières assignées au professeur (comme dans StudentsGrading)
-  const { subjects: teacherSubjects } = useSubjects(undefined, undefined, teacher?.id);
+  // Récupérer toutes les matières assignées au professeur - n'appeler le hook que si teacher existe
+  const { subjects: teacherSubjects, loading: subjectsLoading } = useSubjects(
+    school?.id, 
+    undefined, 
+    teacher?.id
+  );
 
   const { examDocuments, isLoading, createExamDocument, submitExamDocument, deleteExamDocument } =
     useExamDocuments(school?.id, teacher?.id);
@@ -133,7 +137,7 @@ export const ExamDocumentsSection = () => {
     return labels[type] || type;
   };
 
-  if (!teacher) {
+  if (!teacher || subjectsLoading) {
     return <div>Chargement...</div>;
   }
 
