@@ -6,7 +6,8 @@ import {
   HelpCircle,
   ChevronRight,
   Menu,
-  X
+  X,
+  FileText
 } from "lucide-react";
 
 import {
@@ -36,6 +37,13 @@ const menuItems = [
     value: "schools",
     icon: School,
     description: "Gérer les établissements",
+    href: "/admin"
+  },
+  { 
+    title: "Documents d'examen", 
+    value: "exam-documents",
+    icon: FileText,
+    description: "Examens et évaluations",
     href: "/admin"
   },
   { 

@@ -173,6 +173,18 @@ const menuStructure = [
       },
     ]
   },
+  {
+    category: "Évaluations",
+    icon: FileText,
+    items: [
+      { 
+        title: "Documents d'examen", 
+        value: "exam-documents",
+        icon: FileText,
+        href: "/school"
+      },
+    ]
+  },
   { 
     title: "Nouvelle Année", 
     value: "year-transition",

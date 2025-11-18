@@ -50,6 +50,7 @@ import { SchoolAttendanceView } from "@/components/school/SchoolAttendanceView";
 import { useAttendance } from "@/hooks/useAttendance";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { ExamDocumentsList } from "@/components/school/ExamDocumentsList";
 import { useAutoAbsenceNotifications } from "@/hooks/useAutoAbsenceNotifications";
 import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
@@ -1037,6 +1038,21 @@ const SchoolDashboard = () => {
 
               {activeTab === "announcements" && (
                 <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
+              )}
+              
+              {activeTab === "exam-documents" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-2xl font-bold">Documents d'examen</h2>
+                      <p className="text-muted-foreground">Consulter et exporter les examens soumis</p>
+                    </div>
+                  </div>
+                  <ExamDocumentsList 
+                    schoolId={school.id} 
+                    isAdmin={true}
+                  />
+                </div>
               )}
               
               {activeTab === "notifications" && school?.id && (

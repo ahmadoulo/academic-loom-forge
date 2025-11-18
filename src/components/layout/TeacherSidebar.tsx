@@ -106,6 +106,17 @@ const menuStructure = [
       },
     ]
   },
+  {
+    category: "Évaluations",
+    icon: FileText,
+    items: [
+      { 
+        title: "Documents d'examen", 
+        value: "exam-documents",
+        icon: FileText
+      },
+    ]
+  },
 ];
 
 export function TeacherSidebar({ activeTab, onTabChange, isMobile = false, onClose }: { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean; onClose?: () => void }) {
