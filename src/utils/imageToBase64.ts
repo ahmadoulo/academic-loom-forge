@@ -24,6 +24,3 @@ export const imageUrlToBase64 = async (url: string): Promise<string> => {
     throw error;
   }
 };
-
-// Alias for compatibility
-export const loadImageAsBase64 = imageUrlToBase64;
