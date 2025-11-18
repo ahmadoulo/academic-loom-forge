@@ -906,6 +906,189 @@ export type Database = {
           },
         ]
       }
+      exam_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          is_correct: boolean
+          question_id: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          question_id: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "exam_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_documents: {
+        Row: {
+          class_id: string
+          created_at: string
+          documents_allowed: boolean
+          duration_minutes: number
+          exam_type: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          school_semester_id: string | null
+          school_year_id: string
+          status: string
+          subject_id: string
+          submitted_at: string | null
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          documents_allowed?: boolean
+          duration_minutes: number
+          exam_type: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          school_semester_id?: string | null
+          school_year_id: string
+          status?: string
+          subject_id: string
+          submitted_at?: string | null
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          documents_allowed?: boolean
+          duration_minutes?: number
+          exam_type?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          school_semester_id?: string | null
+          school_year_id?: string
+          status?: string
+          subject_id?: string
+          submitted_at?: string | null
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_documents_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_documents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "exam_documents_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_documents_school_semester_id_fkey"
+            columns: ["school_semester_id"]
+            isOneToOne: false
+            referencedRelation: "school_semester"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_documents_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_documents_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_documents_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_questions: {
+        Row: {
+          created_at: string
+          exam_document_id: string
+          has_choices: boolean
+          id: string
+          is_multiple_choice: boolean
+          points: number
+          question_number: number
+          question_text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_document_id: string
+          has_choices?: boolean
+          id?: string
+          is_multiple_choice?: boolean
+          points: number
+          question_number: number
+          question_text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_document_id?: string
+          has_choices?: boolean
+          id?: string
+          is_multiple_choice?: boolean
+          points?: number
+          question_number?: number
+          question_text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_questions_exam_document_id_fkey"
+            columns: ["exam_document_id"]
+            isOneToOne: false
+            referencedRelation: "exam_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grades: {
         Row: {
           comment: string | null
