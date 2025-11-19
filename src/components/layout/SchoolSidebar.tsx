@@ -166,6 +166,12 @@ const menuStructure = [
         href: "/school"
       },
       { 
+        title: "Documents Examen", 
+        value: "exam-documents",
+        icon: FileText,
+        href: "/school"
+      },
+      { 
         title: "Générateur de document", 
         value: "documents",
         icon: FileText,
