@@ -29,9 +29,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
-import { ExamDocumentForm } from "@/components/school/ExamDocumentForm";
-import { ExamDocumentsList } from "@/components/school/ExamDocumentsList";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { toast } from "sonner";
 
@@ -516,35 +513,6 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             
             {activeTab === "announcements" && currentTeacher && (
               <AnnouncementsSection schoolId={currentTeacher.school_id} isAdmin={false} userRole="teacher" />
-            )}
-            
-            {activeTab === "exam-documents" && currentTeacher && (
-              <div className="space-y-6">
-                <Tabs defaultValue="list" className="w-full">
-                  <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="list">Mes documents</TabsTrigger>
-                    <TabsTrigger value="create">Créer un document</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="list" className="mt-6">
-                    <ExamDocumentsList 
-                      schoolId={currentTeacher.school_id} 
-                      teacherId={teacherId}
-                      isAdmin={false}
-                    />
-                  </TabsContent>
-                  <TabsContent value="create" className="mt-6">
-                    <ExamDocumentForm 
-                      teacherId={teacherId!}
-                      schoolId={currentTeacher.school_id}
-                      onSuccess={() => {
-                        // Switch back to list tab after success
-                        const listTab = document.querySelector('[value="list"]') as HTMLButtonElement;
-                        listTab?.click();
-                      }}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
             )}
           </div>
         )}
