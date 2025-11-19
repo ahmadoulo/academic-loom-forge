@@ -10,7 +10,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 import { useExamDocuments } from "@/hooks/useExamDocuments";
 import { useExamQuestions } from "@/hooks/useExamQuestions";
 import { useSubjects } from "@/hooks/useSubjects";
-import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useSchoolYears } from "@/hooks/useSchoolYears";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { toast } from "sonner";
 
@@ -40,9 +40,10 @@ export function ExamDocumentForm({ teacherId, schoolId, onSuccess }: ExamDocumen
   const { subjects } = useSubjects(schoolId, undefined, teacherId);
   const { createDocument } = useExamDocuments(schoolId, teacherId);
   const { createQuestion, createAnswer } = useExamQuestions(currentDocument || undefined);
-  const { getYearForDisplay } = useAcademicYear();
+  const { schoolYears } = useSchoolYears();
   const { semesters } = useSchoolSemesters(schoolId);
   
+  const currentYear = schoolYears.find(y => y.is_current);
   const currentSemester = semesters.find(s => s.is_actual);
 
   const selectedSubject = subjects.find(s => s.id === subjectId);
@@ -101,6 +102,11 @@ export function ExamDocumentForm({ teacherId, schoolId, onSuccess }: ExamDocumen
       return;
     }
 
+    if (!currentYear) {
+      toast.error("Aucune année scolaire active trouvée");
+      return;
+    }
+
     if (questions.length === 0) {
       toast.error("Veuillez ajouter au moins une question");
       return;
@@ -130,7 +136,7 @@ export function ExamDocumentForm({ teacherId, schoolId, onSuccess }: ExamDocumen
         teacher_id: teacherId,
         subject_id: subjectId,
         class_id: classId,
-        school_year_id: getYearForDisplay() || '',
+        school_year_id: currentYear.id,
         school_semester_id: currentSemester?.id,
         exam_type: examType,
         duration_minutes: duration,
