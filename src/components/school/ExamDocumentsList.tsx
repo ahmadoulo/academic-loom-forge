@@ -8,6 +8,7 @@ import { useExamQuestions } from "@/hooks/useExamQuestions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { exportExamPDF } from "@/utils/examPdfExport";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ExamDocumentsListProps {
@@ -47,18 +48,32 @@ export function ExamDocumentsList({ schoolId, teacherId, isAdmin }: ExamDocument
     const doc = documents.find(d => d.id === docId);
     if (!doc) return;
 
-    setSelectedDoc(docId);
-    
-    // Wait for questions to load
-    setTimeout(async () => {
-      try {
-        await exportExamPDF(doc, questions, schoolId);
-        toast.success("PDF exporté avec succès");
-      } catch (error) {
-        console.error("Error exporting PDF:", error);
-        toast.error("Erreur lors de l'export du PDF");
-      }
-    }, 500);
+    try {
+      toast.loading("Préparation du PDF...");
+      
+      // Fetch questions for this document
+      const { data: questionsData } = await supabase
+        .from('exam_questions')
+        .select(`
+          *,
+          exam_answers (*)
+        `)
+        .eq('exam_document_id', docId)
+        .order('question_number', { ascending: true });
+
+      const questionsWithAnswers = questionsData?.map(q => ({
+        ...q,
+        answers: q.exam_answers || []
+      })) || [];
+
+      await exportExamPDF(doc, questionsWithAnswers, schoolId);
+      toast.dismiss();
+      toast.success("PDF exporté avec succès");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.dismiss();
+      toast.error("Erreur lors de l'export du PDF");
+    }
   };
 
   const handleView = (docId: string) => {
