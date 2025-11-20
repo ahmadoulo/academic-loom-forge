@@ -111,6 +111,12 @@ const menuStructure = [
         icon: Award,
         href: "/school"
       },
+      { 
+        title: "Documents Examens", 
+        value: "exams",
+        icon: ClipboardList,
+        href: "/school"
+      },
     ]
   },
   {

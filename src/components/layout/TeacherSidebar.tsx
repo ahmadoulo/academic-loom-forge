@@ -62,6 +62,11 @@ const menuStructure = [
         value: "assignments",
         icon: FileText
       },
+      { 
+        title: "Documents Examens", 
+        value: "exams",
+        icon: ClipboardList
+      },
     ]
   },
   {
