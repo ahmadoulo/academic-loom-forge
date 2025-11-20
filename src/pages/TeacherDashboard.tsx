@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Users, TrendingUp, Loader2, GraduationCap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BookOpen, Users, TrendingUp, Loader2, GraduationCap, Plus, ArrowLeft } from "lucide-react";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useStudents } from "@/hooks/useStudents";
 import { useGrades } from "@/hooks/useGrades";
@@ -11,6 +12,7 @@ import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSchools } from "@/hooks/useSchools";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
+import { useSemester } from "@/hooks/useSemester";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
 import { ClassCard } from "@/components/teacher/ClassCard";
@@ -23,13 +25,17 @@ import { SessionsList } from "@/components/teacher/SessionsList";
 import { SessionAttendanceManager } from "@/components/teacher/SessionAttendanceManager";
 import { TeacherGradesView } from "@/components/teacher/TeacherGradesView";
 import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
+import { ExamDocumentForm } from "@/components/teacher/ExamDocumentForm";
+import { ExamDocumentsList } from "@/components/teacher/ExamDocumentsList";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useExamDocuments } from "@/hooks/useExamDocuments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
+import { downloadExamPdf } from "@/utils/examPdfExport";
 import { toast } from "sonner";
 
 const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined }) => {
@@ -41,6 +47,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedSemester, setSelectedSemester] = useState<string>("all");
+  const [isCreatingExam, setIsCreatingExam] = useState(false);
   
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
@@ -63,6 +70,18 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get academic year for filtering
   const { getYearForDisplay } = useAcademicYear();
   const displayYearId = getYearForDisplay();
+  const { currentSemester } = useSemester();
+  
+  // Exam documents management
+  const {
+    teacherExams,
+    isLoadingTeacherExams,
+    fetchExamQuestions,
+    createExam,
+    submitExam,
+    deleteExam,
+    isCreating
+  } = useExamDocuments(teacherId, currentTeacher?.school_id);
   
   // Get students from teacher's classes
   const { students } = useStudents(currentTeacher?.school_id);
@@ -155,6 +174,59 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
     } catch (error) {
       console.error('Erreur export CSV:', error);
       toast.error("Erreur lors de l'export CSV");
+    }
+  };
+
+  // Exam document handlers
+  const handleCreateExam = async (data: any) => {
+    if (!teacherId || !currentTeacher?.school_id || !displayYearId) return;
+    
+    try {
+      await createExam({
+        data,
+        teacherId,
+        schoolId: currentTeacher.school_id,
+        schoolYearId: displayYearId,
+        schoolSemesterId: currentSemester?.id || null,
+      });
+      setIsCreatingExam(false);
+    } catch (error) {
+      console.error('Error creating exam:', error);
+    }
+  };
+
+  const handleSubmitExam = async (examId: string) => {
+    try {
+      await submitExam(examId);
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+    }
+  };
+
+  const handleDeleteExam = async (examId: string) => {
+    try {
+      await deleteExam(examId);
+    } catch (error) {
+      console.error('Error deleting exam:', error);
+    }
+  };
+
+  const handleExportExam = async (examId: string) => {
+    try {
+      const exam = teacherExams?.find((e: any) => e.id === examId);
+      if (!exam) return;
+
+      const questions = await fetchExamQuestions(examId);
+      
+      await downloadExamPdf({
+        exam,
+        questions,
+        schoolName: school?.name || '',
+        schoolLogoUrl: school?.logo_url,
+      }, `examen_${exam.exam_type}_${exam.subjects?.name}.pdf`);
+    } catch (error) {
+      console.error('Error exporting exam:', error);
+      toast.error('Erreur lors de l\'export PDF');
     }
   };
 
@@ -448,6 +520,54 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                       );
                     })}
                   </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "exams" && (
+              <div className="space-y-4">
+                {isCreatingExam ? (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Créer un document d'examen</CardTitle>
+                        <Button variant="ghost" size="icon" onClick={() => setIsCreatingExam(false)}>
+                          <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ExamDocumentForm
+                        subjects={subjects.map(s => ({ id: s.id, name: s.name, class_id: s.class_id }))}
+                        onSubmit={handleCreateExam}
+                        onCancel={() => setIsCreatingExam(false)}
+                        isCreating={isCreating}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="flex justify-end">
+                      <Button onClick={() => setIsCreatingExam(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nouveau document
+                      </Button>
+                    </div>
+                    {isLoadingTeacherExams ? (
+                      <Card>
+                        <CardContent className="flex items-center justify-center py-12">
+                          <Loader2 className="h-8 w-8 animate-spin" />
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <ExamDocumentsList
+                        exams={teacherExams || []}
+                        onSubmit={handleSubmitExam}
+                        onDelete={handleDeleteExam}
+                        onExport={handleExportExam}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             )}
