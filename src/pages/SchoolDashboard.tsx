@@ -64,7 +64,6 @@ import { NotificationsSection } from "@/components/school/NotificationsSection";
 import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
 import { ArchivedClassesSection } from "@/components/school/ArchivedClassesSection";
 import { TeacherForm } from "@/components/school/TeacherForm";
-import { ExamDocumentsAdminSection } from "@/components/school/ExamDocumentsAdminSection";
 import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
@@ -1042,10 +1041,6 @@ const SchoolDashboard = () => {
               
               {activeTab === "notifications" && school?.id && (
                 <NotificationsSection schoolId={school.id} />
-              )}
-              
-              {activeTab === "exam-documents" && school?.id && (
-                <ExamDocumentsAdminSection schoolId={school.id} />
               )}
               
               {activeTab === "bulletin" && (
