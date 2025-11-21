@@ -98,8 +98,28 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating }: E
       return;
     }
 
+    // Normaliser la valeur du type d'épreuve pour respecter la contrainte SQL
+    let normalizedType = data.exam_type;
+    switch (data.exam_type) {
+      case "Devoir Surveillé":
+      case "Devoir Surveille":
+      case "devoir_surveille":
+        normalizedType = "devoir_surveille";
+        break;
+      case "Contrôle":
+      case "Controle":
+      case "controle":
+        normalizedType = "controle";
+        break;
+      case "Examen":
+      case "examen":
+        normalizedType = "examen";
+        break;
+    }
+
     await onSubmit({
       ...data,
+      exam_type: normalizedType,
       questions,
     });
   };
