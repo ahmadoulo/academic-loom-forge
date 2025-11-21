@@ -144,9 +144,9 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating }: E
                 <SelectValue placeholder="Sélectionner le type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Devoir Surveillé">Devoir Surveillé</SelectItem>
-                <SelectItem value="Contrôle">Contrôle</SelectItem>
-                <SelectItem value="Examen">Examen</SelectItem>
+                <SelectItem value="devoir_surveille">Devoir surveillé</SelectItem>
+                <SelectItem value="controle">Contrôle</SelectItem>
+                <SelectItem value="examen">Examen</SelectItem>
               </SelectContent>
             </Select>
           </div>
