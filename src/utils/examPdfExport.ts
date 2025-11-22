@@ -114,7 +114,7 @@ export const generateExamPdf = async (data: ExamData) => {
           yPosition = 20;
         }
         
-        const prefix = question.is_multiple_choice ? "☐" : "○";
+        const prefix = question.is_multiple_choice ? "[ ]" : "( )";
         const answerText = `${prefix} ${answer.answer_text}`;
         const splitAnswer = doc.splitTextToSize(answerText, pageWidth - 40);
         doc.text(splitAnswer, 25, yPosition);

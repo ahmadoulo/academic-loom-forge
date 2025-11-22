@@ -7,6 +7,7 @@ import { ExamDocumentsReviewByClass } from "@/components/school/ExamDocumentsRev
 import { downloadExamPdf } from "@/utils/examPdfExport";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SchoolExamDocumentsPage() {
   const { schoolId } = useParams();
@@ -75,12 +76,50 @@ export default function SchoolExamDocumentsPage() {
           <CardTitle>Documents d'examens par classe</CardTitle>
         </CardHeader>
         <CardContent>
-          <ExamDocumentsReviewByClass
-            exams={schoolExams || []}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onExport={handleExport}
-          />
+          <Tabs defaultValue="all">
+            <TabsList className="mb-4 flex flex-wrap gap-2">
+              <TabsTrigger value="all">Tous</TabsTrigger>
+              <TabsTrigger value="submitted">En attente</TabsTrigger>
+              <TabsTrigger value="approved">Approuvés</TabsTrigger>
+              <TabsTrigger value="rejected">Rejetés</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all">
+              <ExamDocumentsReviewByClass
+                exams={schoolExams || []}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onExport={handleExport}
+              />
+            </TabsContent>
+
+            <TabsContent value="submitted">
+              <ExamDocumentsReviewByClass
+                exams={(schoolExams || []).filter((e: any) => e.status === "submitted")}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onExport={handleExport}
+              />
+            </TabsContent>
+
+            <TabsContent value="approved">
+              <ExamDocumentsReviewByClass
+                exams={(schoolExams || []).filter((e: any) => e.status === "approved")}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onExport={handleExport}
+              />
+            </TabsContent>
+
+            <TabsContent value="rejected">
+              <ExamDocumentsReviewByClass
+                exams={(schoolExams || []).filter((e: any) => e.status === "rejected")}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onExport={handleExport}
+              />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
