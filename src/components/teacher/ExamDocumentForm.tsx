@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,10 @@ interface ExamDocumentFormProps {
   onSubmit: (data: CreateExamDocumentData) => Promise<void>;
   onCancel: () => void;
   isCreating?: boolean;
+  initialData?: CreateExamDocumentData;
 }
 
-export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating }: ExamDocumentFormProps) => {
+export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, initialData }: ExamDocumentFormProps) => {
   const { register, handleSubmit, watch, setValue } = useForm<CreateExamDocumentData>();
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Partial<ExamQuestion>>({
@@ -29,6 +30,36 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating }: E
     is_multiple_choice: false,
     answers: [],
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setValue("subject_id", initialData.subject_id);
+      setValue("class_id", initialData.class_id);
+      setValue("exam_type", initialData.exam_type);
+      setValue("duration_minutes", initialData.duration_minutes);
+      setValue("documents_allowed", initialData.documents_allowed);
+      setValue("answer_on_document", initialData.answer_on_document ?? true);
+      setQuestions(initialData.questions || []);
+      setCurrentQuestion({
+        question_number: (initialData.questions?.length || 0) + 1,
+        question_text: "",
+        points: 1,
+        has_choices: false,
+        is_multiple_choice: false,
+        answers: [],
+      });
+    } else {
+      setQuestions([]);
+      setCurrentQuestion({
+        question_number: 1,
+        question_text: "",
+        points: 1,
+        has_choices: false,
+        is_multiple_choice: false,
+        answers: [],
+      });
+    }
+  }, [initialData, setValue]);
 
   const selectedSubjectId = watch("subject_id");
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);

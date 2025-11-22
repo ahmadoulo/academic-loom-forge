@@ -28,7 +28,7 @@ import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceVie
 import { ExamDocumentForm } from "@/components/teacher/ExamDocumentForm";
 import { ExamDocumentsList } from "@/components/teacher/ExamDocumentsList";
 import { useAssignments } from "@/hooks/useAssignments";
-import { useExamDocuments } from "@/hooks/useExamDocuments";
+import { useExamDocuments, CreateExamDocumentData } from "@/hooks/useExamDocuments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -48,6 +48,8 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedSemester, setSelectedSemester] = useState<string>("all");
   const [isCreatingExam, setIsCreatingExam] = useState(false);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [editingExamData, setEditingExamData] = useState<CreateExamDocumentData | null>(null);
   
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
@@ -80,7 +82,9 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
     createExam,
     submitExam,
     deleteExam,
-    isCreating
+    isCreating,
+    updateExam,
+    isUpdating,
   } = useExamDocuments(teacherId, currentTeacher?.school_id);
   
   // Get students from teacher's classes
@@ -190,6 +194,8 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
         schoolSemesterId: currentSemester?.id || null,
       });
       setIsCreatingExam(false);
+      setEditingExamId(null);
+      setEditingExamData(null);
     } catch (error) {
       console.error('Error creating exam:', error);
     }
@@ -230,15 +236,53 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
     }
   };
 
-  useEffect(() => {
-    if (teacherId && teachers.length > 0) {
-      const foundTeacher = teachers.find(t => t.id === teacherId);
-      setTeacher(foundTeacher);
-      setTeacherLoading(false);
-    } else if (teachers.length > 0 && teacherId) {
-      setTeacherLoading(false);
+  const handleEditExam = async (examId: string) => {
+    const exam = teacherExams?.find((e: any) => e.id === examId);
+    if (!exam) return;
+
+    try {
+      const questionsData = await fetchExamQuestions(examId);
+
+      const mappedQuestions = questionsData.map((q: any) => ({
+        question_number: q.question_number,
+        question_text: q.question_text,
+        points: q.points,
+        has_choices: q.has_choices,
+        is_multiple_choice: q.is_multiple_choice,
+        answers: (q.exam_answers || []).map((a: any) => ({
+          answer_text: a.answer_text,
+          is_correct: a.is_correct,
+        })),
+      }));
+
+      setEditingExamId(examId);
+      setEditingExamData({
+        subject_id: exam.subject_id,
+        class_id: exam.class_id,
+        exam_type: exam.exam_type,
+        duration_minutes: exam.duration_minutes,
+        documents_allowed: exam.documents_allowed,
+        answer_on_document: exam.answer_on_document ?? true,
+        questions: mappedQuestions,
+      });
+      setIsCreatingExam(true);
+    } catch (error) {
+      console.error('Error loading exam for edit:', error);
+      toast.error("Erreur lors du chargement du document d'examen");
     }
-  }, [teacherId, teachers]);
+  };
+
+  const handleUpdateExam = async (data: any) => {
+    if (!editingExamId) return;
+    try {
+      await updateExam({ examId: editingExamId, data });
+      setEditingExamId(null);
+      setEditingExamData(null);
+      setIsCreatingExam(false);
+    } catch (error) {
+      console.error('Error updating exam:', error);
+    }
+  };
 
   const handleSaveGrade = async (studentId: string, subjectId: string, grade: number, gradeType: string = 'controle', comment?: string) => {
     if (!teacherId) return;
@@ -530,8 +574,12 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle>Créer un document d'examen</CardTitle>
-                        <Button variant="ghost" size="icon" onClick={() => setIsCreatingExam(false)}>
+                        <CardTitle>{editingExamId ? "Modifier un document d'examen" : "Créer un document d'examen"}</CardTitle>
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setIsCreatingExam(false);
+                          setEditingExamId(null);
+                          setEditingExamData(null);
+                        }}>
                           <ArrowLeft className="h-4 w-4" />
                         </Button>
                       </div>
@@ -539,9 +587,14 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                     <CardContent>
                       <ExamDocumentForm
                         subjects={subjects.map(s => ({ id: s.id, name: s.name, class_id: s.class_id }))}
-                        onSubmit={handleCreateExam}
-                        onCancel={() => setIsCreatingExam(false)}
-                        isCreating={isCreating}
+                        onSubmit={editingExamId ? handleUpdateExam : handleCreateExam}
+                        onCancel={() => {
+                          setIsCreatingExam(false);
+                          setEditingExamId(null);
+                          setEditingExamData(null);
+                        }}
+                        isCreating={editingExamId ? isUpdating : isCreating}
+                        initialData={editingExamData || undefined}
                       />
                     </CardContent>
                   </Card>
@@ -565,6 +618,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                         onSubmit={handleSubmitExam}
                         onDelete={handleDeleteExam}
                         onExport={handleExportExam}
+                        onEdit={handleEditExam}
                       />
                     )}
                   </>

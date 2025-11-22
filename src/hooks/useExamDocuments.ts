@@ -175,6 +175,98 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
     },
   });
 
+  // Update existing exam document (questions + réponses)
+  const updateExamMutation = useMutation({
+    mutationFn: async ({
+      examId,
+      data,
+    }: {
+      examId: string;
+      data: CreateExamDocumentData;
+    }) => {
+      // Mettre à jour les informations principales du document
+      const { error: examError } = await supabase
+        .from("exam_documents")
+        .update({
+          subject_id: data.subject_id,
+          class_id: data.class_id,
+          exam_type: data.exam_type,
+          duration_minutes: data.duration_minutes,
+          documents_allowed: data.documents_allowed,
+          answer_on_document: data.answer_on_document ?? true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", examId);
+
+      if (examError) throw examError;
+
+      // Charger les questions existantes pour supprimer les réponses liées
+      const { data: existingQuestions, error: fetchQuestionsError } = await supabase
+        .from("exam_questions")
+        .select("id")
+        .eq("exam_document_id", examId);
+
+      if (fetchQuestionsError) throw fetchQuestionsError;
+
+      const questionIds = (existingQuestions || []).map((q) => q.id);
+
+      if (questionIds.length > 0) {
+        const { error: deleteAnswersError } = await supabase
+          .from("exam_answers")
+          .delete()
+          .in("question_id", questionIds);
+
+        if (deleteAnswersError) throw deleteAnswersError;
+
+        const { error: deleteQuestionsError } = await supabase
+          .from("exam_questions")
+          .delete()
+          .eq("exam_document_id", examId);
+
+        if (deleteQuestionsError) throw deleteQuestionsError;
+      }
+
+      // Recréer les questions et réponses à partir des nouvelles données
+      for (const question of data.questions) {
+        const { data: questionDoc, error: questionError } = await supabase
+          .from("exam_questions")
+          .insert({
+            exam_document_id: examId,
+            question_number: question.question_number,
+            question_text: question.question_text,
+            points: question.points,
+            has_choices: question.has_choices,
+            is_multiple_choice: question.is_multiple_choice,
+          })
+          .select()
+          .single();
+
+        if (questionError) throw questionError;
+
+        if (question.answers && question.answers.length > 0) {
+          const { error: answersError } = await supabase
+            .from("exam_answers")
+            .insert(
+              question.answers.map((answer) => ({
+                question_id: questionDoc.id,
+                answer_text: answer.answer_text,
+                is_correct: answer.is_correct,
+              }))
+            );
+
+          if (answersError) throw answersError;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exam-documents"] });
+      toast.success("Document d'examen mis à jour");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour du document d'examen");
+    },
+  });
+
   // Submit exam for review
   const submitExamMutation = useMutation({
     mutationFn: async (examId: string) => {
@@ -258,5 +350,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
     reviewExam: reviewExamMutation.mutateAsync,
     deleteExam: deleteExamMutation.mutateAsync,
     isCreating: createExamMutation.isPending,
+    updateExam: updateExamMutation.mutateAsync,
+    isUpdating: updateExamMutation.isPending,
   };
 };
