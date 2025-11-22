@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useSchools } from "@/hooks/useSchools";
 import { useExamDocuments } from "@/hooks/useExamDocuments";
-import { ExamDocumentsReview } from "@/components/school/ExamDocumentsReview";
+import { ExamDocumentsReviewByClass } from "@/components/school/ExamDocumentsReviewByClass";
 import { downloadExamPdf } from "@/utils/examPdfExport";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,10 +72,10 @@ export default function SchoolExamDocumentsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Documents d'examens en attente</CardTitle>
+          <CardTitle>Documents d'examens par classe</CardTitle>
         </CardHeader>
         <CardContent>
-          <ExamDocumentsReview
+          <ExamDocumentsReviewByClass
             exams={schoolExams || []}
             onApprove={handleApprove}
             onReject={handleReject}

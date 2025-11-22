@@ -22,6 +22,7 @@ export interface CreateExamDocumentData {
   exam_type: string;
   duration_minutes: number;
   documents_allowed: boolean;
+  answer_on_document?: boolean;
   questions: ExamQuestion[];
 }
 
@@ -39,7 +40,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
         .select(`
           *,
           subjects (name),
-          classes (name),
+          classes (name, id),
           teachers (firstname, lastname),
           school_years (name),
           school_semester (name)
@@ -53,7 +54,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
     enabled: !!teacherId,
   });
 
-  // Fetch exam documents for school admin
+  // Fetch exam documents for school admin (tous les statuts)
   const { data: schoolExams, isLoading: isLoadingSchoolExams } = useQuery({
     queryKey: ["exam-documents", "school", schoolId],
     queryFn: async () => {
@@ -64,13 +65,12 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
         .select(`
           *,
           subjects (name),
-          classes (name),
+          classes (name, id),
           teachers (firstname, lastname),
           school_years (name),
           school_semester (name)
         `)
         .eq("school_id", schoolId)
-        .eq("status", "submitted")
         .order("submitted_at", { ascending: false });
 
       if (error) throw error;
@@ -122,6 +122,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
           exam_type: data.exam_type,
           duration_minutes: data.duration_minutes,
           documents_allowed: data.documents_allowed,
+          answer_on_document: data.answer_on_document ?? true,
           status: "draft",
         })
         .select()

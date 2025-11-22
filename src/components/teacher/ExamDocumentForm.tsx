@@ -190,6 +190,17 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating }: E
               Documents autorisés
             </Label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="answer_on_document"
+              defaultChecked={true}
+              onCheckedChange={(checked) => setValue("answer_on_document", checked as boolean)}
+            />
+            <Label htmlFor="answer_on_document" className="cursor-pointer">
+              Répondre sur la feuille d'examen
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
