@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Send, Download, Trash2 } from "lucide-react";
+import { FileText, Send, Download, Trash2, Edit, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ExamDocument {
   id: string;
@@ -23,6 +24,7 @@ interface ExamDocumentsListProps {
   onSubmit: (examId: string) => Promise<void>;
   onDelete: (examId: string) => Promise<void>;
   onExport: (examId: string) => Promise<void>;
+  onEdit?: (examId: string) => void;
 }
 
 const statusColors = {
@@ -39,7 +41,7 @@ const statusLabels = {
   rejected: "Rejeté",
 };
 
-export const ExamDocumentsList = ({ exams, onSubmit, onDelete, onExport }: ExamDocumentsListProps) => {
+export const ExamDocumentsList = ({ exams, onSubmit, onDelete, onExport, onEdit }: ExamDocumentsListProps) => {
   return (
     <div className="grid gap-4">
       {exams.map((exam) => (
@@ -66,7 +68,16 @@ export const ExamDocumentsList = ({ exams, onSubmit, onDelete, onExport }: ExamD
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {exam.status === "rejected" && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Ce document a été rejeté. Vous pouvez le modifier et le soumettre à nouveau.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
                 Créé {formatDistanceToNow(new Date(exam.created_at), { addSuffix: true, locale: fr })}
@@ -81,8 +92,18 @@ export const ExamDocumentsList = ({ exams, onSubmit, onDelete, onExport }: ExamD
                   PDF
                 </Button>
                 
-                {exam.status === "draft" && (
+                {(exam.status === "draft" || exam.status === "rejected") && (
                   <>
+                    {onEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEdit(exam.id)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Modifier
+                      </Button>
+                    )}
                     <Button
                       variant="default"
                       size="sm"

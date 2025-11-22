@@ -940,6 +940,7 @@ export type Database = {
       }
       exam_documents: {
         Row: {
+          answer_on_document: boolean | null
           class_id: string
           created_at: string
           documents_allowed: boolean
@@ -958,6 +959,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          answer_on_document?: boolean | null
           class_id: string
           created_at?: string
           documents_allowed?: boolean
@@ -976,6 +978,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          answer_on_document?: boolean | null
           class_id?: string
           created_at?: string
           documents_allowed?: boolean

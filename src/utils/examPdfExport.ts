@@ -7,6 +7,7 @@ interface ExamData {
     exam_type: string;
     duration_minutes: number;
     documents_allowed: boolean;
+    answer_on_document?: boolean;
     subjects: { name: string } | null;
     classes: { name: string } | null;
     teachers: { firstname: string; lastname: string } | null;
@@ -56,44 +57,33 @@ export const generateExamPdf = async (data: ExamData) => {
   // Exam type and period
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  const examTitle = `${data.exam.exam_type} ${data.exam.school_semester?.name || ""} ${data.exam.school_years?.name || ""}`;
+  const examTitle = `${data.exam.exam_type.toUpperCase()} ${data.exam.school_semester?.name || ""} ${data.exam.school_years?.name || ""}`;
   doc.text(examTitle, pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 15;
+  yPosition += 10;
 
-  // Exam details table
-  autoTable(doc, {
-    startY: yPosition,
-    head: [["Matière", "Durée", "Niveau", "Enseignant"]],
-    body: [
-      [
-        data.exam.subjects?.name || "",
-        `${data.exam.duration_minutes} min`,
-        data.exam.classes?.name || "",
-        `${data.exam.teachers?.firstname || ""} ${data.exam.teachers?.lastname || ""}`,
-      ],
-    ],
-    theme: "grid",
-    headStyles: {
-      fillColor: [200, 200, 200],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-    },
-  });
-
-  yPosition = (doc as any).lastAutoTable.finalY + 10;
+  // Exam details - ligne par ligne centrées
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  
+  doc.text(`Matière: ${data.exam.subjects?.name || ""}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 7;
+  
+  doc.text(`Niveau: ${data.exam.classes?.name || ""}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 7;
+  
+  doc.text(`Enseignant: ${data.exam.teachers?.firstname || ""} ${data.exam.teachers?.lastname || ""}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 7;
+  
+  doc.text(`Durée: ${data.exam.duration_minutes} minutes`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 7;
 
   // Documents authorization
-  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   const docStatus = data.exam.documents_allowed
     ? "Documents autorisés"
     : "Documents non autorisés";
   doc.text(docStatus, pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 10;
+  yPosition += 15;
 
   // Questions
   doc.setFontSize(12);
@@ -132,13 +122,16 @@ export const generateExamPdf = async (data: ExamData) => {
       });
       
       yPosition += 5;
-    } else {
-      // Add space for answer
+    } else if (data.exam.answer_on_document) {
+      // Add space for answer only if answer_on_document is true
       yPosition += 20;
       doc.setDrawColor(200, 200, 200);
       doc.line(25, yPosition - 15, pageWidth - 15, yPosition - 15);
       doc.line(25, yPosition - 10, pageWidth - 15, yPosition - 10);
       doc.line(25, yPosition - 5, pageWidth - 15, yPosition - 5);
+    } else {
+      // No lines, just small spacing between questions
+      yPosition += 5;
     }
 
     yPosition += 10;
