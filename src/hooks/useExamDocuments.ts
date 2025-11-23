@@ -297,14 +297,14 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
       approved,
     }: {
       examId: string;
-      reviewerId: string;
+      reviewerId?: string;
       approved: boolean;
     }) => {
       const { data, error } = await supabase
         .from("exam_documents")
         .update({
           status: approved ? "approved" : "rejected",
-          reviewed_by: reviewerId,
+          reviewed_by: reviewerId ?? null,
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", examId)

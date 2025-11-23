@@ -123,18 +123,18 @@ export const generateExamPdf = async (data: ExamData) => {
       
       yPosition += 5;
     } else if (data.exam.answer_on_document) {
-      // Add space for answer only if answer_on_document is true
-      yPosition += 20;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(25, yPosition - 15, pageWidth - 15, yPosition - 15);
-      doc.line(25, yPosition - 10, pageWidth - 15, yPosition - 10);
-      doc.line(25, yPosition - 5, pageWidth - 15, yPosition - 5);
-    } else {
-      // No lines, just small spacing between questions
-      yPosition += 5;
-    }
+       // Add space for answer only if answer_on_document is true
+       yPosition += 20;
+       doc.setDrawColor(200, 200, 200);
+       doc.line(25, yPosition - 15, pageWidth - 15, yPosition - 15);
+       doc.line(25, yPosition - 10, pageWidth - 15, yPosition - 10);
+       doc.line(25, yPosition - 5, pageWidth - 15, yPosition - 5);
+     } else {
+       // No answer area on the sheet: keep compact spacing between questions
+       // (equivalent to ~1–2 line breaks)
+     }
 
-    yPosition += 10;
+     yPosition += 7;
   });
 
   // Footer on last page

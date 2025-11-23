@@ -6,12 +6,11 @@ import { useExamDocuments } from "@/hooks/useExamDocuments";
 import { ExamDocumentsReviewByClass } from "@/components/school/ExamDocumentsReviewByClass";
 import { downloadExamPdf } from "@/utils/examPdfExport";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SchoolExamDocumentsPage() {
   const { schoolId } = useParams();
-  const { user } = useAuth();
   const { schools } = useSchools();
   const school = schools.find(s => s.identifier === schoolId);
   
@@ -23,12 +22,8 @@ export default function SchoolExamDocumentsPage() {
   } = useExamDocuments(undefined, school?.id);
 
   const handleApprove = async (examId: string) => {
-    if (!user?.id) {
-      toast.error("Utilisateur non authentifié");
-      return;
-    }
     try {
-      await reviewExam({ examId, reviewerId: user.id, approved: true });
+      await reviewExam({ examId, approved: true });
       toast.success("Document approuvé avec succès");
     } catch (error) {
       console.error('Error approving exam:', error);
@@ -37,12 +32,8 @@ export default function SchoolExamDocumentsPage() {
   };
 
   const handleReject = async (examId: string) => {
-    if (!user?.id) {
-      toast.error("Utilisateur non authentifié");
-      return;
-    }
     try {
-      await reviewExam({ examId, reviewerId: user.id, approved: false });
+      await reviewExam({ examId, approved: false });
       toast.success("Document rejeté avec succès");
     } catch (error) {
       console.error('Error rejecting exam:', error);
