@@ -1058,6 +1058,7 @@ export type Database = {
           points: number
           question_number: number
           question_text: string
+          table_data: Json | null
           updated_at: string
         }
         Insert: {
@@ -1069,6 +1070,7 @@ export type Database = {
           points: number
           question_number: number
           question_text: string
+          table_data?: Json | null
           updated_at?: string
         }
         Update: {
@@ -1080,6 +1082,7 @@ export type Database = {
           points?: number
           question_number?: number
           question_text?: string
+          table_data?: Json | null
           updated_at?: string
         }
         Relationships: [

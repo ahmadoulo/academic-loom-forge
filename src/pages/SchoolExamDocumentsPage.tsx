@@ -50,7 +50,10 @@ export default function SchoolExamDocumentsPage() {
       
       await downloadExamPdf({
         exam,
-        questions,
+        questions: questions.map((q: any) => ({
+          ...q,
+          table_data: q.table_data as { rows: number; cols: number; cells: string[] } | null,
+        })),
         schoolName: school?.name || '',
         schoolLogoUrl: school?.logo_url,
       }, `examen_${exam.exam_type}_${exam.subjects?.name}.pdf`);

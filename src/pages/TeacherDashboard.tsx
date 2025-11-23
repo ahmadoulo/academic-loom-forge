@@ -10,6 +10,7 @@ import { useGrades } from "@/hooks/useGrades";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useSchools } from "@/hooks/useSchools";
+import { useClasses } from "@/hooks/useClasses";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useSemester } from "@/hooks/useSemester";
@@ -69,6 +70,9 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get school information
   const { schools } = useSchools();
   const school = schools.find(s => s.id === currentTeacher?.school_id);
+  
+  // Get classes
+  const { classes } = useClasses(currentTeacher?.school_id);
   
   // Get semesters for filter
   const { semesters } = useSchoolSemesters(currentTeacher?.school_id);
@@ -237,7 +241,10 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
       
       await downloadExamPdf({
         exam,
-        questions,
+        questions: questions.map((q: any) => ({
+          ...q,
+          table_data: q.table_data as { rows: number; cols: number; cells: string[] } | null,
+        })),
         schoolName: school?.name || '',
         schoolLogoUrl: school?.logo_url,
       }, `examen_${exam.exam_type}_${exam.subjects?.name}.pdf`);
@@ -260,6 +267,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
         points: q.points,
         has_choices: q.has_choices,
         is_multiple_choice: q.is_multiple_choice,
+        table_data: q.table_data as { rows: number; cols: number; cells: string[] } | null,
         answers: (q.exam_answers || []).map((a: any) => ({
           answer_text: a.answer_text,
           is_correct: a.is_correct,
@@ -597,7 +605,15 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                     </CardHeader>
                     <CardContent>
                       <ExamDocumentForm
-                        subjects={subjects.map(s => ({ id: s.id, name: s.name, class_id: s.class_id }))}
+                        subjects={subjects.map(s => {
+                          const classData = classes.find(c => c.id === s.class_id);
+                          return { 
+                            id: s.id, 
+                            name: s.name, 
+                            class_id: s.class_id,
+                            class_name: classData?.name || 'Classe inconnue'
+                          };
+                        })}
                         onSubmit={editingExamId ? handleUpdateExam : handleCreateExam}
                         onCancel={() => {
                           setIsCreatingExam(false);
@@ -611,8 +627,42 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                   </Card>
                 ) : (
                   <>
-                    <div className="flex justify-end">
-                      <Button onClick={() => setIsCreatingExam(true)}>
+                    <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                      <Select onValueChange={(value) => {
+                        if (value === "all") {
+                          setActiveTab("exams");
+                        } else {
+                          setActiveTab("exams");
+                        }
+                      }}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                          <SelectValue placeholder="Filtrer par classe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes les classes</SelectItem>
+                          {teacherClasses.map((tc) => (
+                            <SelectItem key={tc.id} value={tc.class_id}>
+                              {tc.classes?.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                          <SelectValue placeholder="Filtrer par matière" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes les matières</SelectItem>
+                          {subjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button onClick={() => setIsCreatingExam(true)} className="ml-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Nouveau document
                       </Button>

@@ -20,6 +20,11 @@ interface ExamData {
     points: number;
     has_choices: boolean;
     is_multiple_choice: boolean;
+    table_data?: {
+      rows: number;
+      cols: number;
+      cells: string[];
+    } | null;
     exam_answers: Array<{
       answer_text: string;
       is_correct: boolean;
@@ -102,6 +107,36 @@ export const generateExamPdf = async (data: ExamData) => {
     const splitQuestion = doc.splitTextToSize(questionText, pageWidth - 30);
     doc.text(splitQuestion, 15, yPosition);
     yPosition += splitQuestion.length * 7 + 5;
+
+    // Table if any
+    if (question.table_data) {
+      const tableData = question.table_data as { rows: number; cols: number; cells: string[] };
+      const cellWidth = (pageWidth - 30) / tableData.cols;
+      const cellHeight = 10;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      
+      for (let row = 0; row < tableData.rows; row++) {
+        if (yPosition + cellHeight > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        for (let col = 0; col < tableData.cols; col++) {
+          const x = 15 + col * cellWidth;
+          const y = yPosition;
+          const cellText = tableData.cells[row * tableData.cols + col] || '';
+          
+          doc.rect(x, y, cellWidth, cellHeight);
+          doc.text(cellText, x + 2, y + 6, { maxWidth: cellWidth - 4 });
+        }
+        yPosition += cellHeight;
+      }
+      
+      yPosition += 5;
+      doc.setFontSize(10);
+    }
 
     // Answers if any
     if (question.has_choices && question.exam_answers.length > 0) {

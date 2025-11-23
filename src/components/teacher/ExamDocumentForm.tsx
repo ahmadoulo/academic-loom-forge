@@ -12,7 +12,7 @@ import { CreateExamDocumentData, ExamQuestion } from "@/hooks/useExamDocuments";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface ExamDocumentFormProps {
-  subjects: Array<{ id: string; name: string; class_id: string }>;
+  subjects: Array<{ id: string; name: string; class_id: string; class_name?: string }>;
   onSubmit: (data: CreateExamDocumentData) => Promise<void>;
   onCancel: () => void;
   isCreating?: boolean;
@@ -29,6 +29,7 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
     has_choices: false,
     is_multiple_choice: false,
     answers: [],
+    table_data: null,
   });
 
   useEffect(() => {
@@ -106,6 +107,7 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
       has_choices: currentQuestion.has_choices || false,
       is_multiple_choice: currentQuestion.is_multiple_choice || false,
       answers: currentQuestion.has_choices ? currentQuestion.answers : [],
+      table_data: currentQuestion.table_data || null,
     };
 
     setQuestions([...questions, newQuestion]);
@@ -116,6 +118,7 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
       has_choices: false,
       is_multiple_choice: false,
       answers: [],
+      table_data: null,
     });
   };
 
@@ -184,7 +187,7 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
 
           {selectedSubject && (
             <div className="text-sm text-muted-foreground">
-              Classe: {selectedSubject.class_id}
+              Classe: {selectedSubject.class_name || selectedSubject.class_id}
             </div>
           )}
 
@@ -237,7 +240,12 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
 
       <Card>
         <CardHeader>
-          <CardTitle>Questions ajoutées ({questions.length})</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Questions ajoutées ({questions.length})</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              Total: {questions.reduce((sum, q) => sum + Number(q.points), 0)} points
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {questions.map((q, index) => (
@@ -247,6 +255,7 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
                 <div className="text-sm text-muted-foreground mt-1">
                   {q.points} point(s) 
                   {q.has_choices && ` • ${q.is_multiple_choice ? "Choix multiple" : "Choix unique"} • ${q.answers?.length || 0} réponse(s)`}
+                  {q.table_data && ` • Tableau ${q.table_data.rows}×${q.table_data.cols}`}
                 </div>
               </div>
               <Button
@@ -301,12 +310,111 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
                 ...currentQuestion,
                 has_choices: checked as boolean,
                 answers: checked ? [] : undefined,
+                table_data: null,
               })}
             />
             <Label htmlFor="has_choices" className="cursor-pointer">
               Ajouter des réponses à choix
             </Label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="has_table"
+              checked={!!currentQuestion.table_data}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setCurrentQuestion({
+                    ...currentQuestion,
+                    table_data: { rows: 2, cols: 2, cells: Array(4).fill('') },
+                    has_choices: false,
+                    answers: undefined,
+                  });
+                } else {
+                  setCurrentQuestion({
+                    ...currentQuestion,
+                    table_data: null,
+                  });
+                }
+              }}
+            />
+            <Label htmlFor="has_table" className="cursor-pointer">
+              Ajouter un tableau
+            </Label>
+          </div>
+
+          {currentQuestion.table_data && (
+            <div className="space-y-3 pl-6 border-l-2">
+              <div className="flex gap-2">
+                <div>
+                  <Label>Lignes</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={currentQuestion.table_data.rows}
+                    onChange={(e) => {
+                      const newRows = Number(e.target.value);
+                      const newCols = currentQuestion.table_data!.cols;
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        table_data: {
+                          rows: newRows,
+                          cols: newCols,
+                          cells: Array(newRows * newCols).fill(''),
+                        },
+                      });
+                    }}
+                    className="w-20"
+                  />
+                </div>
+                <div>
+                  <Label>Colonnes</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={currentQuestion.table_data.cols}
+                    onChange={(e) => {
+                      const newRows = currentQuestion.table_data!.rows;
+                      const newCols = Number(e.target.value);
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        table_data: {
+                          rows: newRows,
+                          cols: newCols,
+                          cells: Array(newRows * newCols).fill(''),
+                        },
+                      });
+                    }}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${currentQuestion.table_data.cols}, 1fr)` }}>
+                {Array.from({ length: currentQuestion.table_data.rows * currentQuestion.table_data.cols }).map((_, idx) => (
+                  <Input
+                    key={idx}
+                    value={currentQuestion.table_data?.cells[idx] || ''}
+                    onChange={(e) => {
+                      const newCells = [...(currentQuestion.table_data?.cells || [])];
+                      newCells[idx] = e.target.value;
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        table_data: {
+                          ...currentQuestion.table_data!,
+                          cells: newCells,
+                        },
+                      });
+                    }}
+                    placeholder={`Cellule ${Math.floor(idx / currentQuestion.table_data.cols) + 1}-${(idx % currentQuestion.table_data.cols) + 1}`}
+                    className="text-sm"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {currentQuestion.has_choices && (
             <div className="space-y-3 pl-6 border-l-2">
