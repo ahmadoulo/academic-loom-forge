@@ -300,23 +300,30 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
       reviewerId: string;
       approved: boolean;
     }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("exam_documents")
         .update({
           status: approved ? "approved" : "rejected",
           reviewed_by: reviewerId,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", examId);
+        .eq("id", examId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Review exam error:", error);
+        throw error;
+      }
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["exam-documents"] });
-      toast.success("Document validé");
+      console.log("Exam reviewed successfully:", data);
     },
-    onError: () => {
-      toast.error("Erreur lors de la validation");
+    onError: (error: any) => {
+      console.error("Error reviewing exam:", error);
+      toast.error(`Erreur lors de la validation: ${error.message || "Erreur inconnue"}`);
     },
   });
 
