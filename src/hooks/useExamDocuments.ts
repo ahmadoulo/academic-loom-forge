@@ -14,6 +14,11 @@ export interface ExamQuestion {
     answer_text: string;
     is_correct: boolean;
   }>;
+  table_data?: {
+    rows: number;
+    cols: number;
+    cells: string[];
+  } | null;
 }
 
 export interface CreateExamDocumentData {
@@ -141,6 +146,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
             points: question.points,
             has_choices: question.has_choices,
             is_multiple_choice: question.is_multiple_choice,
+            table_data: question.table_data || null,
           })
           .select()
           .single();
@@ -237,6 +243,7 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
             points: question.points,
             has_choices: question.has_choices,
             is_multiple_choice: question.is_multiple_choice,
+            table_data: question.table_data || null,
           })
           .select()
           .single();
