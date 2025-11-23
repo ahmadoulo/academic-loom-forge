@@ -23,20 +23,30 @@ export default function SchoolExamDocumentsPage() {
   } = useExamDocuments(undefined, school?.id);
 
   const handleApprove = async (examId: string) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast.error("Utilisateur non authentifié");
+      return;
+    }
     try {
       await reviewExam({ examId, reviewerId: user.id, approved: true });
+      toast.success("Document approuvé avec succès");
     } catch (error) {
       console.error('Error approving exam:', error);
+      toast.error("Erreur lors de l'approbation du document");
     }
   };
 
   const handleReject = async (examId: string) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast.error("Utilisateur non authentifié");
+      return;
+    }
     try {
       await reviewExam({ examId, reviewerId: user.id, approved: false });
+      toast.success("Document rejeté avec succès");
     } catch (error) {
       console.error('Error rejecting exam:', error);
+      toast.error("Erreur lors du rejet du document");
     }
   };
 

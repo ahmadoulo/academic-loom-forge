@@ -54,6 +54,17 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get current teacher first to get school_id
   const { teachers } = useTeachers();
   const currentTeacher = teachers.find(t => t.id === teacherId);
+
+  // Update teacher state when currentTeacher is loaded
+  useEffect(() => {
+    if (currentTeacher) {
+      setTeacher(currentTeacher);
+      setTeacherLoading(false);
+    } else if (teachers.length > 0) {
+      // Teachers loaded but current teacher not found
+      setTeacherLoading(false);
+    }
+  }, [currentTeacher, teachers]);
   
   // Get school information
   const { schools } = useSchools();
