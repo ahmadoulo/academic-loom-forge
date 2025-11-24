@@ -8,6 +8,7 @@ export interface Subject {
   class_id: string;
   school_id: string;
   teacher_id?: string;
+  coefficient: number;
   created_at: string;
   updated_at: string;
   archived?: boolean;
@@ -30,6 +31,7 @@ export interface CreateSubjectData {
   class_id: string;
   school_id: string;
   teacher_id?: string;
+  coefficient: number;
 }
 
 export const useSubjects = (schoolId?: string, classId?: string, teacherId?: string) => {
@@ -111,7 +113,7 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     }
   };
 
-  const updateSubject = async (subjectId: string, updates: Partial<{ name: string; class_id: string | null; teacher_id: string | null }>) => {
+  const updateSubject = async (subjectId: string, updates: Partial<{ name: string; class_id: string | null; teacher_id: string | null; coefficient: number }>) => {
     try {
       const { data, error } = await supabase
         .from('subjects')

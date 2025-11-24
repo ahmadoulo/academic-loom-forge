@@ -1719,6 +1719,7 @@ export type Database = {
           archived: boolean | null
           archived_at: string | null
           class_id: string
+          coefficient: number
           created_at: string
           id: string
           name: string
@@ -1730,6 +1731,7 @@ export type Database = {
           archived?: boolean | null
           archived_at?: string | null
           class_id: string
+          coefficient?: number
           created_at?: string
           id?: string
           name: string
@@ -1741,6 +1743,7 @@ export type Database = {
           archived?: boolean | null
           archived_at?: string | null
           class_id?: string
+          coefficient?: number
           created_at?: string
           id?: string
           name?: string

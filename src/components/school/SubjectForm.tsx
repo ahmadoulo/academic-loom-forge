@@ -21,6 +21,7 @@ interface SubjectFormProps {
     name: string;
     class_id?: string | null;
     teacher_id?: string | null;
+    coefficient: number;
   }) => void;
   onCancel?: () => void;
   classes?: Class[];
@@ -41,6 +42,7 @@ export const SubjectForm = ({
     name: initialData?.name || "",
     class_id: initialData?.class_id || undefined as string | undefined,
     teacher_id: initialData?.teacher_id || undefined as string | undefined,
+    coefficient: initialData?.coefficient || 1,
   });
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export const SubjectForm = ({
         name: initialData.name,
         class_id: initialData.class_id || undefined,
         teacher_id: initialData.teacher_id || undefined,
+        coefficient: initialData.coefficient || 1,
       });
     }
   }, [initialData]);
@@ -56,15 +59,19 @@ export const SubjectForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
+    if (formData.coefficient < 0.5 || formData.coefficient > 10) {
+      return;
+    }
     
     onSubmit({
       name: formData.name.trim(),
       class_id: formData.class_id || null,
       teacher_id: formData.teacher_id || null,
+      coefficient: formData.coefficient,
     });
     
     if (!isEditing) {
-      setFormData({ name: "", class_id: undefined, teacher_id: undefined });
+      setFormData({ name: "", class_id: undefined, teacher_id: undefined, coefficient: 1 });
     }
   };
 
@@ -79,6 +86,24 @@ export const SubjectForm = ({
           placeholder="Ex: Mathématiques, Français..."
           required
         />
+      </div>
+
+      <div>
+        <Label htmlFor="coefficient">Coefficient *</Label>
+        <Input
+          id="coefficient"
+          type="number"
+          step="0.5"
+          min="0.5"
+          max="10"
+          value={formData.coefficient}
+          onChange={(e) => setFormData({ ...formData, coefficient: parseFloat(e.target.value) || 1 })}
+          placeholder="Ex: 2"
+          required
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Coefficient entre 0.5 et 10 pour le calcul des moyennes
+        </p>
       </div>
 
       <div>
