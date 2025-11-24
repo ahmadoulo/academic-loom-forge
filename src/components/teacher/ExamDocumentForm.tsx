@@ -356,12 +356,26 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
                     onChange={(e) => {
                       const newRows = Number(e.target.value);
                       const newCols = currentQuestion.table_data!.cols;
+                      const oldCells = currentQuestion.table_data!.cells || [];
+                      const newCells = Array(newRows * newCols).fill('');
+                      
+                      // Préserver les données existantes
+                      for (let row = 0; row < Math.min(newRows, currentQuestion.table_data!.rows); row++) {
+                        for (let col = 0; col < newCols; col++) {
+                          const oldIdx = row * currentQuestion.table_data!.cols + col;
+                          const newIdx = row * newCols + col;
+                          if (oldCells[oldIdx]) {
+                            newCells[newIdx] = oldCells[oldIdx];
+                          }
+                        }
+                      }
+                      
                       setCurrentQuestion({
                         ...currentQuestion,
                         table_data: {
                           rows: newRows,
                           cols: newCols,
-                          cells: Array(newRows * newCols).fill(''),
+                          cells: newCells,
                         },
                       });
                     }}
@@ -378,12 +392,26 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
                     onChange={(e) => {
                       const newRows = currentQuestion.table_data!.rows;
                       const newCols = Number(e.target.value);
+                      const oldCells = currentQuestion.table_data!.cells || [];
+                      const newCells = Array(newRows * newCols).fill('');
+                      
+                      // Préserver les données existantes
+                      for (let row = 0; row < newRows; row++) {
+                        for (let col = 0; col < Math.min(newCols, currentQuestion.table_data!.cols); col++) {
+                          const oldIdx = row * currentQuestion.table_data!.cols + col;
+                          const newIdx = row * newCols + col;
+                          if (oldCells[oldIdx]) {
+                            newCells[newIdx] = oldCells[oldIdx];
+                          }
+                        }
+                      }
+                      
                       setCurrentQuestion({
                         ...currentQuestion,
                         table_data: {
                           rows: newRows,
                           cols: newCols,
-                          cells: Array(newRows * newCols).fill(''),
+                          cells: newCells,
                         },
                       });
                     }}
@@ -392,26 +420,38 @@ export const ExamDocumentForm = ({ subjects, onSubmit, onCancel, isCreating, ini
                 </div>
               </div>
 
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${currentQuestion.table_data.cols}, 1fr)` }}>
-                {Array.from({ length: currentQuestion.table_data.rows * currentQuestion.table_data.cols }).map((_, idx) => (
-                  <Input
-                    key={idx}
-                    value={currentQuestion.table_data?.cells[idx] || ''}
-                    onChange={(e) => {
-                      const newCells = [...(currentQuestion.table_data?.cells || [])];
-                      newCells[idx] = e.target.value;
-                      setCurrentQuestion({
-                        ...currentQuestion,
-                        table_data: {
-                          ...currentQuestion.table_data!,
-                          cells: newCells,
-                        },
-                      });
-                    }}
-                    placeholder={`Cellule ${Math.floor(idx / currentQuestion.table_data.cols) + 1}-${(idx % currentQuestion.table_data.cols) + 1}`}
-                    className="text-sm"
-                  />
-                ))}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full border-collapse">
+                  <tbody>
+                    {Array.from({ length: currentQuestion.table_data.rows }).map((_, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {Array.from({ length: currentQuestion.table_data.cols }).map((_, colIdx) => {
+                          const cellIdx = rowIdx * currentQuestion.table_data!.cols + colIdx;
+                          return (
+                            <td key={colIdx} className="border border-border p-0">
+                              <Input
+                                value={currentQuestion.table_data?.cells[cellIdx] || ''}
+                                onChange={(e) => {
+                                  const newCells = [...(currentQuestion.table_data?.cells || [])];
+                                  newCells[cellIdx] = e.target.value;
+                                  setCurrentQuestion({
+                                    ...currentQuestion,
+                                    table_data: {
+                                      ...currentQuestion.table_data!,
+                                      cells: newCells,
+                                    },
+                                  });
+                                }}
+                                placeholder={`L${rowIdx + 1}-C${colIdx + 1}`}
+                                className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
