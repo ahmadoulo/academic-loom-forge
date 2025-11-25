@@ -1,20 +1,25 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Building2, 
   Search, 
   Plus,
   Eye,
-  Edit,
-  MapPin,
-  Phone
+  Edit
 } from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SchoolForm } from "./SchoolForm";
+import { SchoolDetailsDialog } from "./SchoolDetailsDialog";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface SchoolsManagementProps {
   onAddSchool: () => void;
@@ -23,11 +28,14 @@ interface SchoolsManagementProps {
 }
 
 export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: SchoolsManagementProps) {
+  const navigate = useNavigate();
   const { schools } = useSchools();
+  const { subscriptions } = useSubscriptions();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [showSchoolDialog, setShowSchoolDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [editingSchool, setEditingSchool] = useState<any>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
 
   const filteredSchools = schools.filter(school => {
     const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,6 +51,41 @@ export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: S
   const handleAdd = () => {
     setEditingSchool(null);
     setShowSchoolDialog(true);
+  };
+
+  const handleViewDetails = (schoolId: string) => {
+    setSelectedSchoolId(schoolId);
+    setShowDetailsDialog(true);
+  };
+
+  const getSchoolSubscription = (schoolId: string) => {
+    return subscriptions.find(sub => sub.school_id === schoolId);
+  };
+
+  const getSubscriptionBadge = (schoolId: string) => {
+    const sub = getSchoolSubscription(schoolId);
+    
+    if (!sub) return <Badge variant="secondary">Aucun</Badge>;
+    
+    if (sub.is_trial) {
+      const isExpired = new Date(sub.trial_end_date!) < new Date();
+      return (
+        <Badge variant={isExpired ? "destructive" : "default"}>
+          {isExpired ? "Essai expiré" : "Essai gratuit"}
+        </Badge>
+      );
+    }
+
+    switch (sub.status) {
+      case 'active':
+        return <Badge variant="default">Actif</Badge>;
+      case 'expired':
+        return <Badge variant="destructive">Expiré</Badge>;
+      case 'cancelled':
+        return <Badge variant="secondary">Annulé</Badge>;
+      default:
+        return <Badge variant="secondary">En attente</Badge>;
+    }
   };
 
   return (
@@ -79,60 +122,101 @@ export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: S
           </CardContent>
         </Card>
 
-        {/* Schools Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSchools.map((school) => (
-            <Card key={school.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{school.name}</CardTitle>
-                      <CardDescription className="text-xs">{school.identifier}</CardDescription>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {school.city && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{school.city}</span>
-                  </div>
-                )}
-                {school.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{school.phone}</span>
-                  </div>
-                )}
-                <div className="flex gap-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onViewSchool(school.id)}
-                    className="flex-1"
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Voir
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleEdit(school)}
-                    className="flex-1"
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Modifier
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Schools Table */}
+        {filteredSchools.length > 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>École</TableHead>
+                    <TableHead>Propriétaire</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Abonnement</TableHead>
+                    <TableHead>Date de création</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSchools.map((school) => {
+                    const subscription = getSchoolSubscription(school.id);
+                    return (
+                      <TableRow key={school.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                                {school.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{school.name}</div>
+                              <div className="text-xs text-muted-foreground">{school.identifier}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-secondary text-xs">
+                                AD
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="text-sm">
+                              <div className="font-medium">Admin École</div>
+                              <div className="text-xs text-muted-foreground">admin@{school.identifier}.ma</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">Active</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {getSubscriptionBadge(school.id)}
+                            {subscription && subscription.is_trial && subscription.trial_end_date && (
+                              <div className="text-xs text-muted-foreground">
+                                Fin: {format(new Date(subscription.trial_end_date), "dd/MM/yyyy")}
+                              </div>
+                            )}
+                            {subscription && !subscription.is_trial && (
+                              <div className="text-xs text-muted-foreground">
+                                Fin: {format(new Date(subscription.end_date), "dd/MM/yyyy")}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(school.created_at), "dd/MM/yyyy", { locale: fr })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetails(school.id)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Détails
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(school)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Modifier
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {filteredSchools.length === 0 && (
           <Card className="border-dashed">
@@ -179,6 +263,13 @@ export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: S
           />
         </DialogContent>
       </Dialog>
+
+      {/* School Details Dialog */}
+      <SchoolDetailsDialog
+        schoolId={selectedSchoolId}
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+      />
     </>
   );
 }

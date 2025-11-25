@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useSchools } from "@/hooks/useSchools";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { toast } from "sonner";
-import { Building2, MapPin, Globe, Phone, Mail } from "lucide-react";
+import { Building2, MapPin, Globe, Phone, CreditCard, Clock } from "lucide-react";
 
 interface SchoolFormProps {
   editingSchool?: any;
@@ -14,6 +17,7 @@ interface SchoolFormProps {
 
 export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormProps) {
   const { createSchool, updateSchool } = useSchools();
+  const { createSubscription } = useSubscriptions();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -24,6 +28,15 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
     country: editingSchool?.country || 'Maroc',
     phone: editingSchool?.phone || '',
     website: editingSchool?.website || '',
+  });
+
+  const [subscriptionData, setSubscriptionData] = useState({
+    hasSubscription: false,
+    isTrial: true,
+    trialDays: 30,
+    planType: 'basic' as 'basic' | 'standard' | 'premium',
+    duration: '1_month' as '1_month' | '3_months' | '6_months' | '1_year' | '2_years',
+    amount: 0,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +53,42 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
         await updateSchool(editingSchool.id, formData);
         toast.success('École modifiée avec succès');
       } else {
-        await createSchool(formData);
+        const school = await createSchool(formData);
+        
+        // Create subscription if requested
+        if (subscriptionData.hasSubscription && school) {
+          const today = new Date();
+          const endDate = new Date();
+          
+          if (subscriptionData.isTrial) {
+            endDate.setDate(today.getDate() + subscriptionData.trialDays);
+            await createSubscription({
+              school_id: school.id,
+              plan_type: 'basic',
+              duration: '1_month',
+              start_date: today.toISOString().split('T')[0],
+              is_trial: true,
+              trial_end_date: endDate.toISOString().split('T')[0],
+            });
+          } else {
+            const durationMonths = 
+              subscriptionData.duration === '1_month' ? 1 :
+              subscriptionData.duration === '3_months' ? 3 :
+              subscriptionData.duration === '6_months' ? 6 :
+              subscriptionData.duration === '1_year' ? 12 :
+              24;
+            endDate.setMonth(today.getMonth() + durationMonths);
+            await createSubscription({
+              school_id: school.id,
+              plan_type: subscriptionData.planType,
+              duration: subscriptionData.duration,
+              start_date: today.toISOString().split('T')[0],
+              amount: subscriptionData.amount,
+              is_trial: false,
+            });
+          }
+        }
+        
         toast.success('École créée avec succès');
       }
       onSuccess?.();
@@ -165,6 +213,108 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
           </div>
         </div>
       </div>
+
+      {/* Subscription Section (only for new schools) */}
+      {!editingSchool && (
+        <div className="space-y-4 pt-4 border-t">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-primary" />
+                Abonnement
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Assignez un abonnement ou période d'essai à cette école
+              </p>
+            </div>
+            <Switch
+              checked={subscriptionData.hasSubscription}
+              onCheckedChange={(checked) => setSubscriptionData({ ...subscriptionData, hasSubscription: checked })}
+            />
+          </div>
+
+          {subscriptionData.hasSubscription && (
+            <div className="space-y-4 pl-6 border-l-2 border-border">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={subscriptionData.isTrial}
+                    onCheckedChange={(checked) => setSubscriptionData({ ...subscriptionData, isTrial: checked })}
+                  />
+                  <Label className="text-sm">Période d'essai</Label>
+                </div>
+              </div>
+
+              {subscriptionData.isTrial ? (
+                <div className="space-y-2">
+                  <Label htmlFor="trialDays" className="flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    Nombre de jours d'essai
+                  </Label>
+                  <Input
+                    id="trialDays"
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={subscriptionData.trialDays}
+                    onChange={(e) => setSubscriptionData({ ...subscriptionData, trialDays: parseInt(e.target.value) || 30 })}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="planType">Type de plan</Label>
+                    <Select
+                      value={subscriptionData.planType}
+                      onValueChange={(value: any) => setSubscriptionData({ ...subscriptionData, planType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic">Basic</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">Durée</Label>
+                    <Select
+                      value={subscriptionData.duration}
+                      onValueChange={(value: any) => setSubscriptionData({ ...subscriptionData, duration: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1_month">1 mois</SelectItem>
+                        <SelectItem value="3_months">3 mois</SelectItem>
+                        <SelectItem value="6_months">6 mois</SelectItem>
+                        <SelectItem value="1_year">1 an</SelectItem>
+                        <SelectItem value="2_years">2 ans</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Montant (MAD)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      min="0"
+                      value={subscriptionData.amount}
+                      onChange={(e) => setSubscriptionData({ ...subscriptionData, amount: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-6 border-t">

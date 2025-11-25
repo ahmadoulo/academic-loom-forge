@@ -36,6 +36,7 @@ export interface CreateSubscriptionData {
   transaction_id?: string;
   notes?: string;
   is_trial?: boolean;
+  trial_end_date?: string;
 }
 
 export const useSubscriptions = () => {
