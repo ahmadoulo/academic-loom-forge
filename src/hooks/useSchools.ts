@@ -13,6 +13,9 @@ export interface School {
   city?: string;
   country?: string;
   website?: string;
+  currency?: string;
+  owner_id?: string;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +30,9 @@ export interface CreateSchoolData {
   city?: string;
   country?: string;
   website?: string;
+  currency?: string;
+  owner_id?: string;
+  is_active?: boolean;
 }
 
 export const useSchools = () => {

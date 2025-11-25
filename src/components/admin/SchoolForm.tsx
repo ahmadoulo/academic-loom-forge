@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useSchools } from "@/hooks/useSchools";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useSchoolOwners } from "@/hooks/useSchoolOwners";
 import { toast } from "sonner";
-import { Building2, MapPin, Globe, Phone, CreditCard, Clock } from "lucide-react";
+import { Building2, MapPin, Globe, Phone, CreditCard, Clock, User, Mail, Lock, DollarSign } from "lucide-react";
 
 interface SchoolFormProps {
   editingSchool?: any;
@@ -18,6 +19,7 @@ interface SchoolFormProps {
 export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormProps) {
   const { createSchool, updateSchool } = useSchools();
   const { createSubscription } = useSubscriptions();
+  const { createOwner } = useSchoolOwners();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -28,6 +30,14 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
     country: editingSchool?.country || 'Maroc',
     phone: editingSchool?.phone || '',
     website: editingSchool?.website || '',
+    currency: editingSchool?.currency || 'MAD',
+  });
+
+  const [ownerData, setOwnerData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
   });
 
   const [subscriptionData, setSubscriptionData] = useState({
@@ -64,7 +74,28 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
         await updateSchool(editingSchool.id, finalFormData);
         toast.success('École modifiée avec succès');
       } else {
+        // Validate owner data for new schools
+        if (!ownerData.first_name || !ownerData.last_name || !ownerData.email || !ownerData.password) {
+          toast.error('Tous les champs du propriétaire sont requis');
+          setIsSubmitting(false);
+          return;
+        }
+
         const school = await createSchool(finalFormData);
+        
+        // Create owner account
+        if (school) {
+          const owner = await createOwner({
+            email: ownerData.email,
+            password: ownerData.password,
+            first_name: ownerData.first_name,
+            last_name: ownerData.last_name,
+            school_id: school.id,
+          });
+
+          // Link owner to school
+          await updateSchool(school.id, { owner_id: owner.id } as any);
+        }
         
         // Create subscription if requested
         if (subscriptionData.hasSubscription && school) {
@@ -187,14 +218,14 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
         </div>
       </div>
 
-      {/* Contact */}
+      {/* Contact & Currency */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-sm font-medium flex items-center gap-2">
           <Phone className="h-4 w-4 text-primary" />
-          Contact
+          Contact & Devise
         </h3>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="phone" className="flex items-center gap-2">
               <Phone className="h-3 w-3" />
@@ -221,8 +252,104 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
               placeholder="Ex: https://ecole.ma"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="currency" className="flex items-center gap-2">
+              <DollarSign className="h-3 w-3" />
+              Devise
+            </Label>
+            <Select
+              value={formData.currency}
+              onValueChange={(value) => setFormData({ ...formData, currency: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MAD">MAD (Dirham)</SelectItem>
+                <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                <SelectItem value="USD">USD (Dollar)</SelectItem>
+                <SelectItem value="GBP">GBP (Livre)</SelectItem>
+                <SelectItem value="XOF">XOF (Franc CFA)</SelectItem>
+                <SelectItem value="XAF">XAF (Franc CFA)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* Owner Information (only for new schools) */}
+      {!editingSchool && (
+        <div className="space-y-4 pt-4 border-t">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              Propriétaire de l'école
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Compte administrateur pour gérer l'école
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="owner_first_name">Prénom *</Label>
+              <Input
+                id="owner_first_name"
+                value={ownerData.first_name}
+                onChange={(e) => setOwnerData({ ...ownerData, first_name: e.target.value })}
+                placeholder="Ex: Mohammed"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="owner_last_name">Nom *</Label>
+              <Input
+                id="owner_last_name"
+                value={ownerData.last_name}
+                onChange={(e) => setOwnerData({ ...ownerData, last_name: e.target.value })}
+                placeholder="Ex: Alami"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="owner_email" className="flex items-center gap-2">
+              <Mail className="h-3 w-3" />
+              Email *
+            </Label>
+            <Input
+              id="owner_email"
+              type="email"
+              value={ownerData.email}
+              onChange={(e) => setOwnerData({ ...ownerData, email: e.target.value })}
+              placeholder="Ex: admin@ecole.ma"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="owner_password" className="flex items-center gap-2">
+              <Lock className="h-3 w-3" />
+              Mot de passe *
+            </Label>
+            <Input
+              id="owner_password"
+              type="password"
+              value={ownerData.password}
+              onChange={(e) => setOwnerData({ ...ownerData, password: e.target.value })}
+              placeholder="Minimum 8 caractères"
+              required
+              minLength={8}
+            />
+            <p className="text-xs text-muted-foreground">
+              Le propriétaire utilisera cet email et mot de passe pour se connecter
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Subscription Section (only for new schools) */}
       {!editingSchool && (

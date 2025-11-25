@@ -6,6 +6,7 @@ import { SupportSection } from "@/components/admin/SupportSection";
 import { AdminSaaSDashboard } from "@/components/admin/AdminSaaSDashboard";
 import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
 import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
+import { SubscriptionsSection } from "@/components/admin/SubscriptionsSection";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { RoleManagement } from "@/components/settings/RoleManagement";
@@ -78,21 +79,7 @@ const AdminDashboard = () => {
           />
         );
       case "subscriptions":
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold">Gestion des Abonnements</h2>
-                <p className="text-muted-foreground">Créez et gérez les abonnements de toutes les écoles</p>
-              </div>
-              <Button onClick={() => setShowSubscriptionDialog(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Créer un Abonnement
-              </Button>
-            </div>
-            {/* TODO: Add subscriptions list here */}
-          </div>
-        );
+        return <SubscriptionsSection />;
       case "settings":
         return (
           <SettingsLayout
