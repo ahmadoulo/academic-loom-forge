@@ -1775,6 +1775,116 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: string[] | null
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["subscription_plan_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type: Database["public"]["Enums"]["subscription_plan_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["subscription_plan_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          amount: number | null
+          auto_renew: boolean
+          created_at: string
+          created_by: string | null
+          currency: string
+          duration: Database["public"]["Enums"]["subscription_duration_type"]
+          end_date: string
+          id: string
+          is_trial: boolean
+          notes: string | null
+          payment_method:
+            | Database["public"]["Enums"]["payment_method_type"]
+            | null
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          school_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status_type"]
+          transaction_id: string | null
+          trial_end_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          auto_renew?: boolean
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          duration: Database["public"]["Enums"]["subscription_duration_type"]
+          end_date: string
+          id?: string
+          is_trial?: boolean
+          notes?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["payment_method_type"]
+            | null
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          school_id: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status_type"]
+          transaction_id?: string | null
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          auto_renew?: boolean
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          duration?: Database["public"]["Enums"]["subscription_duration_type"]
+          end_date?: string
+          id?: string
+          is_trial?: boolean
+          notes?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["payment_method_type"]
+            | null
+          plan_type?: Database["public"]["Enums"]["subscription_plan_type"]
+          school_id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status_type"]
+          transaction_id?: string | null
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_classes: {
         Row: {
           class_id: string
@@ -2083,6 +2193,15 @@ export type Database = {
         | "teacher"
         | "student"
         | "parent"
+      payment_method_type: "cash" | "bank_transfer" | "check" | "card" | "other"
+      subscription_duration_type:
+        | "1_month"
+        | "3_months"
+        | "6_months"
+        | "1_year"
+        | "2_years"
+      subscription_plan_type: "basic" | "standard" | "premium"
+      subscription_status_type: "trial" | "active" | "expired" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2217,6 +2336,16 @@ export const Constants = {
         "student",
         "parent",
       ],
+      payment_method_type: ["cash", "bank_transfer", "check", "card", "other"],
+      subscription_duration_type: [
+        "1_month",
+        "3_months",
+        "6_months",
+        "1_year",
+        "2_years",
+      ],
+      subscription_plan_type: ["basic", "standard", "premium"],
+      subscription_status_type: ["trial", "active", "expired", "cancelled"],
     },
   },
 } as const

@@ -6,7 +6,9 @@ import {
   HelpCircle,
   ChevronRight,
   Menu,
-  X
+  X,
+  LayoutDashboard,
+  CreditCard
 } from "lucide-react";
 
 import {
@@ -32,10 +34,24 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { 
+    title: "Tableau de bord", 
+    value: "dashboard",
+    icon: LayoutDashboard,
+    description: "Vue d'ensemble",
+    href: "/admin"
+  },
+  { 
     title: "Écoles", 
     value: "schools",
     icon: School,
     description: "Gérer les établissements",
+    href: "/admin"
+  },
+  { 
+    title: "Abonnements", 
+    value: "subscriptions",
+    icon: CreditCard,
+    description: "Plans et paiements",
     href: "/admin"
   },
   { 
@@ -66,8 +82,10 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
           </div>
           {(open || isMobile) && (
             <div>
-              <span className="font-bold text-lg">Admin Panel</span>
-              <p className="text-xs text-muted-foreground">Gestion système</p>
+              <span className="font-bold text-lg bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                EDUMANAGE PRO
+              </span>
+              <p className="text-xs text-muted-foreground">SaaS Administrator</p>
             </div>
           )}
         </div>
@@ -75,7 +93,7 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
 
       <SidebarContentUI className="flex-1 p-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>GESTION SAAS</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (

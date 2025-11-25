@@ -4,20 +4,33 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { SchoolsSection } from "@/components/admin/SchoolsSection";
 import { SupportSection } from "@/components/admin/SupportSection";
+import { AdminSaaSDashboard } from "@/components/admin/AdminSaaSDashboard";
+import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
+import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { RoleManagement } from "@/components/settings/RoleManagement";
 import { SchoolYearManagement } from "@/components/settings/SchoolYearManagement";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("schools");
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [settingsTab, setSettingsTab] = useState("users");
+  const [showSchoolDialog, setShowSchoolDialog] = useState(false);
+  const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
+  const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
 
   const getPageTitle = () => {
     switch (activeTab) {
+      case "dashboard":
+        return "Tableau de Bord SaaS";
       case "schools":
-        return "Administration des Écoles";
+        return "Gestion des Écoles";
+      case "subscriptions":
+        return "Gestion des Abonnements";
       case "settings":
         return "Paramètres Système";
       case "support":
@@ -31,10 +44,56 @@ const AdminDashboard = () => {
     setActiveTab("settings");
   };
 
+  const handleViewSchool = (schoolId: string) => {
+    const schoolsData = [] as any; // This will be populated from useSchools
+    const school = schoolsData.find((s: any) => s.id === schoolId);
+    if (school) {
+      navigate(`/school/${school.identifier}`);
+    }
+  };
+
+  const handleEditSchool = (schoolId: string) => {
+    setEditingSchoolId(schoolId);
+    setShowSchoolDialog(true);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
+      case "dashboard":
+        return (
+          <AdminSaaSDashboard
+            onAddSchool={() => setShowSchoolDialog(true)}
+            onCreateSubscription={() => setShowSubscriptionDialog(true)}
+            onManageTrials={() => setActiveTab("subscriptions")}
+            onViewSchools={() => setActiveTab("schools")}
+            onViewSubscriptions={() => setActiveTab("subscriptions")}
+          />
+        );
       case "schools":
-        return <SchoolsSection />;
+        return (
+          <SchoolsManagement
+            onAddSchool={() => setShowSchoolDialog(true)}
+            onEditSchool={handleEditSchool}
+            onViewSchool={handleViewSchool}
+          />
+        );
+      case "subscriptions":
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Gestion des Abonnements</h2>
+                <p className="text-muted-foreground">Gérez les abonnements de toutes les écoles</p>
+              </div>
+            </div>
+            <SubscriptionForm 
+              onSuccess={() => {
+                setShowSubscriptionDialog(false);
+                // Refresh data
+              }}
+            />
+          </div>
+        );
       case "settings":
         return (
           <SettingsLayout
@@ -50,7 +109,15 @@ const AdminDashboard = () => {
       case "support":
         return <SupportSection />;
       default:
-        return <SchoolsSection />;
+        return (
+          <AdminSaaSDashboard
+            onAddSchool={() => setShowSchoolDialog(true)}
+            onCreateSubscription={() => setShowSubscriptionDialog(true)}
+            onManageTrials={() => setActiveTab("subscriptions")}
+            onViewSchools={() => setActiveTab("schools")}
+            onViewSubscriptions={() => setActiveTab("subscriptions")}
+          />
+        );
     }
   };
 
@@ -71,6 +138,36 @@ const AdminDashboard = () => {
           </main>
         </div>
       </div>
+
+      {/* School Dialog */}
+      <Dialog open={showSchoolDialog} onOpenChange={(open) => {
+        setShowSchoolDialog(open);
+        if (!open) setEditingSchoolId(null);
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSchoolId ? "Modifier l'École" : "Ajouter une École"}
+            </DialogTitle>
+          </DialogHeader>
+          <SchoolsSection />
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Dialog */}
+      <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Créer un Abonnement</DialogTitle>
+          </DialogHeader>
+          <SubscriptionForm
+            onSuccess={() => {
+              setShowSubscriptionDialog(false);
+            }}
+            onCancel={() => setShowSubscriptionDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
