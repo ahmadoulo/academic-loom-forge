@@ -42,18 +42,29 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.identifier) {
-      toast.error('Le nom et l\'identifiant sont requis');
+    if (!formData.name) {
+      toast.error('Le nom de l\'école est requis');
       return;
     }
+
+    // Generate identifier automatically if not provided
+    const finalFormData = {
+      ...formData,
+      identifier: formData.identifier || formData.name.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with dash
+        .replace(/^-+|-+$/g, '') // Remove leading/trailing dashes
+        .substring(0, 50) // Limit length
+    };
 
     setIsSubmitting(true);
     try {
       if (editingSchool) {
-        await updateSchool(editingSchool.id, formData);
+        await updateSchool(editingSchool.id, finalFormData);
         toast.success('École modifiée avec succès');
       } else {
-        const school = await createSchool(formData);
+        const school = await createSchool(finalFormData);
         
         // Create subscription if requested
         if (subscriptionData.hasSubscription && school) {
@@ -120,19 +131,18 @@ export function SchoolForm({ editingSchool, onSuccess, onCancel }: SchoolFormPro
 
         <div className="space-y-2">
           <Label htmlFor="identifier" className="text-sm font-medium">
-            Identifiant unique *
+            Identifiant unique
           </Label>
           <Input
             id="identifier"
             value={formData.identifier}
             onChange={(e) => setFormData({ ...formData, identifier: e.target.value.toLowerCase().replace(/\s/g, '-') })}
-            placeholder="Ex: lycee-mohammed-v"
-            required
+            placeholder="Ex: lycee-mohammed-v (généré automatiquement si vide)"
             disabled={!!editingSchool}
             className="w-full font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
-            {editingSchool ? 'L\'identifiant ne peut pas être modifié' : 'Utilisé dans l\'URL de l\'école'}
+            {editingSchool ? 'L\'identifiant ne peut pas être modifié' : 'Laissez vide pour génération automatique. Utilisé dans l\'URL de l\'école'}
           </p>
         </div>
       </div>
