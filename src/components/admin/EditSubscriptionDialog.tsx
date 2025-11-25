@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSubscriptionPlans } from "@/hooks/useSubscriptionPlans";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, addMonths, addYears } from "date-fns";
+import { format, addMonths, addYears, addDays } from "date-fns";
+import { Clock } from "lucide-react";
 
 interface EditSubscriptionDialogProps {
   subscription: any;
@@ -96,11 +97,91 @@ export function EditSubscriptionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Modifier l'Abonnement</DialogTitle>
-        </DialogHeader>
+      <DialogHeader>
+        <DialogTitle>Modifier l'Abonnement</DialogTitle>
+        <p className="text-sm text-muted-foreground mt-2">
+          Modifiez les détails de l'abonnement ou prolongez la période d'essai
+        </p>
+      </DialogHeader>
 
         <div className="space-y-4">
+          {subscription?.is_trial && (
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-warning" />
+                <span className="font-medium text-warning">Période d'Essai</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Prolongez la période d'essai de cette école
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const currentEnd = new Date(subscription.trial_end_date || subscription.end_date);
+                    const newEnd = addDays(currentEnd, 7);
+                    const { error } = await supabase
+                      .from('subscriptions')
+                      .update({ 
+                        trial_end_date: format(newEnd, 'yyyy-MM-dd'),
+                        end_date: format(newEnd, 'yyyy-MM-dd')
+                      })
+                      .eq('id', subscription.id);
+                    if (!error) {
+                      toast.success('Période d\'essai prolongée de 7 jours');
+                      onSuccess();
+                    }
+                  }}
+                >
+                  +7 jours
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const currentEnd = new Date(subscription.trial_end_date || subscription.end_date);
+                    const newEnd = addDays(currentEnd, 15);
+                    const { error } = await supabase
+                      .from('subscriptions')
+                      .update({ 
+                        trial_end_date: format(newEnd, 'yyyy-MM-dd'),
+                        end_date: format(newEnd, 'yyyy-MM-dd')
+                      })
+                      .eq('id', subscription.id);
+                    if (!error) {
+                      toast.success('Période d\'essai prolongée de 15 jours');
+                      onSuccess();
+                    }
+                  }}
+                >
+                  +15 jours
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const currentEnd = new Date(subscription.trial_end_date || subscription.end_date);
+                    const newEnd = addMonths(currentEnd, 1);
+                    const { error } = await supabase
+                      .from('subscriptions')
+                      .update({ 
+                        trial_end_date: format(newEnd, 'yyyy-MM-dd'),
+                        end_date: format(newEnd, 'yyyy-MM-dd')
+                      })
+                      .eq('id', subscription.id);
+                    if (!error) {
+                      toast.success('Période d\'essai prolongée de 1 mois');
+                      onSuccess();
+                    }
+                  }}
+                >
+                  +1 mois
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Plan *</Label>
             <Select
