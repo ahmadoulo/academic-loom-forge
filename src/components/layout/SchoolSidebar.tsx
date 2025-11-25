@@ -20,7 +20,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   Pin,
-  PinOff
+  PinOff,
+  CreditCard
 } from "lucide-react";
 
 import {
@@ -183,6 +184,12 @@ const menuStructure = [
     title: "Nouvelle Année", 
     value: "year-transition",
     icon: CalendarDays,
+    href: "/school"
+  },
+  { 
+    title: "Abonnement", 
+    value: "subscription",
+    icon: CreditCard,
     href: "/school"
   },
   { 

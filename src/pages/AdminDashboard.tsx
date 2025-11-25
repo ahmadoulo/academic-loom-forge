@@ -7,6 +7,7 @@ import { AdminSaaSDashboard } from "@/components/admin/AdminSaaSDashboard";
 import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
 import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SubscriptionsSection } from "@/components/admin/SubscriptionsSection";
+import { SubscriptionPlanManagement } from "@/components/admin/SubscriptionPlanManagement";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { RoleManagement } from "@/components/settings/RoleManagement";
@@ -79,7 +80,14 @@ const AdminDashboard = () => {
           />
         );
       case "subscriptions":
-        return <SubscriptionsSection />;
+        return (
+          <div className="space-y-8">
+            <SubscriptionPlanManagement />
+            <div className="border-t pt-8">
+              <SubscriptionsSection />
+            </div>
+          </div>
+        );
       case "settings":
         return (
           <SettingsLayout

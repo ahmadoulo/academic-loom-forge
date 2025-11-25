@@ -156,20 +156,26 @@ export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: S
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-secondary text-xs">
-                                AD
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="text-sm">
-                              <div className="font-medium">Admin École</div>
-                              <div className="text-xs text-muted-foreground">admin@{school.identifier}.ma</div>
+                          {school.owner ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-secondary text-xs">
+                                  {school.owner.first_name[0]}{school.owner.last_name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="text-sm">
+                                <div className="font-medium">{school.owner.first_name} {school.owner.last_name}</div>
+                                <div className="text-xs text-muted-foreground">{school.owner.email}</div>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Non assigné</span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="default">Active</Badge>
+                          <Badge variant={school.is_active ? "default" : "secondary"}>
+                            {school.is_active ? "Active" : "Inactive"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">

@@ -9,6 +9,8 @@ export interface SubscriptionPlan {
   description: string | null;
   features: string[] | null;
   is_active: boolean;
+  student_limit: number | null;
+  teacher_limit: number | null;
   created_at: string;
   updated_at: string;
 }
