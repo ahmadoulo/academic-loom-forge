@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAggregatedStats } from "@/hooks/useAggregatedStats";
 import { useSchools } from "@/hooks/useSchools";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useSubscriptionPlans } from "@/hooks/useSubscriptionPlans";
 import { useSchoolStats } from "@/hooks/useSchoolStats";
 import { 
   BarChart, 
   Bar, 
-  LineChart, 
-  Line, 
   PieChart, 
   Pie, 
   Cell, 
@@ -14,111 +14,42 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { Building2, Users, GraduationCap, BookOpen, TrendingUp, AlertCircle } from "lucide-react";
-import { useMemo } from "react";
+import { Building2, Users, GraduationCap, BookOpen, TrendingUp, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 const COLORS = {
   primary: 'hsl(var(--primary))',
-  success: 'hsl(var(--success))',
-  warning: 'hsl(var(--warning))',
+  success: 'hsl(142 76% 36%)',
+  warning: 'hsl(38 92% 50%)',
   destructive: 'hsl(var(--destructive))',
   accent: 'hsl(var(--accent))',
 };
 
 export function AdminAnalyticsDashboard() {
+  const { stats, loading } = useAggregatedStats();
   const { schools } = useSchools();
   const { subscriptions } = useSubscriptions();
+  const { plans } = useSubscriptionPlans();
 
-  // Calculate aggregated stats across all schools
-  const aggregatedStats = useMemo(() => {
-    let totalStudents = 0;
-    let totalTeachers = 0;
-    let totalClasses = 0;
-    let totalSubjects = 0;
+  const subscriptionData = [
+    { name: 'Basic', value: stats.subscriptionsByPlan.basic, color: COLORS.warning },
+    { name: 'Standard', value: stats.subscriptionsByPlan.standard, color: COLORS.primary },
+    { name: 'Premium', value: stats.subscriptionsByPlan.premium, color: COLORS.success },
+  ];
 
-    schools.forEach(school => {
-      // We'll fetch individual school stats
-      const schoolStats = { studentsCount: 0, teachersCount: 0, classesCount: 0, subjectsCount: 0 };
-      totalStudents += schoolStats.studentsCount;
-      totalTeachers += schoolStats.teachersCount;
-      totalClasses += schoolStats.classesCount;
-      totalSubjects += schoolStats.subjectsCount;
-    });
+  const schoolStatusData = [
+    { status: 'Actives', count: stats.schoolsByStatus.active, fill: COLORS.success },
+    { status: 'Inactives', count: stats.schoolsByStatus.inactive, fill: 'hsl(var(--muted))' },
+    { status: 'Essai', count: stats.schoolsByStatus.trial, fill: COLORS.warning },
+    { status: 'Expirées', count: stats.schoolsByStatus.expired, fill: COLORS.destructive },
+  ];
 
-    return { totalStudents, totalTeachers, totalClasses, totalSubjects };
-  }, [schools]);
-
-  // Subscription distribution data
-  const subscriptionData = useMemo(() => {
-    const planCounts = {
-      basic: 0,
-      standard: 0,
-      premium: 0
-    };
-
-    subscriptions.forEach(sub => {
-      if (sub.status === 'active' || sub.status === 'trial') {
-        planCounts[sub.plan_type]++;
-      }
-    });
-
-    return [
-      { name: 'Basic', value: planCounts.basic, color: COLORS.warning },
-      { name: 'Standard', value: planCounts.standard, color: COLORS.primary },
-      { name: 'Premium', value: planCounts.premium, color: COLORS.success },
-    ];
-  }, [subscriptions]);
-
-  // School consumption by status
-  const schoolStatusData = useMemo(() => {
-    const activeCount = schools.filter(s => s.is_active).length;
-    const inactiveCount = schools.filter(s => !s.is_active).length;
-    const trialCount = subscriptions.filter(s => s.is_trial && s.status === 'trial').length;
-    const expiredCount = subscriptions.filter(s => s.status === 'expired').length;
-
-    return [
-      { status: 'Actives', count: activeCount },
-      { status: 'Inactives', count: inactiveCount },
-      { status: 'Essai', count: trialCount },
-      { status: 'Expirées', count: expiredCount },
-    ];
-  }, [schools, subscriptions]);
-
-  // Revenue by plan type
-  const revenueByPlan = useMemo(() => {
-    const revenue = {
-      basic: 0,
-      standard: 0,
-      premium: 0
-    };
-
-    subscriptions
-      .filter(sub => !sub.is_trial && sub.amount)
-      .forEach(sub => {
-        revenue[sub.plan_type] += sub.amount || 0;
-      });
-
-    return [
-      { plan: 'Basic', revenue: revenue.basic },
-      { plan: 'Standard', revenue: revenue.standard },
-      { plan: 'Premium', revenue: revenue.premium },
-    ];
-  }, [subscriptions]);
-
-  // Monthly subscription trends (mock data - would be real historical data)
-  const monthlyTrends = useMemo(() => {
-    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-    const currentMonth = new Date().getMonth();
-    
-    return months.slice(0, currentMonth + 1).map((month, idx) => ({
-      month,
-      subscriptions: Math.floor(Math.random() * 20) + 10,
-      revenue: Math.floor(Math.random() * 50000) + 20000,
-    }));
-  }, []);
+  if (loading) {
+    return <div className="p-6">Chargement des statistiques...</div>;
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -131,14 +62,15 @@ export function AdminAnalyticsDashboard() {
 
       {/* Global Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border">
+        <Card className="border-border hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Écoles Totales</p>
-                <p className="text-2xl font-bold mt-1">{schools.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {schools.filter(s => s.is_active).length} actives
+                <p className="text-2xl font-bold mt-1">{stats.totalSchools}</p>
+                <p className="text-xs text-success mt-1 flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  {stats.activeSchools} actives
                 </p>
               </div>
               <Building2 className="h-8 w-8 text-primary" />
@@ -146,14 +78,13 @@ export function AdminAnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border">
+        <Card className="border-border hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Étudiants Totaux</p>
-                <p className="text-2xl font-bold mt-1">{aggregatedStats.totalStudents}</p>
-                <p className="text-xs text-success mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
+                <p className="text-2xl font-bold mt-1">{stats.totalStudents}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Toutes écoles
                 </p>
               </div>
@@ -162,14 +93,14 @@ export function AdminAnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border">
+        <Card className="border-border hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Professeurs Totaux</p>
-                <p className="text-2xl font-bold mt-1">{aggregatedStats.totalTeachers}</p>
+                <p className="text-2xl font-bold mt-1">{stats.totalTeachers}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Actifs sur la plateforme
+                  Actifs
                 </p>
               </div>
               <Users className="h-8 w-8 text-accent" />
@@ -177,14 +108,14 @@ export function AdminAnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border">
+        <Card className="border-border hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Classes Totales</p>
-                <p className="text-2xl font-bold mt-1">{aggregatedStats.totalClasses}</p>
+                <p className="text-2xl font-bold mt-1">{stats.totalClasses}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {aggregatedStats.totalSubjects} matières
+                  {stats.totalSubjects} matières
                 </p>
               </div>
               <BookOpen className="h-8 w-8 text-warning" />
@@ -193,7 +124,7 @@ export function AdminAnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Subscription Distribution */}
         <Card className="border-border">
@@ -240,71 +171,12 @@ export function AdminAnalyticsDashboard() {
                     border: '1px solid hsl(var(--border))' 
                   }} 
                 />
-                <Bar dataKey="count" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                  {schoolStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Revenue by Plan */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Revenus par Plan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueByPlan}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="plan" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))' 
-                  }} 
-                />
-                <Bar dataKey="revenue" fill={COLORS.success} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Monthly Trends */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Tendances Mensuelles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))' 
-                  }} 
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="subscriptions" 
-                  stroke={COLORS.primary} 
-                  strokeWidth={2} 
-                  name="Abonnements"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke={COLORS.success} 
-                  strokeWidth={2} 
-                  name="Revenus (MAD)"
-                />
-              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -314,14 +186,20 @@ export function AdminAnalyticsDashboard() {
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Détails de Consommation par École
+            <AlertTriangle className="h-5 w-5" />
+            Consommation par École
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {schools.slice(0, 10).map(school => (
-              <SchoolConsumptionRow key={school.id} schoolId={school.id} schoolName={school.name} />
+          <div className="space-y-3">
+            {schools.map(school => (
+              <SchoolConsumptionRow 
+                key={school.id} 
+                schoolId={school.id} 
+                schoolName={school.name}
+                subscriptions={subscriptions}
+                plans={plans}
+              />
             ))}
           </div>
         </CardContent>
@@ -330,53 +208,81 @@ export function AdminAnalyticsDashboard() {
   );
 }
 
-function SchoolConsumptionRow({ schoolId, schoolName }: { schoolId: string; schoolName: string }) {
+function SchoolConsumptionRow({ 
+  schoolId, 
+  schoolName,
+  subscriptions,
+  plans
+}: { 
+  schoolId: string; 
+  schoolName: string;
+  subscriptions: any[];
+  plans: any[];
+}) {
   const { stats, loading } = useSchoolStats(schoolId);
-  const { subscriptions } = useSubscriptions();
-
   const subscription = subscriptions.find(s => s.school_id === schoolId);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-between p-4 border border-border rounded-lg animate-pulse">
+      <div className="p-4 border border-border rounded-lg animate-pulse bg-muted/20">
         <div className="h-4 bg-muted rounded w-1/3"></div>
-        <div className="h-4 bg-muted rounded w-1/4"></div>
       </div>
     );
   }
 
-  const studentLimit = subscription?.plan_type ? 
-    ({ basic: 100, standard: 300, premium: 1000 }[subscription.plan_type]) : 0;
-  const teacherLimit = subscription?.plan_type ?
-    ({ basic: 20, standard: 50, premium: 200 }[subscription.plan_type]) : 0;
+  // Get limits from custom limits or plan limits
+  const plan = plans.find(p => p.type === subscription?.plan_type);
+  const studentLimit = subscription?.custom_student_limit || plan?.student_limit || 0;
+  const teacherLimit = subscription?.custom_teacher_limit || plan?.teacher_limit || 0;
 
   const studentUsage = studentLimit > 0 ? (stats.studentsCount / studentLimit) * 100 : 0;
   const teacherUsage = teacherLimit > 0 ? (stats.teachersCount / teacherLimit) * 100 : 0;
 
+  const getStatusColor = (usage: number) => {
+    if (usage >= 90) return 'text-destructive';
+    if (usage >= 70) return 'text-warning';
+    return 'text-success';
+  };
+
   return (
-    <div className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors">
-      <div className="flex-1">
-        <h4 className="font-medium">{schoolName}</h4>
-        <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-          <span>Étudiants: {stats.studentsCount}/{studentLimit || '∞'}</span>
-          <span>Professeurs: {stats.teachersCount}/{teacherLimit || '∞'}</span>
-          <span>Classes: {stats.classesCount}</span>
+    <div className="p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h4 className="font-semibold">{schoolName}</h4>
+          {subscription && (
+            <Badge variant="outline" className="mt-1 capitalize">
+              {subscription.plan_type}
+            </Badge>
+          )}
+        </div>
+        <div className="text-right text-sm">
+          <div className="text-muted-foreground">Classes: {stats.classesCount}</div>
         </div>
       </div>
-      <div className="flex gap-2">
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          studentUsage > 90 ? 'bg-destructive/10 text-destructive' :
-          studentUsage > 70 ? 'bg-warning/10 text-warning' :
-          'bg-success/10 text-success'
-        }`}>
-          {studentUsage.toFixed(0)}% étudiants
+      
+      <div className="space-y-3">
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Étudiants</span>
+            <span className={`font-medium ${getStatusColor(studentUsage)}`}>
+              {stats.studentsCount} / {studentLimit || '∞'}
+            </span>
+          </div>
+          {studentLimit > 0 && (
+            <Progress value={Math.min(studentUsage, 100)} className="h-2" />
+          )}
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          teacherUsage > 90 ? 'bg-destructive/10 text-destructive' :
-          teacherUsage > 70 ? 'bg-warning/10 text-warning' :
-          'bg-success/10 text-success'
-        }`}>
-          {teacherUsage.toFixed(0)}% profs
+        
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted-foreground">Professeurs</span>
+            <span className={`font-medium ${getStatusColor(teacherUsage)}`}>
+              {stats.teachersCount} / {teacherLimit || '∞'}
+            </span>
+          </div>
+          {teacherLimit > 0 && (
+            <Progress value={Math.min(teacherUsage, 100)} className="h-2" />
+          )}
         </div>
       </div>
     </div>
