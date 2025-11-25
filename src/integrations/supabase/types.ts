@@ -1800,6 +1800,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          student_limit: number | null
+          teacher_limit: number | null
           type: Database["public"]["Enums"]["subscription_plan_type"]
           updated_at: string
         }
@@ -1810,6 +1812,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          student_limit?: number | null
+          teacher_limit?: number | null
           type: Database["public"]["Enums"]["subscription_plan_type"]
           updated_at?: string
         }
@@ -1820,6 +1824,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          student_limit?: number | null
+          teacher_limit?: number | null
           type?: Database["public"]["Enums"]["subscription_plan_type"]
           updated_at?: string
         }

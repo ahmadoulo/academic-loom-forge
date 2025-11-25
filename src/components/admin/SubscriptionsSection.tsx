@@ -5,6 +5,7 @@ import { useSchoolStats } from "@/hooks/useSchoolStats";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EditSubscriptionDialog } from "./EditSubscriptionDialog";
 import { 
   Calendar, 
   Users, 
@@ -13,15 +14,18 @@ import {
   Building2,
   CreditCard,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Edit
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export function SubscriptionsSection() {
   const { schools, loading: schoolsLoading } = useSchools();
-  const { subscriptions, loading: subsLoading } = useSubscriptions();
+  const { subscriptions, loading: subsLoading, refetch } = useSubscriptions();
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
+  const [editingSubscription, setEditingSubscription] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const getSchoolSubscription = (schoolId: string) => {
     return subscriptions.find(sub => sub.school_id === schoolId);
@@ -124,10 +128,25 @@ export function SubscriptionsSection() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Subscription Info */}
                   <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Informations d'abonnement
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Informations d'abonnement
+                      </h3>
+                      {subscription && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSubscription(subscription);
+                            setShowEditDialog(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Modifier
+                        </Button>
+                      )}
+                    </div>
                     
                     {subscription ? (
                       <div className="space-y-2 text-sm">
@@ -178,6 +197,18 @@ export function SubscriptionsSection() {
           );
         })}
       </div>
+
+      {editingSubscription && (
+        <EditSubscriptionDialog
+          subscription={editingSubscription}
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          onSuccess={() => {
+            refetch();
+            setEditingSubscription(null);
+          }}
+        />
+      )}
     </div>
   );
 }

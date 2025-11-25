@@ -18,6 +18,11 @@ export interface School {
   is_active?: boolean;
   created_at: string;
   updated_at: string;
+  owner?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 export interface CreateSchoolData {
@@ -47,7 +52,10 @@ export const useSchools = () => {
       
       const { data, error } = await supabase
         .from('schools')
-        .select('*')
+        .select(`
+          *,
+          owner:user_credentials(first_name, last_name, email)
+        `)
         .order('created_at', { ascending: false });
 
       console.log('DEBUG: Réponse chargement écoles - data:', data, 'error:', error);

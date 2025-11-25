@@ -68,6 +68,7 @@ import { TeacherForm } from "@/components/school/TeacherForm";
 import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
+import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -1009,6 +1010,10 @@ const SchoolDashboard = () => {
               
               {activeTab === "settings" && (
                 <SchoolSettingsPage schoolId={school.id} />
+              )}
+              
+              {activeTab === "subscription" && school?.id && (
+                <SchoolSubscriptionSection schoolId={school.id} />
               )}
               
               {activeTab === "document-requests" && school?.id && (
