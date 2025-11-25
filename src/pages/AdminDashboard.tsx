@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SchoolForm } from "@/components/admin/SchoolForm";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -137,6 +138,21 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+
+      {/* School Dialog */}
+      <Dialog open={showSchoolDialog} onOpenChange={setShowSchoolDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Créer une École</DialogTitle>
+          </DialogHeader>
+          <SchoolForm
+            onSuccess={() => {
+              setShowSchoolDialog(false);
+            }}
+            onCancel={() => setShowSchoolDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Subscription Dialog */}
       <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
