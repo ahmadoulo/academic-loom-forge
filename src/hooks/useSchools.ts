@@ -54,7 +54,7 @@ export const useSchools = () => {
         .from('schools')
         .select(`
           *,
-          owner:user_credentials(first_name, last_name, email)
+          owner:user_credentials!schools_owner_id_fkey(first_name, last_name, email)
         `)
         .order('created_at', { ascending: false });
 
