@@ -3,8 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useSchools } from "@/hooks/useSchools";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useSchoolOwners } from "@/hooks/useSchoolOwners";
+import { useSchoolStats } from "@/hooks/useSchoolStats";
 import { useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -14,10 +18,17 @@ import {
   Calendar, 
   CreditCard,
   ExternalLink,
-  Clock
+  Clock,
+  Power,
+  Lock,
+  Users,
+  GraduationCap,
+  BookOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface SchoolDetailsDialogProps {
   schoolId: string | null;
@@ -27,10 +38,15 @@ interface SchoolDetailsDialogProps {
 
 export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDetailsDialogProps) {
   const navigate = useNavigate();
-  const { getSchoolById } = useSchools();
+  const { getSchoolById, updateSchool } = useSchools();
   const { subscriptions } = useSubscriptions();
+  const { updateOwnerPassword, toggleOwnerStatus } = useSchoolOwners();
   const [school, setSchool] = useState<any>(null);
+  const [owner, setOwner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const { stats, loading: statsLoading } = useSchoolStats(schoolId || "");
 
   useEffect(() => {
     if (schoolId && open) {
@@ -45,11 +61,41 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
       setLoading(true);
       const data = await getSchoolById(schoolId);
       setSchool(data);
+
+      // Load owner info if exists
+      if (data.owner_id) {
+        const { data: ownerData } = await supabase
+          .from('user_credentials')
+          .select('*')
+          .eq('id', data.owner_id)
+          .single();
+        setOwner(ownerData);
+      }
     } catch (error) {
       console.error('Erreur:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!school || !owner) return;
+    
+    const newStatus = !owner.is_active;
+    await toggleOwnerStatus(owner.id, newStatus);
+    await updateSchool(school.id, { is_active: newStatus } as any);
+    await loadSchoolDetails();
+  };
+
+  const handleChangePassword = async () => {
+    if (!owner || !newPassword) {
+      toast.error('Veuillez entrer un nouveau mot de passe');
+      return;
+    }
+    
+    await updateOwnerPassword(owner.id, newPassword);
+    setNewPassword("");
+    setShowPasswordDialog(false);
   };
 
   const schoolSubscription = subscriptions.find(sub => sub.school_id === schoolId);
@@ -149,6 +195,100 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
 
           <Separator />
 
+          {/* Owner Info */}
+          {owner && (
+            <>
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Propriétaire de l'école
+                </h4>
+
+                <div className="rounded-lg border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Nom</span>
+                    <span className="text-sm font-medium">{owner.first_name} {owner.last_name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="text-sm font-medium">{owner.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Statut</span>
+                    <Badge variant={owner.is_active ? "default" : "destructive"}>
+                      {owner.is_active ? "Actif" : "Désactivé"}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleStatus}
+                      className="flex-1"
+                    >
+                      <Power className="h-4 w-4 mr-2" />
+                      {owner.is_active ? "Désactiver" : "Activer"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPasswordDialog(true)}
+                      className="flex-1"
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Changer mot de passe
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+            </>
+          )}
+
+          {/* Statistics */}
+          {!statsLoading && (
+            <>
+              <div className="space-y-4">
+                <h4 className="font-semibold">Statistiques de l'école</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                    <Users className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-2xl font-bold">{stats.studentsCount}</p>
+                      <p className="text-xs text-muted-foreground">Étudiants</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                    <GraduationCap className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-2xl font-bold">{stats.teachersCount}</p>
+                      <p className="text-xs text-muted-foreground">Professeurs</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                    <Building2 className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-2xl font-bold">{stats.classesCount}</p>
+                      <p className="text-xs text-muted-foreground">Classes</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                    <BookOpen className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-2xl font-bold">{stats.subjectsCount}</p>
+                      <p className="text-xs text-muted-foreground">Matières</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+            </>
+          )}
+
           {/* Subscription Status */}
           <div className="space-y-4">
             <h4 className="font-semibold flex items-center gap-2">
@@ -229,6 +369,39 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
           </div>
         </div>
       </DialogContent>
+
+      {/* Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Changer le mot de passe</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 8 caractères"
+                minLength={8}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleChangePassword} className="flex-1">
+                Confirmer
+              </Button>
+              <Button variant="outline" onClick={() => {
+                setShowPasswordDialog(false);
+                setNewPassword("");
+              }}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

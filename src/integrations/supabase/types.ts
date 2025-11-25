@@ -1434,10 +1434,13 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          currency: string
           id: string
           identifier: string
+          is_active: boolean
           logo_url: string | null
           name: string
+          owner_id: string | null
           phone: string | null
           updated_at: string
           website: string | null
@@ -1448,10 +1451,13 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           id?: string
           identifier: string
+          is_active?: boolean
           logo_url?: string | null
           name: string
+          owner_id?: string | null
           phone?: string | null
           updated_at?: string
           website?: string | null
@@ -1462,15 +1468,26 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           id?: string
           identifier?: string
+          is_active?: boolean
           logo_url?: string | null
           name?: string
+          owner_id?: string | null
           phone?: string | null
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "user_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_accounts: {
         Row: {
