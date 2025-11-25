@@ -4,6 +4,7 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { SupportSection } from "@/components/admin/SupportSection";
 import { AdminSaaSDashboard } from "@/components/admin/AdminSaaSDashboard";
+import { AdminAnalyticsDashboard } from "@/components/admin/AdminAnalyticsDashboard";
 import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
 import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SubscriptionsSection } from "@/components/admin/SubscriptionsSection";
@@ -63,13 +64,18 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case "dashboard":
         return (
-          <AdminSaaSDashboard
-            onAddSchool={() => setShowSchoolDialog(true)}
-            onCreateSubscription={() => setShowSubscriptionDialog(true)}
-            onManageTrials={() => setActiveTab("subscriptions")}
-            onViewSchools={() => setActiveTab("schools")}
-            onViewSubscriptions={() => setActiveTab("subscriptions")}
-          />
+          <div className="space-y-8">
+            <AdminSaaSDashboard
+              onAddSchool={() => setShowSchoolDialog(true)}
+              onCreateSubscription={() => setShowSubscriptionDialog(true)}
+              onManageTrials={() => setActiveTab("subscriptions")}
+              onViewSchools={() => setActiveTab("schools")}
+              onViewSubscriptions={() => setActiveTab("subscriptions")}
+            />
+            <div className="border-t pt-8">
+              <AdminAnalyticsDashboard />
+            </div>
+          </div>
         );
       case "schools":
         return (
