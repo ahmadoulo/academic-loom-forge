@@ -3,11 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useSchools } from '@/hooks/useSchools';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Building2, Upload, Loader2 } from 'lucide-react';
+import { Building2, Upload, Loader2, CreditCard, Clock, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface SchoolSettingsProps {
   schoolId: string;
@@ -15,6 +19,7 @@ interface SchoolSettingsProps {
 
 export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
   const { getSchoolById, updateSchool } = useSchools();
+  const { subscriptions } = useSubscriptions();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [schoolData, setSchoolData] = useState({
@@ -285,6 +290,153 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
               />
             </div>
           </div>
+        </div>
+
+        <Separator className="my-8" />
+
+        {/* Subscription Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <CreditCard className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Abonnement</h3>
+              <p className="text-sm text-muted-foreground">
+                Informations sur votre abonnement et période d'essai
+              </p>
+            </div>
+          </div>
+
+          {(() => {
+            const subscription = subscriptions.find(sub => sub.school_id === schoolId);
+            
+            if (!subscription) {
+              return (
+                <div className="p-6 bg-gradient-subtle rounded-xl border border-border">
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">Aucun abonnement actif</p>
+                    <p className="text-xs text-muted-foreground">Contactez l'administrateur pour activer un abonnement</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const getStatusBadge = () => {
+              if (subscription.is_trial) {
+                const isExpired = new Date(subscription.trial_end_date!) < new Date();
+                return (
+                  <Badge variant={isExpired ? "destructive" : "default"}>
+                    {isExpired ? "Essai expiré" : "Essai gratuit"}
+                  </Badge>
+                );
+              }
+
+              switch (subscription.status) {
+                case 'active':
+                  return <Badge variant="default">Actif</Badge>;
+                case 'expired':
+                  return <Badge variant="destructive">Expiré</Badge>;
+                case 'cancelled':
+                  return <Badge variant="secondary">Annulé</Badge>;
+                default:
+                  return <Badge variant="secondary">En attente</Badge>;
+              }
+            };
+
+            return (
+              <div className="p-6 bg-gradient-subtle rounded-xl border border-border space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Statut</span>
+                    </div>
+                    <div>{getStatusBadge()}</div>
+                  </div>
+
+                  {subscription.is_trial ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>Type</span>
+                        </div>
+                        <div className="font-medium">Période d'essai</div>
+                      </div>
+
+                      {subscription.trial_end_date && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>Fin d'essai</span>
+                          </div>
+                          <div className="font-medium">
+                            {format(new Date(subscription.trial_end_date), "d MMMM yyyy", { locale: fr })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Building2 className="h-4 w-4" />
+                          <span>Type de plan</span>
+                        </div>
+                        <div>
+                          <Badge variant="outline" className="capitalize">{subscription.plan_type}</Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Date de début</span>
+                        </div>
+                        <div className="font-medium">
+                          {format(new Date(subscription.start_date), "d MMMM yyyy", { locale: fr })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Date de fin</span>
+                        </div>
+                        <div className="font-medium">
+                          {format(new Date(subscription.end_date), "d MMMM yyyy", { locale: fr })}
+                        </div>
+                      </div>
+
+                      {subscription.amount && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CreditCard className="h-4 w-4" />
+                            <span>Montant</span>
+                          </div>
+                          <div className="font-medium text-lg">
+                            {subscription.amount} {subscription.currency || 'MAD'}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {subscription.status === 'active' && !subscription.is_trial && (
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Renouvellement automatique</span>
+                      <Badge variant={subscription.auto_renew ? "default" : "secondary"}>
+                        {subscription.auto_renew ? "Activé" : "Désactivé"}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <Separator className="my-8" />
