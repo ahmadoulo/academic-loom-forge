@@ -1,14 +1,20 @@
-import { useState, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Eye, Edit, ArrowUpDown, Filter, X } from "lucide-react";
+import { 
+  Building2, 
+  Search, 
+  Plus,
+  Eye,
+  Edit,
+  MapPin,
+  Phone
+} from "lucide-react";
 import { useSchools } from "@/hooks/useSchools";
-import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SchoolForm } from "./SchoolForm";
 
 interface SchoolsManagementProps {
   onAddSchool: () => void;
@@ -17,282 +23,162 @@ interface SchoolsManagementProps {
 }
 
 export function SchoolsManagement({ onAddSchool, onEditSchool, onViewSchool }: SchoolsManagementProps) {
-  const { schools, loading } = useSchools();
-  const { subscriptions } = useSubscriptions();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [subscriptionFilter, setSubscriptionFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const { schools } = useSchools();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [showSchoolDialog, setShowSchoolDialog] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<any>(null);
 
-  const schoolsWithSubscriptions = useMemo(() => {
-    return schools.map(school => {
-      const schoolSubs = subscriptions.filter(sub => sub.school_id === school.id);
-      const activeSub = schoolSubs.find(sub => sub.status === 'active' || sub.status === 'trial');
-      
-      return {
-        ...school,
-        subscription: activeSub,
-        isActive: !!activeSub,
-        isTrial: activeSub?.is_trial || false,
-        subscriptionStatus: activeSub?.status || 'none'
-      };
-    });
-  }, [schools, subscriptions]);
+  const filteredSchools = schools.filter(school => {
+    const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         school.identifier.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
-  const filteredSchools = useMemo(() => {
-    let filtered = [...schoolsWithSubscriptions];
+  const handleEdit = (school: any) => {
+    setEditingSchool(school);
+    setShowSchoolDialog(true);
+  };
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(school =>
-        school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.identifier.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(school =>
-        statusFilter === 'active' ? school.isActive : !school.isActive
-      );
-    }
-
-    // Subscription filter
-    if (subscriptionFilter !== 'all') {
-      filtered = filtered.filter(school => {
-        if (subscriptionFilter === 'trial') return school.isTrial;
-        if (subscriptionFilter === 'paid') return school.isActive && !school.isTrial;
-        if (subscriptionFilter === 'expired') return !school.isActive;
-        return true;
-      });
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      if (sortBy === 'name') {
-        return sortOrder === 'asc' 
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      } else {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-      }
-    });
-
-    return filtered;
-  }, [schoolsWithSubscriptions, searchTerm, statusFilter, subscriptionFilter, sortBy, sortOrder]);
-
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || subscriptionFilter !== 'all';
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setSubscriptionFilter('all');
+  const handleAdd = () => {
+    setEditingSchool(null);
+    setShowSchoolDialog(true);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Gestion des Écoles</h2>
-          <p className="text-muted-foreground">Gérez toutes vos écoles et leurs abonnements</p>
-        </div>
-        <Button onClick={onAddSchool} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter une École
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Nom de l'école..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="active">Actif</SelectItem>
-                <SelectItem value="inactive">Inactif</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Subscription Filter */}
-            <Select value={subscriptionFilter} onValueChange={setSubscriptionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Statut d'abonnement" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="trial">Essai</SelectItem>
-                <SelectItem value="paid">Payant</SelectItem>
-                <SelectItem value="expired">Expiré</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Sort */}
-            <Select
-              value={`${sortBy}-${sortOrder}`}
-              onValueChange={(value) => {
-                const [newSortBy, newSortOrder] = value.split('-') as ['name' | 'date', 'asc' | 'desc'];
-                setSortBy(newSortBy);
-                setSortOrder(newSortOrder);
-              }}
-            >
-              <SelectTrigger>
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date-desc">Date de création (récent → ancien)</SelectItem>
-                <SelectItem value="date-asc">Date de création (ancien → récent)</SelectItem>
-                <SelectItem value="name-asc">Nom (A → Z)</SelectItem>
-                <SelectItem value="name-desc">Nom (Z → A)</SelectItem>
-              </SelectContent>
-            </Select>
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Gestion des Écoles</h2>
+            <p className="text-muted-foreground">
+              {filteredSchools.length} école(s) trouvée(s)
+            </p>
           </div>
+          <Button onClick={handleAdd} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Ajouter une École
+          </Button>
+        </div>
 
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2 mt-4">
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Réinitialiser
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {filteredSchools.length} école(s) trouvée(s)
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Schools Table */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {/* Header */}
-            <div className="grid grid-cols-5 gap-4 pb-3 border-b text-sm font-medium text-muted-foreground">
-              <div>ÉCOLE</div>
-              <div>PROPRIÉTAIRE</div>
-              <div>STATUT</div>
-              <div>ABONNEMENT</div>
-              <div>DATE DE CRÉATION</div>
-              <div>ACTIONS</div>
-            </div>
-
-            {/* Rows */}
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Chargement...
+        {/* Search & Filters */}
+        <Card className="border-border">
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher une école..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-            ) : filteredSchools.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucune école trouvée
-              </div>
-            ) : (
-              filteredSchools.map((school) => (
-                <div key={school.id} className="grid grid-cols-5 gap-4 py-3 items-center hover:bg-muted/50 rounded-lg px-2 transition-colors">
-                  <div>
-                    <div className="font-medium">{school.name}</div>
-                    <div className="text-sm text-muted-foreground">{school.identifier}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {school.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">Admin</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Schools Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredSchools.map((school) => (
+            <Card key={school.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                      <Building2 className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{school.name}</CardTitle>
+                      <CardDescription className="text-xs">{school.identifier}</CardDescription>
                     </div>
                   </div>
-
-                  <div>
-                    {school.isActive ? (
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-gray-500">
-                        Inactive
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div>
-                    {school.subscription ? (
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant={school.isTrial ? 'outline' : 'default'}
-                          className={
-                            school.isTrial 
-                              ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                              : 'bg-primary/10 text-primary'
-                          }
-                        >
-                          {school.isTrial ? 'Trial' : school.subscription.plan_type}
-                        </Badge>
-                        {school.subscription.end_date && (
-                          <span className="text-xs text-muted-foreground">
-                            Fin: {format(new Date(school.subscription.end_date), 'dd/MM/yyyy', { locale: fr })}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="text-gray-500">
-                        Aucun
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    {format(new Date(school.created_at), 'dd/MM/yyyy', { locale: fr })}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => onViewSchool(school.id)}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Détails
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => onEditSchool(school.id)}
-                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Modifier
-                    </Button>
-                  </div>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {school.city && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{school.city}</span>
+                  </div>
+                )}
+                {school.phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span>{school.phone}</span>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onViewSchool(school.id)}
+                    className="flex-1"
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Voir
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleEdit(school)}
+                    className="flex-1"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Modifier
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {filteredSchools.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Aucune école trouvée</h3>
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                {searchTerm
+                  ? "Essayez d'ajuster vos critères de recherche"
+                  : "Commencez par ajouter votre première école"}
+              </p>
+              {!searchTerm && (
+                <Button onClick={handleAdd} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Ajouter une École
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* School Dialog */}
+      <Dialog open={showSchoolDialog} onOpenChange={(open) => {
+        setShowSchoolDialog(open);
+        if (!open) setEditingSchool(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSchool ? "Modifier l'École" : "Ajouter une École"}
+            </DialogTitle>
+          </DialogHeader>
+          <SchoolForm
+            editingSchool={editingSchool}
+            onSuccess={() => {
+              setShowSchoolDialog(false);
+              setEditingSchool(null);
+            }}
+            onCancel={() => {
+              setShowSchoolDialog(false);
+              setEditingSchool(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

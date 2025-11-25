@@ -1,14 +1,10 @@
-import { useState } from "react";
 import { 
   School, 
-  Users, 
   Settings,
   HelpCircle,
-  ChevronRight,
-  Menu,
-  X,
   LayoutDashboard,
-  CreditCard
+  CreditCard,
+  GraduationCap
 } from "lucide-react";
 
 import {
@@ -20,11 +16,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
 
 interface AdminSidebarProps {
@@ -75,17 +68,17 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-gradient-to-r from-primary to-primary-dark rounded-lg flex items-center justify-center">
-            <School className="h-5 w-5 text-primary-foreground" />
+      <div className="p-6 border-b">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+            <GraduationCap className="h-6 w-6 text-primary-foreground" />
           </div>
           {(open || isMobile) && (
             <div>
-              <span className="font-bold text-lg bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-                EDUMANAGE PRO
+              <span className="font-bold text-lg text-foreground">
+                Eduvate
               </span>
-              <p className="text-xs text-muted-foreground">SaaS Administrator</p>
+              <p className="text-xs text-muted-foreground">Administration Globale</p>
             </div>
           )}
         </div>
@@ -93,39 +86,45 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
 
       <SidebarContentUI className="flex-1 p-4">
         <SidebarGroup>
-          <SidebarGroupLabel>GESTION SAAS</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.value}>
                   <SidebarMenuButton 
                     asChild
                     isActive={activeTab === item.value}
-                    className="w-full justify-start"
+                    className="w-full justify-start hover:bg-accent transition-colors rounded-lg"
                   >
                     {item.href && item.href !== "/admin" ? (
                       <a 
                         href={item.href}
-                        className="flex items-center gap-3 w-full text-left"
+                        className="flex items-center gap-3 w-full text-left px-3 py-2.5"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <div className={`p-1.5 rounded-md ${activeTab === item.value ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
                         {(open || isMobile) && (
-                          <div className="flex-1">
-                            <span className="block">{item.title}</span>
-                            <span className="text-xs text-muted-foreground">{item.description}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-sm font-medium">{item.title}</span>
+                            <span className="text-xs text-muted-foreground truncate block">{item.description}</span>
                           </div>
                         )}
                       </a>
                     ) : (
                       <button 
                         onClick={() => onTabChange(item.value)}
-                        className="flex items-center gap-3 w-full text-left"
+                        className="flex items-center gap-3 w-full text-left px-3 py-2.5"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <div className={`p-1.5 rounded-md ${activeTab === item.value ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
                         {(open || isMobile) && (
-                          <div className="flex-1">
-                            <span className="block">{item.title}</span>
-                            <span className="text-xs text-muted-foreground">{item.description}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-sm font-medium">{item.title}</span>
+                            <span className="text-xs text-muted-foreground truncate block">{item.description}</span>
                           </div>
                         )}
                       </button>

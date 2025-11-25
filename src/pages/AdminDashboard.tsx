@@ -2,18 +2,18 @@ import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
-import { SchoolsSection } from "@/components/admin/SchoolsSection";
 import { SupportSection } from "@/components/admin/SupportSection";
 import { AdminSaaSDashboard } from "@/components/admin/AdminSaaSDashboard";
 import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
 import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
-import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { RoleManagement } from "@/components/settings/RoleManagement";
 import { SchoolYearManagement } from "@/components/settings/SchoolYearManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -52,9 +52,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleEditSchool = (schoolId: string) => {
-    setEditingSchoolId(schoolId);
-    setShowSchoolDialog(true);
+  const handleEditSchool = (school: any) => {
+    // This is now handled in SchoolsManagement component
   };
 
   const renderContent = () => {
@@ -83,15 +82,14 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">Gestion des Abonnements</h2>
-                <p className="text-muted-foreground">Gérez les abonnements de toutes les écoles</p>
+                <p className="text-muted-foreground">Créez et gérez les abonnements de toutes les écoles</p>
               </div>
+              <Button onClick={() => setShowSubscriptionDialog(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Créer un Abonnement
+              </Button>
             </div>
-            <SubscriptionForm 
-              onSuccess={() => {
-                setShowSubscriptionDialog(false);
-                // Refresh data
-              }}
-            />
+            {/* TODO: Add subscriptions list here */}
           </div>
         );
       case "settings":
@@ -139,20 +137,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* School Dialog */}
-      <Dialog open={showSchoolDialog} onOpenChange={(open) => {
-        setShowSchoolDialog(open);
-        if (!open) setEditingSchoolId(null);
-      }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingSchoolId ? "Modifier l'École" : "Ajouter une École"}
-            </DialogTitle>
-          </DialogHeader>
-          <SchoolsSection />
-        </DialogContent>
-      </Dialog>
 
       {/* Subscription Dialog */}
       <Dialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog}>
