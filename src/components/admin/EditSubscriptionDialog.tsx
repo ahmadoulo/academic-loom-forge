@@ -32,7 +32,9 @@ export function EditSubscriptionDialog({
     amount: subscription?.amount || 0,
     currency: subscription?.currency || 'MAD',
     auto_renew: subscription?.auto_renew || false,
-    payment_method: subscription?.payment_method || 'bank_transfer'
+    payment_method: subscription?.payment_method || 'bank_transfer',
+    custom_student_limit: subscription?.custom_student_limit || null,
+    custom_teacher_limit: subscription?.custom_teacher_limit || null
   });
 
   useEffect(() => {
@@ -43,7 +45,9 @@ export function EditSubscriptionDialog({
         amount: subscription.amount || 0,
         currency: subscription.currency,
         auto_renew: subscription.auto_renew,
-        payment_method: subscription.payment_method || 'bank_transfer'
+        payment_method: subscription.payment_method || 'bank_transfer',
+        custom_student_limit: subscription.custom_student_limit || null,
+        custom_teacher_limit: subscription.custom_teacher_limit || null
       });
     }
   }, [subscription]);
@@ -77,6 +81,8 @@ export function EditSubscriptionDialog({
           currency: formData.currency,
           auto_renew: formData.auto_renew,
           payment_method: formData.payment_method,
+          custom_student_limit: formData.custom_student_limit,
+          custom_teacher_limit: formData.custom_teacher_limit,
           is_trial: false
         })
         .eq('id', subscription.id);
@@ -262,6 +268,39 @@ export function EditSubscriptionDialog({
                 <SelectItem value="online">Paiement en ligne</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="border-t pt-4 space-y-4">
+            <h3 className="font-medium text-sm">Limites Personnalisées (Optionnel)</h3>
+            <p className="text-xs text-muted-foreground">
+              Définissez des limites spécifiques pour cette école qui remplacent les limites du plan
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Limite Étudiants</Label>
+                <Input
+                  type="number"
+                  value={formData.custom_student_limit || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    custom_student_limit: e.target.value ? parseInt(e.target.value) : null 
+                  })}
+                  placeholder="Utilise limite du plan"
+                />
+              </div>
+              <div>
+                <Label>Limite Professeurs</Label>
+                <Input
+                  type="number"
+                  value={formData.custom_teacher_limit || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    custom_teacher_limit: e.target.value ? parseInt(e.target.value) : null 
+                  })}
+                  placeholder="Utilise limite du plan"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

@@ -1838,6 +1838,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          custom_student_limit: number | null
+          custom_teacher_limit: number | null
           duration: Database["public"]["Enums"]["subscription_duration_type"]
           end_date: string
           id: string
@@ -1860,6 +1862,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          custom_student_limit?: number | null
+          custom_teacher_limit?: number | null
           duration: Database["public"]["Enums"]["subscription_duration_type"]
           end_date: string
           id?: string
@@ -1882,6 +1886,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          custom_student_limit?: number | null
+          custom_teacher_limit?: number | null
           duration?: Database["public"]["Enums"]["subscription_duration_type"]
           end_date?: string
           id?: string
