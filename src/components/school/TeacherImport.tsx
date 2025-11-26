@@ -3,17 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
 
 interface TeacherImportProps {
   onImportComplete: (teachers: any[]) => void;
-  schoolId: string;
 }
 
-export const TeacherImport = ({ onImportComplete, schoolId }: TeacherImportProps) => {
-  const { checkCanAddTeachers, loading: limitsLoading } = useSubscriptionLimits(schoolId);
+export const TeacherImport = ({ onImportComplete }: TeacherImportProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,16 +99,6 @@ export const TeacherImport = ({ onImportComplete, schoolId }: TeacherImportProps
         };
       });
 
-      // Check if we can add this many teachers
-      if (!checkCanAddTeachers(teachers.length)) {
-        toast({
-          title: "Limite atteinte",
-          description: "Limite professeur atteint. Contactez le support",
-          variant: "destructive"
-        });
-        return;
-      }
-
       onImportComplete(teachers);
       
       toast({
@@ -177,14 +163,6 @@ export const TeacherImport = ({ onImportComplete, schoolId }: TeacherImportProps
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!limitsLoading && !checkCanAddTeachers(1) && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Limite professeur atteint. Contactez le support pour augmenter votre capacité.
-            </AlertDescription>
-          </Alert>
-        )}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <Download className="h-4 w-4 mr-2" />

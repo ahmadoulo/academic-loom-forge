@@ -3,18 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
 
 interface StudentImportProps {
   onImportComplete: (students: any[]) => void;
   classes: { id: string; name: string; }[];
-  schoolId: string;
 }
 
-export const StudentImport = ({ onImportComplete, classes, schoolId }: StudentImportProps) => {
-  const { checkCanAddStudents, loading: limitsLoading } = useSubscriptionLimits(schoolId);
+export const StudentImport = ({ onImportComplete, classes }: StudentImportProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,16 +105,6 @@ export const StudentImport = ({ onImportComplete, classes, schoolId }: StudentIm
         };
       });
 
-      // Check if we can add this many students
-      if (!checkCanAddStudents(students.length)) {
-        toast({
-          title: "Limite atteinte",
-          description: "Limite étudiant atteint. Contactez le support",
-          variant: "destructive"
-        });
-        return;
-      }
-
       onImportComplete(students);
       
       toast({
@@ -178,14 +164,6 @@ export const StudentImport = ({ onImportComplete, classes, schoolId }: StudentIm
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!limitsLoading && !checkCanAddStudents(1) && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Limite étudiant atteint. Contactez le support pour augmenter votre capacité.
-            </AlertDescription>
-          </Alert>
-        )}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <Download className="h-4 w-4 mr-2" />

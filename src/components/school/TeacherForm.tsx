@@ -3,11 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTeachers } from "@/hooks/useTeachers";
-import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
 
 interface Teacher {
   id: string;
@@ -48,8 +45,6 @@ export function TeacherForm({ open, onOpenChange, schoolId, teacher, onSuccess }
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { createTeacher, updateTeacher } = useTeachers();
-  const { canAddTeacher, loading: limitsLoading } = useSubscriptionLimits(schoolId);
-  const { toast } = useToast();
   const isEditing = !!teacher;
 
   useEffect(() => {
@@ -83,15 +78,6 @@ export function TeacherForm({ open, onOpenChange, schoolId, teacher, onSuccess }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstname.trim() || !lastname.trim()) return;
-
-    if (!isEditing && !canAddTeacher) {
-      toast({
-        title: "Limite atteinte",
-        description: "Limite professeur atteint. Contactez le support",
-        variant: "destructive"
-      });
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -146,14 +132,6 @@ export function TeacherForm({ open, onOpenChange, schoolId, teacher, onSuccess }
             {isEditing ? "Modifier le Professeur" : "Ajouter un Professeur"}
           </DialogTitle>
         </DialogHeader>
-        {!isEditing && !limitsLoading && !canAddTeacher && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Limite professeur atteint. Contactez le support pour augmenter votre capacité.
-            </AlertDescription>
-          </Alert>
-        )}
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -296,7 +274,7 @@ export function TeacherForm({ open, onOpenChange, schoolId, teacher, onSuccess }
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting || (!isEditing && !canAddTeacher)}>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? "Mettre à jour" : "Créer"}
             </Button>

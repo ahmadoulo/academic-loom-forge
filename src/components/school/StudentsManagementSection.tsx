@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Upload, Archive } from "lucide-react";
 import { StudentsListSection } from "./StudentsListSection";
 import { StudentImport } from "./StudentImport";
-import { StudentForm } from "./StudentForm";
 import { ArchivedStudentsSection } from "./ArchivedStudentsSection";
 import { StudentViewDialog } from "./StudentViewDialog";
 import { StudentEditDialog } from "./StudentEditDialog";
@@ -100,11 +99,6 @@ export function StudentsManagementSection({
             </TabsList>
 
             <TabsContent value="list" className="space-y-4">
-              <StudentForm
-                schoolId={schoolId}
-                onSubmit={onCreateStudent}
-                classes={classes}
-              />
               <StudentsListSection
                 schoolId={schoolId}
                 students={students}
@@ -117,8 +111,7 @@ export function StudentsManagementSection({
             </TabsContent>
 
             <TabsContent value="import" className="space-y-4">
-              <StudentImport
-                schoolId={schoolId}
+              <StudentImport 
                 onImportComplete={handleImportComplete}
                 classes={classes}
               />
