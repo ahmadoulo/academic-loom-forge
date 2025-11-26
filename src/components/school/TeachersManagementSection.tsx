@@ -10,6 +10,7 @@ import { ArchivedTeachersSection } from "./ArchivedTeachersSection";
 import { TeacherImport } from "./TeacherImport";
 import { Teacher, CreateTeacherData } from "@/hooks/useTeachers";
 import { toast } from "sonner";
+import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
 
 interface TeachersManagementSectionProps {
   schoolId: string;
@@ -93,6 +94,7 @@ export function TeachersManagementSection({
 
             <TabsContent value="list" className="space-y-4">
               <TeachersListSection
+                schoolId={schoolId}
                 teachers={teachers}
                 loading={loading}
                 onArchiveTeacher={onArchiveTeacher}

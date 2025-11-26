@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Search, Archive, Loader2, Filter, Pencil, ExternalLink, Eye } from "lucide-react";
+import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
 
 interface StudentWithClass {
   id: string;
@@ -26,6 +27,7 @@ interface Class {
 }
 
 interface StudentsListSectionProps {
+  schoolId: string;
   students: StudentWithClass[];
   classes: Class[];
   loading: boolean;
@@ -35,6 +37,7 @@ interface StudentsListSectionProps {
 }
 
 export function StudentsListSection({ 
+  schoolId,
   students, 
   classes, 
   loading, 
@@ -61,10 +64,13 @@ export function StudentsListSection({
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-4">
-          <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary" />
-            Base de données des Étudiants ({students.length})
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <Users className="h-6 w-6 text-primary" />
+              Base de données des Étudiants ({students.length})
+            </CardTitle>
+            <SubscriptionLimitBadge schoolId={schoolId} type="student" />
+          </div>
         
         <div className="flex gap-3">
           <div className="relative flex-1">

@@ -8,8 +8,10 @@ import { UserCog, Search, Archive, Loader2, Pencil, ExternalLink, Mail, Phone, E
 import { Teacher } from "@/hooks/useTeachers";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
 
 interface TeachersListSectionProps {
+  schoolId: string;
   teachers: Teacher[];
   loading: boolean;
   onArchiveTeacher: (id: string, name: string) => void;
@@ -18,6 +20,7 @@ interface TeachersListSectionProps {
 }
 
 export function TeachersListSection({ 
+  schoolId,
   teachers, 
   loading, 
   onArchiveTeacher,
@@ -62,10 +65,13 @@ export function TeachersListSection({
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-4">
-        <CardTitle className="text-2xl font-bold flex items-center gap-2">
-          <UserCog className="h-6 w-6 text-primary" />
-          Base de données des Professeurs ({teachers.length})
-        </CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <UserCog className="h-6 w-6 text-primary" />
+            Base de données des Professeurs ({teachers.length})
+          </CardTitle>
+          <SubscriptionLimitBadge schoolId={schoolId} type="teacher" />
+        </div>
       
         <div className="flex gap-3">
           <div className="relative flex-1">
