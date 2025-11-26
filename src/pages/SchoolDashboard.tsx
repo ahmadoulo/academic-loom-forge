@@ -1149,6 +1149,7 @@ const SchoolDashboard = () => {
             <DialogTitle>Ajouter un Étudiant</DialogTitle>
           </DialogHeader>
           <StudentForm
+            schoolId={schoolId}
             onSubmit={handleCreateStudent}
             classes={currentYearClasses}
           />
