@@ -17,7 +17,7 @@ interface SchoolYear {
 interface AcademicYearContextType {
   currentYear: SchoolYear | null;
   selectedYear: SchoolYear | null;
-  setSelectedYear: (year: SchoolYear | null, context?: string) => void;
+  setSelectedYear: (year: SchoolYear | null) => void;
   availableYears: SchoolYear[];
   loading: boolean;
   refetch: () => Promise<void>;
@@ -28,6 +28,16 @@ interface AcademicYearContextType {
 
 const AcademicYearContext = createContext<AcademicYearContextType | undefined>(undefined);
 
+// Detect context from current URL path to make selections independent per interface
+const getContextFromPath = (): string => {
+  const path = window.location.pathname;
+  if (path.includes('/admin')) return 'admin';
+  if (path.includes('/teacher')) return 'teacher';
+  if (path.includes('/student')) return 'student';
+  if (path.includes('/school')) return 'school';
+  return 'default';
+};
+
 export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [currentYear, setCurrentYearState] = useState<SchoolYear | null>(null);
@@ -36,10 +46,11 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // Clé localStorage unique par utilisateur ET par page/contexte
-  const getStorageKey = (context?: string) => {
-    if (!user) return `selectedAcademicYearId_guest${context ? `_${context}` : ''}`;
+  const getStorageKey = () => {
+    const context = getContextFromPath();
+    if (!user) return `selectedAcademicYearId_guest_${context}`;
     const uniqueId = user.email || user.id || 'unknown';
-    return `selectedAcademicYearId_${uniqueId}${context ? `_${context}` : ''}`;
+    return `selectedAcademicYearId_${uniqueId}_${context}`;
   };
 
   const fetchYears = async () => {
@@ -151,9 +162,9 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Fonction wrapper pour setSelectedYear avec localStorage (unique par utilisateur et contexte)
-  const setSelectedYear = (year: SchoolYear | null, context?: string) => {
+  const setSelectedYear = (year: SchoolYear | null) => {
     setSelectedYearState(year);
-    const storageKey = getStorageKey(context);
+    const storageKey = getStorageKey();
     if (year) {
       localStorage.setItem(storageKey, year.id);
     } else {

@@ -11,6 +11,7 @@ import { TeacherImport } from "./TeacherImport";
 import { Teacher, CreateTeacherData } from "@/hooks/useTeachers";
 import { toast } from "sonner";
 import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
+import { useSubscriptionLimits, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
 
 interface TeachersManagementSectionProps {
   schoolId: string;
@@ -32,8 +33,28 @@ export function TeachersManagementSection({
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  
+  // Check subscription limits
+  const limits = useSubscriptionLimits(schoolId);
 
   const handleImportComplete = async (importedTeachers: any[]) => {
+    // Check if we can add teachers before importing
+    if (!checkCanAddTeacher(limits)) {
+      return;
+    }
+    
+    // Check if importing would exceed limit
+    if (limits.teacherLimit !== null) {
+      const wouldExceed = limits.currentTeachers + importedTeachers.length > limits.teacherLimit;
+      if (wouldExceed) {
+        const remaining = limits.teacherLimit - limits.currentTeachers;
+        toast.error("Limite professeur atteint. Contactez le support", {
+          description: `Vous pouvez seulement ajouter ${remaining} professeur(s) de plus. Vous essayez d'importer ${importedTeachers.length} professeurs.`,
+        });
+        return;
+      }
+    }
+    
     let successCount = 0;
     let errorCount = 0;
 

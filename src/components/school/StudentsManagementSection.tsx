@@ -8,6 +8,7 @@ import { ArchivedStudentsSection } from "./ArchivedStudentsSection";
 import { StudentViewDialog } from "./StudentViewDialog";
 import { StudentEditDialog } from "./StudentEditDialog";
 import { toast } from "sonner";
+import { useSubscriptionLimits, checkCanAddStudent } from "@/hooks/useSubscriptionLimits";
 
 interface StudentWithClass {
   id: string;
@@ -45,6 +46,9 @@ export function StudentsManagementSection({
   const [selectedStudent, setSelectedStudent] = useState<StudentWithClass | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Check subscription limits
+  const limits = useSubscriptionLimits(schoolId);
 
   const handleViewStudent = (student: StudentWithClass) => {
     setSelectedStudent(student);
@@ -57,6 +61,23 @@ export function StudentsManagementSection({
   };
 
   const handleImportComplete = async (importedStudents: any[]) => {
+    // Check if we can add students before importing
+    if (!checkCanAddStudent(limits)) {
+      return;
+    }
+    
+    // Check if importing would exceed limit
+    if (limits.studentLimit !== null) {
+      const wouldExceed = limits.currentStudents + importedStudents.length > limits.studentLimit;
+      if (wouldExceed) {
+        const remaining = limits.studentLimit - limits.currentStudents;
+        toast.error("Limite étudiant atteint. Contactez le support", {
+          description: `Vous pouvez seulement ajouter ${remaining} étudiant(s) de plus. Vous essayez d'importer ${importedStudents.length} étudiants.`,
+        });
+        return;
+      }
+    }
+    
     let successCount = 0;
     let errorCount = 0;
 
