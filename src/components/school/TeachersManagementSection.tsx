@@ -104,7 +104,10 @@ export function TeachersManagementSection({
             </TabsContent>
 
             <TabsContent value="import" className="space-y-4">
-              <TeacherImport onImportComplete={handleImportComplete} />
+              <TeacherImport
+                schoolId={schoolId}
+                onImportComplete={handleImportComplete}
+              />
             </TabsContent>
 
             <TabsContent value="assignments" className="space-y-4">
