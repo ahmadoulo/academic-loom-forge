@@ -427,59 +427,45 @@ const SchoolDashboard = () => {
     email?: string;
     class_id: string;
     birth_date?: string;
-    cin_number: string; // Requis maintenant
+    cin_number: string;
     student_phone?: string;
     parent_phone?: string;
   }) => {
-    console.log('=== SchoolDashboard handleCreateStudent DÉBUT ===');
-    console.log('Données reçues du formulaire:', studentData);
-    console.log('schoolId disponible:', schoolId);
-    console.log('school object:', school);
-    console.log('school.id:', school?.id);
-    console.log('createStudent function disponible:', typeof createStudent);
-    console.log('classes disponibles:', classes);
-    console.log('nombre de classes:', classes?.length);
+    // CRITICAL: Vérifier les limites AVANT toute création
+    if (!checkCanAddStudent(limits)) {
+      return;
+    }
     
     if (!school?.id) {
-      console.error('❌ schoolId manquant');
-      console.log('school object complet:', JSON.stringify(school, null, 2));
       toast.error('Erreur: École non identifiée');
       return;
     }
 
     if (!createStudent || typeof createStudent !== 'function') {
-      console.error('❌ createStudent function non disponible');
-      console.log('createStudent type:', typeof createStudent);
       toast.error('Erreur: Function de création non disponible');
       return;
     }
 
-    // Validation supplémentaire des données
+    // Validation des données
     if (!studentData.firstname?.trim()) {
-      console.error('❌ Prénom manquant');
       toast.error('Le prénom est requis');
       return;
     }
 
     if (!studentData.lastname?.trim()) {
-      console.error('❌ Nom manquant');
       toast.error('Le nom est requis');
       return;
     }
 
     if (!studentData.class_id) {
-      console.error('❌ Classe non sélectionnée');
       toast.error('La classe est requise');
       return;
     }
 
     if (!studentData.cin_number?.trim()) {
-      console.error('❌ CIN manquant');
       toast.error('Le numéro CIN est requis');
       return;
     }
-
-    console.log('✅ Toutes les validations passées');
 
     try {
       const completeStudentData = {
@@ -487,33 +473,10 @@ const SchoolDashboard = () => {
         school_id: school.id,
       };
       
-      console.log('Données complètes pour createStudent:', completeStudentData);
-      console.log('🚀 Appel de createStudent...');
-      
-      const result = await createStudent(completeStudentData);
-      console.log('✅ Résultat createStudent:', result);
-      console.log('✅ Étudiant créé avec succès');
-      
-      console.log('🔒 Fermeture du dialog...');
+      await createStudent(completeStudentData);
       setIsStudentDialogOpen(false);
-      console.log('✅ Dialog fermé');
-      
-      console.log('=== SchoolDashboard handleCreateStudent FIN SUCCESS ===');
     } catch (error) {
-      console.error('❌ Erreur dans handleCreateStudent:', error);
-      console.error('❌ Type d\'erreur:', typeof error);
-      console.error('❌ Message d\'erreur:', error instanceof Error ? error.message : String(error));
-      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
-      
-      // Log détaillé de l'erreur
-      if (error && typeof error === 'object') {
-        console.error('❌ Propriétés de l\'erreur:');
-        Object.keys(error).forEach(key => {
-          console.error(`   ${key}:`, (error as any)[key]);
-        });
-      }
-      
-      console.log('=== SchoolDashboard handleCreateStudent FIN ERREUR ===');
+      console.error('Erreur lors de la création de l\'étudiant:', error);
     }
   };
 
@@ -824,7 +787,7 @@ const SchoolDashboard = () => {
                       <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gestion des Étudiants</h2>
                       <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les inscriptions et informations des étudiants</p>
                     </div>
-                    <Button onClick={() => setIsStudentDialogOpen(true)} size="lg" className="gap-2 w-full sm:w-auto">
+                    <Button onClick={openStudentDialogWithLimit} size="lg" className="gap-2 w-full sm:w-auto">
                       <UserPlus className="h-5 w-5" />
                       Ajouter un Étudiant
                     </Button>
@@ -985,10 +948,7 @@ const SchoolDashboard = () => {
                       <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les professeurs, assignations et archives</p>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setEditingTeacher(null);
-                        setIsTeacherDialogOpen(true);
-                      }} 
+                      onClick={openTeacherDialogWithLimit} 
                       size="lg" 
                       className="gap-2 w-full sm:w-auto"
                       disabled={isReadOnly}
