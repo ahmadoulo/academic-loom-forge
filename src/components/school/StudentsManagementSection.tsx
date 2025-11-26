@@ -100,6 +100,7 @@ export function StudentsManagementSection({
 
             <TabsContent value="list" className="space-y-4">
               <StudentsListSection
+                schoolId={schoolId}
                 students={students}
                 classes={classes}
                 loading={loading}
