@@ -245,16 +245,26 @@ const SchoolDashboard = () => {
     return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [students, grades, classes, school?.id]);
 
+  // Helper functions to open dialogs with subscription limit checks
+  const openStudentDialogWithLimit = () => {
+    if (checkCanAddStudent(limits)) {
+      setIsStudentDialogOpen(true);
+    }
+  };
+
+  const openTeacherDialogWithLimit = () => {
+    if (checkCanAddTeacher(limits)) {
+      setEditingTeacher(null);
+      setIsTeacherDialogOpen(true);
+    }
+  };
+
   const quickActions = [
     {
       title: "Nouvel Étudiant",
       description: "Inscrire un étudiant",
       icon: UserPlus,
-      onClick: () => {
-        if (checkCanAddStudent(limits)) {
-          setIsStudentDialogOpen(true);
-        }
-      },
+      onClick: openStudentDialogWithLimit,
       variant: "default" as const
     },
     {
@@ -268,11 +278,7 @@ const SchoolDashboard = () => {
       title: "Nouveau Professeur",
       description: "Ajouter un enseignant",
       icon: GraduationCap,
-      onClick: () => {
-        if (checkCanAddTeacher(limits)) {
-          setIsTeacherDialogOpen(true);
-        }
-      },
+      onClick: openTeacherDialogWithLimit,
       variant: "outline" as const
     },
     {
