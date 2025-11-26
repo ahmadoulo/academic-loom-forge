@@ -139,6 +139,10 @@ export function SchoolSubscriptionSection({ schoolId }: SchoolSubscriptionSectio
     </Badge>;
   };
 
+  // Get effective limits (custom limits override plan limits)
+  const studentLimit = subscription.custom_student_limit || plan?.student_limit || null;
+  const teacherLimit = subscription.custom_teacher_limit || plan?.teacher_limit || null;
+
   const calculatePercentage = (used: number, limit: number | null) => {
     if (!limit) return 0;
     return Math.min((used / limit) * 100, 100);
@@ -216,13 +220,13 @@ export function SchoolSubscriptionSection({ schoolId }: SchoolSubscriptionSectio
                 <span className="font-medium">Étudiants</span>
               </div>
               <span className="text-sm text-muted-foreground">
-                {stats.studentsCount} / {plan?.student_limit || '∞'}
+                {stats.studentsCount} / {studentLimit || '∞'}
               </span>
             </div>
-            {plan?.student_limit && (
+            {studentLimit && (
               <>
                 <Progress 
-                  value={calculatePercentage(stats.studentsCount, plan.student_limit)}
+                  value={calculatePercentage(stats.studentsCount, studentLimit)}
                   className="h-2"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -230,7 +234,7 @@ export function SchoolSubscriptionSection({ schoolId }: SchoolSubscriptionSectio
                     {stats.studentsCount} utilisés
                   </span>
                   <span>
-                    {plan.student_limit - stats.studentsCount} restants
+                    {studentLimit - stats.studentsCount} restants
                   </span>
                 </div>
               </>
@@ -245,13 +249,13 @@ export function SchoolSubscriptionSection({ schoolId }: SchoolSubscriptionSectio
                 <span className="font-medium">Professeurs</span>
               </div>
               <span className="text-sm text-muted-foreground">
-                {stats.teachersCount} / {plan?.teacher_limit || '∞'}
+                {stats.teachersCount} / {teacherLimit || '∞'}
               </span>
             </div>
-            {plan?.teacher_limit && (
+            {teacherLimit && (
               <>
                 <Progress 
-                  value={calculatePercentage(stats.teachersCount, plan.teacher_limit)}
+                  value={calculatePercentage(stats.teachersCount, teacherLimit)}
                   className="h-2"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -259,7 +263,7 @@ export function SchoolSubscriptionSection({ schoolId }: SchoolSubscriptionSectio
                     {stats.teachersCount} utilisés
                   </span>
                   <span>
-                    {plan.teacher_limit - stats.teachersCount} restants
+                    {teacherLimit - stats.teachersCount} restants
                   </span>
                 </div>
               </>

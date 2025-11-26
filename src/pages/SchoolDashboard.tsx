@@ -69,6 +69,7 @@ import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
+import { SubscriptionUsageCard } from "@/components/school/SubscriptionUsageCard";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -616,6 +617,13 @@ const SchoolDashboard = () => {
                       <RecentActivity activities={recentActivities} />
                     </div>
                   </div>
+
+                  {/* Subscription Usage Overview */}
+                  {school?.id && (
+                    <div className="mb-6 lg:mb-8">
+                      <SubscriptionUsageCard schoolId={school.id} />
+                    </div>
+                  )}
                   
                   {/* Nouvelles sections avec données réelles */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

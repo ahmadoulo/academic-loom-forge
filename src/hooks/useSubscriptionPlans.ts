@@ -27,10 +27,21 @@ export const useSubscriptionPlans = () => {
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
-        .order('type', { ascending: true });
+        .order('type', { ascending: true })
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPlans(data || []);
+      
+      // Remove duplicates by keeping only the most recent plan for each type
+      const uniquePlans = data?.reduce((acc, plan) => {
+        const existing = acc.find(p => p.type === plan.type);
+        if (!existing) {
+          acc.push(plan);
+        }
+        return acc;
+      }, [] as SubscriptionPlan[]) || [];
+      
+      setPlans(uniquePlans);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des plans');
       toast.error('Erreur lors du chargement des plans');
