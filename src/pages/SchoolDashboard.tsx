@@ -69,6 +69,7 @@ import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
+import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -108,6 +109,9 @@ const SchoolDashboard = () => {
   const { getSchoolByIdentifier } = useSchools();
   const [school, setSchool] = useState<any>(null);
   const [schoolLoading, setSchoolLoading] = useState(true);
+  
+  // Check subscription limits
+  const limits = useSubscriptionLimits(school?.id || '');
   
   // Activer l'envoi automatique des notifications d'absence en arrière-plan
   useAutoAbsenceNotifications();
@@ -246,7 +250,11 @@ const SchoolDashboard = () => {
       title: "Nouvel Étudiant",
       description: "Inscrire un étudiant",
       icon: UserPlus,
-      onClick: () => setIsStudentDialogOpen(true),
+      onClick: () => {
+        if (checkCanAddStudent(limits)) {
+          setIsStudentDialogOpen(true);
+        }
+      },
       variant: "default" as const
     },
     {
@@ -260,7 +268,11 @@ const SchoolDashboard = () => {
       title: "Nouveau Professeur",
       description: "Ajouter un enseignant",
       icon: GraduationCap,
-      onClick: () => setIsTeacherDialogOpen(true),
+      onClick: () => {
+        if (checkCanAddTeacher(limits)) {
+          setIsTeacherDialogOpen(true);
+        }
+      },
       variant: "outline" as const
     },
     {

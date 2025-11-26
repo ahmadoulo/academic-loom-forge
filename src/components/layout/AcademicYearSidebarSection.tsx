@@ -30,7 +30,7 @@ export const AcademicYearSidebarSection = ({ context }: AcademicYearSidebarSecti
   const handleValidate = () => {
     const year = availableYears.find(y => y.id === tempYear);
     if (year) {
-      setSelectedYear(year, context);
+      setSelectedYear(year);
       toast.success(`Année scolaire changée vers ${year.name}`);
     }
   };
