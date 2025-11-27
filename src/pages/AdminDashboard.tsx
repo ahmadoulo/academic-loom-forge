@@ -10,8 +10,8 @@ import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SubscriptionsSection } from "@/components/admin/SubscriptionsSection";
 import { SubscriptionPlanManagement } from "@/components/admin/SubscriptionPlanManagement";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
-import { UserManagement } from "@/components/settings/UserManagement";
-import { RoleManagement } from "@/components/settings/RoleManagement";
+import { SaasUserManagement } from "@/components/settings/SaasUserManagement";
+import { SaasRoleManagement } from "@/components/settings/SaasRoleManagement";
 import { SchoolYearManagement } from "@/components/settings/SchoolYearManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
@@ -101,8 +101,8 @@ const AdminDashboard = () => {
             onTabChange={setSettingsTab}
             availableTabs={["users", "roles", "school-years"]}
           >
-            {settingsTab === "users" && <UserManagement />}
-            {settingsTab === "roles" && <RoleManagement />}
+            {settingsTab === "users" && <SaasUserManagement />}
+            {settingsTab === "roles" && <SaasRoleManagement />}
             {settingsTab === "school-years" && <SchoolYearManagement />}
           </SettingsLayout>
         );

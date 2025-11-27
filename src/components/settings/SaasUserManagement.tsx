@@ -25,25 +25,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useSchoolUsers } from "@/hooks/useSchoolUsers";
-import { useSchoolRoles } from "@/hooks/useSchoolRoles";
+import { useSaasUsers } from "@/hooks/useSaasUsers";
+import { useSaasRoles } from "@/hooks/useSaasRoles";
 import { Plus, Pencil, Trash2, Search, Key } from "lucide-react";
+import { toast } from "sonner";
 
-interface SchoolUserManagementProps {
-  schoolId: string;
-}
-
-export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
-  const { users, loading, createUser, updateUser, deleteUser, resetPassword } =
-    useSchoolUsers(schoolId);
-  const { roles } = useSchoolRoles(schoolId);
+export function SaasUserManagement() {
+  const { users, loading, createUser, updateUser, deleteUser, resetPassword } = useSaasUsers();
+  const { roles } = useSaasRoles();
   const [searchTerm, setSearchTerm] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    school_id: schoolId,
     email: "",
     first_name: "",
     last_name: "",
@@ -77,7 +72,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetUserId || !newPassword) return;
-
+    
     try {
       await resetPassword(resetUserId, newPassword);
       setShowPasswordDialog(false);
@@ -91,7 +86,6 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const handleEdit = (user: any) => {
     setEditingUser(user);
     setFormData({
-      school_id: schoolId,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -113,7 +107,6 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
 
   const resetForm = () => {
     setFormData({
-      school_id: schoolId,
       email: "",
       first_name: "",
       last_name: "",
@@ -136,7 +129,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           Gestion des utilisateurs
         </h2>
         <p className="text-muted-foreground">
-          Gérez les comptes utilisateurs de votre école
+          Gérez les comptes utilisateurs de l'administration SaaS
         </p>
       </div>
 
@@ -182,10 +175,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-8 text-muted-foreground"
-                >
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Aucun utilisateur trouvé
                 </TableCell>
               </TableRow>
@@ -248,9 +238,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingUser
-                ? "Modifier l'utilisateur"
-                : "Ajouter un utilisateur"}
+              {editingUser ? "Modifier l'utilisateur" : "Ajouter un utilisateur"}
             </DialogTitle>
             <DialogDescription>
               Remplissez les informations de l'utilisateur
