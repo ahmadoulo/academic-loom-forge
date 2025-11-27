@@ -3,6 +3,7 @@ import { SettingsLayout } from "./SettingsLayout";
 import { SchoolSettings } from "./SchoolSettings";
 import { StudentAccountsSection } from "../school/StudentAccountsSection";
 import { SchoolUserManagement } from "./SchoolUserManagement";
+import { SchoolRoleManagement } from "./SchoolRoleManagement";
 import { SchoolYearManagement } from "./SchoolYearManagement";
 import { SemesterManagement } from "./SemesterManagement";
 import { CyclesManagement } from "../school/CyclesManagement";
@@ -21,7 +22,8 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
     "cycles",
     "options",
     "student-accounts",
-    "users"
+    "users",
+    "roles"
   ];
 
   const renderContent = () => {
@@ -38,6 +40,8 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
         return <StudentAccountsSection schoolId={schoolId} />;
       case "users":
         return <SchoolUserManagement schoolId={schoolId} />;
+      case "roles":
+        return <SchoolRoleManagement schoolId={schoolId} />;
       default:
         return <SchoolSettings schoolId={schoolId} />;
     }
