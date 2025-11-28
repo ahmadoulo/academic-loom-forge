@@ -38,6 +38,7 @@ import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { StudentsListSection } from "@/components/school/StudentsListSection";
 import { StudentsManagementSection } from "@/components/school/StudentsManagementSection";
 import { ClassesListSection } from "@/components/school/ClassesListSection";
+import { SchoolUserManagement } from "@/components/settings/SchoolUserManagement";
 import { ClassDetailsView } from "@/components/school/ClassDetailsView";
 import { DocumentRequestsManagement } from "@/components/school/DocumentRequestsManagement";
 import { DocumentsManagementSection } from "@/components/school/DocumentsManagementSection";
