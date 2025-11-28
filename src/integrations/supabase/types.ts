@@ -1280,83 +1280,6 @@ export type Database = {
           },
         ]
       }
-      saas_roles: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          is_system: boolean | null
-          name: string
-          permissions: Json
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name: string
-          permissions?: Json
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name?: string
-          permissions?: Json
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      saas_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          first_name: string
-          id: string
-          is_active: boolean | null
-          last_login: string | null
-          last_name: string
-          password_hash: string
-          role_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          first_name: string
-          id?: string
-          is_active?: boolean | null
-          last_login?: string | null
-          last_name: string
-          password_hash: string
-          role_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          first_name?: string
-          id?: string
-          is_active?: boolean | null
-          last_login?: string | null
-          last_name?: string
-          password_hash?: string
-          role_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saas_users_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "saas_roles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       school_notifications: {
         Row: {
           class_id: string | null
@@ -1407,47 +1330,6 @@ export type Database = {
           },
           {
             foreignKeyName: "school_notifications_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      school_roles: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          is_system: boolean | null
-          name: string
-          permissions: Json
-          school_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name: string
-          permissions?: Json
-          school_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_system?: boolean | null
-          name?: string
-          permissions?: Json
-          school_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "school_roles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -1508,63 +1390,6 @@ export type Database = {
             columns: ["school_year_id"]
             isOneToOne: false
             referencedRelation: "school_years"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      school_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          first_name: string
-          id: string
-          is_active: boolean | null
-          last_login: string | null
-          last_name: string
-          password_hash: string
-          role_id: string | null
-          school_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          first_name: string
-          id?: string
-          is_active?: boolean | null
-          last_login?: string | null
-          last_name: string
-          password_hash: string
-          role_id?: string | null
-          school_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          first_name?: string
-          id?: string
-          is_active?: boolean | null
-          last_login?: string | null
-          last_name?: string
-          password_hash?: string
-          role_id?: string | null
-          school_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "school_users_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "school_roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "school_users_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2358,10 +2183,6 @@ export type Database = {
           p_school_id: string
         }
         Returns: boolean
-      }
-      create_default_school_roles: {
-        Args: { p_school_id: string }
-        Returns: undefined
       }
       create_next_school_year: {
         Args: { current_year_id: string }
