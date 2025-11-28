@@ -10,8 +10,6 @@ import { SubscriptionForm } from "@/components/admin/SubscriptionForm";
 import { SubscriptionsSection } from "@/components/admin/SubscriptionsSection";
 import { SubscriptionPlanManagement } from "@/components/admin/SubscriptionPlanManagement";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
-import { SaasUserManagement } from "@/components/settings/SaasUserManagement";
-import { SaasRoleManagement } from "@/components/settings/SaasRoleManagement";
 import { SchoolYearManagement } from "@/components/settings/SchoolYearManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +20,7 @@ import { SchoolForm } from "@/components/admin/SchoolForm";
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [settingsTab, setSettingsTab] = useState("users");
+  const [settingsTab, setSettingsTab] = useState("school-years");
   const [showSchoolDialog, setShowSchoolDialog] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
@@ -99,10 +97,8 @@ const AdminDashboard = () => {
           <SettingsLayout
             activeTab={settingsTab}
             onTabChange={setSettingsTab}
-            availableTabs={["users", "roles", "school-years"]}
+            availableTabs={["school-years"]}
           >
-            {settingsTab === "users" && <SaasUserManagement />}
-            {settingsTab === "roles" && <SaasRoleManagement />}
             {settingsTab === "school-years" && <SchoolYearManagement />}
           </SettingsLayout>
         );
