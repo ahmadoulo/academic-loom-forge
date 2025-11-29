@@ -231,25 +231,29 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   const addBonus = async (gradeId: string, bonus: number, bonusReason: string) => {
     try {
-      // Récupérer l'utilisateur depuis localStorage (système custom)
+      // Préparer les données de bonus sans forcer l'authentification
+      const bonusUpdate: any = {
+        bonus,
+        bonus_reason: bonusReason,
+        bonus_given_at: new Date().toISOString()
+      };
+
+      // Si un utilisateur custom est présent, l'utiliser pour bonus_given_by
       const storedUser = localStorage.getItem('customAuthUser');
-      if (!storedUser) {
-        throw new Error('Non authentifié');
-      }
-      
-      const userData = JSON.parse(storedUser);
-      if (!userData.id) {
-        throw new Error('Utilisateur invalide');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData?.id) {
+            bonusUpdate.bonus_given_by = userData.id;
+          }
+        } catch (parseError) {
+          console.warn('[useGrades] Impossible de parser customAuthUser depuis le localStorage', parseError);
+        }
       }
 
       const { data, error } = await supabase
         .from('grades')
-        .update({
-          bonus,
-          bonus_reason: bonusReason,
-          bonus_given_by: userData.id,
-          bonus_given_at: new Date().toISOString()
-        })
+        .update(bonusUpdate)
         .eq('id', gradeId)
         .select(`
           *,
