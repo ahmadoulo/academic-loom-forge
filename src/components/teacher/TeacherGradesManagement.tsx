@@ -13,6 +13,7 @@ import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useGrades } from "@/hooks/useGrades";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { GradeBonusDialog } from "./GradeBonusDialog";
+import { GradeDetailDialog } from "./GradeDetailDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -87,6 +88,8 @@ export function TeacherGradesManagement({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
   const [selectedGrade, setSelectedGradeForBonus] = useState<Grade | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedGradeForDetail, setSelectedGradeForDetail] = useState<Grade | null>(null);
   
   const { toast } = useToast();
   const { selectedYear } = useAcademicYear();
@@ -141,8 +144,14 @@ export function TeacherGradesManagement({
     const studentGrades = getStudentGrades(studentId);
     if (studentGrades.length === 0) return "N/A";
     
+    // Inclure le bonus dans le calcul de la moyenne
     const total = studentGrades.reduce((sum, grade) => sum + Number(grade.grade) + (grade.bonus || 0), 0);
     return (total / studentGrades.length).toFixed(1);
+  };
+
+  const handleGradeClick = (grade: Grade) => {
+    setSelectedGradeForDetail(grade);
+    setDetailDialogOpen(true);
   };
 
   const getSubjectName = (subjectId: string) => {
@@ -281,6 +290,7 @@ export function TeacherGradesManagement({
       .reduce((acc, subject) => {
         const subjectGrades = studentGrades.filter(g => g.subject_id === subject.id);
         if (subjectGrades.length > 0) {
+          // Inclure le bonus dans le calcul de la moyenne par matière
           const subjectAverage = subjectGrades.reduce((sum, g) => sum + Number(g.grade) + (g.bonus || 0), 0) / subjectGrades.length;
           acc.push({
             subject,
@@ -473,10 +483,39 @@ export function TeacherGradesManagement({
                              'Devoir'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-semibold">
-                            {grade.grade.toFixed(2)}
-                          </Badge>
+                        <TableCell 
+                          className={`text-center cursor-pointer transition-colors ${
+                            grade.bonus && grade.bonus > 0 
+                              ? 'bg-yellow-50/50 dark:bg-yellow-950/20 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/30' 
+                              : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => {
+                            const student = students.find(s => s.id === grade.student_id);
+                            const subject = subjects.find(s => s.id === grade.subject_id);
+                            if (student && subject) {
+                              setSelectedGradeForDetail(grade);
+                              setDetailDialogOpen(true);
+                            }
+                          }}
+                        >
+                          {grade.bonus && grade.bonus > 0 ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-xs text-muted-foreground line-through">
+                                {Number(grade.grade).toFixed(1)}
+                              </span>
+                              <Badge variant="outline" className={`font-bold ${(Number(grade.grade) + (grade.bonus || 0)) >= 10 ? 'text-emerald-600 border-emerald-600' : 'text-rose-600 border-rose-600'}`}>
+                                {(Number(grade.grade) + (grade.bonus || 0)).toFixed(1)}/20
+                              </Badge>
+                              <Badge className="gap-1 bg-yellow-500/10 text-yellow-700 border-yellow-500/20 text-xs mt-1">
+                                <Star className="h-2.5 w-2.5 fill-current" />
+                                +{grade.bonus}
+                              </Badge>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className={`font-semibold ${Number(grade.grade) >= 10 ? 'text-emerald-600 border-emerald-600' : 'text-rose-600 border-rose-600'}`}>
+                              {Number(grade.grade).toFixed(1)}/20
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           {grade.bonus && grade.bonus > 0 ? (
@@ -558,6 +597,16 @@ export function TeacherGradesManagement({
           currentGrade={selectedGrade.grade}
           currentBonus={selectedGrade.bonus || 0}
           onAddBonus={handleAddBonus}
+        />
+      )}
+
+      {selectedGradeForDetail && (
+        <GradeDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          grade={selectedGradeForDetail}
+          studentName={`${students.find(s => s.id === selectedGradeForDetail.student_id)?.firstname} ${students.find(s => s.id === selectedGradeForDetail.student_id)?.lastname}`}
+          subjectName={subjects.find(s => s.id === selectedGradeForDetail.subject_id)?.name || "Inconnu"}
         />
       )}
       
