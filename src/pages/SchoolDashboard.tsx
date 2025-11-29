@@ -60,6 +60,7 @@ import { YearPreparationWizard } from "@/components/school/YearPreparationWizard
 import { ArchivedStudentsSection } from "@/components/school/ArchivedStudentsSection";
 import { ArchivedSubjectsSection } from "@/components/school/ArchivedSubjectsSection";
 import { TeachersManagementSection } from "@/components/school/TeachersManagementSection";
+import { SubjectsManagementSection } from "@/components/school/SubjectsManagementSection";
 import SchoolExamDocumentsPage from "./SchoolExamDocumentsPage";
 import { NotificationsSection } from "@/components/school/NotificationsSection";
 import { ArchivedTeachersSection } from "@/components/school/ArchivedTeachersSection";
@@ -855,7 +856,37 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "subjects" && (
-                <div className="space-y-4 lg:space-y-6">
+                <div className="space-y-6">
+                  <SubjectsManagementSection
+                    subjects={subjects}
+                    classes={classes}
+                    teachers={teachers}
+                    loading={subjectsLoading}
+                    onCreateSubject={() => {
+                      setEditingSubject(null);
+                      setIsSubjectDialogOpen(true);
+                    }}
+                    onEditSubject={(subject) => {
+                      setEditingSubject(subject);
+                      setIsSubjectDialogOpen(true);
+                    }}
+                    onArchiveSubject={(id, name) =>
+                      setDeleteDialog({
+                        open: true,
+                        type: "subject",
+                        id,
+                        name,
+                      })
+                    }
+                  />
+                  
+                  <ArchivedSubjectsSection schoolId={school.id} />
+                </div>
+              )}
+              
+              {/* Keep the old subject dialog below - it's used by the new component */}
+              {activeTab === "subjects-old-hidden" && (
+                <div className="space-y-4 lg:space-y-6" style={{ display: 'none' }}>
                   <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                     <h2 className="text-xl font-semibold">Matières Enseignées</h2>
                     <Button onClick={() => {
