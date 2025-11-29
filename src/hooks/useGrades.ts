@@ -15,6 +15,13 @@ export interface Grade {
   exam_date?: string;
   created_at: string;
   updated_at: string;
+  bonus?: number;
+  bonus_reason?: string;
+  bonus_given_by?: string;
+  bonus_given_at?: string;
+  is_modified?: boolean;
+  school_semester_id?: string;
+  school_year_id?: string;
 }
 
 export interface GradeWithDetails extends Grade {

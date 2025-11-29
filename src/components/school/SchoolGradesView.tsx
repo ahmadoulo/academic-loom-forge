@@ -137,7 +137,8 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
     const studentGrades = getStudentGrades(studentId);
     if (studentGrades.length === 0) return "N/A";
     
-    const total = studentGrades.reduce((sum, grade) => sum + Number(grade.grade), 0);
+    // Inclure le bonus dans le calcul de la moyenne
+    const total = studentGrades.reduce((sum, grade) => sum + Number(grade.grade) + (grade.bonus || 0), 0);
     return (total / studentGrades.length).toFixed(1);
   };
 
@@ -240,7 +241,8 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
     const gradesBySubject = subjects.reduce((acc, subject) => {
       const subjectGrades = studentGrades.filter(g => g.subject_id === subject.id);
       if (subjectGrades.length > 0) {
-        const subjectAverage = subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length;
+        // Inclure le bonus dans le calcul de la moyenne par matière
+        const subjectAverage = subjectGrades.reduce((sum, g) => sum + Number(g.grade) + (g.bonus || 0), 0) / subjectGrades.length;
         acc.push({
           subject,
           grades: subjectGrades,
@@ -311,7 +313,11 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                     {subjectGrades.map(grade => (
                       <div 
                         key={grade.id} 
-                        className="group relative border-2 rounded-xl p-4 bg-gradient-to-br from-background to-accent/5 hover:border-primary/30 transition-all duration-300 hover:shadow-md"
+                        className={`group relative border-2 rounded-xl p-4 transition-all duration-300 hover:shadow-md ${
+                          grade.bonus && grade.bonus > 0
+                            ? 'bg-gradient-to-br from-yellow-50/50 to-yellow-100/30 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-300/50 dark:border-yellow-700/50 hover:border-yellow-400/70'
+                            : 'bg-gradient-to-br from-background to-accent/5 hover:border-primary/30'
+                        }`}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <Badge variant="secondary" className="text-xs font-medium">
@@ -320,36 +326,27 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                              'Devoir'}
                           </Badge>
                           <div className="flex items-center gap-2">
-                            <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                              {Number(grade.grade).toFixed(1)}
-                            </span>
+                            {grade.bonus && grade.bonus > 0 ? (
+                              <>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    {Number(grade.grade).toFixed(1)}
+                                  </span>
+                                  <span className={`font-bold text-2xl ${(Number(grade.grade) + (grade.bonus || 0)) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    {(Number(grade.grade) + (grade.bonus || 0)).toFixed(1)}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {Number(grade.grade).toFixed(1)}
+                              </span>
+                            )}
                             {grade.bonus && grade.bonus > 0 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge className="gap-1 cursor-help bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border-yellow-500/20 text-xs">
-                                      <Star className="h-2.5 w-2.5 fill-current" />
-                                      +{grade.bonus}
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs">
-                                    <p className="font-semibold mb-1">Raison du bonus:</p>
-                                    <p className="text-sm">{grade.bonus_reason}</p>
-                                    {(grade.bonus_given_by_credential || grade.teachers) && (
-                                      <p className="text-xs text-muted-foreground mt-2">
-                                        Par: {grade.bonus_given_by_credential
-                                          ? `${grade.bonus_given_by_credential.first_name} ${grade.bonus_given_by_credential.last_name}`
-                                          : `${grade.teachers?.firstname} ${grade.teachers?.lastname}`}
-                                      </p>
-                                    )}
-                                    {grade.bonus_given_at && (
-                                      <p className="text-xs text-muted-foreground">
-                                        Le: {format(new Date(grade.bonus_given_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
-                                      </p>
-                                    )}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <Badge className="gap-1 bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border-yellow-500/20 text-xs ml-1">
+                                <Star className="h-2.5 w-2.5 fill-current" />
+                                +{grade.bonus}
+                              </Badge>
                             )}
                           </div>
                         </div>
