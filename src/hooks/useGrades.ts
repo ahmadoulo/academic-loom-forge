@@ -29,6 +29,10 @@ export interface GradeWithDetails extends Grade {
     firstname: string;
     lastname: string;
   };
+  bonus_given_by_profile?: {
+    first_name: string;
+    last_name: string;
+  } | null;
 }
 
 export interface CreateGradeData {
@@ -69,6 +73,10 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
           teachers (
             firstname,
             lastname
+          ),
+          bonus_given_by_profile:profiles!grades_bonus_given_by_fkey (
+            first_name,
+            last_name
           )
         `);
 
@@ -221,6 +229,55 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
     }
   };
 
+  const addBonus = async (gradeId: string, bonus: number, bonusReason: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+
+      const { data, error } = await supabase
+        .from('grades')
+        .update({
+          bonus,
+          bonus_reason: bonusReason,
+          bonus_given_by: user.id,
+          bonus_given_at: new Date().toISOString()
+        })
+        .eq('id', gradeId)
+        .select(`
+          *,
+          students (
+            firstname,
+            lastname
+          ),
+          subjects (
+            name
+          ),
+          teachers (
+            firstname,
+            lastname
+          ),
+          bonus_given_by_profile:profiles!grades_bonus_given_by_fkey (
+            first_name,
+            last_name
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+      
+      setGrades(prev => prev.map(grade => 
+        grade.id === gradeId ? data : grade
+      ));
+      toast.success('Bonus ajouté avec succès');
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'ajout du bonus';
+      setError(message);
+      toast.error(message);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchGrades();
   }, [subjectId, studentId, teacherId, yearId, displayYearId, semesterId]);
@@ -232,6 +289,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
     createGrade,
     updateGrade,
     deleteGrade,
+    addBonus,
     refetch: fetchGrades
   };
 };

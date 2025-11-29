@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Loader2, ArrowLeft, FileDown, Search } from "lucide-react";
+import { BookOpen, Download, Loader2, ArrowLeft, FileDown, Search, Star } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { generateSchoolGradesReport } from "@/utils/schoolGradesPdfExport";
 import { useToast } from "@/hooks/use-toast";
 import { useSchools } from "@/hooks/useSchools";
@@ -32,6 +35,14 @@ interface Grade {
   created_at: string;
   exam_date?: string;
   school_semester_id?: string;
+  bonus?: number;
+  bonus_reason?: string;
+  bonus_given_by?: string;
+  bonus_given_at?: string;
+  bonus_given_by_profile?: {
+    first_name: string;
+    last_name: string;
+  } | null;
 }
 
 interface Subject {
@@ -304,9 +315,37 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                              grade.grade_type === 'controle' ? 'Contrôle' : 
                              'Devoir'}
                           </Badge>
-                          <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {Number(grade.grade).toFixed(1)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                              {Number(grade.grade).toFixed(1)}
+                            </span>
+                            {grade.bonus && grade.bonus > 0 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge className="gap-1 cursor-help bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border-yellow-500/20 text-xs">
+                                      <Star className="h-2.5 w-2.5 fill-current" />
+                                      +{grade.bonus}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p className="font-semibold mb-1">Raison du bonus:</p>
+                                    <p className="text-sm">{grade.bonus_reason}</p>
+                                    {grade.bonus_given_by_profile && (
+                                      <p className="text-xs text-muted-foreground mt-2">
+                                        Par: {grade.bonus_given_by_profile.first_name} {grade.bonus_given_by_profile.last_name}
+                                      </p>
+                                    )}
+                                    {grade.bonus_given_at && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Le: {format(new Date(grade.bonus_given_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                                      </p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground font-medium">
                           {grade.exam_date 

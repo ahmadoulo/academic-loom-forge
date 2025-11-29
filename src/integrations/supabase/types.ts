@@ -1097,6 +1097,10 @@ export type Database = {
       }
       grades: {
         Row: {
+          bonus: number | null
+          bonus_given_at: string | null
+          bonus_given_by: string | null
+          bonus_reason: string | null
           comment: string | null
           created_at: string
           exam_date: string | null
@@ -1112,6 +1116,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bonus?: number | null
+          bonus_given_at?: string | null
+          bonus_given_by?: string | null
+          bonus_reason?: string | null
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -1127,6 +1135,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bonus?: number | null
+          bonus_given_at?: string | null
+          bonus_given_by?: string | null
+          bonus_reason?: string | null
           comment?: string | null
           created_at?: string
           exam_date?: string | null
@@ -1142,6 +1154,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grades_bonus_given_by_fkey"
+            columns: ["bonus_given_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "grades_school_semester_id_fkey"
             columns: ["school_semester_id"]

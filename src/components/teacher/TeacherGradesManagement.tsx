@@ -5,13 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Loader2, ArrowLeft, FileDown, Search, Edit2, Trash2, Save, X } from "lucide-react";
+import { BookOpen, Download, Loader2, ArrowLeft, FileDown, Search, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSchools } from "@/hooks/useSchools";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useGrades } from "@/hooks/useGrades";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { GradeBonusDialog } from "./GradeBonusDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface Student {
   id: string;
@@ -32,6 +36,14 @@ interface Grade {
   exam_date?: string;
   school_semester_id?: string;
   is_modified?: boolean;
+  bonus?: number;
+  bonus_reason?: string;
+  bonus_given_by?: string;
+  bonus_given_at?: string;
+  bonus_given_by_profile?: {
+    first_name: string;
+    last_name: string;
+  } | null;
 }
 
 interface Subject {
@@ -69,11 +81,14 @@ export function TeacherGradesManagement({
   const [editValue, setEditValue] = useState<string>("");
   const [editComment, setEditComment] = useState<string>("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
+  const [selectedGrade, setSelectedGradeForBonus] = useState<Grade | null>(null);
+  
   const { toast } = useToast();
   const { selectedYear } = useAcademicYear();
   
   const { semesters } = useSchoolSemesters(schoolId, undefined);
-  const { grades, updateGrade, deleteGrade, refetch } = useGrades(
+  const { grades, updateGrade, deleteGrade, addBonus, refetch } = useGrades(
     undefined, 
     undefined, 
     teacherId, 
@@ -91,6 +106,13 @@ export function TeacherGradesManagement({
   }, [semesters]);
 
   const displayGrades = grades as Grade[];
+
+  const handleAddBonus = async (bonus: number, reason: string) => {
+    if (!selectedGrade) return;
+    await addBonus(selectedGrade.id, bonus, reason);
+    setSelectedGradeForBonus(null);
+    await refetch();
+  };
 
   const filteredStudents = students.filter((s) => {
     const matchesClass = selectedClass === "all" || s.class_id === selectedClass;
@@ -115,7 +137,7 @@ export function TeacherGradesManagement({
     const studentGrades = getStudentGrades(studentId);
     if (studentGrades.length === 0) return "N/A";
     
-    const total = studentGrades.reduce((sum, grade) => sum + Number(grade.grade), 0);
+    const total = studentGrades.reduce((sum, grade) => sum + Number(grade.grade) + (grade.bonus || 0), 0);
     return (total / studentGrades.length).toFixed(1);
   };
 
@@ -255,7 +277,7 @@ export function TeacherGradesManagement({
       .reduce((acc, subject) => {
         const subjectGrades = studentGrades.filter(g => g.subject_id === subject.id);
         if (subjectGrades.length > 0) {
-          const subjectAverage = subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length;
+          const subjectAverage = subjectGrades.reduce((sum, g) => sum + Number(g.grade) + (g.bonus || 0), 0) / subjectGrades.length;
           acc.push({
             subject,
             grades: subjectGrades,
@@ -267,204 +289,63 @@ export function TeacherGradesManagement({
 
     return (
       <div className="space-y-4">
+        <Button variant="ghost" size="sm" className="gap-1 mb-4" onClick={() => setSelectedStudent(null)}>
+          <ArrowLeft className="h-4 w-4" />
+          Retour
+        </Button>
+
         <Card className="border-primary/20 shadow-xl bg-gradient-to-br from-background to-accent/5">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="ghost" 
-                onClick={() => setSelectedStudent(null)}
-                className="gap-2 hover:bg-primary/10"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Retour
-              </Button>
-              <div className="flex flex-col items-center">
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                  {selectedStudent.firstname} {selectedStudent.lastname}
-                </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <BookOpen className="h-6 w-6 text-primary" />
+              </div>
+              Notes de {selectedStudent.firstname} {selectedStudent.lastname}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-lg font-semibold">Informations de l'étudiant</h3>
+                <p>
+                  <span className="font-medium">Classe:</span> {studentClass?.name || 'N/A'}
+                </p>
+                <p>
+                  <span className="font-medium">Moyenne générale:</span> {average}
+                </p>
                 {currentSemesterInfo && (
-                  <Badge variant="outline" className="mt-2 border-primary/40 text-primary font-medium">
-                    {currentSemesterInfo.name}
-                  </Badge>
+                  <p>
+                    <span className="font-medium">Semestre:</span> {currentSemesterInfo.name}
+                  </p>
                 )}
               </div>
-              <div className="w-24" />
-            </div>
-            <div className="flex items-center justify-center gap-4 pt-4">
-              <Badge variant="secondary" className="text-base px-4 py-1.5">
-                {studentClass?.name}
-              </Badge>
-              <Badge variant="outline" className="text-base px-4 py-1.5">
-                {studentGrades.length} note(s)
-              </Badge>
-              <Badge 
-                variant={Number(average) >= 10 ? "default" : "destructive"}
-                className="text-lg px-5 py-1.5 font-bold"
-              >
-                Moyenne: {average}/20
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-6">
-              {gradesBySubject.map(({ subject, grades: subjectGrades, average: subjectAvg }) => (
-                <Card key={subject.id} className="border-primary/10 shadow-md hover:shadow-lg transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-5">
-                      <h3 className="font-bold text-xl flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                        {subject.name}
-                      </h3>
-                      <Badge 
-                        variant={subjectAvg >= 10 ? "default" : "destructive"}
-                        className="text-base px-4 py-1.5 font-semibold"
-                      >
-                        Moyenne: {subjectAvg.toFixed(2)}/20
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {subjectGrades.map(grade => (
-                        <div 
-                          key={grade.id} 
-                          className="group relative border-2 rounded-xl p-4 bg-gradient-to-br from-background to-accent/5 hover:border-primary/30 transition-all duration-300 hover:shadow-md"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <Badge variant="secondary" className="text-xs font-medium">
-                              {grade.grade_type === 'examen' ? 'Examen' : 
-                               grade.grade_type === 'controle' ? 'Contrôle' : 
-                               'Devoir'}
-                            </Badge>
-                            <div className="flex items-center gap-1">
-                              {editingGrade === grade.id ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleSaveEdit(grade.id)}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <Save className="h-3 w-3 text-emerald-600" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={handleCancelEdit}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <X className="h-3 w-3 text-muted-foreground" />
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleEditGrade(grade)}
-                                    disabled={grade.is_modified}
-                                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title={grade.is_modified ? "Note déjà modifiée" : "Modifier"}
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setDeleteConfirmId(grade.id)}
-                                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">Détails par matière</h3>
+                {gradesBySubject.length > 0 ? (
+                  <ul className="list-none space-y-2">
+                    {gradesBySubject.map(({ subject, grades, average }) => (
+                      <li key={subject.id} className="border rounded-md p-3 shadow-sm">
+                        <p className="font-semibold">{subject.name}</p>
+                        <p className="text-sm">
+                          Moyenne: {average.toFixed(1)} ({grades.length} notes)
+                        </p>
+                        {grades.map(grade => (
+                          <div key={grade.id} className="text-xs text-muted-foreground mt-1">
+                            {grade.grade_type}: {grade.grade} {grade.comment ? `(${grade.comment})` : ''}
                           </div>
-                          {editingGrade === grade.id ? (
-                            <div className="space-y-2">
-                              <Input
-                                type="number"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                min="0"
-                                max="20"
-                                step="0.5"
-                                className="h-8"
-                              />
-                              <Input
-                                value={editComment}
-                                onChange={(e) => setEditComment(e.target.value)}
-                                placeholder="Commentaire..."
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className={`font-bold text-2xl ${Number(grade.grade) >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                  {Number(grade.grade).toFixed(1)}
-                                </span>
-                                {grade.is_modified && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Modifiée
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground font-medium mt-2">
-                                {grade.exam_date 
-                                  ? new Date(grade.exam_date).toLocaleDateString('fr-FR', { 
-                                      day: 'numeric', 
-                                      month: 'long', 
-                                      year: 'numeric' 
-                                    })
-                                  : new Date(grade.created_at).toLocaleDateString('fr-FR', { 
-                                      day: 'numeric', 
-                                      month: 'long', 
-                                      year: 'numeric' 
-                                    })
-                                }
-                              </p>
-                              {grade.comment && (
-                                <p className="text-sm mt-3 pt-3 border-t text-muted-foreground italic">
-                                  "{grade.comment}"
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-              {gradesBySubject.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-4">
-                    <BookOpen className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <p className="text-lg font-medium text-muted-foreground">Aucune note disponible</p>
-                </div>
-              )}
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">Aucune note disponible pour ce semestre/matière.</p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmer la suppression</DialogTitle>
-              <DialogDescription>
-                Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                Annuler
-              </Button>
-              <Button variant="destructive" onClick={() => deleteConfirmId && handleDeleteGrade(deleteConfirmId)}>
-                Supprimer
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }
@@ -482,7 +363,7 @@ export function TeacherGradesManagement({
                 Gestion des Notes
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Consultez et modifiez les notes de vos étudiants (1 modification par note)
+                Consultez et gérez les notes que vous avez assignées
               </p>
             </div>
             
@@ -531,14 +412,14 @@ export function TeacherGradesManagement({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes les matières</SelectItem>
-                  {subjects.map((subj) => (
-                    <SelectItem key={subj.id} value={subj.id}>
-                      {subj.name}
+                  {subjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            
+
               <Button 
                 onClick={handleExportCSV}
                 disabled={filteredStudents.length === 0}
@@ -553,71 +434,148 @@ export function TeacherGradesManagement({
         </CardHeader>
 
         <CardContent>
-          <div className="rounded-lg border border-border/50 overflow-hidden">
+          <div className="rounded-lg border border-border/50 overflow-hidden shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="font-bold">Étudiant</TableHead>
-                  <TableHead className="font-bold">Classe</TableHead>
-                  <TableHead className="font-bold text-center">Notes</TableHead>
-                  <TableHead className="font-bold text-center">Moyenne</TableHead>
-                  <TableHead className="font-bold text-right">Action</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/40">
+                  <TableHead>Étudiant</TableHead>
+                  <TableHead>Classe</TableHead>
+                  <TableHead>Matière</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-center">Note</TableHead>
+                  <TableHead className="text-center">Bonus</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Commentaire</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStudents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-2">
-                        <BookOpen className="h-12 w-12 text-muted-foreground/50" />
-                        <p className="text-muted-foreground">Aucun étudiant trouvé</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredStudents.map((student) => {
-                    const studentGrades = getStudentGrades(student.id);
-                    const average = calculateAverage(student.id);
+                {filteredStudents.flatMap(student => 
+                  getStudentGrades(student.id).map(grade => {
                     const studentClass = teacherClasses.find(tc => tc.class_id === student.class_id)?.classes;
-
                     return (
-                      <TableRow key={student.id} className="hover:bg-muted/20 transition-colors">
+                      <TableRow key={grade.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="font-medium">
                           {student.firstname} {student.lastname}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{studentClass?.name || 'N/A'}</Badge>
+                          <Badge variant="outline">{studentClass?.name}</Badge>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline">{studentGrades.length}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge 
-                            variant={average !== "N/A" && Number(average) >= 10 ? "default" : "destructive"}
-                            className="font-bold"
-                          >
-                            {average}/20
+                        <TableCell>{getSubjectName(grade.subject_id)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-xs">
+                            {grade.grade_type === 'examen' ? 'Examen' : 
+                             grade.grade_type === 'controle' ? 'Contrôle' : 
+                             'Devoir'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="font-semibold">
+                            {grade.grade.toFixed(2)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {grade.bonus && grade.bonus > 0 ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className="gap-1 cursor-help bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border-yellow-500/20">
+                                    <Star className="h-3 w-3 fill-current" />
+                                    +{grade.bonus}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="font-semibold mb-1">Raison du bonus:</p>
+                                  <p className="text-sm">{grade.bonus_reason}</p>
+                                  {grade.bonus_given_by_profile && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Par: {grade.bonus_given_by_profile.first_name} {grade.bonus_given_by_profile.last_name}
+                                    </p>
+                                  )}
+                                  {grade.bonus_given_at && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Le: {format(new Date(grade.bonus_given_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                                    </p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {grade.exam_date ? format(new Date(grade.exam_date), 'dd MMM yyyy', { locale: fr }) : '-'}
+                        </TableCell>
+                        <TableCell className="text-sm max-w-xs truncate">
+                          {grade.comment || '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
                             size="sm"
-                            onClick={() => setSelectedStudent(student)}
-                            className="hover:bg-primary/10"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedGradeForBonus(grade);
+                              setBonusDialogOpen(true);
+                            }}
+                            className="gap-1.5"
                           >
-                            Voir détails
+                            <Star className="h-4 w-4" />
+                            Bonus
                           </Button>
                         </TableCell>
                       </TableRow>
                     );
                   })
                 )}
+                {filteredStudents.flatMap(s => getStudentGrades(s.id)).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-2">
+                        <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+                        <p className="text-muted-foreground">Aucune note à afficher</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
+
+      {selectedGrade && (
+        <GradeBonusDialog
+          open={bonusDialogOpen}
+          onOpenChange={setBonusDialogOpen}
+          studentName={`${students.find(s => s.id === selectedGrade.student_id)?.firstname} ${students.find(s => s.id === selectedGrade.student_id)?.lastname}`}
+          currentGrade={selectedGrade.grade}
+          currentBonus={selectedGrade.bonus || 0}
+          onAddBonus={handleAddBonus}
+        />
+      )}
+      
+      <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deleteConfirmId && handleDeleteGrade(deleteConfirmId)}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
