@@ -13,6 +13,7 @@ interface Grade {
   subject_id: string;
   grade: number;
   grade_type: string;
+  bonus?: number;
 }
 
 interface Subject {
@@ -87,8 +88,9 @@ export const generateSchoolGradesReport = (
     students.forEach((student) => {
       const studentGrades = grades.filter(g => g.student_id === student.id);
       
+      // Inclure le bonus dans le calcul de la moyenne
       const moyenne = studentGrades.length > 0
-        ? (studentGrades.reduce((sum, grade) => sum + Number(grade.grade), 0) / studentGrades.length).toFixed(1)
+        ? (studentGrades.reduce((sum, grade) => sum + Number(grade.grade) + (grade.bonus || 0), 0) / studentGrades.length).toFixed(1)
         : '-';
       
       tableData.push([
@@ -126,7 +128,8 @@ export const generateSchoolGradesReport = (
     
     // Statistiques globales
     if (grades.length > 0) {
-      const overallAverage = grades.reduce((sum, grade) => sum + Number(grade.grade), 0) / grades.length;
+      // Inclure le bonus dans le calcul de la moyenne globale
+      const overallAverage = grades.reduce((sum, grade) => sum + Number(grade.grade) + (grade.bonus || 0), 0) / grades.length;
       const studentsWithGrades = students.filter(s => grades.some(g => g.student_id === s.id)).length;
       
       yPosition = (doc as any).lastAutoTable.finalY + 20;

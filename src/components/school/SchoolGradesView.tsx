@@ -16,6 +16,7 @@ import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useGrades } from "@/hooks/useGrades";
+import { GradeDetailDialog } from "@/components/teacher/GradeDetailDialog";
 
 interface Student {
   id: string;
@@ -75,6 +76,8 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
   const [selectedSemester, setSelectedSemester] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedGradeForDetail, setSelectedGradeForDetail] = useState<Grade | null>(null);
   const { toast } = useToast();
   const { getSchoolById } = useSchools();
   const [school, setSchool] = useState<any>(null);
@@ -144,6 +147,11 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
 
   const getSubjectName = (subjectId: string) => {
     return subjects.find(s => s.id === subjectId)?.name || "Inconnu";
+  };
+
+  const handleGradeClick = (grade: Grade, student: Student) => {
+    setSelectedGradeForDetail(grade);
+    setDetailDialogOpen(true);
   };
 
   const handleExportPDF = async () => {
@@ -552,7 +560,7 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                               const studentClass = classes.find(c => c.id === student.class_id);
                               const studentGrades = semesterGrades.filter(g => g.student_id === student.id);
                               const lastGrades = studentGrades.slice(-3).reverse();
-                              const studentTotal = studentGrades.reduce((sum, g) => sum + Number(g.grade), 0);
+                              const studentTotal = studentGrades.reduce((sum, g) => sum + Number(g.grade) + (g.bonus || 0), 0);
                               const average = studentGrades.length > 0 
                                 ? (studentTotal / studentGrades.length).toFixed(1)
                                 : "N/A";
@@ -588,15 +596,26 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                                   <TableCell>
                                     <div className="flex gap-2 flex-wrap">
                                       {lastGrades.length > 0 ? (
-                                        lastGrades.map((grade) => (
-                                          <Badge 
-                                            key={grade.id} 
-                                            variant="outline" 
-                                            className="text-xs font-medium"
-                                          >
-                                            {getSubjectName(grade.subject_id)}: {Number(grade.grade).toFixed(1)}
-                                          </Badge>
-                                        ))
+                                        lastGrades.map((grade) => {
+                                          const finalGrade = Number(grade.grade) + (grade.bonus || 0);
+                                          const hasBonus = grade.bonus && grade.bonus > 0;
+                                          
+                                          return (
+                                            <Badge 
+                                              key={grade.id} 
+                                              variant="outline" 
+                                              className={`text-xs font-medium cursor-pointer hover:border-primary/50 transition-all ${
+                                                hasBonus ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-700' : ''
+                                              }`}
+                                              onClick={() => handleGradeClick(grade, student)}
+                                            >
+                                              {getSubjectName(grade.subject_id)}: {finalGrade.toFixed(1)}
+                                              {hasBonus && (
+                                                <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500 ml-1 inline" />
+                                              )}
+                                            </Badge>
+                                          );
+                                        })
                                       ) : (
                                         <span className="text-sm text-muted-foreground italic">Aucune note</span>
                                       )}
@@ -628,6 +647,16 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
         )}
       </CardContent>
     </Card>
+
+    {selectedGradeForDetail && (
+      <GradeDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        grade={selectedGradeForDetail}
+        studentName={`${students.find(s => s.id === selectedGradeForDetail.student_id)?.firstname} ${students.find(s => s.id === selectedGradeForDetail.student_id)?.lastname}`}
+        subjectName={getSubjectName(selectedGradeForDetail.subject_id)}
+      />
+    )}
     </div>
   );
 }
