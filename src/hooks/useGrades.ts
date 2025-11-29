@@ -29,7 +29,7 @@ export interface GradeWithDetails extends Grade {
     firstname: string;
     lastname: string;
   };
-  bonus_given_by_profile?: {
+  bonus_given_by_credential?: {
     first_name: string;
     last_name: string;
   } | null;
@@ -74,7 +74,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
             firstname,
             lastname
           ),
-          bonus_given_by_profile:profiles!grades_bonus_given_by_fkey (
+          bonus_given_by_credential:user_credentials!grades_bonus_given_by_fkey (
             first_name,
             last_name
           )
@@ -231,15 +231,23 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   const addBonus = async (gradeId: string, bonus: number, bonusReason: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non authentifié');
+      // Récupérer l'utilisateur depuis localStorage (système custom)
+      const storedUser = localStorage.getItem('customAuthUser');
+      if (!storedUser) {
+        throw new Error('Non authentifié');
+      }
+      
+      const userData = JSON.parse(storedUser);
+      if (!userData.id) {
+        throw new Error('Utilisateur invalide');
+      }
 
       const { data, error } = await supabase
         .from('grades')
         .update({
           bonus,
           bonus_reason: bonusReason,
-          bonus_given_by: user.id,
+          bonus_given_by: userData.id,
           bonus_given_at: new Date().toISOString()
         })
         .eq('id', gradeId)
@@ -256,7 +264,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
             firstname,
             lastname
           ),
-          bonus_given_by_profile:profiles!grades_bonus_given_by_fkey (
+          bonus_given_by_credential:user_credentials!grades_bonus_given_by_fkey (
             first_name,
             last_name
           )
