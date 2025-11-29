@@ -15,8 +15,14 @@ export const StudentWelcomeSection = ({ studentId }: StudentWelcomeSectionProps)
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
   const { assignments: allAssignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
   
-  // Filtrer uniquement les devoirs (pas les séances de cours)
-  const assignments = allAssignments.filter(a => a.type !== 'course');
+  // Filtrer uniquement les prochains devoirs (homework, exam, test) - pas les cours
+  const today = new Date().toISOString().split('T')[0];
+  const assignments = allAssignments.filter(a => {
+    if (a.type === 'course') return false;
+    if (!a.session_date && !a.due_date) return false;
+    const assignmentDate = a.session_date || a.due_date;
+    return assignmentDate && assignmentDate >= today;
+  });
 
   // Calculate stats from real data
   const totalSubjects = [...new Set(grades.map(g => g.subject_id))].length;

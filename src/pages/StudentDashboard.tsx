@@ -8,6 +8,7 @@ import { StudentWelcomeSection } from "@/components/student/StudentWelcomeSectio
 import { DocumentRequestForm } from "@/components/student/DocumentRequestForm";
 import { StudentAssignmentsSection } from "@/components/student/StudentAssignmentsSection";
 import { StudentCalendarSection } from "@/components/student/StudentCalendarSection";
+import { StudentUpcomingCoursesSection } from "@/components/student/StudentUpcomingCoursesSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useSchools } from "@/hooks/useSchools";
@@ -58,7 +59,6 @@ export default function StudentDashboard() {
         classes (name)
       `)
       .eq("class_id", student.class_id)
-      .neq("type", "course")
       .gte("session_date", new Date().toISOString().split('T')[0])
       .order("session_date", { ascending: true });
     
@@ -71,23 +71,7 @@ export default function StudentDashboard() {
         return (
           <div className="space-y-4 lg:space-y-6">
             <StudentWelcomeSection studentId={currentStudentId} />
-            <CalendarSummary 
-              events={assignments.map(a => ({
-                id: a.id,
-                title: a.title,
-                session_date: a.session_date || a.due_date || "",
-                start_time: a.start_time || null,
-                end_time: a.end_time || null,
-                type: a.type,
-                class_name: a.classes?.name,
-                is_rescheduled: a.is_rescheduled,
-                reschedule_reason: a.reschedule_reason,
-                reschedule_status: a.reschedule_status,
-                proposed_new_date: a.proposed_new_date,
-                original_session_date: a.original_session_date,
-              }))}
-              title="Mes séances à venir"
-            />
+            <StudentUpcomingCoursesSection assignments={assignments} />
           </div>
         );
       case "calendar":
