@@ -65,13 +65,14 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
   const [school, setSchool] = useState<any>(null);
   const [logoBase64, setLogoBase64] = useState<string>();
   const { selectedYear } = useAcademicYear();
-  const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
+  // Charger TOUS les semestres de l'école (pas filtrés par année)
+  const { semesters } = useSchoolSemesters(schoolId, undefined);
   const { grades: filteredGrades } = useGrades(
     undefined, 
     undefined, 
     undefined, 
     selectedYear?.id, 
-    selectedSemester === "all" || !selectedSemester ? undefined : selectedSemester
+    selectedSemester && selectedSemester !== "all" ? selectedSemester : undefined
   );
 
   // Set current semester as default

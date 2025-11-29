@@ -30,7 +30,7 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   const { getYearForDisplay } = useAcademicYear();
   const displayYearId = getYearForDisplay();
   const [selectedSemester, setSelectedSemester] = useState<string>("");
-  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId, selectedSemester || undefined);
+  const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId, selectedSemester && selectedSemester !== "all" ? selectedSemester : undefined);
   
   console.log('DEBUG StudentGradesSection:', { 
     studentId, 
@@ -40,7 +40,8 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     grades: grades
   });
 
-  const { semesters } = useSchoolSemesters(student?.school_id, displayYearId);
+  // Charger TOUS les semestres de l'école (pas filtrés par année)
+  const { semesters } = useSchoolSemesters(student?.school_id, undefined);
   
   // Définir le semestre actuel par défaut
   useEffect(() => {

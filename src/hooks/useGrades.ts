@@ -91,8 +91,9 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
         query = query.eq('teacher_id', teacherId);
       }
 
-      // Filtrer par semestre si fourni (all = tous les semestres)
-      if (semesterId && semesterId !== 'all') {
+      // Filtrer par semestre SEULEMENT si un semestre spécifique est demandé
+      // Ne PAS filtrer si semesterId est 'all', vide ou undefined
+      if (semesterId && semesterId !== 'all' && semesterId !== '') {
         query = query.eq('school_semester_id', semesterId);
       }
 

@@ -32,7 +32,8 @@ interface SemesterManagementProps {
 
 export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
   const { selectedYear } = useAcademicYear();
-  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId, selectedYear?.id);
+  // Ne plus filtrer par année - afficher TOUS les semestres de l'école
+  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId, undefined);
   const { schoolYears } = useSchoolYears();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);

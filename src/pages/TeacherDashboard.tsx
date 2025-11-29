@@ -74,8 +74,8 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
   // Get classes
   const { classes } = useClasses(currentTeacher?.school_id);
   
-  // Get semesters for filter
-  const { semesters } = useSchoolSemesters(currentTeacher?.school_id);
+  // Get semesters for filter (tous les semestres de l'école)
+  const { semesters } = useSchoolSemesters(currentTeacher?.school_id, undefined);
   
   // Get teacher's assigned classes
   const { teacherClasses } = useTeacherClasses(teacherId);
@@ -116,7 +116,7 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
     undefined, 
     teacherId, 
     displayYearId, 
-    selectedSemester === "all" ? undefined : selectedSemester
+    selectedSemester && selectedSemester !== "all" ? selectedSemester : undefined
   );
 
   const handleViewStudents = (classId: string, subjectId: string) => {
