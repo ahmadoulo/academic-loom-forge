@@ -28,6 +28,7 @@ import { TeacherGradesView } from "@/components/teacher/TeacherGradesView";
 import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
 import { ExamDocumentForm } from "@/components/teacher/ExamDocumentForm";
 import { ExamDocumentsList } from "@/components/teacher/ExamDocumentsList";
+import { TeacherUpcomingSessionsSection } from "@/components/teacher/TeacherUpcomingSessionsSection";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useExamDocuments, CreateExamDocumentData } from "@/hooks/useExamDocuments";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
@@ -526,6 +527,11 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
                 <SessionsList 
                   assignments={assignments}
                   onSelectSession={handleSelectSession}
+                />
+                
+                <TeacherUpcomingSessionsSection 
+                  assignments={assignments}
+                  teacherClasses={teacherClasses.map(tc => ({ id: tc.class_id, name: tc.classes.name }))}
                 />
               </div>
             )}
