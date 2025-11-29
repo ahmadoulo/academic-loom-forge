@@ -30,19 +30,17 @@ interface TeacherUpcomingSessionsSectionProps {
 
 export const TeacherUpcomingSessionsSection = ({ assignments, teacherClasses }: TeacherUpcomingSessionsSectionProps) => {
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
   
   const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Lundi
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 }); // Dimanche
 
-  // Filtrer les séances de la semaine en cours (à partir de demain)
+  // Filtrer les séances de la semaine en cours (à partir d'aujourd'hui)
   const weekSessions = assignments
     .filter(a => {
-      if (!a.session_date) return false;
-      const sessionDate = new Date(a.session_date);
-      return a.session_date >= tomorrowStr && sessionDate >= tomorrow && sessionDate <= weekEnd;
+      if (!a.session_date || a.type !== 'course') return false;
+      const sessionDate = new Date(a.session_date + 'T00:00:00');
+      return sessionDate >= today && sessionDate >= weekStart && sessionDate <= weekEnd;
     })
     .sort((a, b) => {
       if (a.session_date === b.session_date) {

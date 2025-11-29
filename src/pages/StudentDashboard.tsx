@@ -33,13 +33,13 @@ export default function StudentDashboard() {
   const school = schools.find(s => s.id === student?.school_id);
 
   useEffect(() => {
-    if (student?.class_id) {
+    if (student?.class_id && student?.school_id) {
       fetchAssignments();
     }
-  }, [student?.class_id]);
+  }, [student?.class_id, student?.school_id]);
 
   const fetchAssignments = async () => {
-    if (!student?.class_id) return;
+    if (!student?.class_id || !student?.school_id) return;
     
     const { data } = await supabase
       .from("assignments")
@@ -59,6 +59,7 @@ export default function StudentDashboard() {
         classes (name)
       `)
       .eq("class_id", student.class_id)
+      .eq("school_id", student.school_id)
       .gte("session_date", new Date().toISOString().split('T')[0])
       .order("session_date", { ascending: true });
     
