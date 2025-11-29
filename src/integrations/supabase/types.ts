@@ -1103,6 +1103,7 @@ export type Database = {
           grade: number
           grade_type: string
           id: string
+          is_modified: boolean | null
           school_semester_id: string | null
           school_year_id: string
           student_id: string
@@ -1117,6 +1118,7 @@ export type Database = {
           grade: number
           grade_type?: string
           id?: string
+          is_modified?: boolean | null
           school_semester_id?: string | null
           school_year_id: string
           student_id: string
@@ -1131,6 +1133,7 @@ export type Database = {
           grade?: number
           grade_type?: string
           id?: string
+          is_modified?: boolean | null
           school_semester_id?: string | null
           school_year_id?: string
           student_id?: string

@@ -161,9 +161,15 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
 
   const updateGrade = async (id: string, gradeData: Partial<CreateGradeData>) => {
     try {
+      // Mark as modified when updating
+      const updateData = {
+        ...gradeData,
+        is_modified: true
+      };
+      
       const { data, error } = await supabase
         .from('grades')
-        .update(gradeData)
+        .update(updateData)
         .eq('id', id)
         .select(`
           *,
