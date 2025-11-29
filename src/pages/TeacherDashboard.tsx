@@ -25,6 +25,7 @@ import { TeacherCalendarSection } from "@/components/teacher/TeacherCalendarSect
 import { SessionsList } from "@/components/teacher/SessionsList";
 import { SessionAttendanceManager } from "@/components/teacher/SessionAttendanceManager";
 import { TeacherGradesView } from "@/components/teacher/TeacherGradesView";
+import { TeacherGradesManagement } from "@/components/teacher/TeacherGradesManagement";
 import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
 import { ExamDocumentForm } from "@/components/teacher/ExamDocumentForm";
 import { ExamDocumentsList } from "@/components/teacher/ExamDocumentsList";
@@ -544,15 +545,16 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
               <AssignmentForm teacherId={teacherId || ''} />
             )}
 
-            {activeTab === "grades" && (
-              <TeacherGradesView
-                teacherClasses={teacherClasses}
-                subjects={subjects}
+            {activeTab === "grades" && currentTeacher && (
+              <TeacherGradesManagement
+                teacherId={currentTeacher.id}
+                schoolId={currentTeacher.school_id}
+                teacherClasses={teacherClasses.map(tc => ({
+                  class_id: tc.class_id,
+                  classes: classes.find(c => c.id === tc.class_id)!
+                })).filter(tc => tc.classes)}
                 students={teacherStudents}
-                grades={filteredGrades}
-                onSaveGrade={handleSaveGrade}
-                onDeleteGrade={handleDeleteGrade}
-                onExportCSV={handleExportGradesCSV}
+                subjects={subjects}
               />
             )}
 
