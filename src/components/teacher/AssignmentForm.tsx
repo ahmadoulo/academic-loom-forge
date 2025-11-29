@@ -263,13 +263,13 @@ export const AssignmentForm = ({ teacherId }: AssignmentFormProps) => {
         <CardContent>
           {assignmentsLoading ? (
             <p className="text-muted-foreground text-center py-4">Chargement...</p>
-          ) : assignments.length === 0 ? (
+          ) : assignments.filter(a => a.type !== 'course').length === 0 ? (
             <p className="text-muted-foreground text-center py-4">
               Aucun devoir publié pour le moment
             </p>
           ) : (
             <div className="space-y-3">
-              {assignments.map((assignment) => (
+              {assignments.filter(a => a.type !== 'course').map((assignment) => (
                 <div
                   key={assignment.id}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors"

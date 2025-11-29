@@ -13,7 +13,10 @@ interface StudentWelcomeSectionProps {
 export const StudentWelcomeSection = ({ studentId }: StudentWelcomeSectionProps) => {
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id);
-  const { assignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
+  const { assignments: allAssignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
+  
+  // Filtrer uniquement les devoirs (pas les séances de cours)
+  const assignments = allAssignments.filter(a => a.type !== 'course');
 
   // Calculate stats from real data
   const totalSubjects = [...new Set(grades.map(g => g.subject_id))].length;

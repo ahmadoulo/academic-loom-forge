@@ -14,7 +14,10 @@ interface StudentAssignmentsSectionProps {
 
 export const StudentAssignmentsSection = ({ studentId }: StudentAssignmentsSectionProps) => {
   const { student, loading: studentLoading } = useCurrentStudent(studentId);
-  const { assignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
+  const { assignments: allAssignments, loading: assignmentsLoading } = useAssignments(student?.class_id);
+  
+  // Filtrer uniquement les devoirs (pas les séances de cours)
+  const assignments = allAssignments.filter(a => a.type !== 'course');
 
   const getAssignmentTypeLabel = (type: string) => {
     const labels = {
