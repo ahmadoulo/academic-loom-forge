@@ -39,7 +39,7 @@ interface Grade {
   bonus_reason?: string;
   bonus_given_by?: string;
   bonus_given_at?: string;
-  bonus_given_by_profile?: {
+  bonus_given_by_credential?: {
     first_name: string;
     last_name: string;
   } | null;
@@ -331,9 +331,9 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                                   <TooltipContent className="max-w-xs">
                                     <p className="font-semibold mb-1">Raison du bonus:</p>
                                     <p className="text-sm">{grade.bonus_reason}</p>
-                                    {grade.bonus_given_by_profile && (
+                                    {grade.bonus_given_by_credential && (
                                       <p className="text-xs text-muted-foreground mt-2">
-                                        Par: {grade.bonus_given_by_profile.first_name} {grade.bonus_given_by_profile.last_name}
+                                        Par: {grade.bonus_given_by_credential.first_name} {grade.bonus_given_by_credential.last_name}
                                       </p>
                                     )}
                                     {grade.bonus_given_at && (

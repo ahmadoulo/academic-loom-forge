@@ -1158,8 +1158,8 @@ export type Database = {
             foreignKeyName: "grades_bonus_given_by_fkey"
             columns: ["bonus_given_by"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "user_credentials"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "grades_school_semester_id_fkey"
