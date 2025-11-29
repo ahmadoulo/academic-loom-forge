@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Plus, Archive, CheckCircle2, Edit, ArchiveRestore } from "lucide-react";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useSchoolYears } from "@/hooks/useSchoolYears";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,8 @@ interface SemesterManagementProps {
 }
 
 export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
-  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId);
+  const { selectedYear } = useAcademicYear();
+  const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId, selectedYear?.id);
   const { schoolYears } = useSchoolYears();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);

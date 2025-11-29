@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Loader2, ArrowLeft, FileDown } from "lucide-react";
+import { BookOpen, Download, Loader2, ArrowLeft, FileDown, Search } from "lucide-react";
 import { generateSchoolGradesReport } from "@/utils/schoolGradesPdfExport";
 import { useToast } from "@/hooks/use-toast";
 import { useSchools } from "@/hooks/useSchools";
@@ -57,6 +58,7 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
   const { getSchoolById } = useSchools();
@@ -100,9 +102,16 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
 
   const displayGrades = filteredGrades.length > 0 ? filteredGrades : grades;
 
-  const filteredStudents = selectedClass === "all" 
-    ? students 
-    : students.filter(s => s.class_id === selectedClass);
+  // Filter by class and search query
+  const filteredStudents = students
+    .filter((s) => {
+      const matchesClass = selectedClass === "all" || s.class_id === selectedClass;
+      const matchesSearch =
+        searchQuery === "" ||
+        s.firstname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.lastname.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesClass && matchesSearch;
+    });
 
   const getStudentGrades = (studentId: string) => {
     return displayGrades.filter(g => g.student_id === studentId);
@@ -378,6 +387,16 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-[220px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un étudiant..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 border-primary/20 focus:border-primary/40 transition-colors"
+                />
+              </div>
+              
               <Select value={selectedSemester} onValueChange={setSelectedSemester}>
                 <SelectTrigger className="w-full sm:w-[220px] border-primary/20 hover:border-primary/40 transition-colors">
                   <SelectValue placeholder="Filtrer par semestre" />
