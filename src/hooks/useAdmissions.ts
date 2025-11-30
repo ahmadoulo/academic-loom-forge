@@ -17,7 +17,7 @@ export interface Admission {
   education_level: string;
   last_institution: string;
   last_institution_type: 'public' | 'private' | 'mission';
-  status: 'nouveau' | 'en_cours' | 'traite';
+  status: 'nouveau' | 'en_cours' | 'traite' | 'refuse';
   notes?: string;
   converted_to_student_id?: string;
   converted_at?: string;
@@ -102,7 +102,7 @@ export const useAdmissions = (schoolId?: string) => {
     }
   };
 
-  const updateAdmissionStatus = async (admissionId: string, status: 'nouveau' | 'en_cours' | 'traite', notes?: string) => {
+  const updateAdmissionStatus = async (admissionId: string, status: 'nouveau' | 'en_cours' | 'traite' | 'refuse', notes?: string) => {
     try {
       const updateData: any = { status, updated_at: new Date().toISOString() };
       if (notes !== undefined) {

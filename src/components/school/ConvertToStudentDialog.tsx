@@ -25,6 +25,9 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
   const [birthDate, setBirthDate] = useState('');
   const [classId, setClassId] = useState('');
   const [cinNumber, setCinNumber] = useState('');
+  const [tutorName, setTutorName] = useState('');
+  const [tutorPhone, setTutorPhone] = useState('');
+  const [tutorEmail, setTutorEmail] = useState('');
 
   const handleConvert = async () => {
     if (!birthDate || !classId || !cinNumber) {
@@ -88,6 +91,9 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
       setBirthDate('');
       setClassId('');
       setCinNumber('');
+      setTutorName('');
+      setTutorPhone('');
+      setTutorEmail('');
     } catch (error: any) {
       console.error('Error converting admission:', error);
       toast.error('Erreur lors de la conversion: ' + error.message);
@@ -158,6 +164,34 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
           <div className="space-y-2">
             <Label>Téléphone</Label>
             <Input value={admission.phone} disabled />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Nom du tuteur</Label>
+            <Input
+              value={tutorName}
+              onChange={(e) => setTutorName(e.target.value)}
+              placeholder="Nom complet du tuteur (optionnel)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Téléphone du tuteur</Label>
+            <Input
+              value={tutorPhone}
+              onChange={(e) => setTutorPhone(e.target.value)}
+              placeholder="Numéro de téléphone du tuteur (optionnel)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Email du tuteur</Label>
+            <Input
+              type="email"
+              value={tutorEmail}
+              onChange={(e) => setTutorEmail(e.target.value)}
+              placeholder="Email du tuteur (optionnel)"
+            />
           </div>
         </div>
 
