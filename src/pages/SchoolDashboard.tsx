@@ -70,9 +70,10 @@ import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
+import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
+import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
 import { useAdmissions } from '@/hooks/useAdmissions';
 import { ClipboardList } from 'lucide-react';
-import { EnhancedDashboardCharts } from '@/components/analytics/EnhancedDashboardCharts';
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -787,19 +788,6 @@ const SchoolDashboard = () => {
                       )}
                     </CardContent>
                   </Card>
-                  
-                  {/* Enhanced Charts avec Chart.js */}
-                  <EnhancedDashboardCharts
-                    performanceBySubject={performanceBySubject}
-                    attendanceByMonth={attendanceByMonth}
-                    gradeDistribution={gradeDistribution}
-                    admissionStats={{
-                      nouveau: admissions.filter(a => a.status === 'nouveau').length,
-                      en_cours: admissions.filter(a => a.status === 'en_cours').length,
-                      traite: admissions.filter(a => a.status === 'traite').length,
-                      refuse: admissions.filter(a => a.status === 'refuse').length,
-                    }}
-                  />
                   
                   <AnalyticsDashboard 
                     schoolId={school.id}
