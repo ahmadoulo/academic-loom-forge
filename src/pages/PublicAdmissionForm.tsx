@@ -67,6 +67,7 @@ export default function PublicAdmissionForm() {
           .from('schools')
           .select('*')
           .eq('identifier', identifier)
+          .eq('is_active', true)
           .single();
 
         if (error) throw error;
