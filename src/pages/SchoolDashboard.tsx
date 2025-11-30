@@ -71,6 +71,7 @@ import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
 import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
+import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -823,6 +824,13 @@ const SchoolDashboard = () => {
                     />
                   </div>
                 </div>
+              )}
+              
+              {activeTab === "admissions" && school?.id && (
+                <AdmissionsManagement 
+                  schoolId={school.id}
+                  schoolIdentifier={schoolId || ''}
+                />
               )}
               
               {activeTab === "classes" && !showClassDetails && (

@@ -15,6 +15,7 @@ import StudentRegistration from "./pages/StudentRegistration";
 import SetPassword from "./pages/SetPassword";
 import EventsPage from "./pages/EventsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
+import PublicAdmissionForm from "./pages/PublicAdmissionForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/school" element={<SchoolDashboard />} />
             <Route path="/school/:schoolId" element={<SchoolDashboard />} />
+            <Route path="/school/:identifier/admission" element={<PublicAdmissionForm />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
