@@ -71,9 +71,6 @@ import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
 import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
-import { FinanceDashboardPage } from "./FinanceDashboardPage";
-import { FinancePaymentsPage } from "./FinancePaymentsPage";
-import { FinanceConfigPage } from "./FinanceConfigPage";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -1078,18 +1075,6 @@ const SchoolDashboard = () => {
                   subjects={subjects}
                   loading={studentsLoading || subjectsLoading}
                 />
-              )}
-              
-              {activeTab === "finance-dashboard" && school?.id && (
-                <FinanceDashboardPage schoolId={school.id} />
-              )}
-              
-              {activeTab === "finance-payments" && school?.id && (
-                <FinancePaymentsPage schoolId={school.id} />
-              )}
-              
-              {activeTab === "finance-config" && school?.id && (
-                <FinanceConfigPage schoolId={school.id} />
               )}
             </div>
           </main>
