@@ -67,6 +67,11 @@ const menuStructure = [
         value: "exams",
         icon: ClipboardList
       },
+      { 
+        title: "Examens en Ligne", 
+        value: "online-exams",
+        icon: FileText
+      },
     ]
   },
   {

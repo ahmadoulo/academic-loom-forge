@@ -29,6 +29,7 @@ import { TeacherGradesManagement } from "@/components/teacher/TeacherGradesManag
 import { TeacherAttendanceView } from "@/components/teacher/TeacherAttendanceView";
 import { ExamDocumentForm } from "@/components/teacher/ExamDocumentForm";
 import { ExamDocumentsList } from "@/components/teacher/ExamDocumentsList";
+import { OnlineExamsSection } from "@/components/teacher/OnlineExamsSection";
 import { TeacherUpcomingSessionsSection } from "@/components/teacher/TeacherUpcomingSessionsSection";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useExamDocuments, CreateExamDocumentData } from "@/hooks/useExamDocuments";
@@ -747,6 +748,16 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             {activeTab === "analytics" && (
               <div className="space-y-4 lg:space-y-6">
                 <AnalyticsDashboard teacherId={teacherId} />
+              </div>
+            )}
+
+            {activeTab === "online-exams" && currentTeacher && displayYearId && (
+              <div className="space-y-4 lg:space-y-6">
+                <OnlineExamsSection
+                  teacherId={teacherId!}
+                  schoolId={currentTeacher.school_id}
+                  schoolYearId={displayYearId}
+                />
               </div>
             )}
             
