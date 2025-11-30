@@ -58,6 +58,12 @@ const menuStructure = [
         icon: ClipboardList,
         href: "/student"
       },
+      { 
+        title: "Examens en Ligne", 
+        value: "online-exams",
+        icon: FileText,
+        href: "/student"
+      },
     ]
   },
   {

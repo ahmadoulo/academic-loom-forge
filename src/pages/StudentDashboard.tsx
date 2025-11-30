@@ -9,6 +9,7 @@ import { DocumentRequestForm } from "@/components/student/DocumentRequestForm";
 import { StudentAssignmentsSection } from "@/components/student/StudentAssignmentsSection";
 import { StudentCalendarSection } from "@/components/student/StudentCalendarSection";
 import { StudentUpcomingCoursesSection } from "@/components/student/StudentUpcomingCoursesSection";
+import { StudentOnlineExamsSection } from "@/components/student/StudentOnlineExamsSection";
 import { CalendarSummary } from "@/components/calendar/CalendarSummary";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { useSchools } from "@/hooks/useSchools";
@@ -86,6 +87,13 @@ export default function StudentDashboard() {
         return <StudentsGradesSection studentId={currentStudentId} />;
       case "devoirs":
         return <StudentAssignmentsSection studentId={currentStudentId} />;
+      case "online-exams":
+        return student && (
+          <StudentOnlineExamsSection 
+            studentId={currentStudentId!} 
+            classId={student.class_id}
+          />
+        );
       case "documents":
         return student && (
           <DocumentRequestForm 
