@@ -70,10 +70,9 @@ import { useIsReadOnly } from "@/hooks/useIsReadOnly";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
-import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
-import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
-import { useAdmissions } from "@/hooks/useAdmissions";
-import { ClipboardList } from "lucide-react";
+import { useAdmissions } from '@/hooks/useAdmissions';
+import { ClipboardList } from 'lucide-react';
+import { EnhancedDashboardCharts } from '@/components/analytics/EnhancedDashboardCharts';
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -789,25 +788,25 @@ const SchoolDashboard = () => {
                     </CardContent>
                   </Card>
                   
+                  {/* Enhanced Charts avec Chart.js */}
+                  <EnhancedDashboardCharts
+                    performanceBySubject={performanceBySubject}
+                    attendanceByMonth={attendanceByMonth}
+                    gradeDistribution={gradeDistribution}
+                    admissionStats={{
+                      nouveau: admissions.filter(a => a.status === 'nouveau').length,
+                      en_cours: admissions.filter(a => a.status === 'en_cours').length,
+                      traite: admissions.filter(a => a.status === 'traite').length,
+                      refuse: admissions.filter(a => a.status === 'refuse').length,
+                    }}
+                  />
+                  
                   <AnalyticsDashboard 
                     schoolId={school.id}
                     performanceBySubject={performanceBySubject}
                     attendanceByMonth={attendanceByMonth}
                     gradeDistribution={gradeDistribution}
                     overallStats={overallStats}
-                  />
-                  
-                  <CalendarSummary 
-                    events={assignments.map(a => ({
-                      id: a.id,
-                      title: a.title,
-                      session_date: a.session_date || a.due_date || "",
-                      start_time: a.start_time || null,
-                      end_time: a.end_time || null,
-                      type: a.type,
-                      class_name: a.classes?.name,
-                    }))}
-                    title="Séances à venir"
                   />
                 </div>
               )}
