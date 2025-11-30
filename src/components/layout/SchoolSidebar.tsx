@@ -21,7 +21,8 @@ import {
   PanelLeft,
   Pin,
   PinOff,
-  CreditCard
+  CreditCard,
+  UserPlus
 } from "lucide-react";
 
 import {
@@ -62,6 +63,12 @@ const menuStructure = [
         title: "Étudiants", 
         value: "students",
         icon: Users,
+        href: "/school"
+      },
+      { 
+        title: "Admissions", 
+        value: "admissions",
+        icon: ClipboardList,
         href: "/school"
       },
       { 
