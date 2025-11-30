@@ -139,7 +139,7 @@ export default function PublicAdmissionForm() {
                 <img
                   src={school.logo_url}
                   alt={school.name}
-                  className="h-20 md:h-24 lg:h-28 xl:h-32 w-auto mx-auto lg:mx-0"
+                  className="h-16 w-auto mx-auto lg:mx-0"
                 />
               )}
               <div>

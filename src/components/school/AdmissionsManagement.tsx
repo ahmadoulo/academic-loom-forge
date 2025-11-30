@@ -57,8 +57,8 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
   };
 
   const handleDelete = (admission: any) => {
-    // Protection: ne pas supprimer les admissions traitées
-    if (admission.status === 'traite' || admission.converted_to_student_id) {
+    // Protection: ne pas supprimer les admissions traitées, en cours ou refusées
+    if (admission.status === 'traite' || admission.status === 'en_cours' || admission.status === 'refuse' || admission.converted_to_student_id) {
       return;
     }
     setAdmissionToDelete(admission.id);
@@ -194,7 +194,7 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </Button>
           )}
 
-          {(admission.status !== 'traite' && !admission.converted_to_student_id) && (
+          {(admission.status === 'nouveau' && !admission.converted_to_student_id) && (
             <Button
               variant="destructive"
               size="sm"
