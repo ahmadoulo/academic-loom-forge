@@ -72,8 +72,9 @@ import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
 import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
 import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
-import { useAdmissions } from '@/hooks/useAdmissions';
-import { ClipboardList } from 'lucide-react';
+import { useAdmissions } from "@/hooks/useAdmissions";
+import { ClipboardList } from "lucide-react";
+import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -551,8 +552,26 @@ const SchoolDashboard = () => {
           />
           
             <main className="flex-1 p-3 sm:p-4 lg:p-6 bg-background overflow-y-auto">
-            {/* Enhanced Stats Cards - Only on Analytics Dashboard */}
-            {activeTab === "analytics" && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 lg:mb-6">
+                <div>
+                  <h1 className="text-xl lg:text-2xl font-bold">Tableau de bord</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Vue d'ensemble de l'école et accès rapide aux informations clés.
+                  </p>
+                </div>
+                <AdvancedSearchDialog
+                  schoolId={school.id}
+                  students={students}
+                  teachers={teachers}
+                  classes={classes}
+                  subjects={subjects}
+                  grades={grades}
+                  attendance={attendance}
+                  assignments={assignments}
+                />
+              </div>
+              {/* Enhanced Stats Cards - Only on Analytics Dashboard */}
+              {activeTab === "analytics" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 lg:mb-6">
                 <StatsCard
                   title="Étudiants"
