@@ -72,6 +72,8 @@ import { SemesterManagement } from "@/components/settings/SemesterManagement";
 import { SchoolSubscriptionSection } from "@/components/school/SchoolSubscriptionSection";
 import { useSubscriptionLimits, checkCanAddStudent, checkCanAddTeacher } from "@/hooks/useSubscriptionLimits";
 import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
+import { useAdmissions } from "@/hooks/useAdmissions";
+import { ClipboardList } from "lucide-react";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -185,6 +187,7 @@ const SchoolDashboard = () => {
     loading: analyticsLoading 
   } = useSchoolAnalytics(school?.id);
   const { requests: documentRequests, loading: documentRequestsLoading } = useDocumentRequests(school?.id);
+  const { admissions } = useAdmissions(school?.id);
 
   // Calculate enhanced stats
   const stats = useMemo(() => {
@@ -686,6 +689,60 @@ const SchoolDashboard = () => {
                         ) : (
                           <p className="text-muted-foreground text-center py-8">Aucune demande de document</p>
                         )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Demandes d'admission */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <ClipboardList className="h-5 w-5" />
+                          Demandes d'Admission
+                        </CardTitle>
+                        <CardDescription>Résumé des admissions</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="text-center p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                {admissions.filter(a => a.status === 'nouveau').length}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">Nouvelles</div>
+                            </div>
+                            <div className="text-center p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-950/30">
+                              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                                {admissions.filter(a => a.status === 'en_cours').length}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">En cours</div>
+                            </div>
+                            <div className="text-center p-4 border rounded-lg bg-green-50 dark:bg-green-950/30">
+                              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                {admissions.filter(a => a.status === 'traite').length}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">Traitées</div>
+                            </div>
+                            <div className="text-center p-4 border rounded-lg bg-red-50 dark:bg-red-950/30">
+                              <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                {admissions.filter(a => a.status === 'refuse').length}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">Refusées</div>
+                            </div>
+                          </div>
+                          {admissions.length > 0 ? (
+                            <Button 
+                              variant="outline" 
+                              className="w-full"
+                              onClick={() => setActiveTab('admissions')}
+                            >
+                              Voir toutes les admissions
+                            </Button>
+                          ) : (
+                            <p className="text-muted-foreground text-center py-4 text-sm">
+                              Aucune demande d'admission
+                            </p>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   </div>

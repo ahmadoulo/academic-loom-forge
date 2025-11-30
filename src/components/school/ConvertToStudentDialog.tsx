@@ -29,6 +29,11 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
   const [tutorPhone, setTutorPhone] = useState('');
   const [tutorEmail, setTutorEmail] = useState('');
 
+  // Filtrer les classes de l'année en cours uniquement
+  const currentYearClasses = classes.filter(
+    (c: any) => !c.archived && c.school_year_id === currentYear?.id
+  );
+
   const handleConvert = async () => {
     if (!birthDate || !classId || !cinNumber) {
       toast.error('Veuillez remplir tous les champs obligatoires');
@@ -53,6 +58,9 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
           cin_number: cinNumber,
           birth_date: birthDate,
           student_phone: admission.phone,
+          tutor_name: tutorName || null,
+          parent_phone: tutorPhone || null,
+          tutor_email: tutorEmail || null,
         }])
         .select()
         .single();
@@ -145,13 +153,11 @@ export function ConvertToStudentDialog({ admission, schoolId, open, onOpenChange
                 <SelectValue placeholder="Sélectionnez une classe" />
               </SelectTrigger>
               <SelectContent>
-                {classes
-                  .filter((c: any) => !c.archived)
-                  .map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
+                {currentYearClasses.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Eye, Trash2, Check, X, UserPlus } from 'lucide-react';
+import { ExternalLink, Eye, Trash2, Check, X, UserPlus, Ban } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AdmissionDetailDialog } from './AdmissionDetailDialog';
@@ -19,6 +19,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface AdmissionsManagementProps {
   schoolId: string;
@@ -32,12 +35,16 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [admissionToDelete, setAdmissionToDelete] = useState<string | null>(null);
+  const [refuseDialogOpen, setRefuseDialogOpen] = useState(false);
+  const [admissionToRefuse, setAdmissionToRefuse] = useState<any>(null);
+  const [refuseReason, setRefuseReason] = useState('');
 
   const publicFormUrl = `${window.location.origin}/school/${schoolIdentifier}/admission`;
 
   const nouveauAdmissions = admissions.filter(a => a.status === 'nouveau');
   const enCoursAdmissions = admissions.filter(a => a.status === 'en_cours');
   const traiteAdmissions = admissions.filter(a => a.status === 'traite');
+  const refuseAdmissions = admissions.filter(a => a.status === 'refuse');
 
   const handleViewDetails = (admission: any) => {
     setSelectedAdmission(admission);
@@ -49,8 +56,12 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
     setConvertDialogOpen(true);
   };
 
-  const handleDelete = (admissionId: string) => {
-    setAdmissionToDelete(admissionId);
+  const handleDelete = (admission: any) => {
+    // Protection: ne pas supprimer les admissions traitées
+    if (admission.status === 'traite' || admission.converted_to_student_id) {
+      return;
+    }
+    setAdmissionToDelete(admission.id);
     setDeleteDialogOpen(true);
   };
 
@@ -64,6 +75,21 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
 
   const handleStatusChange = async (admissionId: string, newStatus: 'nouveau' | 'en_cours' | 'traite') => {
     await updateAdmissionStatus(admissionId, newStatus);
+  };
+
+  const handleRefuse = (admission: any) => {
+    setAdmissionToRefuse(admission);
+    setRefuseDialogOpen(true);
+  };
+
+  const confirmRefuse = async () => {
+    if (!admissionToRefuse || !refuseReason.trim()) {
+      return;
+    }
+    await updateAdmissionStatus(admissionToRefuse.id, 'refuse', refuseReason);
+    setRefuseDialogOpen(false);
+    setAdmissionToRefuse(null);
+    setRefuseReason('');
   };
 
   const renderAdmissionCard = (admission: any) => (
@@ -108,7 +134,9 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
 
         {admission.notes && (
           <div className="pt-2 border-t">
-            <span className="text-sm text-muted-foreground">Notes:</span>
+            <span className="text-sm text-muted-foreground">
+              {admission.status === 'refuse' ? 'Motif du refus:' : 'Notes:'}
+            </span>
             <p className="text-sm mt-1">{admission.notes}</p>
           </div>
         )}
@@ -145,12 +173,12 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
                 Traité
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
-                onClick={() => handleStatusChange(admission.id, 'nouveau')}
+                onClick={() => handleRefuse(admission)}
               >
-                <X className="h-4 w-4 mr-1" />
-                Nouveau
+                <Ban className="h-4 w-4 mr-1" />
+                Refuser
               </Button>
             </>
           )}
@@ -166,13 +194,15 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </Button>
           )}
 
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleDelete(admission.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {(admission.status !== 'traite' && !admission.converted_to_student_id) && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleDelete(admission)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -197,15 +227,18 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
       </div>
 
       <Tabs defaultValue="nouveau" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="nouveau">
-            Nouvelles demandes ({nouveauAdmissions.length})
+            Nouvelles ({nouveauAdmissions.length})
           </TabsTrigger>
           <TabsTrigger value="en_cours">
             En cours ({enCoursAdmissions.length})
           </TabsTrigger>
           <TabsTrigger value="traite">
             Traité ({traiteAdmissions.length})
+          </TabsTrigger>
+          <TabsTrigger value="refuse">
+            Refusé ({refuseAdmissions.length})
           </TabsTrigger>
         </TabsList>
 
@@ -250,6 +283,20 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="refuse" className="space-y-4 mt-6">
+          {refuseAdmissions.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                Aucune demande refusée
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {refuseAdmissions.map(renderAdmissionCard)}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {selectedAdmission && (
@@ -284,6 +331,41 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={refuseDialogOpen} onOpenChange={setRefuseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refuser la demande d'admission</DialogTitle>
+            <DialogDescription>
+              Veuillez indiquer le motif du refus. Cette information sera enregistrée.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="refuseReason">Motif du refus *</Label>
+              <Textarea
+                id="refuseReason"
+                value={refuseReason}
+                onChange={(e) => setRefuseReason(e.target.value)}
+                placeholder="Expliquez la raison du refus..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefuseDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmRefuse}
+              disabled={!refuseReason.trim()}
+            >
+              Refuser l'admission
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
