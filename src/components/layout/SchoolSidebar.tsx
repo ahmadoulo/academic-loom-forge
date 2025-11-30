@@ -21,7 +21,9 @@ import {
   PanelLeft,
   Pin,
   PinOff,
-  CreditCard
+  CreditCard,
+  DollarSign,
+  Wallet
 } from "lucide-react";
 
 import {
@@ -180,6 +182,30 @@ const menuStructure = [
       },
     ]
   },
+  {
+    category: "Finance",
+    icon: Wallet,
+    items: [
+      { 
+        title: "Tableau de bord", 
+        value: "finance-dashboard",
+        icon: BarChart3,
+        href: "/school"
+      },
+      { 
+        title: "Gestion des Paiements", 
+        value: "finance-payments",
+        icon: DollarSign,
+        href: "/school"
+      },
+      { 
+        title: "Configuration", 
+        value: "finance-config",
+        icon: Settings,
+        href: "/school"
+      },
+    ]
+  },
   { 
     title: "Nouvelle Année", 
     value: "year-transition",
@@ -209,6 +235,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
     "Suivi pédagogique": true,
     "Organisation": false,
     "Communication": false,
+    "Finance": true,
   });
 
   const toggleCategory = (category: string) => {
