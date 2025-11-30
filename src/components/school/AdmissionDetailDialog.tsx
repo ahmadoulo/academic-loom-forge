@@ -22,12 +22,24 @@ export function AdmissionDetailDialog({ admission, open, onOpenChange }: Admissi
         <div className="space-y-6">
           {/* Status */}
           <div>
-            <Badge variant={
-              admission.status === 'nouveau' ? 'default' :
-              admission.status === 'en_cours' ? 'secondary' : 'outline'
-            }>
-              {admission.status === 'nouveau' ? 'Nouvelle demande' :
-               admission.status === 'en_cours' ? 'En cours de traitement' : 'Traité'}
+            <Badge
+              variant={
+                admission.status === 'nouveau'
+                  ? 'default'
+                  : admission.status === 'en_cours'
+                  ? 'secondary'
+                  : admission.status === 'traite'
+                  ? 'outline'
+                  : 'destructive'
+              }
+            >
+              {admission.status === 'nouveau'
+                ? 'Nouvelle demande'
+                : admission.status === 'en_cours'
+                ? 'En cours de traitement'
+                : admission.status === 'traite'
+                ? 'Traité'
+                : 'Refusé'}
             </Badge>
             {admission.converted_to_student_id && (
               <Badge variant="secondary" className="ml-2 bg-green-500 text-white">
@@ -113,7 +125,9 @@ export function AdmissionDetailDialog({ admission, open, onOpenChange }: Admissi
           {/* Notes */}
           {admission.notes && (
             <div className="space-y-2">
-              <h3 className="font-semibold text-lg">Notes internes</h3>
+              <h3 className="font-semibold text-lg">
+                {admission.status === 'refuse' ? 'Motif du refus' : 'Notes internes'}
+              </h3>
               <p className="text-sm">{admission.notes}</p>
             </div>
           )}

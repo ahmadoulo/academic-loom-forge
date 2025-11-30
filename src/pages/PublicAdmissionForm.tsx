@@ -67,7 +67,6 @@ export default function PublicAdmissionForm() {
           .from('schools')
           .select('*')
           .eq('identifier', identifier)
-          .eq('is_active', true)
           .single();
 
         if (error) throw error;
@@ -129,7 +128,7 @@ export default function PublicAdmissionForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
@@ -139,7 +138,7 @@ export default function PublicAdmissionForm() {
                 <img
                   src={school.logo_url}
                   alt={school.name}
-                  className="h-32 w-auto mx-auto lg:mx-0"
+                  className="h-20 md:h-24 lg:h-28 xl:h-32 w-auto mx-auto lg:mx-0"
                 />
               )}
               <div>
@@ -153,8 +152,8 @@ export default function PublicAdmissionForm() {
             </div>
 
             {/* Right side - Form */}
-            <div className="bg-card rounded-lg shadow-xl p-8">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="bg-card rounded-2xl shadow-xl border border-border/40 p-6 lg:p-8 max-h-[90vh] overflow-y-auto">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {/* Civilité */}
                 <div className="space-y-2">
                   <Label>Civilité *</Label>
