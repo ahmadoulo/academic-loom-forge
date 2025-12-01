@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Check } from 'lucide-react';
 import { useOnlineExams } from '@/hooks/useOnlineExams';
 import { useTeacherClasses } from '@/hooks/useTeacherClasses';
-import { useSubjects } from '@/hooks/useSubjects';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface CreateOnlineExamDialogProps {
@@ -36,7 +36,28 @@ export function CreateOnlineExamDialog({
 }: CreateOnlineExamDialogProps) {
   const { createExam, isCreating } = useOnlineExams(teacherId);
   const { teacherClasses } = useTeacherClasses(teacherId);
-  const { subjects } = useSubjects(schoolId);
+  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
+
+  // Load only teacher's subjects
+  useEffect(() => {
+    const loadTeacherSubjects = async () => {
+      if (!teacherId) return;
+      
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .eq('teacher_id', teacherId);
+      
+      if (error) {
+        console.error('Error loading teacher subjects:', error);
+        return;
+      }
+      
+      setTeacherSubjects(data || []);
+    };
+    
+    loadTeacherSubjects();
+  }, [teacherId]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -138,6 +159,10 @@ export function CreateOnlineExamDialog({
       }
     }
 
+    // Format dates to avoid +1h timezone issue (use local format)
+    const startDateTime = startTime.replace('T', ' ') + ':00';
+    const endDateTime = endTime.replace('T', ' ') + ':00';
+
     await createExam({
       exam: {
         school_id: schoolId,
@@ -148,8 +173,8 @@ export function CreateOnlineExamDialog({
         title,
         description,
         duration_minutes: parseInt(durationMinutes),
-        start_time: startTime,
-        end_time: endTime,
+        start_time: startDateTime,
+        end_time: endDateTime,
         allow_window_switch: allowWindowSwitch,
         max_warnings: parseInt(maxWarnings),
         is_published: false,
@@ -218,7 +243,7 @@ export function CreateOnlineExamDialog({
                   <SelectValue placeholder="Sélectionner une matière" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map((s) => (
+                  {teacherSubjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>
