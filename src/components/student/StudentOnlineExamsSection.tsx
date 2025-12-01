@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOnlineExams } from '@/hooks/useOnlineExams';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, BookOpen, AlertCircle } from 'lucide-react';
-import { TakeExamDialog } from './TakeExamDialog';
+import { Clock, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
 import { format, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface StudentOnlineExamsSectionProps {
   studentId: string;
@@ -14,17 +15,51 @@ interface StudentOnlineExamsSectionProps {
 }
 
 export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineExamsSectionProps) {
-  const [takeExamDialogOpen, setTakeExamDialogOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState<any>(null);
-  
-  const { studentExams, isLoadingStudentExams } = useOnlineExams(undefined, classId);
+  const navigate = useNavigate();
+  const { studentExams, isLoadingStudentExams, checkExamAttempt } = useOnlineExams(undefined, classId);
+  const [examAttempts, setExamAttempts] = useState<Record<string, any>>({});
 
-  const handleTakeExam = (exam: any) => {
-    setSelectedExam(exam);
-    setTakeExamDialogOpen(true);
+  useEffect(() => {
+    const loadAttempts = async () => {
+      const attempts: Record<string, any> = {};
+      for (const exam of studentExams) {
+        const attempt = await checkExamAttempt(exam.id, studentId);
+        if (attempt) {
+          attempts[exam.id] = attempt;
+        }
+      }
+      setExamAttempts(attempts);
+    };
+
+    if (studentExams.length > 0) {
+      loadAttempts();
+    }
+  }, [studentExams, studentId]);
+
+  const handleTakeExam = async (exam: any) => {
+    // Check if already attempted
+    const attempt = examAttempts[exam.id];
+    if (attempt) {
+      toast.error('Vous avez déjà passé cet examen');
+      return;
+    }
+
+    // Navigate to exam page
+    navigate(`/exam/${exam.id}`, { state: { studentId } });
   };
 
   const getExamStatus = (exam: any) => {
+    const attempt = examAttempts[exam.id];
+    
+    if (attempt) {
+      return { 
+        label: `Complété (${attempt.score || 0} pts)`, 
+        variant: 'default' as const, 
+        disabled: true,
+        icon: <CheckCircle className="w-4 h-4" />
+      };
+    }
+
     const now = new Date();
     const start = new Date(exam.start_time);
     const end = new Date(exam.end_time);
@@ -50,11 +85,14 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
           const status = getExamStatus(exam);
           
           return (
-            <Card key={exam.id}>
+            <Card key={exam.id} className="hover-scale transition-all">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg">{exam.title}</CardTitle>
-                  <Badge variant={status.variant}>{status.label}</Badge>
+                  <Badge variant={status.variant} className="flex items-center gap-1">
+                    {status.icon}
+                    {status.label}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -91,9 +129,9 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
                 <Button
                   onClick={() => handleTakeExam(exam)}
                   disabled={status.disabled}
-                  className="w-full"
+                  className="w-full hover-scale"
                 >
-                  {status.disabled ? status.label : 'Commencer l\'examen'}
+                  {examAttempts[exam.id] ? 'Examen complété' : status.disabled ? status.label : 'Commencer l\'examen'}
                 </Button>
               </CardContent>
             </Card>
@@ -107,15 +145,6 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
             Aucun examen disponible pour le moment.
           </CardContent>
         </Card>
-      )}
-
-      {selectedExam && (
-        <TakeExamDialog
-          open={takeExamDialogOpen}
-          onOpenChange={setTakeExamDialogOpen}
-          exam={selectedExam}
-          studentId={studentId}
-        />
       )}
     </div>
   );

@@ -87,13 +87,13 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     enabled: !!teacherId,
   });
 
-  // Fetch student's exams
-  const { data: studentExams = [], isLoading: isLoadingStudentExams } = useQuery({
+  // Fetch student's exams with attempts
+  const { data: studentExamsData, isLoading: isLoadingStudentExams } = useQuery({
     queryKey: ['student-online-exams', classId],
     queryFn: async () => {
-      if (!classId) return [];
+      if (!classId) return { exams: [], attempts: [] };
       
-      const { data, error } = await supabase
+      const { data: examsData, error: examsError } = await supabase
         .from('online_exams')
         .select(`
           *,
@@ -103,11 +103,27 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
         .eq('is_published', true)
         .order('start_time', { ascending: false });
 
-      if (error) throw error;
-      return data as OnlineExam[];
+      if (examsError) throw examsError;
+      
+      return { exams: examsData as OnlineExam[], attempts: [] };
     },
     enabled: !!classId,
   });
+
+  const studentExams = studentExamsData?.exams || [];
+  
+  // Check if student has already attempted an exam
+  const checkExamAttempt = async (examId: string, studentId: string) => {
+    const { data, error } = await supabase
+      .from('student_exam_attempts')
+      .select('id, status, score')
+      .eq('exam_id', examId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  };
 
   // Fetch exam with questions and answers
   const fetchExamWithDetails = async (examId: string) => {
@@ -278,6 +294,7 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     publishExam: publishExam.mutateAsync,
     deleteExam: deleteExam.mutateAsync,
     fetchExamWithDetails,
+    checkExamAttempt,
     isCreating: createExam.isPending,
   };
 };

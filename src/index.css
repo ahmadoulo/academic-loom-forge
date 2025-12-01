@@ -145,6 +145,19 @@ Modern Blue & White Theme - All colors MUST be HSL */
 
 /* Responsive utilities */
 @layer utilities {
+  /* Animation utilities */
+  .hover-scale {
+    @apply transition-transform duration-200;
+  }
+  
+  .hover-scale:hover {
+    @apply scale-105;
+  }
+  
+  .shadow-elegant {
+    box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.15);
+  }
+
   /* Sidebar container - fixed positioning for proper layout */
   .sidebar-container {
     @apply relative shrink-0;
