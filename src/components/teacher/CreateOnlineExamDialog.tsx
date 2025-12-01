@@ -159,9 +159,9 @@ export function CreateOnlineExamDialog({
       }
     }
 
-    // Format dates to avoid +1h timezone issue (use local format)
-    const startDateTime = startTime.replace('T', ' ') + ':00';
-    const endDateTime = endTime.replace('T', ' ') + ':00';
+    // Convert local datetime to UTC ISO string so displayed time matches the selected local hour
+    const startDateTime = new Date(startTime).toISOString();
+    const endDateTime = new Date(endTime).toISOString();
 
     await createExam({
       exam: {

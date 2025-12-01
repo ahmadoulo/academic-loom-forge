@@ -6,6 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -27,6 +36,8 @@ export default function TakeExam() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const { fetchExamWithDetails } = useOnlineExams();
 
@@ -185,6 +196,7 @@ export default function TakeExam() {
   const currentQuestion = questions[currentQuestionIndex];
   const questionAnswers = answers.filter((a) => a.question_id === currentQuestion?.id);
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const hasActiveWarning = !exam?.allow_window_switch && warningCount > 0 && !isSubmitted;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -243,7 +255,11 @@ export default function TakeExam() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
+    <div
+      className={`min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 ${
+        hasActiveWarning ? 'ring-4 ring-destructive animate-pulse' : ''
+      }`}
+    >
       <div className="max-w-4xl mx-auto py-8 space-y-6 animate-fade-in">
         {/* Header with timer */}
         <Card className="shadow-elegant">
@@ -369,6 +385,23 @@ export default function TakeExam() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Attention</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>{warningMessage || "Ne quittez pas la fenêtre pendant l'examen."}</p>
+              <p className="text-sm text-destructive">
+                Des avertissements répétés entraîneront la soumission automatique de l'examen.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>Compris</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
