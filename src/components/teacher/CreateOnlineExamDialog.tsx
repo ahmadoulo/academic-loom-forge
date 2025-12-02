@@ -23,9 +23,10 @@ interface CreateOnlineExamDialogProps {
 }
 
 interface Question {
+  id?: string;
   question_text: string;
   points: number;
-  answers: Array<{ answer_text: string; is_correct: boolean }>;
+  answers: Array<{ id?: string; answer_text: string; is_correct: boolean }>;
 }
 
 export function CreateOnlineExamDialog({
@@ -36,7 +37,7 @@ export function CreateOnlineExamDialog({
   schoolYearId,
   examToEdit,
 }: CreateOnlineExamDialogProps) {
-  const { createExam, updateExam, isCreating } = useOnlineExams(teacherId);
+  const { createExam, updateExam, updateQuestion, deleteQuestion, updateAnswer, isCreating } = useOnlineExams(teacherId);
   const { teacherClasses } = useTeacherClasses(teacherId);
   const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
 
@@ -93,6 +94,9 @@ export function CreateOnlineExamDialog({
       setEndTime(examToEdit.end_time ? new Date(examToEdit.end_time).toISOString().slice(0, 16) : '');
       setAllowWindowSwitch(examToEdit.allow_window_switch || false);
       setMaxWarnings(examToEdit.max_warnings?.toString() || '3');
+      
+      // Load existing questions with IDs
+      loadExamQuestions(examToEdit.id);
     } else if (!open) {
       // Reset when closing
       setTitle('');
@@ -117,6 +121,41 @@ export function CreateOnlineExamDialog({
     }
   }, [examToEdit, open]);
 
+  const loadExamQuestions = async (examId: string) => {
+    const { data: questionsData, error: questionsError } = await supabase
+      .from('online_exam_questions')
+      .select('*')
+      .eq('exam_id', examId)
+      .order('question_order');
+
+    if (questionsError) {
+      console.error('Error loading questions:', questionsError);
+      return;
+    }
+
+    const questionsWithAnswers = await Promise.all(
+      questionsData.map(async (q) => {
+        const { data: answersData } = await supabase
+          .from('online_exam_answers')
+          .select('*')
+          .eq('question_id', q.id);
+
+        return {
+          id: q.id,
+          question_text: q.question_text,
+          points: q.points,
+          answers: answersData?.map(a => ({
+            id: a.id,
+            answer_text: a.answer_text,
+            is_correct: a.is_correct
+          })) || []
+        };
+      })
+    );
+
+    setQuestions(questionsWithAnswers);
+  };
+
   const addQuestion = () => {
     setQuestions([
       ...questions,
@@ -135,7 +174,7 @@ export function CreateOnlineExamDialog({
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
-  const updateQuestion = (index: number, field: keyof Question, value: any) => {
+  const updateQuestionLocal = (index: number, field: keyof Question, value: any) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
@@ -153,7 +192,7 @@ export function CreateOnlineExamDialog({
     setQuestions(updated);
   };
 
-  const updateAnswer = (questionIndex: number, answerIndex: number, field: 'answer_text' | 'is_correct', value: string | boolean) => {
+  const updateAnswerLocal = (questionIndex: number, answerIndex: number, field: 'answer_text' | 'is_correct', value: string | boolean) => {
     const updated = [...questions];
     if (field === 'is_correct' && value) {
       // Only one correct answer per question
@@ -182,7 +221,7 @@ export function CreateOnlineExamDialog({
     const endDateTime = new Date(endTime).toISOString();
 
     if (examToEdit) {
-      // Update existing exam (only metadata, not questions)
+      // Update existing exam metadata
       await updateExam({
         examId: examToEdit.id,
         exam: {
@@ -195,6 +234,62 @@ export function CreateOnlineExamDialog({
           max_warnings: parseInt(maxWarnings),
         },
       });
+
+      // Update questions
+      for (const q of questions) {
+        if (q.id) {
+          // Update existing question
+          await updateQuestion({
+            questionId: q.id,
+            question_text: q.question_text,
+            points: q.points
+          });
+
+          // Update answers
+          for (const a of q.answers) {
+            if (a.id) {
+              await updateAnswer({
+                answerId: a.id,
+                answer_text: a.answer_text,
+                is_correct: a.is_correct
+              });
+            } else {
+              // Add new answer
+              await supabase
+                .from('online_exam_answers')
+                .insert({
+                  question_id: q.id,
+                  answer_text: a.answer_text,
+                  is_correct: a.is_correct
+                });
+            }
+          }
+        } else {
+          // Add new question
+          const { data: newQuestion } = await supabase
+            .from('online_exam_questions')
+            .insert({
+              exam_id: examToEdit.id,
+              question_text: q.question_text,
+              points: q.points,
+              question_order: questions.indexOf(q) + 1
+            })
+            .select()
+            .single();
+
+          if (newQuestion) {
+            for (const a of q.answers) {
+              await supabase
+                .from('online_exam_answers')
+                .insert({
+                  question_id: newQuestion.id,
+                  answer_text: a.answer_text,
+                  is_correct: a.is_correct
+                });
+            }
+          }
+        }
+      }
     } else {
       // Create new exam
       if (questions.length === 0) {
@@ -369,8 +464,8 @@ export function CreateOnlineExamDialog({
             </CardContent>
           </Card>
 
-          {/* Questions - Only show when creating new exam */}
-          {!examToEdit && (
+          {/* Questions */}
+          {(
             <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Questions</h3>
@@ -388,7 +483,12 @@ export function CreateOnlineExamDialog({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeQuestion(qIndex)}
+                      onClick={async () => {
+                        if (question.id && examToEdit) {
+                          await deleteQuestion(question.id);
+                        }
+                        removeQuestion(qIndex);
+                      }}
                       disabled={questions.length === 1}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -400,7 +500,7 @@ export function CreateOnlineExamDialog({
                     <Label>Question *</Label>
                     <Textarea
                       value={question.question_text}
-                      onChange={(e) => updateQuestion(qIndex, 'question_text', e.target.value)}
+                      onChange={(e) => updateQuestionLocal(qIndex, 'question_text', e.target.value)}
                       placeholder="Entrez votre question..."
                       rows={2}
                     />
@@ -411,7 +511,7 @@ export function CreateOnlineExamDialog({
                     <Input
                       type="number"
                       value={question.points}
-                      onChange={(e) => updateQuestion(qIndex, 'points', parseFloat(e.target.value))}
+                      onChange={(e) => updateQuestionLocal(qIndex, 'points', parseFloat(e.target.value))}
                       min="0.5"
                       step="0.5"
                     />
@@ -435,14 +535,14 @@ export function CreateOnlineExamDialog({
                         <Button
                           variant={answer.is_correct ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => updateAnswer(qIndex, aIndex, 'is_correct', !answer.is_correct)}
+                          onClick={() => updateAnswerLocal(qIndex, aIndex, 'is_correct', !answer.is_correct)}
                           className="shrink-0"
                         >
                           <Check className="w-4 h-4" />
                         </Button>
                         <Input
                           value={answer.answer_text}
-                          onChange={(e) => updateAnswer(qIndex, aIndex, 'answer_text', e.target.value)}
+                          onChange={(e) => updateAnswerLocal(qIndex, aIndex, 'answer_text', e.target.value)}
                           placeholder={`Réponse ${aIndex + 1}`}
                         />
                         <Button

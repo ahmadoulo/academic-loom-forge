@@ -377,7 +377,7 @@ export default function TakeExam() {
                     index === currentQuestionIndex
                       ? 'bg-primary text-primary-foreground'
                       : selectedAnswers[q.id]
-                      ? 'bg-primary/20 text-primary'
+                      ? 'bg-blue-500 text-white'
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >

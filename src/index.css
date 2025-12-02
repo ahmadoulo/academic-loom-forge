@@ -166,10 +166,12 @@ Modern Blue & White Theme - All colors MUST be HSL */
 
   @keyframes warning-flash {
     0%, 100% {
-      box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7);
+      border-color: hsl(var(--destructive));
+      box-shadow: inset 0 0 0 8px hsl(var(--destructive) / 0.2), 0 0 40px hsl(var(--destructive) / 0.6);
     }
     50% {
-      box-shadow: 0 0 0 8px hsl(var(--destructive) / 0);
+      border-color: hsl(var(--destructive) / 0.6);
+      box-shadow: inset 0 0 0 8px hsl(var(--destructive) / 0.05), 0 0 60px hsl(var(--destructive) / 0.3);
     }
   }
 
@@ -178,8 +180,21 @@ Modern Blue & White Theme - All colors MUST be HSL */
   }
 
   .warning-border {
-    animation: warning-flash 1.5s ease-in-out infinite;
-    border: 4px solid hsl(var(--destructive));
+    animation: warning-flash 0.8s ease-in-out infinite;
+    border: 6px solid hsl(var(--destructive));
+    position: relative;
+  }
+
+  .warning-border::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    right: -12px;
+    bottom: -12px;
+    border: 6px solid hsl(var(--destructive) / 0.3);
+    pointer-events: none;
+    animation: warning-flash 0.8s ease-in-out infinite reverse;
   }
   
   .shadow-elegant {
