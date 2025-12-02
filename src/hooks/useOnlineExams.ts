@@ -325,6 +325,70 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     },
   });
 
+  // Update question
+  const updateQuestion = useMutation({
+    mutationFn: async ({ questionId, question_text, points }: { questionId: string; question_text: string; points: number }) => {
+      const { error } = await supabase
+        .from('online_exam_questions')
+        .update({ question_text, points })
+        .eq('id', questionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['online-exams'] });
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification de la question');
+    },
+  });
+
+  // Delete question
+  const deleteQuestion = useMutation({
+    mutationFn: async (questionId: string) => {
+      // Delete answers first
+      const { error: answersError } = await supabase
+        .from('online_exam_answers')
+        .delete()
+        .eq('question_id', questionId);
+
+      if (answersError) throw answersError;
+
+      // Then delete question
+      const { error } = await supabase
+        .from('online_exam_questions')
+        .delete()
+        .eq('id', questionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['online-exams'] });
+      toast.success('Question supprimée');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression de la question');
+    },
+  });
+
+  // Update answer
+  const updateAnswer = useMutation({
+    mutationFn: async ({ answerId, answer_text, is_correct }: { answerId: string; answer_text: string; is_correct: boolean }) => {
+      const { error } = await supabase
+        .from('online_exam_answers')
+        .update({ answer_text, is_correct })
+        .eq('id', answerId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['online-exams'] });
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification de la réponse');
+    },
+  });
+
   // Fetch exam attempts
   const { data: attempts = [] } = useQuery({
     queryKey: ['exam-attempts'],
@@ -353,6 +417,9 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     deleteExam: deleteExam.mutateAsync,
     resetStudentAttempt: resetStudentAttempt.mutateAsync,
     updateExam: updateExam.mutateAsync,
+    updateQuestion: updateQuestion.mutateAsync,
+    deleteQuestion: deleteQuestion.mutateAsync,
+    updateAnswer: updateAnswer.mutateAsync,
     fetchExamWithDetails,
     checkExamAttempt,
     isCreating: createExam.isPending,
