@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnlineExams } from '@/hooks/useOnlineExams';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Clock, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
 import { format, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -18,6 +19,23 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
   const navigate = useNavigate();
   const { studentExams, isLoadingStudentExams, checkExamAttempt } = useOnlineExams(undefined, classId);
   const [examAttempts, setExamAttempts] = useState<Record<string, any>>({});
+  const [selectedSubject, setSelectedSubject] = useState<string>('all');
+
+  // Get unique subjects from student's exams
+  const examSubjects = useMemo(() => {
+    const subjectMap = new Map();
+    studentExams.forEach(exam => {
+      if (exam.subject_id && exam.subjects?.name) {
+        subjectMap.set(exam.subject_id, exam.subjects.name);
+      }
+    });
+    return Array.from(subjectMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [studentExams]);
+
+  const filteredExams = useMemo(() => {
+    if (selectedSubject === 'all') return studentExams;
+    return studentExams.filter(exam => exam.subject_id === selectedSubject);
+  }, [studentExams, selectedSubject]);
 
   useEffect(() => {
     const loadAttempts = async () => {
@@ -80,8 +98,19 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
         <p className="text-muted-foreground">Consultez et passez vos examens disponibles</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {studentExams.map((exam) => {
+      <Tabs value={selectedSubject} onValueChange={setSelectedSubject}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">Toutes les matières</TabsTrigger>
+          {examSubjects.map(subject => (
+            <TabsTrigger key={subject.id} value={subject.id}>
+              {subject.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={selectedSubject} className="mt-0">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredExams.map((exam) => {
           const status = getExamStatus(exam);
           
           return (
@@ -135,17 +164,21 @@ export function StudentOnlineExamsSection({ studentId, classId }: StudentOnlineE
                 </Button>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+          </div>
 
-      {studentExams.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Aucun examen disponible pour le moment.
-          </CardContent>
-        </Card>
-      )}
+          {filteredExams.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                {studentExams.length === 0
+                  ? 'Aucun examen disponible pour le moment.'
+                  : 'Aucun examen pour cette matière.'}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -106,10 +106,13 @@ export default function TakeExam() {
       setWarningCount(newCount);
 
       if (newCount >= exam.max_warnings) {
-        toast.error('Trop d\'avertissements. L\'examen sera soumis automatiquement.');
+        setWarningMessage('Trop d\'avertissements. L\'examen sera soumis automatiquement.');
+        setShowWarningDialog(true);
         await handleSubmit();
       } else {
-        toast.warning(`Avertissement ${newCount}/${exam.max_warnings}: Ne quittez pas la fenêtre!`);
+        setWarningMessage(`Avertissement ${newCount}/${exam.max_warnings}: Ne quittez pas la fenêtre d'examen!`);
+        setShowWarningDialog(true);
+        toast.warning(`Avertissement ${newCount}/${exam.max_warnings}`);
       }
 
       // Update warning count in database
@@ -257,7 +260,7 @@ export default function TakeExam() {
   return (
     <div
       className={`min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4 ${
-        hasActiveWarning ? 'ring-4 ring-destructive animate-pulse' : ''
+        hasActiveWarning ? 'warning-border' : ''
       }`}
     >
       <div className="max-w-4xl mx-auto py-8 space-y-6 animate-fade-in">
