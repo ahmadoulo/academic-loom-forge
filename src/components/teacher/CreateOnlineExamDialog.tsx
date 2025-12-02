@@ -19,6 +19,7 @@ interface CreateOnlineExamDialogProps {
   teacherId: string;
   schoolId: string;
   schoolYearId: string;
+  examToEdit?: any;
 }
 
 interface Question {
@@ -33,8 +34,9 @@ export function CreateOnlineExamDialog({
   teacherId,
   schoolId,
   schoolYearId,
+  examToEdit,
 }: CreateOnlineExamDialogProps) {
-  const { createExam, isCreating } = useOnlineExams(teacherId);
+  const { createExam, updateExam, isCreating } = useOnlineExams(teacherId);
   const { teacherClasses } = useTeacherClasses(teacherId);
   const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
 
@@ -78,6 +80,42 @@ export function CreateOnlineExamDialog({
       ],
     },
   ]);
+
+  // Load exam data when editing
+  useEffect(() => {
+    if (examToEdit && open) {
+      setTitle(examToEdit.title || '');
+      setDescription(examToEdit.description || '');
+      setClassId(examToEdit.class_id || '');
+      setSubjectId(examToEdit.subject_id || '');
+      setDurationMinutes(examToEdit.duration_minutes?.toString() || '60');
+      setStartTime(examToEdit.start_time ? new Date(examToEdit.start_time).toISOString().slice(0, 16) : '');
+      setEndTime(examToEdit.end_time ? new Date(examToEdit.end_time).toISOString().slice(0, 16) : '');
+      setAllowWindowSwitch(examToEdit.allow_window_switch || false);
+      setMaxWarnings(examToEdit.max_warnings?.toString() || '3');
+    } else if (!open) {
+      // Reset when closing
+      setTitle('');
+      setDescription('');
+      setClassId('');
+      setSubjectId('');
+      setDurationMinutes('60');
+      setStartTime('');
+      setEndTime('');
+      setAllowWindowSwitch(false);
+      setMaxWarnings('3');
+      setQuestions([
+        {
+          question_text: '',
+          points: 1,
+          answers: [
+            { answer_text: '', is_correct: false },
+            { answer_text: '', is_correct: false },
+          ],
+        },
+      ]);
+    }
+  }, [examToEdit, open]);
 
   const addQuestion = () => {
     setQuestions([
@@ -139,72 +177,74 @@ export function CreateOnlineExamDialog({
       return;
     }
 
-    if (questions.length === 0) {
-      toast.error('Ajoutez au moins une question');
-      return;
-    }
-
-    for (const q of questions) {
-      if (!q.question_text || q.answers.length < 2) {
-        toast.error('Chaque question doit avoir un texte et au moins 2 réponses');
-        return;
-      }
-      if (!q.answers.some(a => a.is_correct)) {
-        toast.error('Chaque question doit avoir une réponse correcte');
-        return;
-      }
-      if (q.answers.some(a => !a.answer_text)) {
-        toast.error('Toutes les réponses doivent avoir un texte');
-        return;
-      }
-    }
-
     // Convert local datetime to UTC ISO string so displayed time matches the selected local hour
     const startDateTime = new Date(startTime).toISOString();
     const endDateTime = new Date(endTime).toISOString();
 
-    await createExam({
-      exam: {
-        school_id: schoolId,
-        teacher_id: teacherId,
-        class_id: classId,
-        subject_id: subjectId,
-        school_year_id: schoolYearId,
-        title,
-        description,
-        duration_minutes: parseInt(durationMinutes),
-        start_time: startDateTime,
-        end_time: endDateTime,
-        allow_window_switch: allowWindowSwitch,
-        max_warnings: parseInt(maxWarnings),
-        is_published: false,
-      },
-      questions,
-    });
+    if (examToEdit) {
+      // Update existing exam (only metadata, not questions)
+      await updateExam({
+        examId: examToEdit.id,
+        exam: {
+          title,
+          description,
+          duration_minutes: parseInt(durationMinutes),
+          start_time: startDateTime,
+          end_time: endDateTime,
+          allow_window_switch: allowWindowSwitch,
+          max_warnings: parseInt(maxWarnings),
+        },
+      });
+    } else {
+      // Create new exam
+      if (questions.length === 0) {
+        toast.error('Ajoutez au moins une question');
+        return;
+      }
+
+      for (const q of questions) {
+        if (!q.question_text || q.answers.length < 2) {
+          toast.error('Chaque question doit avoir un texte et au moins 2 réponses');
+          return;
+        }
+        if (!q.answers.some(a => a.is_correct)) {
+          toast.error('Chaque question doit avoir une réponse correcte');
+          return;
+        }
+        if (q.answers.some(a => !a.answer_text)) {
+          toast.error('Toutes les réponses doivent avoir un texte');
+          return;
+        }
+      }
+
+      await createExam({
+        exam: {
+          school_id: schoolId,
+          teacher_id: teacherId,
+          class_id: classId,
+          subject_id: subjectId,
+          school_year_id: schoolYearId,
+          title,
+          description,
+          duration_minutes: parseInt(durationMinutes),
+          start_time: startDateTime,
+          end_time: endDateTime,
+          allow_window_switch: allowWindowSwitch,
+          max_warnings: parseInt(maxWarnings),
+          is_published: false,
+        },
+        questions,
+      });
+    }
 
     onOpenChange(false);
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setClassId('');
-    setSubjectId('');
-    setQuestions([
-      {
-        question_text: '',
-        points: 1,
-        answers: [
-          { answer_text: '', is_correct: false },
-          { answer_text: '', is_correct: false },
-        ],
-      },
-    ]);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Créer un Examen en Ligne</DialogTitle>
+          <DialogTitle>{examToEdit ? 'Modifier l\'Examen en Ligne' : 'Créer un Examen en Ligne'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -329,8 +369,9 @@ export function CreateOnlineExamDialog({
             </CardContent>
           </Card>
 
-          {/* Questions */}
-          <div className="space-y-4">
+          {/* Questions - Only show when creating new exam */}
+          {!examToEdit && (
+            <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Questions</h3>
               <Button onClick={addQuestion} variant="outline" size="sm">
@@ -422,13 +463,14 @@ export function CreateOnlineExamDialog({
               </Card>
             ))}
           </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
             <Button onClick={handleSubmit} disabled={isCreating}>
-              {isCreating ? 'Création...' : 'Créer l\'Examen'}
+              {isCreating ? (examToEdit ? 'Modification...' : 'Création...') : (examToEdit ? 'Modifier l\'Examen' : 'Créer l\'Examen')}
             </Button>
           </div>
         </div>

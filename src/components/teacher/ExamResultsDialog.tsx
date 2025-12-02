@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, XCircle, User } from 'lucide-react';
+import { CheckCircle, XCircle, User, RotateCcw } from 'lucide-react';
+import { useOnlineExams } from '@/hooks/useOnlineExams';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 interface ExamResultsDialogProps {
   open: boolean;
@@ -15,12 +18,30 @@ export function ExamResultsDialog({ open, onOpenChange, examId }: ExamResultsDia
   const [loading, setLoading] = useState(true);
   const [attempts, setAttempts] = useState<any[]>([]);
   const [exam, setExam] = useState<any>(null);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [attemptToReset, setAttemptToReset] = useState<string | null>(null);
+
+  const { resetStudentAttempt } = useOnlineExams();
 
   useEffect(() => {
     if (open && examId) {
       fetchResults();
     }
   }, [open, examId]);
+
+  const handleResetClick = (attemptId: string) => {
+    setAttemptToReset(attemptId);
+    setResetDialogOpen(true);
+  };
+
+  const handleConfirmReset = async () => {
+    if (attemptToReset) {
+      await resetStudentAttempt({ attemptId: attemptToReset });
+      setResetDialogOpen(false);
+      setAttemptToReset(null);
+      fetchResults();
+    }
+  };
 
   const fetchResults = async () => {
     setLoading(true);
@@ -115,18 +136,27 @@ export function ExamResultsDialog({ open, onOpenChange, examId }: ExamResultsDia
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right space-y-2">
                       <Badge variant={attempt.status === 'completed' ? 'default' : 'secondary'}>
                         {attempt.status === 'completed' ? 'Terminé' : 'En cours'}
                       </Badge>
-                      <p className="text-2xl font-bold mt-2">
+                      <p className="text-2xl font-bold">
                         {attempt.score?.toFixed(1) || '0'} pts
                       </p>
                       {attempt.warning_count > 0 && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-xs text-destructive">
                           {attempt.warning_count} avertissement(s)
                         </p>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetClick(attempt.id)}
+                        className="w-full"
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        Deuxième chance
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -167,6 +197,14 @@ export function ExamResultsDialog({ open, onOpenChange, examId }: ExamResultsDia
             ))
           )}
         </div>
+
+        <ConfirmationDialog
+          open={resetDialogOpen}
+          onOpenChange={setResetDialogOpen}
+          title="Donner une deuxième chance"
+          description="Êtes-vous sûr de vouloir réinitialiser la tentative de cet étudiant ? Il pourra repasser l'examen."
+          onConfirm={handleConfirmReset}
+        />
       </DialogContent>
     </Dialog>
   );

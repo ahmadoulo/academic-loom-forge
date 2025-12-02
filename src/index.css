@@ -143,15 +143,43 @@ Modern Blue & White Theme - All colors MUST be HSL */
   }
 }
 
-/* Responsive utilities */
 @layer utilities {
-  /* Animation utilities */
-  .hover-scale {
-    @apply transition-transform duration-200;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
-  
-  .hover-scale:hover {
-    @apply scale-105;
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes warning-flash {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--destructive) / 0);
+    }
+  }
+
+  .hover-scale {
+    @apply transition-transform hover:scale-105;
+  }
+
+  .warning-border {
+    animation: warning-flash 1.5s ease-in-out infinite;
+    border: 4px solid hsl(var(--destructive));
   }
   
   .shadow-elegant {

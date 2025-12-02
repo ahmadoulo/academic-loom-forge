@@ -267,6 +267,64 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     },
   });
 
+  // Reset student attempt (give second chance)
+  const resetStudentAttempt = useMutation({
+    mutationFn: async ({ attemptId }: { attemptId: string }) => {
+      // Delete responses first
+      const { error: responsesError } = await supabase
+        .from('student_exam_responses')
+        .delete()
+        .eq('attempt_id', attemptId);
+
+      if (responsesError) throw responsesError;
+
+      // Delete attempt
+      const { error: attemptError } = await supabase
+        .from('student_exam_attempts')
+        .delete()
+        .eq('id', attemptId);
+
+      if (attemptError) throw attemptError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exam-attempts'] });
+      toast.success('L\'étudiant peut repasser l\'examen');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la réinitialisation');
+    },
+  });
+
+  // Update exam
+  const updateExam = useMutation({
+    mutationFn: async (examData: {
+      examId: string;
+      exam: Partial<{
+        title: string;
+        description: string;
+        duration_minutes: number;
+        start_time: string;
+        end_time: string;
+        allow_window_switch: boolean;
+        max_warnings: number;
+      }>;
+    }) => {
+      const { error } = await supabase
+        .from('online_exams')
+        .update(examData.exam)
+        .eq('id', examData.examId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['online-exams'] });
+      toast.success('Examen modifié avec succès');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification');
+    },
+  });
+
   // Fetch exam attempts
   const { data: attempts = [] } = useQuery({
     queryKey: ['exam-attempts'],
@@ -293,6 +351,8 @@ export const useOnlineExams = (teacherId?: string, classId?: string) => {
     createExam: createExam.mutateAsync,
     publishExam: publishExam.mutateAsync,
     deleteExam: deleteExam.mutateAsync,
+    resetStudentAttempt: resetStudentAttempt.mutateAsync,
+    updateExam: updateExam.mutateAsync,
     fetchExamWithDetails,
     checkExamAttempt,
     isCreating: createExam.isPending,

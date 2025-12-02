@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useOnlineExams } from '@/hooks/useOnlineExams';
+import { useSubjects } from '@/hooks/useSubjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Clock, Users, Trash2, Eye, CheckCircle } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Plus, Clock, Users, Trash2, Eye, CheckCircle, Edit } from 'lucide-react';
 import { CreateOnlineExamDialog } from './CreateOnlineExamDialog';
 import { ExamResultsDialog } from './ExamResultsDialog';
 import { format } from 'date-fns';
@@ -22,8 +24,28 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examToDelete, setExamToDelete] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [examToEdit, setExamToEdit] = useState<any>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string>('all');
   
   const { exams, isLoadingExams, publishExam, deleteExam, attempts } = useOnlineExams(teacherId);
+  const { subjects } = useSubjects(schoolId);
+
+  // Get unique subjects from teacher's exams
+  const teacherSubjects = useMemo(() => {
+    const subjectMap = new Map();
+    exams.forEach(exam => {
+      if (exam.subject_id && exam.subjects?.name) {
+        subjectMap.set(exam.subject_id, exam.subjects.name);
+      }
+    });
+    return Array.from(subjectMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [exams]);
+
+  const filteredExams = useMemo(() => {
+    if (selectedSubject === 'all') return exams;
+    return exams.filter(exam => exam.subject_id === selectedSubject);
+  }, [exams, selectedSubject]);
 
   const handleViewResults = (examId: string) => {
     setSelectedExamId(examId);
@@ -33,6 +55,11 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
   const handleDeleteClick = (examId: string) => {
     setExamToDelete(examId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (exam: any) => {
+    setExamToEdit(exam);
+    setEditDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -64,8 +91,19 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {exams.map((exam) => (
+      <Tabs value={selectedSubject} onValueChange={setSelectedSubject}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">Toutes les matières</TabsTrigger>
+          {teacherSubjects.map(subject => (
+            <TabsTrigger key={subject.id} value={subject.id}>
+              {subject.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={selectedSubject} className="mt-0">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredExams.map((exam) => (
           <Card key={exam.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -97,17 +135,28 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {!exam.is_published && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => publishExam(exam.id)}
-                    className="flex-1"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Publier
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => publishExam(exam.id)}
+                      className="flex-1"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Publier
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(exam)}
+                      className="flex-1"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Modifier
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="outline"
@@ -128,16 +177,20 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+            ))}
+          </div>
 
-      {exams.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Aucun examen créé. Commencez par créer votre premier examen en ligne.
-          </CardContent>
-        </Card>
-      )}
+          {filteredExams.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                {exams.length === 0 
+                  ? 'Aucun examen créé. Commencez par créer votre premier examen en ligne.'
+                  : 'Aucun examen pour cette matière.'}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <CreateOnlineExamDialog
         open={createDialogOpen}
@@ -145,6 +198,15 @@ export function OnlineExamsSection({ teacherId, schoolId, schoolYearId }: Online
         teacherId={teacherId}
         schoolId={schoolId}
         schoolYearId={schoolYearId}
+      />
+
+      <CreateOnlineExamDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        teacherId={teacherId}
+        schoolId={schoolId}
+        schoolYearId={schoolYearId}
+        examToEdit={examToEdit}
       />
 
       {selectedExamId && (
