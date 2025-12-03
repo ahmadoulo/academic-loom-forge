@@ -120,6 +120,12 @@ const menuStructure = [
         href: "/school"
       },
       { 
+        title: "Cahier de Texte", 
+        value: "textbooks",
+        icon: BookOpen,
+        href: "/school"
+      },
+      { 
         title: "Documents Examens", 
         value: "exams",
         icon: ClipboardList,

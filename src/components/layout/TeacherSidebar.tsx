@@ -74,7 +74,7 @@ const menuStructure = [
       },
     ]
   },
-  {
+{
     category: "Suivi",
     icon: ClipboardList,
     items: [
@@ -86,6 +86,11 @@ const menuStructure = [
       { 
         title: "Gestion des Notes", 
         value: "grades",
+        icon: BookOpen
+      },
+      { 
+        title: "Cahier de Texte", 
+        value: "textbooks",
         icon: BookOpen
       },
       { 

@@ -1850,6 +1850,201 @@ export type Database = {
           },
         ]
       }
+      school_textbook_entries: {
+        Row: {
+          chapter_title: string | null
+          created_at: string
+          end_time: string | null
+          homework_due_date: string | null
+          homework_given: string | null
+          id: string
+          lesson_content: string
+          next_session_plan: string | null
+          objectives_covered: string | null
+          observations: string | null
+          resources_links: string | null
+          session_date: string
+          start_time: string | null
+          subject_id: string
+          teacher_id: string
+          textbook_id: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_title?: string | null
+          created_at?: string
+          end_time?: string | null
+          homework_due_date?: string | null
+          homework_given?: string | null
+          id?: string
+          lesson_content: string
+          next_session_plan?: string | null
+          objectives_covered?: string | null
+          observations?: string | null
+          resources_links?: string | null
+          session_date: string
+          start_time?: string | null
+          subject_id: string
+          teacher_id: string
+          textbook_id: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_title?: string | null
+          created_at?: string
+          end_time?: string | null
+          homework_due_date?: string | null
+          homework_given?: string | null
+          id?: string
+          lesson_content?: string
+          next_session_plan?: string | null
+          objectives_covered?: string | null
+          observations?: string | null
+          resources_links?: string | null
+          session_date?: string
+          start_time?: string | null
+          subject_id?: string
+          teacher_id?: string
+          textbook_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_textbook_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbook_entries_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbook_entries_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "school_textbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_textbook_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_visible_to_all: boolean
+          note_content: string
+          target_teacher_id: string | null
+          textbook_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_visible_to_all?: boolean
+          note_content: string
+          target_teacher_id?: string | null
+          textbook_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_visible_to_all?: boolean
+          note_content?: string
+          target_teacher_id?: string | null
+          textbook_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_textbook_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbook_notes_target_teacher_id_fkey"
+            columns: ["target_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbook_notes_textbook_id_fkey"
+            columns: ["textbook_id"]
+            isOneToOne: false
+            referencedRelation: "school_textbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_textbooks: {
+        Row: {
+          class_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          school_year_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          school_year_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          school_year_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_textbooks_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbooks_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_textbooks_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_years: {
         Row: {
           created_at: string | null
