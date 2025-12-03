@@ -75,6 +75,7 @@ import { AdmissionsManagement } from "@/components/school/AdmissionsManagement";
 import { useAdmissions } from "@/hooks/useAdmissions";
 import { ClipboardList } from "lucide-react";
 import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
+import { TextbooksSection } from "@/components/school/TextbooksSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -1146,6 +1147,10 @@ const SchoolDashboard = () => {
                   subjects={subjects}
                   loading={studentsLoading || subjectsLoading}
                 />
+              )}
+              
+              {activeTab === "textbooks" && school?.id && (
+                <TextbooksSection schoolId={school.id} />
               )}
             </div>
           </main>

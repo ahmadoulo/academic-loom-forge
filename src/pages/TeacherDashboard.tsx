@@ -41,6 +41,7 @@ import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
 import { SemesterProvider } from "@/hooks/useSemester";
 import { downloadExamPdf } from "@/utils/examPdfExport";
 import { toast } from "sonner";
+import { TeacherTextbooksSection } from "@/components/teacher/TextbooksSection";
 
 const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined }) => {
   const [teacher, setTeacher] = useState<any>(null);
@@ -767,6 +768,13 @@ const TeacherDashboardContent = ({ teacherId }: { teacherId: string | undefined 
             
             {activeTab === "announcements" && currentTeacher && (
               <AnnouncementsSection schoolId={currentTeacher.school_id} isAdmin={false} userRole="teacher" />
+            )}
+            
+            {activeTab === "textbooks" && currentTeacher && (
+              <TeacherTextbooksSection 
+                teacherId={currentTeacher.id} 
+                schoolId={currentTeacher.school_id} 
+              />
             )}
           </div>
         )}
