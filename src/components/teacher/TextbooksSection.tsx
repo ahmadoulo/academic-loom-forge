@@ -9,13 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, BookOpen, Edit, Trash2, Calendar, Clock, BookMarked, FileText, Link2, MessageSquare } from 'lucide-react';
+import { Plus, BookOpen, Edit, Trash2, Calendar, Clock, BookMarked, FileText, Link2, MessageSquare, Download } from 'lucide-react';
 import { useTeacherTextbooks, useTextbookEntries, useTextbookNotes, Textbook, TextbookEntry } from '@/hooks/useTextbooks';
 import { useAcademicYear } from '@/hooks/useAcademicYear';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { exportTextbookToPdf } from '@/utils/textbookPdfExport';
+import { imageUrlToBase64 } from '@/utils/imageToBase64';
+import { toast } from 'sonner';
 interface TeacherTextbooksSectionProps {
   teacherId: string;
   schoolId: string;
@@ -104,12 +107,63 @@ interface TextbookEntryManagerProps {
 const TextbookEntryManager = ({ textbook, teacherId, schoolId, onBack }: TextbookEntryManagerProps) => {
   const { entries, isLoading, createEntry, updateEntry, deleteEntry } = useTextbookEntries(textbook.id, teacherId);
   const { notes } = useTextbookNotes(textbook.id, teacherId);
+  const { currentYear } = useAcademicYear();
   const [teacherSubjects, setTeacherSubjects] = useState<Array<{ id: string; name: string }>>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TextbookEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('entries');
+  const [isExporting, setIsExporting] = useState(false);
+  const [teacherInfo, setTeacherInfo] = useState<{ firstname: string; lastname: string } | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; logo_url: string | null } | null>(null);
+
+  // Fetch teacher and school info
+  useEffect(() => {
+    const loadInfo = async () => {
+      const [teacherRes, schoolRes] = await Promise.all([
+        supabase.from('teachers').select('firstname, lastname').eq('id', teacherId).single(),
+        supabase.from('schools').select('name, logo_url').eq('id', schoolId).single()
+      ]);
+      if (teacherRes.data) setTeacherInfo(teacherRes.data);
+      if (schoolRes.data) setSchoolInfo(schoolRes.data);
+    };
+    loadInfo();
+  }, [teacherId, schoolId]);
+
+  const handleExportPdf = async () => {
+    if (!schoolInfo || !teacherInfo) return;
+    
+    setIsExporting(true);
+    try {
+      let logoBase64: string | undefined;
+      if (schoolInfo.logo_url) {
+        try {
+          logoBase64 = await imageUrlToBase64(schoolInfo.logo_url);
+        } catch (e) {
+          console.error('Failed to load logo:', e);
+        }
+      }
+
+      await exportTextbookToPdf({
+        schoolName: schoolInfo.name,
+        schoolLogoBase64: logoBase64,
+        className: textbook.classes?.name || 'Classe',
+        textbookName: textbook.name,
+        academicYear: currentYear?.name || new Date().getFullYear().toString(),
+        entries: entries,
+        isTeacherExport: true,
+        teacherName: `${teacherInfo.firstname} ${teacherInfo.lastname}`,
+      });
+      
+      toast.success('Cahier de texte exporté avec succès');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error("Erreur lors de l'exportation");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Fetch subjects assigned to this teacher for this class
   useEffect(() => {
@@ -253,6 +307,14 @@ const TextbookEntryManager = ({ textbook, teacherId, schoolId, onBack }: Textboo
           <h2 className="text-2xl font-bold">{textbook.name}</h2>
           <p className="text-muted-foreground">Classe: {textbook.classes?.name}</p>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={handleExportPdf} 
+          disabled={isExporting || entries.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {isExporting ? 'Export...' : 'Exporter PDF'}
+        </Button>
         <Dialog open={isFormOpen} onOpenChange={(open) => { setIsFormOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>

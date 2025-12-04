@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, BookOpen, Eye, Trash2, MessageSquare, Calendar, Clock, User, BookMarked } from 'lucide-react';
+import { Plus, BookOpen, Eye, Trash2, MessageSquare, Calendar, Clock, User, BookMarked, Download } from 'lucide-react';
 import { useTextbooks, useTextbookEntries, useTextbookNotes, Textbook, TextbookEntry } from '@/hooks/useTextbooks';
 import { useClasses } from '@/hooks/useClasses';
 import { useTeachers } from '@/hooks/useTeachers';
@@ -17,6 +17,10 @@ import { useAcademicYear } from '@/hooks/useAcademicYear';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { exportTextbookToPdf } from '@/utils/textbookPdfExport';
+import { imageUrlToBase64 } from '@/utils/imageToBase64';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface TextbooksSectionProps {
   schoolId: string;
@@ -220,13 +224,58 @@ interface TextbookDetailProps {
 const TextbookDetail = ({ textbook, teachers, onBack, schoolId }: TextbookDetailProps) => {
   const { entries, isLoading: entriesLoading } = useTextbookEntries(textbook.id);
   const { notes, createNote, deleteNote } = useTextbookNotes(textbook.id);
+  const { currentYear } = useAcademicYear();
   const [activeTab, setActiveTab] = useState('entries');
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; logo_url: string | null } | null>(null);
   const [noteForm, setNoteForm] = useState({
     note_content: '',
     target_teacher_id: '',
     is_visible_to_all: true,
   });
+
+  // Fetch school info
+  useEffect(() => {
+    const loadSchoolInfo = async () => {
+      const { data } = await supabase.from('schools').select('name, logo_url').eq('id', schoolId).single();
+      if (data) setSchoolInfo(data);
+    };
+    loadSchoolInfo();
+  }, [schoolId]);
+
+  const handleExportPdf = async () => {
+    if (!schoolInfo) return;
+    
+    setIsExporting(true);
+    try {
+      let logoBase64: string | undefined;
+      if (schoolInfo.logo_url) {
+        try {
+          logoBase64 = await imageUrlToBase64(schoolInfo.logo_url);
+        } catch (e) {
+          console.error('Failed to load logo:', e);
+        }
+      }
+
+      await exportTextbookToPdf({
+        schoolName: schoolInfo.name,
+        schoolLogoBase64: logoBase64,
+        className: textbook.classes?.name || 'Classe',
+        textbookName: textbook.name,
+        academicYear: currentYear?.name || new Date().getFullYear().toString(),
+        entries: entries,
+        isTeacherExport: false,
+      });
+      
+      toast.success('Cahier de texte exporté avec succès');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error("Erreur lors de l'exportation");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleCreateNote = () => {
     createNote.mutate({
@@ -254,10 +303,18 @@ const TextbookDetail = ({ textbook, teachers, onBack, schoolId }: TextbookDetail
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={onBack}>← Retour</Button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-2xl font-bold">{textbook.name}</h2>
           <p className="text-muted-foreground">Classe: {textbook.classes?.name}</p>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={handleExportPdf} 
+          disabled={isExporting || entries.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {isExporting ? 'Export...' : 'Exporter PDF'}
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
