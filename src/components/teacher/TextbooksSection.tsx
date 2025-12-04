@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, BookOpen, Edit, Trash2, Calendar, Clock, BookMarked, FileText, Link2, MessageSquare } from 'lucide-react';
 import { useTeacherTextbooks, useTextbookEntries, useTextbookNotes, Textbook, TextbookEntry } from '@/hooks/useTextbooks';
-import { useSubjects } from '@/hooks/useSubjects';
 import { useAcademicYear } from '@/hooks/useAcademicYear';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-
 interface TeacherTextbooksSectionProps {
   teacherId: string;
   schoolId: string;
@@ -105,14 +104,59 @@ interface TextbookEntryManagerProps {
 const TextbookEntryManager = ({ textbook, teacherId, schoolId, onBack }: TextbookEntryManagerProps) => {
   const { entries, isLoading, createEntry, updateEntry, deleteEntry } = useTextbookEntries(textbook.id, teacherId);
   const { notes } = useTextbookNotes(textbook.id, teacherId);
-  const { subjects } = useSubjects(textbook.class_id);
+  const [teacherSubjects, setTeacherSubjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TextbookEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('entries');
 
-  // Filter subjects assigned to this teacher
-  const teacherSubjects = subjects.filter(s => s.teacher_id === teacherId);
+  // Fetch subjects assigned to this teacher for this class
+  useEffect(() => {
+    const loadTeacherSubjectsForClass = async () => {
+      if (!teacherId || !textbook.class_id) {
+        setSubjectsLoading(false);
+        return;
+      }
+
+      try {
+        // Get subjects assigned to this class via class_subjects junction table
+        const { data: classSubjects, error: classError } = await supabase
+          .from('class_subjects')
+          .select(`
+            subject_id,
+            subjects (
+              id,
+              name,
+              teacher_id
+            )
+          `)
+          .eq('class_id', textbook.class_id);
+
+        if (classError) {
+          console.error('Error loading class subjects:', classError);
+          setSubjectsLoading(false);
+          return;
+        }
+
+        // Filter to only show subjects assigned to this teacher
+        const filteredSubjects = (classSubjects || [])
+          .filter((cs: any) => cs.subjects?.teacher_id === teacherId)
+          .map((cs: any) => ({
+            id: cs.subjects.id,
+            name: cs.subjects.name
+          }));
+
+        setTeacherSubjects(filteredSubjects);
+      } catch (err) {
+        console.error('Error fetching teacher subjects for class:', err);
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+
+    loadTeacherSubjectsForClass();
+  }, [teacherId, textbook.class_id]);
 
   const [formData, setFormData] = useState({
     subject_id: '',
@@ -226,16 +270,37 @@ const TextbookEntryManager = ({ textbook, teacherId, schoolId, onBack }: Textboo
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Matière *</Label>
-                  <Select value={formData.subject_id} onValueChange={(v) => setFormData(p => ({ ...p, subject_id: v }))}>
+                  <Select 
+                    value={formData.subject_id} 
+                    onValueChange={(v) => setFormData(p => ({ ...p, subject_id: v }))}
+                    disabled={subjectsLoading}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une matière" />
+                      <SelectValue placeholder={
+                        subjectsLoading 
+                          ? "Chargement..." 
+                          : teacherSubjects.length === 0 
+                            ? "Aucune matière assignée" 
+                            : "Sélectionner une matière"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {teacherSubjects.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
+                      {teacherSubjects.length === 0 ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          Aucune matière ne vous est assignée pour cette classe
+                        </div>
+                      ) : (
+                        teacherSubjects.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {!subjectsLoading && teacherSubjects.length === 0 && (
+                    <p className="text-xs text-destructive mt-1">
+                      Contactez l'administration pour assigner des matières
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label>Date de la séance *</Label>
@@ -356,7 +421,14 @@ const TextbookEntryManager = ({ textbook, teacherId, schoolId, onBack }: Textboo
 
               <Button 
                 onClick={handleSubmit}
-                disabled={!formData.subject_id || !formData.lesson_content || createEntry.isPending || updateEntry.isPending}
+                disabled={
+                  subjectsLoading || 
+                  teacherSubjects.length === 0 || 
+                  !formData.subject_id || 
+                  !formData.lesson_content || 
+                  createEntry.isPending || 
+                  updateEntry.isPending
+                }
                 className="w-full"
               >
                 {editingEntry ? 'Mettre à jour' : 'Enregistrer l\'entrée'}
