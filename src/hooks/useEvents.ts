@@ -14,6 +14,7 @@ export interface Event {
   class_id: string | null;
   subject_id: string | null;
   published: boolean;
+  attendance_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

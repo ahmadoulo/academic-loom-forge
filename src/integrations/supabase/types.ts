@@ -833,8 +833,128 @@ export type Database = {
           },
         ]
       }
+      event_attendance: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          marked_at: string
+          method: string
+          participant_email: string | null
+          participant_name: string
+          participant_phone: string | null
+          school_id: string
+          session_id: string
+          student_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          marked_at?: string
+          method?: string
+          participant_email?: string | null
+          participant_name: string
+          participant_phone?: string | null
+          school_id: string
+          session_id: string
+          student_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          marked_at?: string
+          method?: string
+          participant_email?: string | null
+          participant_name?: string
+          participant_phone?: string | null
+          school_id?: string
+          session_id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "event_attendance_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_attendance_sessions: {
+        Row: {
+          created_at: string
+          event_id: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          school_id: string
+          session_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          school_id: string
+          session_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          school_id?: string
+          session_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendance_sessions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
+          attendance_enabled: boolean
           class_id: string | null
           created_at: string
           created_by: string | null
@@ -851,6 +971,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attendance_enabled?: boolean
           class_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -867,6 +988,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attendance_enabled?: boolean
           class_id?: string | null
           created_at?: string
           created_by?: string | null
