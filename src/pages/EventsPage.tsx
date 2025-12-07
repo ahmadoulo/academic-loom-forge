@@ -35,6 +35,7 @@ export default function EventsPage() {
     location: "",
     scope: "school",
     published: true,
+    attendance_enabled: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +63,7 @@ export default function EventsPage() {
         location: "",
         scope: "school",
         published: true,
+        attendance_enabled: false,
       });
     }
   };
@@ -76,6 +78,7 @@ export default function EventsPage() {
       location: event.location || "",
       scope: event.scope,
       published: event.published,
+      attendance_enabled: event.attendance_enabled || false,
     });
     setIsModalOpen(true);
   };

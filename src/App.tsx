@@ -17,6 +17,7 @@ import EventsPage from "./pages/EventsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import PublicAdmissionForm from "./pages/PublicAdmissionForm";
 import TakeExam from "./pages/TakeExam";
+import EventAttendanceScan from "./pages/EventAttendanceScan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/events" element={<EventsPage />} />
             <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="/exam/:examId" element={<TakeExam />} />
+            <Route path="/event-attendance/:sessionCode" element={<EventAttendanceScan />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

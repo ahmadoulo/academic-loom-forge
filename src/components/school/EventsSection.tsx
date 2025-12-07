@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useEvents } from "@/hooks/useEvents";
+import { useEventAttendance } from "@/hooks/useEventAttendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock } from "lucide-react";
+import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock, QrCode, Users } from "lucide-react";
 import { format, isSameDay, isPast, isFuture } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -16,16 +17,29 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { EventQRCodeGenerator } from "./EventQRCodeGenerator";
 
 interface EventsSectionProps {
   schoolId: string;
   isAdmin?: boolean;
 }
 
+interface ActiveSession {
+  event: any;
+  session: {
+    id: string;
+    session_code: string;
+    expires_at: string;
+  };
+}
+
 export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {
   const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [generatingQR, setGeneratingQR] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -35,6 +49,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
     location: "",
     scope: "school",
     published: true,
+    attendance_enabled: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,6 +78,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
         location: "",
         scope: "school",
         published: true,
+        attendance_enabled: false,
       });
     }
   };
@@ -77,6 +93,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
       location: event.location || "",
       scope: event.scope,
       published: event.published,
+      attendance_enabled: event.attendance_enabled || false,
     });
     setIsModalOpen(true);
   };
@@ -84,6 +101,29 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
   const handleDelete = async (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
       await deleteEvent(id);
+    }
+  };
+
+  const handleGenerateQR = async (event: any) => {
+    setGeneratingQR(event.id);
+    
+    try {
+      // Create a session using the hook
+      const { createSession } = useEventAttendanceForGeneration(event.id, schoolId);
+      const result = await createSession(event.id, schoolId, 120); // 2 hours expiration
+      
+      if (result.data) {
+        setActiveSession({
+          event,
+          session: {
+            id: result.data.id,
+            session_code: result.data.session_code,
+            expires_at: result.data.expires_at
+          }
+        });
+      }
+    } finally {
+      setGeneratingQR(null);
     }
   };
 
@@ -100,6 +140,20 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
       return { label: 'En cours', color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' };
     }
   };
+
+  // If showing QR code generator
+  if (activeSession) {
+    return (
+      <EventQRCodeGenerator
+        event={{
+          ...activeSession.event,
+          school_id: schoolId
+        }}
+        session={activeSession.session}
+        onBack={() => setActiveSession(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,11 +211,12 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => {
+          {events.map((event: any) => {
             const status = getEventStatus(event.start_at, event.end_at);
             const startDate = new Date(event.start_at);
             const endDate = new Date(event.end_at);
             const isSameDayEvent = isSameDay(startDate, endDate);
+            const canGenerateQR = event.attendance_enabled && !isPast(endDate);
             
             return (
               <Card 
@@ -171,9 +226,17 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                 <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500" />
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start gap-3 mb-3">
-                    <Badge variant="outline" className={status.color}>
-                      {status.label}
-                    </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className={status.color}>
+                        {status.label}
+                      </Badge>
+                      {event.attendance_enabled && (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Présence
+                        </Badge>
+                      )}
+                    </div>
                     <Badge variant="secondary" className="text-xs">
                       {event.scope === 'school' ? 'École' : 'Classe'}
                     </Badge>
@@ -214,23 +277,34 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                   </div>
 
                   {isAdmin && (
-                    <div className="flex gap-2 pt-4 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(event)}
-                        className="flex-1 group-hover:border-primary/50"
-                      >
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Modifier
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(event.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div className="space-y-2 pt-4 border-t">
+                      {/* QR Code Button for events with attendance enabled */}
+                      {canGenerateQR && (
+                        <EventQRButton 
+                          event={event} 
+                          schoolId={schoolId}
+                          onSessionCreated={(session) => setActiveSession({ event, session })}
+                        />
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(event)}
+                          className="flex-1 group-hover:border-primary/50"
+                        >
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Modifier
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(event.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -313,6 +387,29 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
               />
             </div>
 
+            {/* Attendance Enabled Checkbox */}
+            <div className="flex items-center space-x-3 p-4 rounded-lg border bg-muted/30">
+              <Checkbox
+                id="attendance_enabled"
+                checked={formData.attendance_enabled}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, attendance_enabled: checked === true })
+                }
+              />
+              <div className="space-y-1">
+                <Label 
+                  htmlFor="attendance_enabled" 
+                  className="text-base font-semibold cursor-pointer flex items-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  Activer la prise de présence
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Permet de générer un QR code pour enregistrer les participants présents à l'événement
+                </p>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button 
                 type="button" 
@@ -331,4 +428,69 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
       </Dialog>
     </div>
   );
+}
+
+// Helper component for generating QR code
+function EventQRButton({ 
+  event, 
+  schoolId,
+  onSessionCreated 
+}: { 
+  event: any; 
+  schoolId: string;
+  onSessionCreated: (session: { id: string; session_code: string; expires_at: string }) => void;
+}) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { createSession, sessions } = useEventAttendance(event.id, schoolId);
+
+  const handleClick = async () => {
+    // Check for existing active session
+    const activeSession = sessions.find(s => 
+      s.is_active && new Date(s.expires_at) > new Date()
+    );
+
+    if (activeSession) {
+      onSessionCreated({
+        id: activeSession.id,
+        session_code: activeSession.session_code,
+        expires_at: activeSession.expires_at
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    const result = await createSession(event.id, schoolId, 120);
+    setIsGenerating(false);
+
+    if (result.data) {
+      onSessionCreated({
+        id: result.data.id,
+        session_code: result.data.session_code,
+        expires_at: result.data.expires_at
+      });
+    }
+  };
+
+  const activeSession = sessions.find(s => 
+    s.is_active && new Date(s.expires_at) > new Date()
+  );
+
+  return (
+    <Button
+      variant={activeSession ? "default" : "outline"}
+      size="sm"
+      onClick={handleClick}
+      disabled={isGenerating}
+      className="w-full gap-2"
+    >
+      <QrCode className="w-4 h-4" />
+      {isGenerating ? "Génération..." : activeSession ? "Voir QR Code" : "Générer QR Code"}
+    </Button>
+  );
+}
+
+// Helper for one-off session creation (used outside component)
+function useEventAttendanceForGeneration(eventId: string, schoolId: string) {
+  const { createSession } = useEventAttendance(eventId, schoolId);
+  return { createSession };
 }
