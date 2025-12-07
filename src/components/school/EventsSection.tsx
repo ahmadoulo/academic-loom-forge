@@ -4,7 +4,7 @@ import { useEventAttendance } from "@/hooks/useEventAttendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock, QrCode, Users } from "lucide-react";
+import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock, QrCode, Users, Eye } from "lucide-react";
 import { format, isSameDay, isPast, isFuture } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EventQRCodeGenerator } from "./EventQRCodeGenerator";
+import { EventAttendanceList } from "./EventAttendanceList";
 
 interface EventsSectionProps {
   schoolId: string;
@@ -34,12 +35,16 @@ interface ActiveSession {
   };
 }
 
+interface ViewingAttendance {
+  event: any;
+}
+
 export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {
   const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [generatingQR, setGeneratingQR] = useState<string | null>(null);
+  const [viewingAttendance, setViewingAttendance] = useState<ViewingAttendance | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -104,29 +109,6 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
     }
   };
 
-  const handleGenerateQR = async (event: any) => {
-    setGeneratingQR(event.id);
-    
-    try {
-      // Create a session using the hook
-      const { createSession } = useEventAttendanceForGeneration(event.id, schoolId);
-      const result = await createSession(event.id, schoolId, 120); // 2 hours expiration
-      
-      if (result.data) {
-        setActiveSession({
-          event,
-          session: {
-            id: result.data.id,
-            session_code: result.data.session_code,
-            expires_at: result.data.expires_at
-          }
-        });
-      }
-    } finally {
-      setGeneratingQR(null);
-    }
-  };
-
   const getEventStatus = (startDate: string, endDate: string) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -140,6 +122,17 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
       return { label: 'En cours', color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' };
     }
   };
+
+  // If showing attendance list
+  if (viewingAttendance) {
+    return (
+      <EventAttendanceList
+        event={viewingAttendance.event}
+        schoolId={schoolId}
+        onBack={() => setViewingAttendance(null)}
+      />
+    );
+  }
 
   // If showing QR code generator
   if (activeSession) {
@@ -278,13 +271,26 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
 
                   {isAdmin && (
                     <div className="space-y-2 pt-4 border-t">
-                      {/* QR Code Button for events with attendance enabled */}
-                      {canGenerateQR && (
-                        <EventQRButton 
-                          event={event} 
-                          schoolId={schoolId}
-                          onSessionCreated={(session) => setActiveSession({ event, session })}
-                        />
+                      {/* Attendance buttons for events with attendance enabled */}
+                      {event.attendance_enabled && (
+                        <div className="flex gap-2">
+                          {canGenerateQR && (
+                            <EventQRButton 
+                              event={event} 
+                              schoolId={schoolId}
+                              onSessionCreated={(session) => setActiveSession({ event, session })}
+                            />
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setViewingAttendance({ event })}
+                            className="flex-1 gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Voir présences
+                          </Button>
+                        </div>
                       )}
                       
                       <div className="flex gap-2">
@@ -405,7 +411,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                   Activer la prise de présence
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Permet de générer un QR code pour enregistrer les participants présents à l'événement
+                  Permet de générer un QR code pour que les étudiants puissent marquer leur présence à l'événement
                 </p>
               </div>
             </div>
@@ -481,16 +487,10 @@ function EventQRButton({
       size="sm"
       onClick={handleClick}
       disabled={isGenerating}
-      className="w-full gap-2"
+      className="flex-1 gap-2"
     >
       <QrCode className="w-4 h-4" />
-      {isGenerating ? "Génération..." : activeSession ? "Voir QR Code" : "Générer QR Code"}
+      {isGenerating ? "..." : activeSession ? "QR Code" : "Générer QR"}
     </Button>
   );
-}
-
-// Helper for one-off session creation (used outside component)
-function useEventAttendanceForGeneration(eventId: string, schoolId: string) {
-  const { createSession } = useEventAttendance(eventId, schoolId);
-  return { createSession };
 }

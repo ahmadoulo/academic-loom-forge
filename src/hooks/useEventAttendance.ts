@@ -167,22 +167,29 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
         throw new Error('La session a expiré');
       }
 
-      // Check if already marked
-      let existingQuery = supabase
-        .from('event_attendance' as any)
-        .select('id')
-        .eq('event_id', sessionData.event_id);
+      // Check if already marked - prioritize student_id check
+      if (data.studentId) {
+        const { data: existingByStudent } = await supabase
+          .from('event_attendance' as any)
+          .select('id')
+          .eq('event_id', sessionData.event_id)
+          .eq('student_id', data.studentId)
+          .maybeSingle();
 
-      if (data.participantEmail) {
-        existingQuery = existingQuery.eq('participant_email', data.participantEmail);
-      } else if (data.studentId) {
-        existingQuery = existingQuery.eq('student_id', data.studentId);
-      }
+        if (existingByStudent) {
+          throw new Error('Vous avez déjà marqué votre présence pour cet événement');
+        }
+      } else if (data.participantEmail) {
+        const { data: existingByEmail } = await supabase
+          .from('event_attendance' as any)
+          .select('id')
+          .eq('event_id', sessionData.event_id)
+          .eq('participant_email', data.participantEmail)
+          .maybeSingle();
 
-      const { data: existing } = await existingQuery.maybeSingle();
-
-      if (existing) {
-        throw new Error('Vous avez déjà marqué votre présence pour cet événement');
+        if (existingByEmail) {
+          throw new Error('Vous avez déjà marqué votre présence pour cet événement');
+        }
       }
 
       // Insert attendance record
