@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, CalendarDays, MapPin, Clock, AlertCircle, Loader2, PartyPopper } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  CheckCircle2, 
+  CalendarDays, 
+  MapPin, 
+  Clock, 
+  AlertCircle, 
+  Loader2, 
+  PartyPopper,
+  UserCheck,
+  QrCode
+} from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useEventAttendance } from "@/hooks/useEventAttendance";
@@ -37,10 +48,18 @@ interface SchoolInfo {
   logo_url: string | null;
 }
 
+interface StudentInfo {
+  id: string;
+  firstname: string;
+  lastname: string;
+  email: string | null;
+}
+
 export default function EventAttendanceScan() {
   const { sessionCode } = useParams<{ sessionCode: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -49,11 +68,11 @@ export default function EventAttendanceScan() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [school, setSchool] = useState<SchoolInfo | null>(null);
   
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: ""
-  });
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [studentEmail, setStudentEmail] = useState("");
+  const [authenticatedStudent, setAuthenticatedStudent] = useState<StudentInfo | null>(null);
+  const [authenticating, setAuthenticating] = useState(false);
 
   const { markAttendance } = useEventAttendance();
 
@@ -127,30 +146,67 @@ export default function EventAttendanceScan() {
     validateSession();
   }, [sessionCode]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAuthentication = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer votre nom",
-        variant: "destructive"
-      });
-      return;
-    }
+    setAuthenticating(true);
+    setError(null);
 
-    if (!sessionCode) return;
+    try {
+      if (!school) {
+        throw new Error("École non trouvée");
+      }
+
+      // Find student by email in student_school linked to this school
+      const { data: studentSchoolData, error: studentSchoolError } = await supabase
+        .from('student_school')
+        .select(`
+          student_id,
+          students!inner(id, firstname, lastname, email)
+        `)
+        .eq('school_id', school.id)
+        .eq('is_active', true);
+
+      if (studentSchoolError) throw studentSchoolError;
+
+      // Find student with matching email
+      const studentRecord = studentSchoolData?.find((ss: any) => 
+        ss.students?.email?.toLowerCase().trim() === studentEmail.toLowerCase().trim()
+      );
+
+      if (!studentRecord) {
+        throw new Error("Email d'étudiant non trouvé dans cette école");
+      }
+
+      const student = studentRecord.students as unknown as StudentInfo;
+      setAuthenticatedStudent(student);
+      setIsAuthenticated(true);
+
+      toast({
+        title: "Authentification réussie",
+        description: `Bienvenue ${student.firstname} ${student.lastname}`,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur d'authentification");
+    } finally {
+      setAuthenticating(false);
+    }
+  };
+
+  const handleMarkAttendance = async () => {
+    if (!sessionCode || !authenticatedStudent) return;
 
     setSubmitting(true);
+    setError(null);
 
     const result = await markAttendance({
       sessionCode,
-      participantName: formData.name.trim(),
-      participantEmail: formData.email.trim() || undefined,
-      participantPhone: formData.phone.trim() || undefined
+      participantName: `${authenticatedStudent.firstname} ${authenticatedStudent.lastname}`,
+      participantEmail: authenticatedStudent.email || undefined,
+      studentId: authenticatedStudent.id
     });
 
     if (result.error) {
+      setError(result.error);
       setSubmitting(false);
       return;
     }
@@ -172,7 +228,7 @@ export default function EventAttendanceScan() {
     );
   }
 
-  if (error) {
+  if (error && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md border-destructive/50">
@@ -206,7 +262,7 @@ export default function EventAttendanceScan() {
               Présence enregistrée !
             </h2>
             <p className="text-muted-foreground mb-2">
-              Merci {formData.name.split(' ')[0]} !
+              Merci {authenticatedStudent?.firstname} !
             </p>
             <p className="text-sm text-muted-foreground mb-6">
               Votre présence à l'événement <span className="font-semibold">{event?.title}</span> a été confirmée.
@@ -239,7 +295,7 @@ export default function EventAttendanceScan() {
         
         <CardHeader className="text-center pb-4">
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <CalendarDays className="h-7 w-7 text-primary" />
+            <QrCode className="h-7 w-7 text-primary" />
           </div>
           <CardTitle className="text-2xl">{event?.title}</CardTitle>
           {event?.description && (
@@ -251,8 +307,12 @@ export default function EventAttendanceScan() {
           {/* Event Info */}
           <div className="flex flex-wrap gap-3 justify-center">
             <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {format(new Date(event!.start_at), "d MMM yyyy", { locale: fr })}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5">
               <Clock className="h-3.5 w-3.5" />
-              {format(new Date(event!.start_at), "d MMM yyyy à HH:mm", { locale: fr })}
+              {format(new Date(event!.start_at), "HH:mm", { locale: fr })}
             </Badge>
             {event?.location && (
               <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5">
@@ -262,69 +322,91 @@ export default function EventAttendanceScan() {
             )}
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-base">
-                Nom complet <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Ex: Jean Dupont"
-                className="h-12 text-base"
-                required
-                autoFocus
-              />
-            </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-base">
-                Email <span className="text-muted-foreground text-sm">(optionnel)</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Ex: jean.dupont@email.com"
-                className="h-12 text-base"
-              />
+          {!isAuthenticated ? (
+            <form onSubmit={handleAuthentication} className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/50 border text-center mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Authentifiez-vous avec votre email étudiant pour marquer votre présence
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-base">Email étudiant</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={studentEmail}
+                  onChange={(e) => setStudentEmail(e.target.value)}
+                  placeholder="votre.email@etudiant.com"
+                  className="h-12 text-base"
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-semibold"
+                disabled={authenticating || !studentEmail.trim()}
+              >
+                {authenticating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Authentification...
+                  </>
+                ) : (
+                  "S'authentifier"
+                )}
+              </Button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
+                <UserCheck className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700 dark:text-green-300">
+                  Authentifié en tant que <span className="font-semibold">{authenticatedStudent?.firstname} {authenticatedStudent?.lastname}</span>
+                </AlertDescription>
+              </Alert>
+              
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Cliquez sur le bouton ci-dessous pour confirmer votre présence à l'événement
+                </p>
+                <p className="font-semibold text-primary">{event?.title}</p>
+              </div>
+              
+              <Button 
+                onClick={handleMarkAttendance}
+                className="w-full h-12 text-base font-semibold"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Marquer ma présence
+                  </>
+                )}
+              </Button>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-base">
-                Téléphone <span className="text-muted-foreground text-sm">(optionnel)</span>
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Ex: 06 12 34 56 78"
-                className="h-12 text-base"
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base font-semibold"
-              disabled={submitting || !formData.name.trim()}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-5 w-5" />
-                  Confirmer ma présence
-                </>
-              )}
-            </Button>
-          </form>
+          <div className="text-center pt-2">
+            <p className="text-xs text-muted-foreground">
+              Code de session: {sessionCode || "Non spécifié"}
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
