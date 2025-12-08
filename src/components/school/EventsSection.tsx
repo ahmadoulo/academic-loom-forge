@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useEvents } from "@/hooks/useEvents";
 import { useEventAttendance } from "@/hooks/useEventAttendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock, QrCode, Users, Eye } from "lucide-react";
-import { format, isSameDay, isPast, isFuture } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, MapPin, Plus, Edit2, Trash2, CalendarDays, Clock, QrCode, Users, Eye, CheckCircle, CalendarClock } from "lucide-react";
+import { format, isSameDay, isPast, isFuture, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   Dialog,
@@ -39,12 +40,28 @@ interface ViewingAttendance {
   event: any;
 }
 
+// Helper to format datetime-local value without timezone conversion
+const formatDateTimeLocal = (isoString: string): string => {
+  if (!isoString) return "";
+  // Parse the ISO string and format for datetime-local input
+  const date = parseISO(isoString);
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+};
+
+// Helper to create ISO string from datetime-local without timezone shift
+const toISOStringWithoutTimezone = (dateTimeLocal: string): string => {
+  if (!dateTimeLocal) return "";
+  // The datetime-local value is already in local time, we need to store it as-is
+  return dateTimeLocal + ":00";
+};
+
 export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {
   const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [viewingAttendance, setViewingAttendance] = useState<ViewingAttendance | null>(null);
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -56,6 +73,29 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
     published: true,
     attendance_enabled: false,
   });
+
+  // Split events into upcoming and past
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const now = new Date();
+    const upcoming: any[] = [];
+    const past: any[] = [];
+    
+    events.forEach((event: any) => {
+      const endDate = parseISO(event.end_at);
+      if (isPast(endDate)) {
+        past.push(event);
+      } else {
+        upcoming.push(event);
+      }
+    });
+    
+    // Sort upcoming by start date ascending
+    upcoming.sort((a, b) => parseISO(a.start_at).getTime() - parseISO(b.start_at).getTime());
+    // Sort past by end date descending (most recent first)
+    past.sort((a, b) => parseISO(b.end_at).getTime() - parseISO(a.end_at).getTime());
+    
+    return { upcomingEvents: upcoming, pastEvents: past };
+  }, [events]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,8 +133,8 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
     setFormData({
       title: event.title,
       description: event.description || "",
-      start_at: event.start_at,
-      end_at: event.end_at,
+      start_at: formatDateTimeLocal(event.start_at),
+      end_at: formatDateTimeLocal(event.end_at),
       location: event.location || "",
       scope: event.scope,
       published: event.published,
@@ -110,17 +150,131 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
   };
 
   const getEventStatus = (startDate: string, endDate: string) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const now = new Date();
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
 
     if (isPast(end)) {
-      return { label: 'Terminé', color: 'bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800' };
+      return { label: 'Terminé', color: 'bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800', icon: CheckCircle };
     } else if (isFuture(start)) {
-      return { label: 'À venir', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' };
+      return { label: 'À venir', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800', icon: CalendarClock };
     } else {
-      return { label: 'En cours', color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' };
+      return { label: 'En cours', color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800', icon: Clock };
     }
+  };
+
+  // Render event card
+  const renderEventCard = (event: any) => {
+    const status = getEventStatus(event.start_at, event.end_at);
+    const startDate = parseISO(event.start_at);
+    const endDate = parseISO(event.end_at);
+    const isSameDayEvent = isSameDay(startDate, endDate);
+    const canGenerateQR = event.attendance_enabled && !isPast(endDate);
+    
+    return (
+      <Card 
+        key={event.id} 
+        className="group hover:shadow-xl transition-all duration-300 overflow-hidden hover:border-primary/50"
+      >
+        <div className={`h-2 ${isPast(endDate) ? 'bg-gradient-to-r from-gray-400 to-gray-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'}`} />
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start gap-3 mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={status.color}>
+                {status.label}
+              </Badge>
+              {event.attendance_enabled && (
+                <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  Présence
+                </Badge>
+              )}
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {event.scope === 'school' ? 'École' : 'Classe'}
+            </Badge>
+          </div>
+          <CardTitle className="text-xl font-bold leading-tight">
+            {event.title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {event.description && (
+            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+              {event.description}
+            </p>
+          )}
+          
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-center gap-2.5 text-foreground">
+              <Calendar className="w-4 h-4 flex-shrink-0 text-primary" />
+              <span>
+                {format(startDate, "d MMMM yyyy", { locale: fr })}
+                {!isSameDayEvent && ` - ${format(endDate, "d MMMM yyyy", { locale: fr })}`}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2.5 text-muted-foreground">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span>
+                {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")}
+              </span>
+            </div>
+            
+            {event.location && (
+              <div className="flex items-center gap-2.5 text-muted-foreground">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <span className="line-clamp-1">{event.location}</span>
+              </div>
+            )}
+          </div>
+
+          {isAdmin && (
+            <div className="space-y-2 pt-4 border-t">
+              {/* Attendance buttons for events with attendance enabled */}
+              {event.attendance_enabled && (
+                <div className="flex gap-2">
+                  {canGenerateQR && (
+                    <EventQRButton 
+                      event={event} 
+                      schoolId={schoolId}
+                      onSessionCreated={(session) => setActiveSession({ event, session })}
+                    />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewingAttendance({ event })}
+                    className="flex-1 gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Voir présences
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(event)}
+                  className="flex-1 group-hover:border-primary/50"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(event.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   // If showing attendance list
@@ -178,146 +332,55 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
             <p className="text-muted-foreground">Chargement des événements...</p>
           </div>
         </div>
-      ) : events.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-16 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-muted">
-                <CalendarDays className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">Aucun événement</h3>
-                <p className="text-muted-foreground max-w-md">
-                  {isAdmin 
-                    ? "Créez votre premier événement pour planifier les activités de votre établissement."
-                    : "Aucun événement n'est prévu pour le moment. Revenez plus tard !"}
-                </p>
-              </div>
-              {isAdmin && (
-                <Button onClick={() => setIsModalOpen(true)} className="mt-4">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Créer un événement
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event: any) => {
-            const status = getEventStatus(event.start_at, event.end_at);
-            const startDate = new Date(event.start_at);
-            const endDate = new Date(event.end_at);
-            const isSameDayEvent = isSameDay(startDate, endDate);
-            const canGenerateQR = event.attendance_enabled && !isPast(endDate);
-            
-            return (
-              <Card 
-                key={event.id} 
-                className="group hover:shadow-xl transition-all duration-300 overflow-hidden hover:border-primary/50"
-              >
-                <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500" />
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-3 mb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className={status.color}>
-                        {status.label}
-                      </Badge>
-                      {event.attendance_enabled && (
-                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          Présence
-                        </Badge>
-                      )}
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {event.scope === 'school' ? 'École' : 'Classe'}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl font-bold leading-tight">
-                    {event.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {event.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                      {event.description}
-                    </p>
-                  )}
-                  
-                  <div className="space-y-2.5 text-sm">
-                    <div className="flex items-center gap-2.5 text-foreground">
-                      <Calendar className="w-4 h-4 flex-shrink-0 text-primary" />
-                      <span>
-                        {format(startDate, "d MMMM yyyy", { locale: fr })}
-                        {!isSameDayEvent && ` - ${format(endDate, "d MMMM yyyy", { locale: fr })}`}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <Clock className="w-4 h-4 flex-shrink-0" />
-                      <span>
-                        {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")}
-                      </span>
-                    </div>
-                    
-                    {event.location && (
-                      <div className="flex items-center gap-2.5 text-muted-foreground">
-                        <MapPin className="w-4 h-4 flex-shrink-0" />
-                        <span className="line-clamp-1">{event.location}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {isAdmin && (
-                    <div className="space-y-2 pt-4 border-t">
-                      {/* Attendance buttons for events with attendance enabled */}
-                      {event.attendance_enabled && (
-                        <div className="flex gap-2">
-                          {canGenerateQR && (
-                            <EventQRButton 
-                              event={event} 
-                              schoolId={schoolId}
-                              onSessionCreated={(session) => setActiveSession({ event, session })}
-                            />
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewingAttendance({ event })}
-                            className="flex-1 gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Voir présences
-                          </Button>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(event)}
-                          className="flex-1 group-hover:border-primary/50"
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Modifier
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(event.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "upcoming" | "past")} className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="upcoming" className="gap-2">
+              <CalendarClock className="w-4 h-4" />
+              À venir ({upcomingEvents.length})
+            </TabsTrigger>
+            <TabsTrigger value="past" className="gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Terminé ({pastEvents.length})
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upcoming" className="mt-0">
+            {upcomingEvents.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-12 text-center">
+                  <CalendarDays className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold">Aucun événement à venir</h3>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {isAdmin ? "Créez un nouvel événement pour commencer." : "Revenez plus tard !"}
+                  </p>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {upcomingEvents.map(renderEventCard)}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="past" className="mt-0">
+            {pastEvents.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-12 text-center">
+                  <CheckCircle className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold">Aucun événement passé</h3>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Les événements terminés apparaîtront ici.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {pastEvents.map(renderEventCard)}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
