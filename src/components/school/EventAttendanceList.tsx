@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEventAttendance } from "@/hooks/useEventAttendance";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import {
   Download,
   CalendarDays,
   User,
-  Mail
+  Mail,
+  MapPin,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -36,6 +38,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { exportEventAttendanceToPdf } from "@/utils/eventAttendancePdfExport";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
+import { useToast } from "@/hooks/use-toast";
 
 interface EventAttendanceListProps {
   event: {
@@ -52,31 +58,67 @@ interface EventAttendanceListProps {
 export function EventAttendanceList({ event, schoolId, onBack }: EventAttendanceListProps) {
   const { attendance, loading, deleteAttendance } = useEventAttendance(event.id, schoolId);
   const [searchTerm, setSearchTerm] = useState("");
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const loadSchoolInfo = async () => {
+      const { data } = await supabase.from('schools').select('name, logo_url').eq('id', schoolId).single();
+      if (data) setSchoolInfo(data);
+    };
+    loadSchoolInfo();
+  }, [schoolId]);
 
   const filteredAttendance = attendance.filter(record => 
     record.participant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (record.participant_email?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleExportCSV = () => {
-    const headers = ["Nom", "Email", "Téléphone", "Date/Heure"];
-    const rows = attendance.map(record => [
-      record.participant_name,
-      record.participant_email || "-",
-      record.participant_phone || "-",
-      format(new Date(record.marked_at), "dd/MM/yyyy HH:mm", { locale: fr })
-    ]);
+  const handleExportPDF = async () => {
+    if (!schoolInfo) return;
+    
+    setIsExporting(true);
+    try {
+      let logoBase64: string | undefined;
+      if (schoolInfo.logo_url) {
+        try {
+          logoBase64 = await imageUrlToBase64(schoolInfo.logo_url);
+        } catch (error) {
+          console.error('Error loading logo:', error);
+        }
+      }
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.join(","))
-    ].join("\n");
+      await exportEventAttendanceToPdf({
+        schoolName: schoolInfo.name,
+        schoolLogoBase64: logoBase64,
+        eventTitle: event.title,
+        eventDate: event.start_at,
+        eventEndDate: event.end_at,
+        eventLocation: event.location,
+        attendance: attendance.map(record => ({
+          id: record.id,
+          participant_name: record.participant_name,
+          participant_email: record.participant_email,
+          participant_phone: record.participant_phone,
+          marked_at: record.marked_at
+        }))
+      });
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `presences_${event.title.replace(/\s+/g, '_')}_${format(new Date(), "yyyy-MM-dd")}.csv`;
-    link.click();
+      toast({
+        title: "Export réussi",
+        description: "Le PDF a été téléchargé avec succès.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'export.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -129,9 +171,14 @@ export function EventAttendanceList({ event, schoolId, onBack }: EventAttendance
               </div>
               
               {attendance.length > 0 && (
-                <Button variant="outline" size="sm" onClick={handleExportCSV}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExportPDF}
+                  disabled={isExporting || !schoolInfo}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isExporting ? "Export..." : "Exporter PDF"}
                 </Button>
               )}
             </div>
