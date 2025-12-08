@@ -76,6 +76,7 @@ import { useAdmissions } from "@/hooks/useAdmissions";
 import { ClipboardList } from "lucide-react";
 import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
 import { TextbooksSection } from "@/components/school/TextbooksSection";
+import { AbsenceJustificationsManagement } from "@/components/school/AbsenceJustificationsManagement";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -843,6 +844,12 @@ const SchoolDashboard = () => {
               {activeTab === "attendance" && school?.id && (
                 <div className="space-y-6">
                   <SchoolAttendanceView schoolId={school.id} />
+                </div>
+              )}
+
+              {activeTab === "justifications" && school?.id && (
+                <div className="space-y-6">
+                  <AbsenceJustificationsManagement schoolId={school.id} />
                 </div>
               )}
               

@@ -22,7 +22,8 @@ import {
   Pin,
   PinOff,
   CreditCard,
-  UserPlus
+  UserPlus,
+  FileCheck
 } from "lucide-react";
 
 import {
@@ -105,6 +106,12 @@ const menuStructure = [
         title: "Présences", 
         value: "attendance",
         icon: Clock,
+        href: "/school"
+      },
+      { 
+        title: "Justificatifs", 
+        value: "justifications",
+        icon: FileCheck,
         href: "/school"
       },
       { 
