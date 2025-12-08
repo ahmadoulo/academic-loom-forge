@@ -15,7 +15,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   Pin,
-  PinOff
+  PinOff,
+  AlertCircle
 } from "lucide-react";
 
 import {
@@ -56,6 +57,12 @@ const menuStructure = [
         title: "Devoirs", 
         value: "devoirs",
         icon: ClipboardList,
+        href: "/student"
+      },
+      { 
+        title: "Mes Absences", 
+        value: "absences",
+        icon: AlertCircle,
         href: "/student"
       },
       { 

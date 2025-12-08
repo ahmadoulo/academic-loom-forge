@@ -16,6 +16,7 @@ import { useSchools } from "@/hooks/useSchools";
 import { supabase } from "@/integrations/supabase/client";
 import { EventsSection } from "@/components/school/EventsSection";
 import { AnnouncementsSection } from "@/components/school/AnnouncementsSection";
+import { StudentAbsencesSection } from "@/components/student/StudentAbsencesSection";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("accueil");
@@ -87,6 +88,13 @@ export default function StudentDashboard() {
         return <StudentsGradesSection studentId={currentStudentId} />;
       case "devoirs":
         return <StudentAssignmentsSection studentId={currentStudentId} />;
+      case "absences":
+        return student && (
+          <StudentAbsencesSection 
+            studentId={currentStudentId!} 
+            classId={student.class_id}
+          />
+        );
       case "online-exams":
         return student && (
           <StudentOnlineExamsSection 

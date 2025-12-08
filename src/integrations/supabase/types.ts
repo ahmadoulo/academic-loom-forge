@@ -265,6 +265,14 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          is_justified: boolean | null
+          justification_comment: string | null
+          justification_file_path: string | null
+          justification_rejection_reason: string | null
+          justification_reviewed_at: string | null
+          justification_reviewed_by: string | null
+          justification_status: string | null
+          justification_submitted_at: string | null
           marked_at: string | null
           method: string
           school_year_id: string
@@ -280,6 +288,14 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_justified?: boolean | null
+          justification_comment?: string | null
+          justification_file_path?: string | null
+          justification_rejection_reason?: string | null
+          justification_reviewed_at?: string | null
+          justification_reviewed_by?: string | null
+          justification_status?: string | null
+          justification_submitted_at?: string | null
           marked_at?: string | null
           method?: string
           school_year_id: string
@@ -295,6 +311,14 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_justified?: boolean | null
+          justification_comment?: string | null
+          justification_file_path?: string | null
+          justification_rejection_reason?: string | null
+          justification_reviewed_at?: string | null
+          justification_reviewed_by?: string | null
+          justification_status?: string | null
+          justification_submitted_at?: string | null
           marked_at?: string | null
           method?: string
           school_year_id?: string
@@ -310,6 +334,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_justification_reviewed_by_fkey"
+            columns: ["justification_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "user_credentials"
             referencedColumns: ["id"]
           },
           {

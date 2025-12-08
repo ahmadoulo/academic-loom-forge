@@ -96,13 +96,14 @@ export const exportEventAttendanceToPdf = async (data: EventAttendanceExportData
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
   
-  const dateText = `📅 ${format(startDate, "EEEE d MMMM yyyy", { locale: fr })} de ${format(startDate, "HH:mm")} à ${format(endDate, "HH:mm")}`;
+  // Use text icons instead of emojis for PDF compatibility
+  const dateText = `Date: ${format(startDate, "EEEE d MMMM yyyy", { locale: fr })} de ${format(startDate, "HH:mm")} a ${format(endDate, "HH:mm")}`;
   doc.text(dateText, margin + 10, yPosition);
   yPosition += 8;
 
   // Location if available
   if (data.eventLocation) {
-    doc.text(`📍 ${data.eventLocation}`, margin + 10, yPosition);
+    doc.text(`Lieu: ${data.eventLocation}`, margin + 10, yPosition);
     yPosition += 8;
   }
 
