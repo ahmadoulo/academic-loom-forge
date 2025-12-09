@@ -46,6 +46,7 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
   const fetchAbsences = async () => {
     try {
       setLoading(true);
+      // Fetch absences (status = 'absent') and justified absences (status = 'justified')
       const { data, error } = await supabase
         .from("attendance")
         .select(`
@@ -62,7 +63,7 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
           assignments(id, title, start_time, end_time)
         `)
         .eq("student_id", studentId)
-        .eq("status", "absent")
+        .in("status", ["absent", "justified"])
         .order("date", { ascending: false });
 
       if (error) throw error;
@@ -146,7 +147,8 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
   };
 
   const getStatusBadge = (absence: Absence) => {
-    if (absence.is_justified) {
+    // Check if status is justified or is_justified is true
+    if (absence.status === "justified" || absence.is_justified) {
       return (
         <Badge className="bg-success text-success-foreground">
           <CheckCircle className="h-3 w-3 mr-1" />
@@ -155,34 +157,46 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
       );
     }
 
-    switch (absence.justification_status) {
-      case "pending":
-        return (
-          <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-            <Clock className="h-3 w-3 mr-1" />
-            En attente
-          </Badge>
-        );
-      case "rejected":
-        return (
-          <Badge variant="destructive">
-            <XCircle className="h-3 w-3 mr-1" />
-            Refusée
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-destructive border-destructive">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            Non justifiée
-          </Badge>
-        );
+    // Only show pending/rejected if a justification was actually submitted
+    if (absence.justification_submitted_at) {
+      switch (absence.justification_status) {
+        case "pending":
+          return (
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+              <Clock className="h-3 w-3 mr-1" />
+              En attente de validation
+            </Badge>
+          );
+        case "rejected":
+          return (
+            <Badge variant="destructive">
+              <XCircle className="h-3 w-3 mr-1" />
+              Refusée
+            </Badge>
+          );
+      }
     }
+
+    // Default: absence not justified and no justification submitted
+    return (
+      <Badge variant="outline" className="text-destructive border-destructive">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        Non justifiée
+      </Badge>
+    );
   };
 
   const canJustify = (absence: Absence) => {
-    return !absence.is_justified && absence.justification_status !== "pending";
+    // Can only justify if not already justified and no pending justification
+    return absence.status !== "justified" && 
+           !absence.is_justified && 
+           absence.justification_status !== "pending";
   };
+
+  // Count only non-justified absences
+  const unjustifiedCount = absences.filter(a => 
+    a.status === "absent" && !a.is_justified
+  ).length;
 
   if (loading) {
     return (
@@ -201,9 +215,16 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-destructive" />
             Mes Absences
-            <Badge variant="outline" className="ml-auto">
-              {absences.length} absence{absences.length > 1 ? "s" : ""}
-            </Badge>
+            <div className="ml-auto flex gap-2">
+              {unjustifiedCount > 0 && (
+                <Badge variant="destructive">
+                  {unjustifiedCount} non justifiée{unjustifiedCount > 1 ? "s" : ""}
+                </Badge>
+              )}
+              <Badge variant="outline">
+                {absences.length} total
+              </Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
