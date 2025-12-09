@@ -11,9 +11,10 @@ interface AttendanceRecord {
   assignment_id?: string;
   subject_id?: string;
   date: string;
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | 'justified';
   marked_at: string;
   method: 'manual' | 'qr_scan';
+  is_justified?: boolean;
   students?: {
     id: string;
     firstname: string;

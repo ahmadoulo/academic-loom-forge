@@ -11,7 +11,7 @@ interface AttendanceRecord {
   id: string;
   student_id: string;
   date: string;
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | 'justified';
 }
 
 export const generateSchoolAttendanceReport = (
@@ -83,18 +83,24 @@ export const generateSchoolAttendanceReport = (
       const record = attendance.find(a => a.student_id === s.id && a.date === selectedDate);
       return record?.status === 'absent';
     }).length;
+
+    const justifiedCount = students.filter(s => {
+      const record = attendance.find(a => a.student_id === s.id && a.date === selectedDate);
+      return record?.status === 'justified';
+    }).length;
     
     doc.setFont('helvetica', 'bold');
-    doc.text(`Résumé du jour:`, 20, yPosition);
+    doc.text(`Resume du jour:`, 20, yPosition);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Présents : ${presentCount}`, 20, yPosition + 8);
+    doc.text(`Presents : ${presentCount}`, 20, yPosition + 8);
     doc.text(`Absents : ${absentCount}`, 20, yPosition + 16);
+    doc.text(`Justifies : ${justifiedCount}`, 20, yPosition + 24);
     doc.text(`Taux de présence : ${students.length > 0 ? ((presentCount / students.length) * 100).toFixed(1) : 0}%`, 20, yPosition + 24);
     
     yPosition += 35;
     
     // Préparer les données du tableau
-    const tableHeaders = ['Nom', 'Prénom', 'Statut du jour', 'Total Présent', 'Total Absent', 'Taux'];
+    const tableHeaders = ['Nom', 'Prenom', 'Statut du jour', 'Presents', 'Absents', 'Justifies', 'Taux'];
     const tableData: any[][] = [];
     
     students.forEach((student) => {
@@ -102,13 +108,20 @@ export const generateSchoolAttendanceReport = (
       const todayRecord = attendance.find(a => a.student_id === student.id && a.date === selectedDate);
       
       const present = studentAttendance.filter(a => a.status === 'present').length;
+      // Only count 'absent' status, not 'justified'
       const absent = studentAttendance.filter(a => a.status === 'absent').length;
-      const total = present + absent;
-      const rate = total > 0 ? `${((present / total) * 100).toFixed(0)}%` : "0%";
+      const justified = studentAttendance.filter(a => a.status === 'justified').length;
+      const total = present + absent + justified;
+      // Rate calculation: present / (present + absent) - justified doesn't count against
+      const rateBase = present + absent;
+      const rate = rateBase > 0 ? `${((present / rateBase) * 100).toFixed(0)}%` : "100%";
       
-      const statusText = todayRecord 
-        ? (todayRecord.status === 'present' ? 'Présent' : 'Absent')
-        : 'Non marqué';
+      let statusText = 'Non marque';
+      if (todayRecord) {
+        if (todayRecord.status === 'present') statusText = 'Present';
+        else if (todayRecord.status === 'absent') statusText = 'Absent';
+        else if (todayRecord.status === 'justified') statusText = 'Justifie';
+      }
       
       tableData.push([
         student.lastname,
@@ -116,6 +129,7 @@ export const generateSchoolAttendanceReport = (
         statusText,
         present.toString(),
         absent.toString(),
+        justified.toString(),
         rate
       ]);
     });
@@ -138,12 +152,13 @@ export const generateSchoolAttendanceReport = (
         fillColor: [245, 245, 245],
       },
       columnStyles: {
-        0: { cellWidth: 35 }, // Nom
-        1: { cellWidth: 35 }, // Prénom
-        2: { cellWidth: 35, halign: 'center' }, // Statut
-        3: { cellWidth: 30, halign: 'center' }, // Total Présent
-        4: { cellWidth: 30, halign: 'center' }, // Total Absent
-        5: { cellWidth: 25, halign: 'center' }, // Taux
+        0: { cellWidth: 30 }, // Nom
+        1: { cellWidth: 30 }, // Prénom
+        2: { cellWidth: 25, halign: 'center' }, // Statut
+        3: { cellWidth: 22, halign: 'center' }, // Présents
+        4: { cellWidth: 22, halign: 'center' }, // Absents
+        5: { cellWidth: 22, halign: 'center' }, // Justifiés
+        6: { cellWidth: 20, halign: 'center' }, // Taux
       },
     });
     

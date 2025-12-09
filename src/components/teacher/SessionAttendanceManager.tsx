@@ -99,7 +99,7 @@ export function SessionAttendanceManager({
     }
   };
 
-  const getAttendanceStatus = (studentId: string): 'present' | 'absent' | null => {
+  const getAttendanceStatus = (studentId: string): 'present' | 'absent' | 'justified' | null => {
     const record = attendance.find(a => a.student_id === studentId);
     return record?.status || null;
   };

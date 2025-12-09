@@ -114,6 +114,7 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
 
   const presentCount = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'present').length;
   const absentCount = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'absent').length;
+  const justifiedCount = filteredStudents.filter(s => getAttendanceStatus(s.id) === 'justified').length;
 
   const handleNotifyAbsences = async () => {
     if (selectedClass === "all") {
@@ -282,7 +283,7 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
         </div>
 
         {/* Statistiques */}
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2 px-4 py-2 bg-success/10 rounded-lg">
             <span className="text-sm font-medium">Présents:</span>
             <Badge variant="default" className="bg-success">
@@ -293,6 +294,12 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
             <span className="text-sm font-medium">Absents:</span>
             <Badge variant="destructive">
               {absentCount}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
+            <span className="text-sm font-medium">Justifiés:</span>
+            <Badge className="bg-amber-500 text-white">
+              {justifiedCount}
             </Badge>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
@@ -346,6 +353,11 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
                         {status === 'absent' && (
                           <Badge variant="destructive">
                             Absent
+                          </Badge>
+                        )}
+                        {status === 'justified' && (
+                          <Badge className="bg-amber-500 text-white">
+                            Justifié
                           </Badge>
                         )}
                         {!status && (

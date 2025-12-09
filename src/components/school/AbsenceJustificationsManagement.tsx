@@ -138,9 +138,11 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
     
     setProcessing(true);
     try {
+      // Update attendance: set status to 'justified', is_justified to true
       const { error } = await supabase
         .from("attendance")
         .update({
+          status: "justified", // Change status from 'absent' to 'justified'
           is_justified: true,
           justification_status: "approved",
           justification_reviewed_at: new Date().toISOString(),
@@ -150,7 +152,7 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
 
       if (error) throw error;
 
-      toast.success("Justificatif approuvé");
+      toast.success("Justificatif approuvé - Absence marquée comme justifiée");
       setReviewDialogOpen(false);
       setSelectedRequest(null);
       fetchJustifications();
