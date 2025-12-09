@@ -187,10 +187,10 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
   };
 
   const canJustify = (absence: Absence) => {
-    // Can only justify if not already justified and no pending justification
+    // Can only justify if not already justified and no pending justification submitted
     return absence.status !== "justified" && 
            !absence.is_justified && 
-           absence.justification_status !== "pending";
+           (!absence.justification_submitted_at || absence.justification_status === "rejected");
   };
 
   // Count only non-justified absences
@@ -283,7 +283,7 @@ export function StudentAbsencesSection({ studentId, classId }: StudentAbsencesSe
                         Justifier
                       </Button>
                     )}
-                    {absence.justification_status === "pending" && (
+                    {absence.justification_submitted_at && absence.justification_status === "pending" && (
                       <span className="text-sm text-muted-foreground italic">
                         Justificatif en cours de traitement
                       </span>
