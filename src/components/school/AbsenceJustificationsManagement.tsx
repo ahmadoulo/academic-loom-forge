@@ -20,6 +20,7 @@ import { useHybridAuth } from "@/hooks/useHybridAuth";
 interface JustificationRequest {
   id: string;
   date: string;
+  status: string;
   is_justified: boolean;
   justification_status: string | null;
   justification_comment: string | null;
@@ -66,6 +67,7 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
         .select(`
           id,
           date,
+          status,
           is_justified,
           justification_status,
           justification_comment,
@@ -75,17 +77,19 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
           subjects(id, name),
           class_id
         `)
-        .eq("status", "absent")
         .not("justification_submitted_at", "is", null)
         .order("justification_submitted_at", { ascending: false });
 
       // Filter by status based on active tab
       if (activeTab === "pending") {
-        query = query.eq("justification_status", "pending");
+        // Pending: status is still 'absent' and justification_status is 'pending'
+        query = query.eq("status", "absent").eq("justification_status", "pending");
       } else if (activeTab === "approved") {
-        query = query.eq("is_justified", true);
+        // Approved: status changed to 'justified' 
+        query = query.eq("status", "justified");
       } else if (activeTab === "rejected") {
-        query = query.eq("justification_status", "rejected");
+        // Rejected: status is still 'absent' and justification_status is 'rejected'
+        query = query.eq("status", "absent").eq("justification_status", "rejected");
       }
 
       const { data, error } = await query;
@@ -201,8 +205,8 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
   };
 
   const getStatusBadge = (request: JustificationRequest) => {
-    if (request.is_justified) {
-      return <Badge className="bg-success text-success-foreground"><CheckCircle className="h-3 w-3 mr-1" />Approuvé</Badge>;
+    if (request.status === "justified") {
+      return <Badge className="bg-success text-success-foreground"><CheckCircle className="h-3 w-3 mr-1" />Justifié</Badge>;
     }
     if (request.justification_status === "rejected") {
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Refusé</Badge>;
@@ -210,7 +214,7 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
     return <Badge variant="secondary" className="bg-amber-100 text-amber-800"><Clock className="h-3 w-3 mr-1" />En attente</Badge>;
   };
 
-  const pendingCount = justifications.filter(j => j.justification_status === "pending").length;
+  const pendingCount = justifications.filter(j => j.status === "absent" && j.justification_status === "pending").length;
 
   return (
     <>
