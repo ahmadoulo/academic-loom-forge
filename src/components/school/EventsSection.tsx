@@ -51,8 +51,15 @@ const formatDateTimeLocal = (isoString: string): string => {
 // Helper to create ISO string from datetime-local without timezone shift
 const toISOStringWithoutTimezone = (dateTimeLocal: string): string => {
   if (!dateTimeLocal) return "";
-  // The datetime-local value is already in local time, we need to store it as-is
-  return dateTimeLocal + ":00";
+  // Parse the local datetime and create an ISO string that preserves the local time
+  // by treating it as UTC (preventing timezone offset)
+  const [datePart, timePart] = dateTimeLocal.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  
+  // Create date in UTC to avoid timezone conversion
+  const date = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  return date.toISOString();
 };
 
 export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {

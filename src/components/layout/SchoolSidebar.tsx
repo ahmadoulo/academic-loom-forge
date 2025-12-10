@@ -56,6 +56,12 @@ const menuStructure = [
     icon: BarChart3,
     href: "/school"
   },
+  { 
+    title: "Calendrier", 
+    value: "calendar",
+    icon: Calendar,
+    href: "/school"
+  },
   {
     category: "Gestion académique",
     icon: GraduationCap,
@@ -90,12 +96,6 @@ const menuStructure = [
         icon: BookOpen,
         href: "/school"
       },
-      { 
-        title: "Semestres", 
-        value: "semesters",
-        icon: Calendar,
-        href: "/school"
-      },
     ]
   },
   {
@@ -109,7 +109,7 @@ const menuStructure = [
         href: "/school"
       },
       { 
-        title: "Justificatifs", 
+        title: "Justificatif d'absence", 
         value: "justifications",
         icon: FileCheck,
         href: "/school"
@@ -141,7 +141,7 @@ const menuStructure = [
     ]
   },
   {
-    category: "Organisation",
+    category: "Planning & Salles",
     icon: Building2,
     items: [
       { 
@@ -157,8 +157,8 @@ const menuStructure = [
         href: "/school"
       },
       { 
-        title: "Calendrier", 
-        value: "calendar",
+        title: "Semestres", 
+        value: "semesters",
         icon: Calendar,
         href: "/school"
       },
@@ -186,6 +186,12 @@ const menuStructure = [
         icon: CalendarDays,
         href: "/school"
       },
+    ]
+  },
+  {
+    category: "Documents",
+    icon: FileText,
+    items: [
       { 
         title: "Demandes Document", 
         value: "document-requests",
@@ -193,7 +199,7 @@ const menuStructure = [
         href: "/school"
       },
       { 
-        title: "Générateur de document", 
+        title: "Générateur", 
         value: "documents",
         icon: FileText,
         href: "/school"
@@ -227,8 +233,9 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     "Gestion académique": true,
     "Suivi pédagogique": true,
-    "Organisation": false,
+    "Planning & Salles": false,
     "Communication": false,
+    "Documents": false,
   });
 
   const toggleCategory = (category: string) => {

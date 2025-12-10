@@ -1,11 +1,29 @@
 import { useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, GraduationCap, CalendarDays, BookOpen } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Users, 
+  GraduationCap, 
+  CalendarDays, 
+  BookOpen, 
+  Search, 
+  Mail, 
+  Phone, 
+  CreditCard,
+  Clock,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  User,
+  Briefcase
+} from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface AdvancedSearchDialogProps {
   schoolId: string;
@@ -30,7 +48,7 @@ export function AdvancedSearchDialog({
 }: AdvancedSearchDialogProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "students" | "teachers">("all");
+  const [activeTab, setActiveTab] = useState<"students" | "teachers">("students");
 
   const normalizedTerm = searchTerm.trim().toLowerCase();
 
@@ -43,7 +61,7 @@ export function AdvancedSearchDialog({
         student.cin_number || ""
       }`.toLowerCase();
       return target.includes(normalizedTerm);
-    });
+    }).slice(0, 10);
   }, [normalizedTerm, students, schoolId]);
 
   const filteredTeachers = useMemo(() => {
@@ -53,267 +71,390 @@ export function AdvancedSearchDialog({
       if (teacher.school_id && teacher.school_id !== schoolId) return false;
       const target = `${teacher.firstname || ""} ${teacher.lastname || ""} ${teacher.email || ""}`.toLowerCase();
       return target.includes(normalizedTerm);
-    });
+    }).slice(0, 10);
   }, [normalizedTerm, teachers, schoolId]);
 
-  const getStudentSummary = (student: any) => {
+  const getStudentStats = (student: any) => {
     const studentGrades = grades.filter((g) => g.student_id === student.id);
     const studentAttendance = attendance.filter((a) => a.student_id === student.id);
 
     const totalGrades = studentGrades.length;
-    const averageGrade =
-      totalGrades > 0
-        ? studentGrades.reduce((sum: number, g: any) => sum + Number(g.grade || 0), 0) / totalGrades
-        : null;
+    const averageGrade = totalGrades > 0
+      ? studentGrades.reduce((sum: number, g: any) => sum + Number(g.grade || 0), 0) / totalGrades
+      : null;
 
     const totalSessions = studentAttendance.length;
     const absences = studentAttendance.filter((a: any) => a.status === "absent").length;
-    const presenceRate = totalSessions > 0 ? (((totalSessions - absences) / totalSessions) * 100).toFixed(1) : null;
+    const justified = studentAttendance.filter((a: any) => a.status === "justified").length;
+    const presenceRate = totalSessions > 0 ? ((totalSessions - absences) / totalSessions) * 100 : null;
+
+    const studentClass = classes.find((c) => c.id === student.class_id);
 
     return {
       totalGrades,
       averageGrade,
       totalSessions,
       absences,
+      justified,
       presenceRate,
+      className: studentClass?.name || null,
     };
   };
 
-  const getTeacherSummary = (teacher: any) => {
-    const teacherClassesIds = Array.from(
-      new Set(assignments.filter((a) => a.teacher_id === teacher.id).map((a) => a.class_id))
-    );
-    const teacherClasses = classes.filter((c) => teacherClassesIds.includes(c.id));
+  const getTeacherStats = (teacher: any) => {
+    const teacherAssignments = assignments.filter((a) => a.teacher_id === teacher.id);
+    const teacherClassIds = [...new Set(teacherAssignments.map((a) => a.class_id))];
+    const teacherClasses = classes.filter((c) => teacherClassIds.includes(c.id));
+    const teacherSubjectIds = [...new Set(teacherAssignments.map((a) => a.subject_id).filter(Boolean))];
+    const teacherSubjects = subjects.filter((s) => teacherSubjectIds.includes(s.id));
 
     const today = new Date().toISOString().slice(0, 10);
-    const upcomingSession = assignments
-      .filter((a) => a.teacher_id === teacher.id && a.type === "course" && a.session_date && a.session_date >= today)
-      .sort((a, b) => new Date(a.session_date!).getTime() - new Date(b.session_date!).getTime())[0];
+    const upcomingSessions = teacherAssignments
+      .filter((a) => a.type === "course" && a.session_date && a.session_date >= today)
+      .sort((a, b) => new Date(a.session_date!).getTime() - new Date(b.session_date!).getTime())
+      .slice(0, 3);
 
-    const upcomingClass = upcomingSession ? classes.find((c) => c.id === upcomingSession.class_id) : undefined;
-    const upcomingSubject = upcomingSession
-      ? subjects.find((s) => s.id === upcomingSession.subject_id)
-      : undefined;
+    const sessionsWithDetails = upcomingSessions.map((session) => ({
+      ...session,
+      className: classes.find((c) => c.id === session.class_id)?.name,
+      subjectName: subjects.find((s) => s.id === session.subject_id)?.name,
+    }));
 
     return {
       classes: teacherClasses,
-      upcomingSession,
-      upcomingClass,
-      upcomingSubject,
+      subjects: teacherSubjects,
+      upcomingSessions: sessionsWithDetails,
+      totalSessions: teacherAssignments.filter((a) => a.type === "course").length,
     };
   };
 
-  const showStudents = activeTab === "all" || activeTab === "students";
-  const showTeachers = activeTab === "all" || activeTab === "teachers";
+  const getInitials = (firstname: string, lastname: string) => {
+    return `${firstname?.charAt(0) || ""}${lastname?.charAt(0) || ""}`.toUpperCase();
+  };
+
+  const totalResults = filteredStudents.length + filteredTeachers.length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="gap-2">
+          <Search className="h-4 w-4" />
           Recherche avancée
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Recherche avancée</DialogTitle>
-          <DialogDescription>
-            Recherchez rapidement un étudiant ou un professeur et visualisez ses informations clés.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+      <DialogContent className="max-w-4xl max-h-[85vh] p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 border-b">
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <Search className="h-5 w-5 text-primary" />
+            Recherche avancée
+          </DialogTitle>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Tapez un nom, prénom, email ou CIN..."
+              placeholder="Rechercher par nom, prénom, email ou CIN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="sm:max-w-md"
+              className="pl-10 h-11 text-base"
+              autoFocus
             />
-
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as "all" | "students" | "teachers")}
-              className="w-full sm:w-auto"
-            >
-              <TabsList className="w-full sm:w-auto grid grid-cols-3">
-                <TabsTrigger value="all">Tous</TabsTrigger>
-                <TabsTrigger value="students">Étudiants</TabsTrigger>
-                <TabsTrigger value="teachers">Professeurs</TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
+        </DialogHeader>
 
-          {!normalizedTerm && (
-            <p className="text-sm text-muted-foreground">
-              Commencez à taper un nom pour afficher les résultats de recherche.
-            </p>
-          )}
-
-          {normalizedTerm && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
-              {showStudents && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
-                      <Users className="h-4 w-4" /> Étudiants
-                    </h3>
-                    <Badge variant="secondary">{filteredStudents.length}</Badge>
-                  </div>
-
-                  {filteredStudents.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                        Aucun étudiant trouvé.
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                      {filteredStudents.map((student) => {
-                        const studentClass = classes.find((c) => c.id === student.class_id);
-                        const summary = getStudentSummary(student);
-
-                        return (
-                          <Card key={student.id} className="border-muted/60">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-base flex items-center justify-between gap-2">
-                                <span>
-                                  {student.firstname} {student.lastname}
-                                </span>
-                                {studentClass && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {studentClass.name}
-                                  </Badge>
-                                )}
-                              </CardTitle>
-                              {student.email && (
-                                <CardDescription className="text-xs">{student.email}</CardDescription>
-                              )}
-                            </CardHeader>
-                            <CardContent className="pt-0 text-xs space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <p className="text-muted-foreground">CIN</p>
-                                  <p className="font-medium break-all">{student.cin_number}</p>
-                                </div>
-                                {student.student_phone && (
-                                  <div>
-                                    <p className="text-muted-foreground">Téléphone</p>
-                                    <p className="font-medium">{student.student_phone}</p>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-2 mt-1">
-                                <div>
-                                  <p className="text-muted-foreground">Notes</p>
-                                  <p className="font-semibold">
-                                    {summary.totalGrades > 0 ? `${summary.averageGrade?.toFixed(1)}/20` : "-"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Absences</p>
-                                  <p className="font-semibold">{summary.absences}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Présence</p>
-                                  <p className="font-semibold">
-                                    {summary.presenceRate ? `${summary.presenceRate}%` : "-"}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {showTeachers && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4" /> Professeurs
-                    </h3>
-                    <Badge variant="secondary">{filteredTeachers.length}</Badge>
-                  </div>
-
-                  {filteredTeachers.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                        Aucun professeur trouvé.
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                      {filteredTeachers.map((teacher) => {
-                        const summary = getTeacherSummary(teacher);
-
-                        return (
-                          <Card key={teacher.id} className="border-muted/60">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-base flex items-center justify-between gap-2">
-                                <span>
-                                  {teacher.firstname} {teacher.lastname}
-                                </span>
-                                {teacher.status && (
-                                  <Badge variant={teacher.status === "active" ? "default" : "outline"} className="text-xs">
-                                    {teacher.status}
-                                  </Badge>
-                                )}
-                              </CardTitle>
-                              {teacher.email && (
-                                <CardDescription className="text-xs">{teacher.email}</CardDescription>
-                              )}
-                            </CardHeader>
-                            <CardContent className="pt-0 text-xs space-y-2">
-                              <div>
-                                <p className="text-muted-foreground mb-1">Classes assignées</p>
-                                {summary.classes.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {summary.classes.map((cls) => (
-                                      <Badge key={cls.id} variant="outline" className="text-[10px]">
-                                        {cls.name}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-muted-foreground">Aucune classe assignée</p>
-                                )}
-                              </div>
-
-                              {summary.upcomingSession && (
-                                <div className="grid grid-cols-[auto,1fr] gap-2 pt-1 border-t mt-2 pt-2">
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent">
-                                    <CalendarDays className="h-4 w-4" />
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground">Prochaine séance</p>
-                                    <p className="font-medium">
-                                      {summary.upcomingSession.session_date}
-                                      {summary.upcomingSession.start_time && ` • ${summary.upcomingSession.start_time}`}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-1 items-center">
-                                      {summary.upcomingClass && <span>{summary.upcomingClass.name}</span>}
-                                      {summary.upcomingSubject && (
-                                        <span className="inline-flex items-center gap-1">
-                                          <BookOpen className="h-3 w-3" /> {summary.upcomingSubject.name}
-                                        </span>
-                                      )}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+        <div className="flex-1 overflow-hidden">
+          {!normalizedTerm ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Rechercher dans votre école</h3>
+              <p className="text-muted-foreground max-w-md">
+                Tapez un nom, prénom, email ou numéro CIN pour trouver rapidement un étudiant ou un professeur avec toutes ses informations.
+              </p>
             </div>
+          ) : (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex flex-col h-full">
+              <div className="border-b px-6 py-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <TabsList className="h-9">
+                    <TabsTrigger value="students" className="gap-2 px-4">
+                      <Users className="h-4 w-4" />
+                      Étudiants
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {filteredStudents.length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="teachers" className="gap-2 px-4">
+                      <GraduationCap className="h-4 w-4" />
+                      Professeurs
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {filteredTeachers.length}
+                      </Badge>
+                    </TabsTrigger>
+                  </TabsList>
+                  <span className="text-sm text-muted-foreground">
+                    {totalResults} résultat{totalResults > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+
+              <ScrollArea className="flex-1 h-[450px]">
+                <TabsContent value="students" className="m-0 p-4">
+                  {filteredStudents.length === 0 ? (
+                    <div className="text-center py-12">
+                      <User className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">Aucun étudiant trouvé pour "{searchTerm}"</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredStudents.map((student) => {
+                        const stats = getStudentStats(student);
+                        return (
+                          <div 
+                            key={student.id} 
+                            className="p-4 rounded-xl border bg-card hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex gap-4">
+                              <Avatar className="h-14 w-14 border-2 border-primary/20">
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  {getInitials(student.firstname, student.lastname)}
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div>
+                                    <h4 className="font-semibold text-base">
+                                      {student.firstname} {student.lastname}
+                                    </h4>
+                                    {stats.className && (
+                                      <Badge variant="outline" className="mt-1">
+                                        {stats.className}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {stats.averageGrade !== null && (
+                                    <div className="text-right">
+                                      <span className={`text-lg font-bold ${
+                                        stats.averageGrade >= 14 ? "text-green-600" :
+                                        stats.averageGrade >= 10 ? "text-amber-600" : "text-red-600"
+                                      }`}>
+                                        {stats.averageGrade.toFixed(1)}/20
+                                      </span>
+                                      <p className="text-xs text-muted-foreground">Moyenne</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-3">
+                                  {student.email && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">{student.email}</span>
+                                    </div>
+                                  )}
+                                  {student.student_phone && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                                      <span>{student.student_phone}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                                    <span>{student.cin_number}</span>
+                                  </div>
+                                  {student.birth_date && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                                      <span>{format(new Date(student.birth_date), "dd/MM/yyyy")}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap gap-4 pt-3 border-t">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                      <BookOpen className="h-4 w-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Notes</p>
+                                      <p className="font-semibold text-sm">{stats.totalGrades}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Absences</p>
+                                      <p className="font-semibold text-sm">{stats.absences}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                      <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Justifiées</p>
+                                      <p className="font-semibold text-sm">{stats.justified}</p>
+                                    </div>
+                                  </div>
+                                  {stats.presenceRate !== null && (
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                        <TrendingUp className="h-4 w-4 text-green-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Présence</p>
+                                        <p className="font-semibold text-sm">{stats.presenceRate.toFixed(0)}%</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="teachers" className="m-0 p-4">
+                  {filteredTeachers.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">Aucun professeur trouvé pour "{searchTerm}"</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredTeachers.map((teacher) => {
+                        const stats = getTeacherStats(teacher);
+                        return (
+                          <div 
+                            key={teacher.id} 
+                            className="p-4 rounded-xl border bg-card hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex gap-4">
+                              <Avatar className="h-14 w-14 border-2 border-primary/20">
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  {getInitials(teacher.firstname, teacher.lastname)}
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div>
+                                    <h4 className="font-semibold text-base flex items-center gap-2">
+                                      {teacher.firstname} {teacher.lastname}
+                                      <Badge 
+                                        variant={teacher.status === "active" ? "default" : "secondary"}
+                                        className="text-xs"
+                                      >
+                                        {teacher.status === "active" ? "Actif" : teacher.status}
+                                      </Badge>
+                                    </h4>
+                                    {teacher.qualification && (
+                                      <p className="text-sm text-muted-foreground">{teacher.qualification}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-lg font-bold text-primary">
+                                      {stats.classes.length}
+                                    </span>
+                                    <p className="text-xs text-muted-foreground">Classes</p>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                                  {teacher.email && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">{teacher.email}</span>
+                                    </div>
+                                  )}
+                                  {teacher.mobile && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                                      <span>{teacher.mobile}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {stats.classes.length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="text-xs text-muted-foreground mb-1.5">Classes assignées</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {stats.classes.map((cls) => (
+                                        <Badge key={cls.id} variant="outline" className="text-xs">
+                                          {cls.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {stats.subjects.length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="text-xs text-muted-foreground mb-1.5">Matières enseignées</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {stats.subjects.map((subj) => (
+                                        <Badge key={subj.id} variant="secondary" className="text-xs">
+                                          <BookOpen className="h-3 w-3 mr-1" />
+                                          {subj.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {stats.upcomingSessions.length > 0 && (
+                                  <div className="pt-3 border-t">
+                                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Prochaines séances
+                                    </p>
+                                    <div className="space-y-2">
+                                      {stats.upcomingSessions.map((session, idx) => (
+                                        <div 
+                                          key={idx} 
+                                          className="flex items-center gap-3 text-sm bg-muted/50 rounded-lg px-3 py-2"
+                                        >
+                                          <CalendarDays className="h-4 w-4 text-primary shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <span className="font-medium">
+                                              {format(new Date(session.session_date), "EEEE d MMM", { locale: fr })}
+                                            </span>
+                                            {session.start_time && (
+                                              <span className="text-muted-foreground"> à {session.start_time.slice(0, 5)}</span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            {session.className && (
+                                              <Badge variant="outline" className="text-xs">
+                                                {session.className}
+                                              </Badge>
+                                            )}
+                                            {session.subjectName && (
+                                              <Badge variant="secondary" className="text-xs">
+                                                {session.subjectName}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+              </ScrollArea>
+            </Tabs>
           )}
         </div>
       </DialogContent>
