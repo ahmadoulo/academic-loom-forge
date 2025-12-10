@@ -42,6 +42,8 @@ export default function AnnouncementsPage() {
     pinned: false,
     starts_at: null as string | null,
     ends_at: null as string | null,
+    links: [] as string[],
+    attachments: [] as string[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +69,8 @@ export default function AnnouncementsPage() {
         pinned: false,
         starts_at: null,
         ends_at: null,
+        links: [],
+        attachments: [],
       });
     }
   };
@@ -80,6 +84,8 @@ export default function AnnouncementsPage() {
       pinned: announcement.pinned,
       starts_at: announcement.starts_at,
       ends_at: announcement.ends_at,
+      links: announcement.links || [],
+      attachments: announcement.attachments || [],
     });
     setIsModalOpen(true);
   };

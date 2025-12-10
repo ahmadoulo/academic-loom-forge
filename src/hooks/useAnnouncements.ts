@@ -12,6 +12,8 @@ export interface Announcement {
   visibility: string;
   class_id: string | null;
   pinned: boolean;
+  links: string[];
+  attachments: string[];
   created_at: string;
   updated_at: string;
 }

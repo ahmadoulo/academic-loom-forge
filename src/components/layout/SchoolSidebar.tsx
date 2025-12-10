@@ -140,7 +140,7 @@ const menuStructure = [
       },
     ]
   },
-  {
+{
     category: "Planning & Salles",
     icon: Building2,
     items: [
@@ -154,12 +154,6 @@ const menuStructure = [
         title: "Salles de Cours", 
         value: "classrooms",
         icon: Building2,
-        href: "/school"
-      },
-      { 
-        title: "Semestres", 
-        value: "semesters",
-        icon: Calendar,
         href: "/school"
       },
     ]
