@@ -64,12 +64,14 @@ export type Database = {
       }
       announcements: {
         Row: {
+          attachments: string[] | null
           body: string
           class_id: string | null
           created_at: string
           created_by: string | null
           ends_at: string | null
           id: string
+          links: string[] | null
           pinned: boolean
           school_id: string | null
           starts_at: string | null
@@ -78,12 +80,14 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          attachments?: string[] | null
           body: string
           class_id?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          links?: string[] | null
           pinned?: boolean
           school_id?: string | null
           starts_at?: string | null
@@ -92,12 +96,14 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          attachments?: string[] | null
           body?: string
           class_id?: string | null
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          links?: string[] | null
           pinned?: boolean
           school_id?: string | null
           starts_at?: string | null
@@ -985,6 +991,7 @@ export type Database = {
       }
       events: {
         Row: {
+          attachments: string[] | null
           attendance_enabled: boolean
           class_id: string | null
           created_at: string
@@ -992,6 +999,7 @@ export type Database = {
           description: string | null
           end_at: string
           id: string
+          links: string[] | null
           location: string | null
           published: boolean
           school_id: string | null
@@ -1002,6 +1010,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachments?: string[] | null
           attendance_enabled?: boolean
           class_id?: string | null
           created_at?: string
@@ -1009,6 +1018,7 @@ export type Database = {
           description?: string | null
           end_at: string
           id?: string
+          links?: string[] | null
           location?: string | null
           published?: boolean
           school_id?: string | null
@@ -1019,6 +1029,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachments?: string[] | null
           attendance_enabled?: boolean
           class_id?: string | null
           created_at?: string
@@ -1026,6 +1037,7 @@ export type Database = {
           description?: string | null
           end_at?: string
           id?: string
+          links?: string[] | null
           location?: string | null
           published?: boolean
           school_id?: string | null

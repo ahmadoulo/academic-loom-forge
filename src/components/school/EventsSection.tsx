@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EventQRCodeGenerator } from "./EventQRCodeGenerator";
 import { EventAttendanceList } from "./EventAttendanceList";
+import { AttachmentUploader } from "./AttachmentUploader";
+import { AttachmentDisplay } from "./AttachmentDisplay";
 
 interface EventsSectionProps {
   schoolId: string;
@@ -79,6 +81,8 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
     scope: "school",
     published: true,
     attendance_enabled: false,
+    links: [] as string[],
+    attachments: [] as string[],
   });
 
   // Split events into upcoming and past
@@ -131,6 +135,8 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
         scope: "school",
         published: true,
         attendance_enabled: false,
+        links: [],
+        attachments: [],
       });
     }
   };
@@ -146,6 +152,8 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
       scope: event.scope,
       published: event.published,
       attendance_enabled: event.attendance_enabled || false,
+      links: event.links || [],
+      attachments: event.attachments || [],
     });
     setIsModalOpen(true);
   };
@@ -210,6 +218,12 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
               {event.description}
             </p>
           )}
+          
+          {/* Attachments Display */}
+          <AttachmentDisplay 
+            links={event.links || []} 
+            attachments={event.attachments || []} 
+          />
           
           <div className="space-y-2.5 text-sm">
             <div className="flex items-center gap-2.5 text-foreground">
@@ -484,6 +498,18 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                   Permet de générer un QR code pour que les étudiants puissent marquer leur présence à l'événement
                 </p>
               </div>
+            </div>
+
+            {/* Attachments Section */}
+            <div className="pt-4 border-t">
+              <AttachmentUploader
+                type="events"
+                schoolId={schoolId}
+                links={formData.links}
+                attachments={formData.attachments}
+                onLinksChange={(links) => setFormData({ ...formData, links })}
+                onAttachmentsChange={(attachments) => setFormData({ ...formData, attachments })}
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">

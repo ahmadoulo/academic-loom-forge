@@ -15,6 +15,8 @@ export interface Event {
   subject_id: string | null;
   published: boolean;
   attendance_enabled: boolean;
+  links: string[];
+  attachments: string[];
   created_at: string;
   updated_at: string;
 }

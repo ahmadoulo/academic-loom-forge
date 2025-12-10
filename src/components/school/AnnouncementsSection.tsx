@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { AttachmentUploader } from "./AttachmentUploader";
+import { AttachmentDisplay } from "./AttachmentDisplay";
 
 interface AnnouncementsSectionProps {
   schoolId: string;
@@ -43,6 +45,8 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
     pinned: false,
     starts_at: null as string | null,
     ends_at: null as string | null,
+    links: [] as string[],
+    attachments: [] as string[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,6 +73,8 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
         pinned: false,
         starts_at: null,
         ends_at: null,
+        links: [],
+        attachments: [],
       });
     }
   };
@@ -82,6 +88,8 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
       pinned: announcement.pinned,
       starts_at: announcement.starts_at,
       ends_at: announcement.ends_at,
+      links: announcement.links || [],
+      attachments: announcement.attachments || [],
     });
     setIsModalOpen(true);
   };
@@ -217,6 +225,14 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
                   {announcement.body}
                 </p>
 
+                {/* Attachments Display */}
+                <div className="pl-8">
+                  <AttachmentDisplay 
+                    links={announcement.links || []} 
+                    attachments={announcement.attachments || []} 
+                  />
+                </div>
+
                 {isAdmin && (
                   <div className="flex gap-2 pt-4 border-t pl-8">
                     <Button
@@ -326,6 +342,18 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
                   Les annonces épinglées s'affichent en haut de la liste
                 </p>
               </div>
+            </div>
+
+            {/* Attachments Section */}
+            <div className="pt-4 border-t">
+              <AttachmentUploader
+                type="annonces"
+                schoolId={schoolId}
+                links={formData.links}
+                attachments={formData.attachments}
+                onLinksChange={(links) => setFormData({ ...formData, links })}
+                onAttachmentsChange={(attachments) => setFormData({ ...formData, attachments })}
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
