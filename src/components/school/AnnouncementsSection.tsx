@@ -181,81 +181,99 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {announcements.map((announcement) => (
-            <Card 
-              key={announcement.id} 
-              className={`group hover:shadow-xl transition-all duration-300 ${
-                announcement.pinned 
-                  ? 'border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50/50 dark:from-orange-950/20 to-transparent' 
-                  : 'hover:border-primary/50'
-              }`}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-start gap-3">
-                      {announcement.pinned && (
-                        <Pin className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-1 flex-shrink-0" />
-                      )}
-                      <CardTitle className="text-2xl font-bold leading-tight">
-                        {announcement.title}
-                      </CardTitle>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground ml-8">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(announcement.created_at), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
-                      </div>
-                      <Badge variant="outline" className={getVisibilityColor(announcement.visibility)}>
-                        <Eye className="w-3 h-3 mr-1" />
-                        {getVisibilityLabel(announcement.visibility)}
-                      </Badge>
-                      {announcement.pinned && (
-                        <Badge variant="outline" className="bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
-                          Épinglée
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-foreground whitespace-pre-wrap leading-relaxed pl-8">
-                  {announcement.body}
-                </p>
-
-                {/* Attachments Display */}
-                <div className="pl-8">
-                  <AttachmentDisplay 
-                    links={announcement.links || []} 
-                    attachments={announcement.attachments || []} 
-                  />
-                </div>
-
-                {isAdmin && (
-                  <div className="flex gap-2 pt-4 border-t pl-8">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(announcement)}
-                      className="flex-1 group-hover:border-primary/50"
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Modifier
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(announcement.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {announcements.map((announcement) => {
+            const hasImages = announcement.attachments?.some((a: string) => 
+              ["jpg", "jpeg", "png", "gif", "webp"].includes(a.split(".").pop()?.toLowerCase() || "")
+            );
+            
+            return (
+              <Card 
+                key={announcement.id} 
+                className={`group hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col ${
+                  announcement.pinned 
+                    ? 'ring-2 ring-orange-500/50 bg-gradient-to-br from-orange-50/30 dark:from-orange-950/20' 
+                    : 'hover:border-primary/50'
+                }`}
+              >
+                {/* Featured Image */}
+                {hasImages && (
+                  <div className="relative">
+                    <AttachmentDisplay 
+                      links={[]} 
+                      attachments={announcement.attachments?.filter((a: string) => 
+                        ["jpg", "jpeg", "png", "gif", "webp"].includes(a.split(".").pop()?.toLowerCase() || "")
+                      ) || []} 
+                    />
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
+                
+                <CardHeader className="pb-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    {announcement.pinned && (
+                      <Badge className="bg-orange-500 hover:bg-orange-600 text-white gap-1">
+                        <Pin className="w-3 h-3" />
+                        Épinglée
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className={getVisibilityColor(announcement.visibility)}>
+                      <Eye className="w-3 h-3 mr-1" />
+                      {getVisibilityLabel(announcement.visibility)}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl font-bold leading-tight line-clamp-2">
+                    {announcement.title}
+                  </CardTitle>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {format(new Date(announcement.created_at), "d MMM yyyy 'à' HH:mm", { locale: fr })}
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="flex-1 flex flex-col pt-0">
+                  <p className="text-muted-foreground text-sm leading-relaxed line-clamp-4 flex-1">
+                    {announcement.body}
+                  </p>
+
+                  {/* Links & Documents (not images) */}
+                  {(announcement.links?.length > 0 || announcement.attachments?.some((a: string) => 
+                    !["jpg", "jpeg", "png", "gif", "webp"].includes(a.split(".").pop()?.toLowerCase() || "")
+                  )) && (
+                    <div className="mt-3">
+                      <AttachmentDisplay 
+                        links={announcement.links || []} 
+                        attachments={announcement.attachments?.filter((a: string) => 
+                          !["jpg", "jpeg", "png", "gif", "webp"].includes(a.split(".").pop()?.toLowerCase() || "")
+                        ) || []} 
+                      />
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <div className="flex gap-2 pt-4 mt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(announcement)}
+                        className="flex-1"
+                      >
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => handleDelete(announcement.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
