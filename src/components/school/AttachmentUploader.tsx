@@ -78,10 +78,10 @@ export function AttachmentUploader({
           continue;
         }
 
-        // Generate unique filename
+        // Generate unique filename - store directly in the folder without subfolder
         const ext = file.name.split(".").pop();
-        const fileName = `${schoolId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        const filePath = `${type}/${fileName}`;
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const filePath = `${type}/${uniqueName}`;
 
         const { error } = await supabase.storage
           .from("school-document")
