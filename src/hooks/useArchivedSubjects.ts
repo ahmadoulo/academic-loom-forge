@@ -34,7 +34,7 @@ export const useArchivedSubjects = (schoolId?: string) => {
         .order('archived_at', { ascending: false });
 
       if (error) throw error;
-      setArchivedSubjects(data || []);
+      setArchivedSubjects((data || []) as SubjectWithDetails[]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des matières archivées';
       setError(message);
