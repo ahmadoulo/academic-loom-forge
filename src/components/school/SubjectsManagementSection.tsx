@@ -12,6 +12,7 @@ interface Subject {
   class_id: string;
   teacher_id?: string;
   coefficient: number;
+  coefficient_type?: 'coefficient' | 'credit';
 }
 
 interface Teacher {
@@ -151,7 +152,7 @@ export function SubjectsManagementSection({
                               <span className="truncate">{subject.name}</span>
                             </div>
                             <Badge variant="secondary" className="ml-auto flex-shrink-0">
-                              Coef. {subject.coefficient}
+                              {subject.coefficient_type === 'credit' ? 'Crédit' : 'Coef.'} {subject.coefficient}
                             </Badge>
                           </CardTitle>
                         </CardHeader>
@@ -222,7 +223,7 @@ export function SubjectsManagementSection({
                                 <span className="truncate">{subject.name}</span>
                               </div>
                               <Badge variant="secondary" className="ml-auto flex-shrink-0">
-                                Coef. {subject.coefficient}
+                                {subject.coefficient_type === 'credit' ? 'Crédit' : 'Coef.'} {subject.coefficient}
                               </Badge>
                             </CardTitle>
                           </CardHeader>
