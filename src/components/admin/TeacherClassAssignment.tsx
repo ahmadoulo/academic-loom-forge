@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus, X } from "lucide-react";
+import { UserPlus, X, User, GraduationCap } from "lucide-react";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useClassesByYear } from "@/hooks/useClassesByYear";
 import { useTeachers } from "@/hooks/useTeachers";
@@ -13,6 +13,16 @@ import { toast } from "sonner";
 
 interface TeacherClassAssignmentProps {
   schoolId: string;
+}
+
+interface GroupedAssignment {
+  teacherId: string;
+  teacherName: string;
+  classes: Array<{
+    assignmentId: string;
+    classId: string;
+    className: string;
+  }>;
 }
 
 export const TeacherClassAssignment = ({ schoolId }: TeacherClassAssignmentProps) => {
@@ -64,16 +74,65 @@ export const TeacherClassAssignment = ({ schoolId }: TeacherClassAssignmentProps
     }
   };
 
-  // Get assignments for this school
-  const schoolAssignments = teacherClasses.filter(tc => 
-    tc.classes.school_id === schoolId
+  // Get assignments for this school and group by teacher
+  const groupedAssignments = useMemo(() => {
+    const schoolAssignments = teacherClasses.filter(tc => 
+      tc.classes?.school_id === schoolId
+    );
+
+    const grouped: Record<string, GroupedAssignment> = {};
+
+    schoolAssignments.forEach(assignment => {
+      if (!assignment.teachers || !assignment.classes) return;
+      
+      const teacherId = assignment.teacher_id;
+      const teacherName = `${assignment.teachers.firstname} ${assignment.teachers.lastname}`;
+
+      if (!grouped[teacherId]) {
+        grouped[teacherId] = {
+          teacherId,
+          teacherName,
+          classes: []
+        };
+      }
+
+      // Avoid duplicate classes for same teacher
+      const classExists = grouped[teacherId].classes.some(
+        c => c.classId === assignment.class_id
+      );
+
+      if (!classExists) {
+        grouped[teacherId].classes.push({
+          assignmentId: assignment.id,
+          classId: assignment.class_id,
+          className: assignment.classes.name
+        });
+      }
+    });
+
+    return Object.values(grouped).sort((a, b) => 
+      a.teacherName.localeCompare(b.teacherName)
+    );
+  }, [teacherClasses, schoolId]);
+
+  const totalAssignments = groupedAssignments.reduce(
+    (acc, teacher) => acc + teacher.classes.length, 
+    0
   );
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle>Assignation Professeurs - Classes</CardTitle>
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              Assignation Professeurs - Classes
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {groupedAssignments.length} professeur{groupedAssignments.length > 1 ? 's' : ''} • {totalAssignments} assignation{totalAssignments > 1 ? 's' : ''}
+            </p>
+          </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -127,32 +186,58 @@ export const TeacherClassAssignment = ({ schoolId }: TeacherClassAssignmentProps
         </div>
       </CardHeader>
       <CardContent>
-        {schoolAssignments.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">
-            Aucune assignation pour le moment.
-          </p>
+        {groupedAssignments.length === 0 ? (
+          <div className="text-center py-8">
+            <User className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground">
+              Aucune assignation pour le moment.
+            </p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
+              Cliquez sur "Assigner" pour commencer
+            </p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {schoolAssignments.map((assignment) => (
-              <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">
-                      {assignment.teachers.firstname} {assignment.teachers.lastname}
-                    </Badge>
-                    <span className="text-muted-foreground">→</span>
-                    <Badge variant="secondary">
-                      {assignment.classes.name}
-                    </Badge>
+          <div className="space-y-4">
+            {groupedAssignments.map((teacher) => (
+              <div 
+                key={teacher.teacherId} 
+                className="border rounded-lg overflow-hidden bg-card"
+              >
+                {/* Teacher Header */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 border-b">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{teacher.teacherName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {teacher.classes.length} classe{teacher.classes.length > 1 ? 's' : ''} assignée{teacher.classes.length > 1 ? 's' : ''}
+                    </p>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleRemoveAssignment(assignment.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                
+                {/* Classes List */}
+                <div className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {teacher.classes.map((cls) => (
+                      <Badge 
+                        key={cls.assignmentId}
+                        variant="secondary"
+                        className="pl-3 pr-1 py-1.5 flex items-center gap-2 text-sm"
+                      >
+                        <span>{cls.className}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-5 w-5 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                          onClick={() => handleRemoveAssignment(cls.assignmentId)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
