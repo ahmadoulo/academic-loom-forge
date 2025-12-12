@@ -3,10 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Award, Download, ArrowLeft, Users } from "lucide-react";
-import { generateStudentBulletin, generateStudentBulletinInDoc } from "@/utils/bulletinPdfExport";
+import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle } from "lucide-react";
+import { generateLMDBulletinPdf, generateLMDBulletinInDoc, BulletinData, SemesterData, SubjectGradeData } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
@@ -38,6 +37,7 @@ export const BulletinSection = ({
 }: BulletinSectionProps) => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedSemester, setSelectedSemester] = useState<string>("");
+  const [bulletinType, setBulletinType] = useState<'semester' | 'annual'>('semester');
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
   const { selectedYear } = useAcademicYear();
   const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
@@ -50,7 +50,7 @@ export const BulletinSection = ({
     }
   }, [semesters, selectedSemester]);
   
-  // Convertir le logo en base64 au chargement
+  // Convertir le logo en base64
   React.useEffect(() => {
     const convertLogo = async () => {
       if (schoolLogoUrl) {
@@ -65,16 +65,103 @@ export const BulletinSection = ({
     convertLogo();
   }, [schoolLogoUrl]);
 
-  // Filtrer les notes selon le semestre et l'année scolaire sélectionnés
-  const displayGrades = useMemo(() => {
-    return grades.filter(grade => {
-      const matchesYear = !selectedYear || grade.school_year_id === selectedYear.id;
-      const matchesSemester = !selectedSemester || selectedSemester === 'all' || grade.school_semester_id === selectedSemester;
-      return matchesYear && matchesSemester;
-    });
-  }, [grades, selectedYear, selectedSemester]);
+  // Récupérer les matières avec leurs crédits pour une classe
+  const getClassSubjects = (classId: string) => {
+    return subjects.filter(s => s.class_id === classId);
+  };
 
-  // Grouper les étudiants par classe
+  // Calculer les notes d'un étudiant pour un semestre donné
+  const getStudentSemesterData = (studentId: string, semesterId: string): SemesterData | null => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return null;
+
+    const classSubjects = getClassSubjects(student.class_id);
+    const semesterGrades = grades.filter(g => 
+      g.student_id === studentId && 
+      g.school_semester_id === semesterId &&
+      (!selectedYear || g.school_year_id === selectedYear.id)
+    );
+
+    const subjectGrades: SubjectGradeData[] = classSubjects.map(subject => {
+      const subjectGradesList = semesterGrades.filter(g => g.subject_id === subject.id);
+      const hasGrades = subjectGradesList.length > 0;
+      const average = hasGrades 
+        ? subjectGradesList.reduce((sum, g) => sum + Number(g.grade) + (Number(g.bonus) || 0), 0) / subjectGradesList.length
+        : 0;
+      
+      const credits = subject.coefficient_type === 'credit' ? subject.coefficient : 1;
+      const isValidated = hasGrades && average >= 10;
+
+      return {
+        subjectId: subject.id,
+        subjectName: subject.name,
+        grades: subjectGradesList,
+        average: hasGrades ? average : undefined,
+        hasGrades,
+        credits,
+        coefficientType: subject.coefficient_type || 'coefficient',
+        isValidated
+      };
+    });
+
+    const subjectsWithGrades = subjectGrades.filter(s => s.hasGrades);
+    const semesterAverage = subjectsWithGrades.length > 0
+      ? subjectsWithGrades.reduce((sum, s) => sum + (s.average || 0), 0) / subjectsWithGrades.length
+      : 0;
+
+    const totalCredits = subjectGrades.reduce((sum, s) => sum + s.credits, 0);
+    const validatedCredits = subjectGrades
+      .filter(s => s.isValidated)
+      .reduce((sum, s) => sum + s.credits, 0);
+
+    const semester = semesters.find(s => s.id === semesterId);
+
+    return {
+      name: semester?.name || 'Semestre',
+      average: semesterAverage,
+      validatedCredits,
+      totalCredits,
+      subjectGrades
+    };
+  };
+
+  // Calculer les données complètes d'un étudiant (tous semestres)
+  const getStudentFullData = (studentId: string) => {
+    const sortedSemesters = [...semesters].sort((a, b) => 
+      new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+    );
+
+    const semester1 = sortedSemesters[0] ? getStudentSemesterData(studentId, sortedSemesters[0].id) : null;
+    const semester2 = sortedSemesters[1] ? getStudentSemesterData(studentId, sortedSemesters[1].id) : null;
+
+    let annualAverage = 0;
+    let totalValidatedCredits = 0;
+    let totalCredits = 0;
+
+    if (semester1 && semester2) {
+      annualAverage = (semester1.average + semester2.average) / 2;
+      totalValidatedCredits = semester1.validatedCredits + semester2.validatedCredits;
+      totalCredits = semester1.totalCredits + semester2.totalCredits;
+    } else if (semester1) {
+      annualAverage = semester1.average;
+      totalValidatedCredits = semester1.validatedCredits;
+      totalCredits = semester1.totalCredits;
+    } else if (semester2) {
+      annualAverage = semester2.average;
+      totalValidatedCredits = semester2.validatedCredits;
+      totalCredits = semester2.totalCredits;
+    }
+
+    return {
+      semester1,
+      semester2,
+      annualAverage,
+      totalValidatedCredits,
+      totalCredits
+    };
+  };
+
+  // Grouper les étudiants par classe avec leurs stats
   const studentsByClass = useMemo(() => {
     const grouped: Record<string, any[]> = {};
     
@@ -84,75 +171,38 @@ export const BulletinSection = ({
         grouped[classId] = [];
       }
       
-      // Calculer les notes de l'étudiant
-      const studentGrades = displayGrades.filter(g => g.student_id === student.id);
-      const average = studentGrades.length > 0
-        ? studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length
-        : 0;
+      const fullData = getStudentFullData(student.id);
+      const currentSemesterData = selectedSemester 
+        ? getStudentSemesterData(student.id, selectedSemester)
+        : null;
       
       grouped[classId].push({
         ...student,
-        totalGrades: studentGrades.length,
-        average: average,
+        average: bulletinType === 'annual' 
+          ? fullData.annualAverage 
+          : (currentSemesterData?.average || 0),
+        validatedCredits: bulletinType === 'annual'
+          ? fullData.totalValidatedCredits
+          : (currentSemesterData?.validatedCredits || 0),
+        totalCredits: bulletinType === 'annual'
+          ? fullData.totalCredits
+          : (currentSemesterData?.totalCredits || 0),
+        fullData
       });
     });
     
-    // Trier les étudiants par moyenne dans chaque classe
     Object.keys(grouped).forEach(classId => {
       grouped[classId].sort((a, b) => b.average - a.average);
     });
     
     return grouped;
-  }, [students, displayGrades]);
+  }, [students, grades, subjects, semesters, selectedSemester, bulletinType, selectedYear]);
 
-  // Calculer les détails de notes d'un étudiant
-  const getStudentGradeDetails = (studentId: string) => {
-    const studentGrades = displayGrades.filter(g => g.student_id === studentId);
-    
-    // Grouper les notes par matière
-    const gradesBySubject: Record<string, any[]> = {};
-    studentGrades.forEach(grade => {
-      if (!gradesBySubject[grade.subject_id]) {
-        gradesBySubject[grade.subject_id] = [];
-      }
-      gradesBySubject[grade.subject_id].push(grade);
-    });
-    
-    // Calculer la moyenne par matière
-    const subjectGrades = Object.keys(gradesBySubject).map(subjectId => {
-      const subject = subjects.find(s => s.id === subjectId);
-      const subjectGradesList = gradesBySubject[subjectId];
-      const average = subjectGradesList.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGradesList.length;
-      
-      return {
-        subjectId,
-        subjectName: subject?.name || 'Matière inconnue',
-        grades: subjectGradesList,
-        average,
-        hasGrades: subjectGradesList.length > 0,
-      };
-    });
-    
-    const overallAverage = subjectGrades.length > 0
-      ? subjectGrades.reduce((sum, s) => sum + s.average, 0) / subjectGrades.length
-      : 0;
-    
-    return { subjectGrades, overallAverage };
-  };
-
-  // Calculer le rang d'un étudiant dans sa classe
-  const getStudentRank = (student: any) => {
-    const classStudents = studentsByClass[student.class_id] || [];
-    return classStudents.findIndex(s => s.id === student.id) + 1;
-  };
-
+  // Générer PDF pour un étudiant
   const handleGeneratePDF = async (student: any) => {
     try {
-      const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
       const studentClass = classes.find(c => c.id === student.class_id);
-      const semesterData = !selectedSemester 
-        ? { name: "Tous les semestres" }
-        : semesters.find(s => s.id === selectedSemester);
+      const fullData = getStudentFullData(student.id);
       
       const studentData = {
         id: student.id,
@@ -165,8 +215,36 @@ export const BulletinSection = ({
         classes: studentClass,
         schools: { name: schoolName },
       };
+
+      if (bulletinType === 'annual') {
+        const bulletinData: BulletinData = {
+          student: studentData,
+          semester1: fullData.semester1 || undefined,
+          semester2: fullData.semester2 || undefined,
+          annualAverage: fullData.annualAverage,
+          totalValidatedCredits: fullData.totalValidatedCredits,
+          totalCredits: fullData.totalCredits,
+          isAnnualBulletin: true
+        };
+        await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
+      } else {
+        const semesterData = selectedSemester 
+          ? getStudentSemesterData(student.id, selectedSemester)
+          : null;
+        
+        if (!semesterData) {
+          toast.error("Veuillez sélectionner un semestre");
+          return;
+        }
+
+        const bulletinData: BulletinData = {
+          student: studentData,
+          semester1: semesterData,
+          isAnnualBulletin: false
+        };
+        await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
+      }
       
-      await generateStudentBulletin(studentData, subjectGrades, overallAverage, logoBase64, academicYear, semesterData?.name);
       toast.success("Bulletin généré avec succès");
     } catch (error) {
       console.error("Erreur génération PDF:", error);
@@ -174,6 +252,7 @@ export const BulletinSection = ({
     }
   };
 
+  // Générer tous les bulletins d'une classe
   const handleGenerateClassBulletins = async (classId: string) => {
     try {
       const classStudents = studentsByClass[classId] || [];
@@ -184,9 +263,6 @@ export const BulletinSection = ({
 
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
-      const semesterData = !selectedSemester 
-        ? { name: "Tous les semestres" }
-        : semesters.find(s => s.id === selectedSemester);
 
       for (let index = 0; index < classStudents.length; index++) {
         const student = classStudents[index];
@@ -194,8 +270,6 @@ export const BulletinSection = ({
           doc.addPage();
         }
 
-        const { subjectGrades, overallAverage } = getStudentGradeDetails(student.id);
-        
         const studentData = {
           id: student.id,
           firstname: student.firstname,
@@ -208,12 +282,38 @@ export const BulletinSection = ({
           schools: { name: schoolName },
         };
 
-        // Générer le bulletin pour cet étudiant dans le doc existant
-        await generateStudentBulletinInDoc(doc, studentData, subjectGrades, overallAverage, logoBase64, academicYear, semesterData?.name);
+        const fullData = getStudentFullData(student.id);
+
+        if (bulletinType === 'annual') {
+          const bulletinData: BulletinData = {
+            student: studentData,
+            semester1: fullData.semester1 || undefined,
+            semester2: fullData.semester2 || undefined,
+            annualAverage: fullData.annualAverage,
+            totalValidatedCredits: fullData.totalValidatedCredits,
+            totalCredits: fullData.totalCredits,
+            isAnnualBulletin: true
+          };
+          await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
+        } else {
+          const semesterData = selectedSemester 
+            ? getStudentSemesterData(student.id, selectedSemester)
+            : null;
+          
+          if (semesterData) {
+            const bulletinData: BulletinData = {
+              student: studentData,
+              semester1: semesterData,
+              isAnnualBulletin: false
+            };
+            await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
+          }
+        }
       }
 
       const className = studentClass?.name || 'Classe';
-      const fileName = `Bulletins_${className}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const suffix = bulletinType === 'annual' ? 'Annuel' : 'Semestre';
+      const fileName = `Bulletins_${className}_${suffix}_${new Date().toISOString().slice(0, 10)}.pdf`;
       doc.save(fileName);
       
       toast.success(`${classStudents.length} bulletins générés avec succès`);
@@ -233,288 +333,321 @@ export const BulletinSection = ({
 
   // Vue détaillée d'un étudiant
   if (selectedStudent) {
-    const { subjectGrades, overallAverage } = getStudentGradeDetails(selectedStudent.id);
     const studentClass = classes.find(c => c.id === selectedStudent.class_id);
-    const rank = getStudentRank(selectedStudent);
-    const totalStudents = studentsByClass[selectedStudent.class_id]?.length || 0;
+    const fullData = getStudentFullData(selectedStudent.id);
+    const currentSemesterData = selectedSemester 
+      ? getStudentSemesterData(selectedStudent.id, selectedSemester)
+      : fullData.semester1;
+
+
+    const classStudents = studentsByClass[selectedStudent.class_id] || [];
+    const rank = classStudents.findIndex(s => s.id === selectedStudent.id) + 1;
 
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            onClick={() => setSelectedStudent(null)}
-            className="gap-2"
-          >
+          <Button variant="ghost" onClick={() => setSelectedStudent(null)} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Retour à la liste
           </Button>
-          <Button 
-            onClick={() => handleGeneratePDF(selectedStudent)}
-            className="gap-2"
-          >
+          <Button onClick={() => handleGeneratePDF(selectedStudent)} className="gap-2">
             <Download className="h-4 w-4" />
             Télécharger le Bulletin PDF
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Étudiant</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                {selectedStudent.firstname} {selectedStudent.lastname}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">{studentClass?.name}</p>
-              <p className="text-xs text-muted-foreground mt-1">CIN: {selectedStudent.cin_number || 'N/A'}</p>
+              <p className="text-xl font-bold">{selectedStudent.firstname} {selectedStudent.lastname}</p>
+              <p className="text-sm text-muted-foreground">{studentClass?.name}</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Moyenne Générale</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Moyenne</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold">{overallAverage.toFixed(2)}</p>
-                <p className="text-muted-foreground">/20</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-2xl font-bold">
+                  {(bulletinType === 'annual' ? fullData.annualAverage : (currentSemesterData?.average || 0)).toFixed(2)}
+                </p>
+                <span className="text-muted-foreground">/20</span>
               </div>
-              <Badge 
-                variant={overallAverage >= 14 ? "default" : overallAverage >= 10 ? "outline" : "destructive"}
-                className="mt-2"
-              >
-                {overallAverage >= 14 ? "Excellent" : overallAverage >= 10 ? "Bien" : "À améliorer"}
+              <Badge variant={(bulletinType === 'annual' ? fullData.annualAverage : (currentSemesterData?.average || 0)) >= 10 ? "default" : "destructive"} className="mt-1">
+                {(bulletinType === 'annual' ? fullData.annualAverage : (currentSemesterData?.average || 0)) >= 14 ? "Bien" : (bulletinType === 'annual' ? fullData.annualAverage : (currentSemesterData?.average || 0)) >= 10 ? "Passable" : "Insuffisant"}
               </Badge>
             </CardContent>
           </Card>
 
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <GraduationCap className="h-4 w-4" />
+                Crédits Validés
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-1">
+                <p className="text-2xl font-bold text-primary">
+                  {bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)}
+                </p>
+                <span className="text-muted-foreground">/ {bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2 mt-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all" 
+                  style={{ 
+                    width: `${(bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)) > 0 
+                      ? ((bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)) / (bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0))) * 100 
+                      : 0}%` 
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Classement</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold">{rank}</p>
-                <p className="text-muted-foreground">/ {totalStudents}</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-2xl font-bold">{rank}</p>
+                <span className="text-muted-foreground">/ {classStudents.length}</span>
               </div>
-              {rank === 1 && (
-                <Badge variant="default" className="mt-2">
-                  Premier de la classe
-                </Badge>
-              )}
-              {rank > 1 && rank <= 3 && (
-                <Badge variant="secondary" className="mt-2">
-                  Parmi les meilleurs
-                </Badge>
-              )}
+              {rank <= 3 && <Badge variant="secondary" className="mt-1">Top {rank}</Badge>}
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes par Matière</CardTitle>
-            <CardDescription>Détail des performances académiques</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {subjectGrades.map((subjectGrade) => (
-                <div key={subjectGrade.subjectId} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-lg">{subjectGrade.subjectName}</h4>
-                    {subjectGrade.hasGrades && (
-                      <Badge variant={subjectGrade.average >= 10 ? "default" : "destructive"}>
-                        Moyenne: {subjectGrade.average.toFixed(2)}/20
-                      </Badge>
-                    )}
-                  </div>
-                  
-                    {subjectGrade.hasGrades ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {subjectGrade.grades.map((grade: any, index: number) => (
-                          <div 
-                            key={grade.id} 
-                            className="flex flex-col p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
-                          >
-                            <span className="text-xs text-muted-foreground mb-1">
-                              {grade.grade_type === 'examen' ? 'Examen' : 
-                               grade.grade_type === 'controle' ? 'Contrôle' : 
-                               'Devoir'}
-                            </span>
-                            <span className="font-bold text-lg">{Number(grade.grade).toFixed(1)}<span className="text-sm text-muted-foreground">/20</span></span>
-                          </div>
-                        ))}
-                      </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Aucune note enregistrée</p>
-                  )}
-                  
-                  {subjectGrade.grades.length > 0 && subjectGrade.grades[0].comment && (
-                    <div className="mt-2 p-2 bg-muted rounded text-sm">
-                      <span className="font-medium">Commentaire:</span> {subjectGrade.grades[0].comment}
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {subjectGrades.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Aucune note disponible pour cet étudiant</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Notes par semestre */}
+        {bulletinType === 'annual' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {fullData.semester1 && (
+              <SemesterGradesCard 
+                semesterData={fullData.semester1} 
+                title="Semestre 1" 
+              />
+            )}
+            {fullData.semester2 && (
+              <SemesterGradesCard 
+                semesterData={fullData.semester2} 
+                title="Semestre 2" 
+              />
+            )}
+          </div>
+        )}
+
+        {bulletinType === 'semester' && currentSemesterData && (
+          <SemesterGradesCard 
+            semesterData={currentSemesterData} 
+            title={currentSemesterData.name} 
+          />
+        )}
       </div>
     );
   }
 
-  // Vue liste des étudiants par classe
+  // Vue liste principale
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <Award className="h-6 w-6 text-primary" />
                 Bulletins de Notes
               </CardTitle>
               <CardDescription className="mt-2">
-                Consultez et téléchargez les bulletins des étudiants par classe
+                Système de crédits LMD - Consultez et téléchargez les bulletins
               </CardDescription>
             </div>
             
-            <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-              <SelectTrigger className="w-full sm:w-[240px]">
-                <SelectValue placeholder="Filtrer par semestre" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les semestres</SelectItem>
-                {semesters.map((sem) => (
-                  <SelectItem key={sem.id} value={sem.id}>
-                    {sem.name} {sem.is_actual && "(Actuel)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-3">
+              <Select value={bulletinType} onValueChange={(v: 'semester' | 'annual') => setBulletinType(v)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semester">Semestriel</SelectItem>
+                  <SelectItem value="annual">Annuel</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {bulletinType === 'semester' && (
+                <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Sélectionner semestre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {semesters.map((sem) => (
+                      <SelectItem key={sem.id} value={sem.id}>
+                        {sem.name} {sem.is_actual && "(Actuel)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
+          <Tabs defaultValue={classes[0]?.id} className="space-y-4">
+            <TabsList className="flex-wrap h-auto gap-1">
+              {classes.map((classItem) => (
+                <TabsTrigger key={classItem.id} value={classItem.id} className="gap-2">
+                  {classItem.name}
+                  <Badge variant="secondary" className="ml-1">
+                    {studentsByClass[classItem.id]?.length || 0}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-      <Tabs defaultValue={classes[0]?.id} className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
-          {classes.map((classItem) => (
-            <TabsTrigger key={classItem.id} value={classItem.id}>
-              {classItem.name}
-              <Badge variant="secondary" className="ml-2">
-                {studentsByClass[classItem.id]?.length || 0}
-              </Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {!selectedYear && (
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground text-center">
-              Veuillez sélectionner une année scolaire pour afficher les bulletins
-            </p>
-          </div>
-        )}
-
-        {classes.map((classItem) => (
-          <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
-            {selectedYear && studentsByClass[classItem.id]?.length > 0 ? (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{studentsByClass[classItem.id].length} étudiant{studentsByClass[classItem.id].length > 1 ? 's' : ''}</span>
-                  </div>
-                  <Button 
-                    onClick={() => handleGenerateClassBulletins(classItem.id)}
-                    className="gap-2"
-                    variant="default"
-                  >
-                    <Download className="h-4 w-4" />
-                    Télécharger tous les bulletins
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {studentsByClass[classItem.id].map((student, index) => (
-                    <Card 
-                      key={student.id} 
-                      className="group hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
-                      onClick={() => setSelectedStudent(student)}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CardTitle className="text-base truncate">
-                                {student.firstname} {student.lastname}
-                              </CardTitle>
-                              {index === 0 && (
-                                <Badge variant="default" className="shrink-0 h-5">
-                                  Top 1
-                                </Badge>
-                              )}
-                              {index > 0 && index < 3 && (
-                                <Badge variant="secondary" className="shrink-0 h-5">
-                                  Top {index + 1}
-                                </Badge>
-                              )}
+            {classes.map((classItem) => (
+              <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
+                {studentsByClass[classItem.id]?.length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{studentsByClass[classItem.id].length} étudiants</span>
+                      </div>
+                      <Button onClick={() => handleGenerateClassBulletins(classItem.id)} className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Télécharger tous les bulletins
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {studentsByClass[classItem.id].map((student, index) => (
+                        <Card 
+                          key={student.id} 
+                          className="hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
+                          onClick={() => setSelectedStudent(student)}
+                        >
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <CardTitle className="text-base truncate flex items-center gap-2">
+                                  {student.firstname} {student.lastname}
+                                  {index < 3 && (
+                                    <Badge variant={index === 0 ? "default" : "secondary"} className="h-5">
+                                      #{index + 1}
+                                    </Badge>
+                                  )}
+                                </CardTitle>
+                                <CardDescription className="text-xs truncate mt-1">
+                                  {student.cin_number || 'N/A'}
+                                </CardDescription>
+                              </div>
                             </div>
-                            <CardDescription className="text-xs truncate">
-                              {student.email || 'Pas d\'email'}
-                            </CardDescription>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                            <span className="text-sm font-medium text-muted-foreground">Moyenne</span>
-                            <span className="text-xl font-bold text-foreground">
-                              {student.average > 0 ? student.average.toFixed(2) : '--'}<span className="text-sm text-muted-foreground">/20</span>
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{student.totalGrades} note{student.totalGrades > 1 ? 's' : ''}</span>
-                            <Badge 
-                              variant={student.average >= 14 ? "default" : student.average >= 10 ? "secondary" : "destructive"}
-                              className="h-5"
-                            >
-                              {student.average >= 14 ? "Excellent" : student.average >= 10 ? "Bien" : "À améliorer"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Aucun étudiant</h3>
-                <p className="text-sm text-muted-foreground">
-                  {!selectedYear 
-                    ? "Veuillez sélectionner une année scolaire" 
-                    : "Aucun étudiant dans cette classe pour l'année et le semestre sélectionnés"}
-                </p>
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                              <span className="text-sm font-medium text-muted-foreground">Moyenne</span>
+                              <span className="text-lg font-bold">
+                                {student.average > 0 ? student.average.toFixed(2) : '--'}/20
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
+                              <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                                <GraduationCap className="h-3.5 w-3.5" />
+                                Crédits
+                              </span>
+                              <span className="text-lg font-bold text-primary">
+                                {student.validatedCredits}/{student.totalCredits}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-16">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Aucun étudiant</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Aucun étudiant dans cette classe
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+// Composant pour afficher les notes d'un semestre
+const SemesterGradesCard = ({ semesterData, title }: { semesterData: SemesterData; title: string }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{title}</span>
+          <div className="flex items-center gap-4 text-sm font-normal">
+            <span>Moyenne: <strong>{semesterData.average.toFixed(2)}/20</strong></span>
+            <Badge variant="outline" className="gap-1">
+              <GraduationCap className="h-3 w-3" />
+              {semesterData.validatedCredits}/{semesterData.totalCredits} crédits
+            </Badge>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {semesterData.subjectGrades.map((subject) => (
+            <div 
+              key={subject.subjectId} 
+              className={`flex items-center justify-between p-3 rounded-lg border ${
+                subject.isValidated 
+                  ? 'bg-green-500/5 border-green-500/20' 
+                  : subject.hasGrades 
+                    ? 'bg-red-500/5 border-red-500/20'
+                    : 'bg-muted/50 border-muted'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {subject.isValidated ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : subject.hasGrades ? (
+                  <XCircle className="h-4 w-4 text-red-600" />
+                ) : (
+                  <div className="h-4 w-4" />
+                )}
+                <span className="font-medium">{subject.subjectName}</span>
+                <Badge variant="secondary" className="text-xs">
+                  {subject.credits} crédit{subject.credits > 1 ? 's' : ''}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className={`font-bold ${
+                  !subject.hasGrades ? 'text-muted-foreground' :
+                  subject.isValidated ? 'text-green-700' : 'text-red-700'
+                }`}>
+                  {subject.hasGrades && subject.average !== undefined 
+                    ? `${subject.average.toFixed(2)}/20` 
+                    : '-'}
+                </span>
+                <Badge variant={subject.isValidated ? "default" : subject.hasGrades ? "destructive" : "secondary"}>
+                  {subject.isValidated ? 'Validé' : subject.hasGrades ? 'Non validé' : 'Pas de note'}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
