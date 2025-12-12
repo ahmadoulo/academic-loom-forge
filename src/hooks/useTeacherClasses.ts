@@ -64,16 +64,14 @@ export const useTeacherClasses = (teacherId?: string, classId?: string) => {
 
       if (error) throw error;
       
-      console.log('useTeacherClasses - Raw data:', data);
-      
-      // Remove duplicates based on class_id
-      const uniqueClasses = (data || []).filter((item, index, self) =>
-        index === self.findIndex((t) => t.class_id === item.class_id)
+      // Remove duplicates based on unique combination of teacher_id + class_id
+      const uniqueAssignments = (data || []).filter((item, index, self) =>
+        index === self.findIndex((t) => 
+          t.teacher_id === item.teacher_id && t.class_id === item.class_id
+        )
       );
       
-      console.log('useTeacherClasses - Unique classes after filter:', uniqueClasses);
-      
-      setTeacherClasses(uniqueClasses);
+      setTeacherClasses(uniqueAssignments);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des assignations');
       toast.error('Erreur lors du chargement des assignations');
