@@ -40,15 +40,31 @@ export const BulletinSection = ({
   const [bulletinType, setBulletinType] = useState<'semester' | 'annual'>('semester');
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
   const { selectedYear } = useAcademicYear();
-  const { semesters } = useSchoolSemesters(schoolId, selectedYear?.id);
+  // Charger les semestres pour l'année sélectionnée (ou tous si pas d'année sélectionnée)
+  const { semesters, loading: loadingSemesters } = useSchoolSemesters(schoolId, selectedYear?.id);
+  
+  // Debug logs pour vérifier les données
+  console.log('[BulletinSection] selectedYear:', selectedYear?.name, selectedYear?.id);
+  console.log('[BulletinSection] semesters loaded:', semesters.length, semesters.map(s => ({ id: s.id, name: s.name, yearId: s.school_year_id })));
   
   // Définir le semestre actuel par défaut
   React.useEffect(() => {
-    const currentSemester = semesters.find(s => s.is_actual);
-    if (currentSemester && !selectedSemester) {
-      setSelectedSemester(currentSemester.id);
+    if (semesters.length > 0 && !selectedSemester) {
+      // Prioriser le semestre marqué comme actuel
+      const currentSemester = semesters.find(s => s.is_actual);
+      if (currentSemester) {
+        setSelectedSemester(currentSemester.id);
+      } else {
+        // Sinon prendre le premier semestre
+        setSelectedSemester(semesters[0].id);
+      }
     }
-  }, [semesters, selectedSemester]);
+  }, [semesters]);
+
+  // Réinitialiser le semestre sélectionné quand l'année change
+  React.useEffect(() => {
+    setSelectedSemester("");
+  }, [selectedYear?.id]);
   
   // Convertir le logo en base64
   React.useEffect(() => {
@@ -76,10 +92,11 @@ export const BulletinSection = ({
     if (!student) return null;
 
     const classSubjects = getClassSubjects(student.class_id);
+    // Filtrer les notes par étudiant et par semestre uniquement
+    // (le semestre est déjà lié à une année scolaire spécifique)
     const semesterGrades = grades.filter(g => 
       g.student_id === studentId && 
-      g.school_semester_id === semesterId &&
-      (!selectedYear || g.school_year_id === selectedYear.id)
+      g.school_semester_id === semesterId
     );
 
     const subjectGrades: SubjectGradeData[] = classSubjects.map(subject => {
@@ -196,7 +213,7 @@ export const BulletinSection = ({
     });
     
     return grouped;
-  }, [students, grades, subjects, semesters, selectedSemester, bulletinType, selectedYear]);
+  }, [students, grades, subjects, semesters, selectedSemester, bulletinType]);
 
   // Générer PDF pour un étudiant
   const handleGeneratePDF = async (student: any) => {
@@ -323,11 +340,35 @@ export const BulletinSection = ({
     }
   };
 
-  if (loading) {
+  if (loading || loadingSemesters) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-3 text-muted-foreground">Chargement des données...</span>
       </div>
+    );
+  }
+
+  // Message si aucun semestre configuré
+  if (semesters.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center gap-2">
+            <Award className="h-6 w-6 text-primary" />
+            Bulletins de Notes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-16">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Aucun semestre configuré</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Veuillez configurer des semestres pour l'année scolaire {selectedYear?.name || 'sélectionnée'} dans les paramètres.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
