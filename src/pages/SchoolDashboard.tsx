@@ -348,6 +348,7 @@ const SchoolDashboard = () => {
     class_id?: string | null;
     teacher_id?: string | null;
     coefficient: number;
+    coefficient_type: 'coefficient' | 'credit';
   }) => {
     if (!school?.id) return;
     
@@ -358,7 +359,8 @@ const SchoolDashboard = () => {
           name: subjectData.name,
           class_id: subjectData.class_id === 'none' ? null : (subjectData.class_id || null),
           teacher_id: subjectData.teacher_id === 'none' ? null : (subjectData.teacher_id || null),
-          coefficient: subjectData.coefficient || 1
+          coefficient: subjectData.coefficient || 1,
+          coefficient_type: subjectData.coefficient_type || 'coefficient'
         });
       } else {
         // Create new subject
@@ -367,7 +369,8 @@ const SchoolDashboard = () => {
           class_id: subjectData.class_id === 'none' ? undefined : (subjectData.class_id || undefined),
           school_id: school.id,
           teacher_id: subjectData.teacher_id === 'none' ? undefined : (subjectData.teacher_id || undefined),
-          coefficient: subjectData.coefficient || 1
+          coefficient: subjectData.coefficient || 1,
+          coefficient_type: subjectData.coefficient_type || 'coefficient'
         });
       }
       setIsSubjectDialogOpen(false);

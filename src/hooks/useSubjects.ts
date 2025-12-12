@@ -9,6 +9,7 @@ export interface Subject {
   school_id: string;
   teacher_id?: string;
   coefficient: number;
+  coefficient_type: 'coefficient' | 'credit';
   created_at: string;
   updated_at: string;
   archived?: boolean;
@@ -32,6 +33,7 @@ export interface CreateSubjectData {
   school_id: string;
   teacher_id?: string;
   coefficient: number;
+  coefficient_type: 'coefficient' | 'credit';
 }
 
 export const useSubjects = (schoolId?: string, classId?: string, teacherId?: string) => {
@@ -73,7 +75,7 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
 
       if (error) throw error;
       
-      setSubjects(data || []);
+      setSubjects((data || []) as SubjectWithDetails[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des matières');
       toast.error('Erreur lors du chargement des matières');
@@ -102,9 +104,9 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
 
       if (error) throw error;
       
-      setSubjects(prev => [...prev, data]);
+      setSubjects(prev => [...prev, data as SubjectWithDetails]);
       toast.success('Matière créée avec succès');
-      return data;
+      return data as SubjectWithDetails;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de la matière';
       setError(message);
@@ -113,7 +115,7 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
     }
   };
 
-  const updateSubject = async (subjectId: string, updates: Partial<{ name: string; class_id: string | null; teacher_id: string | null; coefficient: number }>) => {
+  const updateSubject = async (subjectId: string, updates: Partial<{ name: string; class_id: string | null; teacher_id: string | null; coefficient: number; coefficient_type: 'coefficient' | 'credit' }>) => {
     try {
       const { data, error } = await supabase
         .from('subjects')
@@ -135,10 +137,10 @@ export const useSubjects = (schoolId?: string, classId?: string, teacherId?: str
       if (error) throw error;
       
       setSubjects(prev => prev.map(subject => 
-        subject.id === subjectId ? data : subject
+        subject.id === subjectId ? (data as SubjectWithDetails) : subject
       ));
       toast.success('Matière mise à jour avec succès');
-      return data;
+      return data as SubjectWithDetails;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la matière';
       setError(message);

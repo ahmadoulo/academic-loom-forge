@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SubjectWithDetails } from "@/hooks/useSubjects";
 
 interface Class {
@@ -22,6 +23,7 @@ interface SubjectFormProps {
     class_id?: string | null;
     teacher_id?: string | null;
     coefficient: number;
+    coefficient_type: 'coefficient' | 'credit';
   }) => void;
   onCancel?: () => void;
   classes?: Class[];
@@ -43,6 +45,7 @@ export const SubjectForm = ({
     class_id: initialData?.class_id || undefined as string | undefined,
     teacher_id: initialData?.teacher_id || undefined as string | undefined,
     coefficient: initialData?.coefficient || 1,
+    coefficient_type: (initialData?.coefficient_type || 'coefficient') as 'coefficient' | 'credit',
   });
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export const SubjectForm = ({
         class_id: initialData.class_id || undefined,
         teacher_id: initialData.teacher_id || undefined,
         coefficient: initialData.coefficient || 1,
+        coefficient_type: initialData.coefficient_type || 'coefficient',
       });
     }
   }, [initialData]);
@@ -68,10 +72,11 @@ export const SubjectForm = ({
       class_id: formData.class_id || null,
       teacher_id: formData.teacher_id || null,
       coefficient: formData.coefficient,
+      coefficient_type: formData.coefficient_type,
     });
     
     if (!isEditing) {
-      setFormData({ name: "", class_id: undefined, teacher_id: undefined, coefficient: 1 });
+      setFormData({ name: "", class_id: undefined, teacher_id: undefined, coefficient: 1, coefficient_type: 'coefficient' });
     }
   };
 
@@ -88,8 +93,32 @@ export const SubjectForm = ({
         />
       </div>
 
+      <div className="space-y-3">
+        <Label>Type de pondération *</Label>
+        <RadioGroup
+          value={formData.coefficient_type}
+          onValueChange={(value: 'coefficient' | 'credit') => setFormData({ ...formData, coefficient_type: value })}
+          className="flex gap-6"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="coefficient" id="type-coefficient" />
+            <Label htmlFor="type-coefficient" className="font-normal cursor-pointer">
+              Coefficient
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="credit" id="type-credit" />
+            <Label htmlFor="type-credit" className="font-normal cursor-pointer">
+              Crédit
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
+
       <div>
-        <Label htmlFor="coefficient">Coefficient *</Label>
+        <Label htmlFor="coefficient">
+          {formData.coefficient_type === 'coefficient' ? 'Coefficient' : 'Crédits'} *
+        </Label>
         <Input
           id="coefficient"
           type="number"
@@ -98,11 +127,14 @@ export const SubjectForm = ({
           max="10"
           value={formData.coefficient}
           onChange={(e) => setFormData({ ...formData, coefficient: parseFloat(e.target.value) || 1 })}
-          placeholder="Ex: 2"
+          placeholder={formData.coefficient_type === 'coefficient' ? "Ex: 2" : "Ex: 3"}
           required
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Coefficient entre 0.5 et 10 pour le calcul des moyennes
+          {formData.coefficient_type === 'coefficient' 
+            ? "Coefficient entre 0.5 et 10 pour le calcul des moyennes"
+            : "Nombre de crédits entre 0.5 et 10"
+          }
         </p>
       </div>
 

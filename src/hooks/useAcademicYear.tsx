@@ -105,22 +105,9 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
         if (current) {
           setCurrentYearState(current);
           
-          // Restaurer l'année sélectionnée depuis localStorage si elle existe (unique par utilisateur)
-          const storageKey = getStorageKey();
-          const savedYearId = localStorage.getItem(storageKey);
-          if (savedYearId) {
-            const savedYear = allYears.find(y => y.id === savedYearId);
-            if (savedYear) {
-              setSelectedYearState(savedYear);
-            } else {
-              // Si l'année sauvegardée n'existe plus, nettoyer localStorage et utiliser current
-              localStorage.removeItem(storageKey);
-              setSelectedYearState(current);
-            }
-          } else {
-            // Par défaut, afficher l'année courante
-            setSelectedYearState(current);
-          }
+          // Toujours utiliser l'année courante par défaut
+          // L'utilisateur peut ensuite sélectionner une autre année manuellement
+          setSelectedYearState(current);
         }
       }
     } catch (error) {
