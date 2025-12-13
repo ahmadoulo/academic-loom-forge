@@ -254,9 +254,17 @@ export const BulletinSection = ({
           return;
         }
 
+        // Déterminer quel semestre c'est (1 ou 2)
+        const sortedSemesters = [...semesters].sort((a, b) => 
+          new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+        );
+        const semesterIndex = sortedSemesters.findIndex(s => s.id === selectedSemester);
+        const semesterNumber = (semesterIndex >= 0 ? semesterIndex + 1 : 1) as 1 | 2;
+
         const bulletinData: BulletinData = {
           student: studentData,
-          semester1: semesterData,
+          currentSemester: semesterData,
+          semesterNumber,
           isAnnualBulletin: false
         };
         await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
@@ -318,9 +326,17 @@ export const BulletinSection = ({
             : null;
           
           if (semesterData) {
+            // Déterminer quel semestre c'est (1 ou 2)
+            const sortedSems = [...semesters].sort((a, b) => 
+              new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+            );
+            const semIdx = sortedSems.findIndex(s => s.id === selectedSemester);
+            const semNum = (semIdx >= 0 ? semIdx + 1 : 1) as 1 | 2;
+
             const bulletinData: BulletinData = {
               student: studentData,
-              semester1: semesterData,
+              currentSemester: semesterData,
+              semesterNumber: semNum,
               isAnnualBulletin: false
             };
             await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
