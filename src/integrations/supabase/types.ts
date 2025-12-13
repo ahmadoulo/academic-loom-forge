@@ -675,6 +675,7 @@ export type Database = {
       }
       cycles: {
         Row: {
+          calculation_system: string
           created_at: string
           description: string | null
           duration_years: number | null
@@ -686,6 +687,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          calculation_system?: string
           created_at?: string
           description?: string | null
           duration_years?: number | null
@@ -697,6 +699,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          calculation_system?: string
           created_at?: string
           description?: string | null
           duration_years?: number | null

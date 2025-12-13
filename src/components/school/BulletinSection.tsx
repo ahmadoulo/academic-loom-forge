@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle, Calculator } from "lucide-react";
 import { generateLMDBulletinPdf, generateLMDBulletinInDoc, BulletinData, SemesterData, SubjectGradeData } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useCycles } from "@/hooks/useCycles";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -40,12 +41,18 @@ export const BulletinSection = ({
   const [bulletinType, setBulletinType] = useState<'semester' | 'annual'>('semester');
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
   const { selectedYear } = useAcademicYear();
-  // Charger les semestres pour l'année sélectionnée (ou tous si pas d'année sélectionnée)
+  const { cycles } = useCycles(schoolId);
+  
+  // Charger les semestres pour l'année sélectionnée
   const { semesters, loading: loadingSemesters } = useSchoolSemesters(schoolId, selectedYear?.id);
   
-  // Debug logs pour vérifier les données
-  console.log('[BulletinSection] selectedYear:', selectedYear?.name, selectedYear?.id);
-  console.log('[BulletinSection] semesters loaded:', semesters.length, semesters.map(s => ({ id: s.id, name: s.name, yearId: s.school_year_id })));
+  // Déterminer le système de calcul pour une classe donnée via son cycle
+  const getClassCalculationSystem = (classId: string): 'credit' | 'coefficient' => {
+    const classItem = classes.find(c => c.id === classId);
+    if (!classItem?.cycle_id) return 'coefficient';
+    const cycle = cycles.find(c => c.id === classItem.cycle_id);
+    return cycle?.calculation_system || 'coefficient';
+  };
   
   // Définir le semestre actuel par défaut
   React.useEffect(() => {
@@ -81,7 +88,7 @@ export const BulletinSection = ({
     convertLogo();
   }, [schoolLogoUrl]);
 
-  // Récupérer les matières avec leurs crédits pour une classe
+  // Récupérer les matières avec leurs crédits/coefficients pour une classe
   const getClassSubjects = (classId: string) => {
     return subjects.filter(s => s.class_id === classId);
   };
@@ -91,9 +98,8 @@ export const BulletinSection = ({
     const student = students.find(s => s.id === studentId);
     if (!student) return null;
 
+    const calculationSystem = getClassCalculationSystem(student.class_id);
     const classSubjects = getClassSubjects(student.class_id);
-    // Filtrer les notes par étudiant et par semestre uniquement
-    // (le semestre est déjà lié à une année scolaire spécifique)
     const semesterGrades = grades.filter(g => 
       g.student_id === studentId && 
       g.school_semester_id === semesterId
@@ -106,7 +112,9 @@ export const BulletinSection = ({
         ? subjectGradesList.reduce((sum, g) => sum + Number(g.grade) + (Number(g.bonus) || 0), 0) / subjectGradesList.length
         : 0;
       
-      const credits = subject.coefficient_type === 'credit' ? subject.coefficient : 1;
+      // Pour le système credit: utiliser coefficient comme valeur de crédit
+      // Pour le système coefficient: utiliser coefficient comme poids
+      const value = subject.coefficient || 1;
       const isValidated = hasGrades && average >= 10;
 
       return {
@@ -115,16 +123,27 @@ export const BulletinSection = ({
         grades: subjectGradesList,
         average: hasGrades ? average : undefined,
         hasGrades,
-        credits,
-        coefficientType: subject.coefficient_type || 'coefficient',
+        credits: value,
+        coefficient: value,
+        coefficientType: calculationSystem,
         isValidated
       };
     });
 
     const subjectsWithGrades = subjectGrades.filter(s => s.hasGrades);
-    const semesterAverage = subjectsWithGrades.length > 0
-      ? subjectsWithGrades.reduce((sum, s) => sum + (s.average || 0), 0) / subjectsWithGrades.length
-      : 0;
+    
+    // Calcul de la moyenne selon le système
+    let semesterAverage = 0;
+    if (calculationSystem === 'coefficient' && subjectsWithGrades.length > 0) {
+      // Moyenne pondérée par coefficient
+      const totalWeight = subjectsWithGrades.reduce((sum, s) => sum + s.coefficient, 0);
+      semesterAverage = totalWeight > 0
+        ? subjectsWithGrades.reduce((sum, s) => sum + ((s.average || 0) * s.coefficient), 0) / totalWeight
+        : 0;
+    } else if (subjectsWithGrades.length > 0) {
+      // Simple moyenne pour le système crédit
+      semesterAverage = subjectsWithGrades.reduce((sum, s) => sum + (s.average || 0), 0) / subjectsWithGrades.length;
+    }
 
     const totalCredits = subjectGrades.reduce((sum, s) => sum + s.credits, 0);
     const validatedCredits = subjectGrades
@@ -138,7 +157,8 @@ export const BulletinSection = ({
       average: semesterAverage,
       validatedCredits,
       totalCredits,
-      subjectGrades
+      subjectGrades,
+      calculationSystem
     };
   };
 
@@ -188,6 +208,7 @@ export const BulletinSection = ({
         grouped[classId] = [];
       }
       
+      const calculationSystem = getClassCalculationSystem(classId);
       const fullData = getStudentFullData(student.id);
       const currentSemesterData = selectedSemester 
         ? getStudentSemesterData(student.id, selectedSemester)
@@ -195,6 +216,7 @@ export const BulletinSection = ({
       
       grouped[classId].push({
         ...student,
+        calculationSystem,
         average: bulletinType === 'annual' 
           ? fullData.annualAverage 
           : (currentSemesterData?.average || 0),
@@ -213,13 +235,14 @@ export const BulletinSection = ({
     });
     
     return grouped;
-  }, [students, grades, subjects, semesters, selectedSemester, bulletinType]);
+  }, [students, grades, subjects, semesters, selectedSemester, bulletinType, cycles]);
 
   // Générer PDF pour un étudiant
   const handleGeneratePDF = async (student: any) => {
     try {
       const studentClass = classes.find(c => c.id === student.class_id);
       const fullData = getStudentFullData(student.id);
+      const calculationSystem = getClassCalculationSystem(student.class_id);
       
       const studentData = {
         id: student.id,
@@ -241,7 +264,8 @@ export const BulletinSection = ({
           annualAverage: fullData.annualAverage,
           totalValidatedCredits: fullData.totalValidatedCredits,
           totalCredits: fullData.totalCredits,
-          isAnnualBulletin: true
+          isAnnualBulletin: true,
+          calculationSystem
         };
         await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
       } else {
@@ -254,7 +278,6 @@ export const BulletinSection = ({
           return;
         }
 
-        // Déterminer quel semestre c'est (1 ou 2)
         const sortedSemesters = [...semesters].sort((a, b) => 
           new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
         );
@@ -265,7 +288,8 @@ export const BulletinSection = ({
           student: studentData,
           currentSemester: semesterData,
           semesterNumber,
-          isAnnualBulletin: false
+          isAnnualBulletin: false,
+          calculationSystem
         };
         await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
       }
@@ -288,6 +312,7 @@ export const BulletinSection = ({
 
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
+      const calculationSystem = getClassCalculationSystem(classId);
 
       for (let index = 0; index < classStudents.length; index++) {
         const student = classStudents[index];
@@ -317,7 +342,8 @@ export const BulletinSection = ({
             annualAverage: fullData.annualAverage,
             totalValidatedCredits: fullData.totalValidatedCredits,
             totalCredits: fullData.totalCredits,
-            isAnnualBulletin: true
+            isAnnualBulletin: true,
+            calculationSystem
           };
           await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
         } else {
@@ -326,7 +352,6 @@ export const BulletinSection = ({
             : null;
           
           if (semesterData) {
-            // Déterminer quel semestre c'est (1 ou 2)
             const sortedSems = [...semesters].sort((a, b) => 
               new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
             );
@@ -337,7 +362,8 @@ export const BulletinSection = ({
               student: studentData,
               currentSemester: semesterData,
               semesterNumber: semNum,
-              isAnnualBulletin: false
+              isAnnualBulletin: false,
+              calculationSystem
             };
             await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
           }
@@ -648,6 +674,8 @@ export const BulletinSection = ({
 
 // Composant pour afficher les notes d'un semestre
 const SemesterGradesCard = ({ semesterData, title }: { semesterData: SemesterData; title: string }) => {
+  const isCredit = semesterData.calculationSystem === 'credit';
+  
   return (
     <Card>
       <CardHeader>
@@ -655,10 +683,12 @@ const SemesterGradesCard = ({ semesterData, title }: { semesterData: SemesterDat
           <span>{title}</span>
           <div className="flex items-center gap-4 text-sm font-normal">
             <span>Moyenne: <strong>{semesterData.average.toFixed(2)}/20</strong></span>
-            <Badge variant="outline" className="gap-1">
-              <GraduationCap className="h-3 w-3" />
-              {semesterData.validatedCredits}/{semesterData.totalCredits} crédits
-            </Badge>
+            {isCredit && (
+              <Badge variant="outline" className="gap-1">
+                <GraduationCap className="h-3 w-3" />
+                {semesterData.validatedCredits}/{semesterData.totalCredits} crédits
+              </Badge>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -668,38 +698,47 @@ const SemesterGradesCard = ({ semesterData, title }: { semesterData: SemesterDat
             <div 
               key={subject.subjectId} 
               className={`flex items-center justify-between p-3 rounded-lg border ${
-                subject.isValidated 
-                  ? 'bg-green-500/5 border-green-500/20' 
-                  : subject.hasGrades 
-                    ? 'bg-red-500/5 border-red-500/20'
-                    : 'bg-muted/50 border-muted'
+                isCredit 
+                  ? (subject.isValidated 
+                      ? 'bg-green-500/5 border-green-500/20' 
+                      : subject.hasGrades 
+                        ? 'bg-red-500/5 border-red-500/20'
+                        : 'bg-muted/50 border-muted')
+                  : 'bg-muted/50 border-muted'
               }`}
             >
               <div className="flex items-center gap-3">
-                {subject.isValidated ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : subject.hasGrades ? (
-                  <XCircle className="h-4 w-4 text-red-600" />
-                ) : (
-                  <div className="h-4 w-4" />
+                {isCredit && (
+                  subject.isValidated ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : subject.hasGrades ? (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  ) : (
+                    <div className="h-4 w-4" />
+                  )
                 )}
                 <span className="font-medium">{subject.subjectName}</span>
                 <Badge variant="secondary" className="text-xs">
-                  {subject.credits} crédit{subject.credits > 1 ? 's' : ''}
+                  {isCredit 
+                    ? `${subject.credits} crédit${subject.credits > 1 ? 's' : ''}`
+                    : `Coef. ${subject.coefficient}`
+                  }
                 </Badge>
               </div>
               <div className="flex items-center gap-4">
                 <span className={`font-bold ${
                   !subject.hasGrades ? 'text-muted-foreground' :
-                  subject.isValidated ? 'text-green-700' : 'text-red-700'
+                  isCredit ? (subject.isValidated ? 'text-green-700' : 'text-red-700') : ''
                 }`}>
                   {subject.hasGrades && subject.average !== undefined 
                     ? `${subject.average.toFixed(2)}/20` 
                     : '-'}
                 </span>
-                <Badge variant={subject.isValidated ? "default" : subject.hasGrades ? "destructive" : "secondary"}>
-                  {subject.isValidated ? 'Validé' : subject.hasGrades ? 'Non validé' : 'Pas de note'}
-                </Badge>
+                {isCredit && (
+                  <Badge variant={subject.isValidated ? "default" : subject.hasGrades ? "destructive" : "secondary"}>
+                    {subject.isValidated ? 'Validé' : subject.hasGrades ? 'Non validé' : 'Pas de note'}
+                  </Badge>
+                )}
               </div>
             </div>
           ))}

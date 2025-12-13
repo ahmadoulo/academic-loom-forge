@@ -9,6 +9,7 @@ export interface Cycle {
   description?: string;
   level?: string;
   duration_years?: number;
+  calculation_system: 'credit' | 'coefficient';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -19,6 +20,7 @@ export interface CreateCycleData {
   description?: string;
   level?: string;
   duration_years?: number;
+  calculation_system?: 'credit' | 'coefficient';
 }
 
 export const useCycles = (schoolId?: string) => {
@@ -42,7 +44,12 @@ export const useCycles = (schoolId?: string) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setCycles(data || []);
+      // Cast calculation_system to proper type
+      const typedData = (data || []).map(cycle => ({
+        ...cycle,
+        calculation_system: (cycle.calculation_system || 'coefficient') as 'credit' | 'coefficient'
+      }));
+      setCycles(typedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des cycles');
       toast.error('Erreur lors du chargement des cycles');
