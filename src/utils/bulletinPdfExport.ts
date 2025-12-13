@@ -26,6 +26,7 @@ export interface SubjectGradeData {
   average?: number;
   hasGrades: boolean;
   credits: number;
+  coefficient: number;
   coefficientType: 'coefficient' | 'credit';
   isValidated: boolean;
 }
@@ -36,18 +37,20 @@ export interface SemesterData {
   validatedCredits: number;
   totalCredits: number;
   subjectGrades: SubjectGradeData[];
+  calculationSystem?: 'coefficient' | 'credit';
 }
 
 export interface BulletinData {
   student: CurrentStudentData;
   semester1?: SemesterData;
   semester2?: SemesterData;
-  currentSemester?: SemesterData; // Pour bulletin semestriel unique
-  semesterNumber?: 1 | 2; // Pour savoir quel semestre on affiche
+  currentSemester?: SemesterData;
+  semesterNumber?: 1 | 2;
   annualAverage?: number;
   totalValidatedCredits?: number;
   totalCredits?: number;
   isAnnualBulletin?: boolean;
+  calculationSystem?: 'credit' | 'coefficient';
 }
 
 // Génère un bulletin PDF complet avec système de crédits LMD
@@ -166,6 +169,8 @@ export const generateLMDBulletinInDoc = async (
   yPosition += 10;
 
   // ===== FONCTION POUR GÉNÉRER UN TABLEAU DE NOTES =====
+  const isCredit = bulletinData.calculationSystem === 'credit';
+  
   const generateGradesTable = (semesterData: SemesterData, showSemesterHeader: boolean = false, semesterLabel?: string) => {
     if (showSemesterHeader && semesterLabel) {
       doc.setFontSize(10);
@@ -178,22 +183,37 @@ export const generateLMDBulletinInDoc = async (
       yPosition += 5;
     }
     
-    // Colonnes: Matière | Moyenne | Crédits | Validation
-    const tableHeaders = ['Modules', 'Moyenne', 'Crédits', 'Rslt'];
+    // Colonnes adaptées au système de calcul
+    const tableHeaders = isCredit 
+      ? ['Modules', 'Moyenne', 'Crédits', 'Rslt']
+      : ['Matière', 'Moyenne', 'Coef.', 'Note pondérée'];
     const tableData: any[][] = [];
     
     semesterData.subjectGrades.forEach((subject) => {
-      const validation = subject.isValidated ? 'V' : 'NV';
       const note = subject.hasGrades && subject.average !== undefined 
         ? subject.average.toFixed(2) 
         : '-';
       
-      tableData.push([
-        subject.subjectName,
-        note,
-        subject.credits.toString(),
-        validation
-      ]);
+      if (isCredit) {
+        const validation = subject.isValidated ? 'V' : 'NV';
+        tableData.push([
+          subject.subjectName,
+          note,
+          subject.credits.toString(),
+          validation
+        ]);
+      } else {
+        // Système coefficient: afficher note pondérée
+        const weightedNote = subject.hasGrades && subject.average !== undefined
+          ? (subject.average * subject.coefficient).toFixed(2)
+          : '-';
+        tableData.push([
+          subject.subjectName,
+          note,
+          subject.coefficient.toString(),
+          weightedNote
+        ]);
+      }
     });
     
     autoTable(doc, {
@@ -222,8 +242,8 @@ export const generateLMDBulletinInDoc = async (
         3: { cellWidth: 25 },
       },
       didParseCell: (data) => {
-        // Colorer la validation
-        if (data.column.index === 3 && data.section === 'body') {
+        // Colorer la validation (système crédit uniquement)
+        if (isCredit && data.column.index === 3 && data.section === 'body') {
           const cellText = data.cell.raw as string;
           if (cellText === 'V') {
             data.cell.styles.textColor = [0, 128, 0];
@@ -242,7 +262,9 @@ export const generateLMDBulletinInDoc = async (
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text(`Moyenne semestrielle: ${semesterData.average.toFixed(2)}/20`, leftMargin, yPosition);
-    doc.text(`Crédits: ${semesterData.validatedCredits}/${semesterData.totalCredits}`, rightSection, yPosition);
+    if (isCredit) {
+      doc.text(`Crédits: ${semesterData.validatedCredits}/${semesterData.totalCredits}`, rightSection, yPosition);
+    }
     yPosition += 8;
   };
 
@@ -268,14 +290,19 @@ export const generateLMDBulletinInDoc = async (
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     
-    const recapData = [
+    const recapData = isCredit ? [
       [`Moyenne Semestre 1: ${semester1.average.toFixed(2)}`, `Crédits S1: ${semester1.validatedCredits}/${semester1.totalCredits}`],
       [`Moyenne Semestre 2: ${semester2.average.toFixed(2)}`, `Crédits S2: ${semester2.validatedCredits}/${semester2.totalCredits}`],
+    ] : [
+      [`Moyenne Semestre 1: ${semester1.average.toFixed(2)}/20`],
+      [`Moyenne Semestre 2: ${semester2.average.toFixed(2)}/20`],
     ];
     
     recapData.forEach(row => {
       doc.text(row[0], leftMargin, yPosition);
-      doc.text(row[1], rightSection, yPosition);
+      if (row[1]) {
+        doc.text(row[1], rightSection, yPosition);
+      }
       yPosition += 5;
     });
     
@@ -283,7 +310,9 @@ export const generateLMDBulletinInDoc = async (
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.text(`Moyenne annuelle: ${bulletinData.annualAverage?.toFixed(2) || '0.00'}/20`, leftMargin, yPosition);
-    doc.text(`Total crédits: ${bulletinData.totalValidatedCredits}/${bulletinData.totalCredits}`, rightSection, yPosition);
+    if (isCredit) {
+      doc.text(`Total crédits: ${bulletinData.totalValidatedCredits}/${bulletinData.totalCredits}`, rightSection, yPosition);
+    }
     yPosition += 8;
     
   } else if (currentSemester || semester1 || semester2) {

@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Cycle } from "@/hooks/useCycles";
+import { GraduationCap, Calculator } from "lucide-react";
 
 interface CycleFormProps {
   cycle?: Cycle;
@@ -13,6 +15,7 @@ interface CycleFormProps {
     description?: string;
     level?: string;
     duration_years?: number;
+    calculation_system?: 'credit' | 'coefficient';
   }) => void;
   onCancel?: () => void;
 }
@@ -22,6 +25,9 @@ export const CycleForm = ({ cycle, onSubmit, onCancel }: CycleFormProps) => {
   const [description, setDescription] = useState(cycle?.description || "");
   const [level, setLevel] = useState(cycle?.level || "");
   const [durationYears, setDurationYears] = useState(cycle?.duration_years?.toString() || "3");
+  const [calculationSystem, setCalculationSystem] = useState<'credit' | 'coefficient'>(
+    cycle?.calculation_system || "coefficient"
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +38,7 @@ export const CycleForm = ({ cycle, onSubmit, onCancel }: CycleFormProps) => {
       description: description.trim() || undefined,
       level: level || undefined,
       duration_years: durationYears ? parseInt(durationYears) : undefined,
+      calculation_system: calculationSystem,
     });
     
     if (!cycle) {
@@ -39,6 +46,7 @@ export const CycleForm = ({ cycle, onSubmit, onCancel }: CycleFormProps) => {
       setDescription("");
       setLevel("");
       setDurationYears("3");
+      setCalculationSystem("coefficient");
     }
   };
 
@@ -82,6 +90,40 @@ export const CycleForm = ({ cycle, onSubmit, onCancel }: CycleFormProps) => {
           value={durationYears}
           onChange={(e) => setDurationYears(e.target.value)}
         />
+      </div>
+
+      <div className="space-y-3">
+        <Label>Système de calcul des notes *</Label>
+        <RadioGroup
+          value={calculationSystem}
+          onValueChange={(v) => setCalculationSystem(v as 'credit' | 'coefficient')}
+          className="grid grid-cols-1 md:grid-cols-2 gap-3"
+        >
+          <div className={`relative flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all ${calculationSystem === 'coefficient' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-muted-foreground/50'}`}>
+            <RadioGroupItem value="coefficient" id="coefficient" className="mt-1" />
+            <label htmlFor="coefficient" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-2 font-medium">
+                <Calculator className="h-4 w-4 text-primary" />
+                Coefficient
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Système classique avec pondération par coefficient. Les moyennes sont calculées selon les coefficients des matières.
+              </p>
+            </label>
+          </div>
+          <div className={`relative flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all ${calculationSystem === 'credit' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-muted-foreground/50'}`}>
+            <RadioGroupItem value="credit" id="credit" className="mt-1" />
+            <label htmlFor="credit" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-2 font-medium">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                Crédits (LMD)
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Système LMD avec crédits ECTS. Une matière est validée si la moyenne ≥ 10.
+              </p>
+            </label>
+          </div>
+        </RadioGroup>
       </div>
       
       <div>
