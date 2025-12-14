@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle, Calculator } from "lucide-react";
+import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle, Settings } from "lucide-react";
 import { generateLMDBulletinPdf, generateLMDBulletinInDoc, BulletinData, SemesterData, SubjectGradeData } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
@@ -12,6 +12,8 @@ import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useCycles } from "@/hooks/useCycles";
+import { useBulletinSettings } from "@/hooks/useBulletinSettings";
+import { BulletinSettingsDialog } from "./BulletinSettingsDialog";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -40,8 +42,10 @@ export const BulletinSection = ({
   const [selectedSemester, setSelectedSemester] = useState<string>("");
   const [bulletinType, setBulletinType] = useState<'semester' | 'annual'>('semester');
   const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { selectedYear } = useAcademicYear();
   const { cycles } = useCycles(schoolId);
+  const { settings: bulletinSettings, loading: loadingSettings, updateSettings } = useBulletinSettings(schoolId);
   
   // Charger les semestres pour l'année sélectionnée
   const { semesters, loading: loadingSemesters } = useSchoolSemesters(schoolId, selectedYear?.id);
@@ -49,9 +53,9 @@ export const BulletinSection = ({
   // Déterminer le système de calcul pour une classe donnée via son cycle
   const getClassCalculationSystem = (classId: string): 'credit' | 'coefficient' => {
     const classItem = classes.find(c => c.id === classId);
-    if (!classItem?.cycle_id) return 'coefficient';
+    if (!classItem?.cycle_id) return 'coefficient'; // Par défaut coefficient si pas de cycle
     const cycle = cycles.find(c => c.id === classItem.cycle_id);
-    return cycle?.calculation_system || 'coefficient';
+    return (cycle?.calculation_system as 'credit' | 'coefficient') || 'coefficient';
   };
   
   // Définir le semestre actuel par défaut
@@ -382,7 +386,7 @@ export const BulletinSection = ({
     }
   };
 
-  if (loading || loadingSemesters) {
+  if (loading || loadingSemesters || loadingSettings) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -468,32 +472,34 @@ export const BulletinSection = ({
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <GraduationCap className="h-4 w-4" />
-                Crédits Validés
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline gap-1">
-                <p className="text-2xl font-bold text-primary">
-                  {bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)}
-                </p>
-                <span className="text-muted-foreground">/ {bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)}</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2 mt-2">
-                <div 
-                  className="bg-primary h-2 rounded-full transition-all" 
-                  style={{ 
-                    width: `${(bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)) > 0 
-                      ? ((bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)) / (bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0))) * 100 
-                      : 0}%` 
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {getClassCalculationSystem(selectedStudent.class_id) === 'credit' && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Crédits Validés
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-2xl font-bold text-primary">
+                    {bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)}
+                  </p>
+                  <span className="text-muted-foreground">/ {bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)}</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all" 
+                    style={{ 
+                      width: `${(bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0)) > 0 
+                        ? ((bulletinType === 'annual' ? fullData.totalValidatedCredits : (currentSemesterData?.validatedCredits || 0)) / (bulletinType === 'annual' ? fullData.totalCredits : (currentSemesterData?.totalCredits || 0))) * 100 
+                        : 0}%` 
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-2">
@@ -540,6 +546,14 @@ export const BulletinSection = ({
   // Vue liste principale
   return (
     <div className="space-y-6">
+      <BulletinSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={bulletinSettings}
+        loading={loadingSettings}
+        onUpdate={updateSettings}
+      />
+      
       <Card>
         <CardHeader>
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -549,11 +563,15 @@ export const BulletinSection = ({
                 Bulletins de Notes
               </CardTitle>
               <CardDescription className="mt-2">
-                Système de crédits LMD - Consultez et téléchargez les bulletins
+                Consultez et téléchargez les bulletins de notes
               </CardDescription>
             </div>
             
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 items-center">
+              <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)} title="Paramètres">
+                <Settings className="h-4 w-4" />
+              </Button>
+              
               <Select value={bulletinType} onValueChange={(v: 'semester' | 'annual') => setBulletinType(v)}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue />
@@ -594,77 +612,89 @@ export const BulletinSection = ({
               ))}
             </TabsList>
 
-            {classes.map((classItem) => (
-              <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
-                {studentsByClass[classItem.id]?.length > 0 ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>{studentsByClass[classItem.id].length} étudiants</span>
+            {classes.map((classItem) => {
+              const classCalcSystem = getClassCalculationSystem(classItem.id);
+              const isCredit = classCalcSystem === 'credit';
+              
+              return (
+                <TabsContent key={classItem.id} value={classItem.id} className="space-y-4">
+                  {studentsByClass[classItem.id]?.length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>{studentsByClass[classItem.id].length} étudiants</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {isCredit ? 'Système Crédits' : 'Système Coefficients'}
+                          </Badge>
+                        </div>
+                        <Button onClick={() => handleGenerateClassBulletins(classItem.id)} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Télécharger tous les bulletins
+                        </Button>
                       </div>
-                      <Button onClick={() => handleGenerateClassBulletins(classItem.id)} className="gap-2">
-                        <Download className="h-4 w-4" />
-                        Télécharger tous les bulletins
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {studentsByClass[classItem.id].map((student, index) => (
-                        <Card 
-                          key={student.id} 
-                          className="hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
-                          onClick={() => setSelectedStudent(student)}
-                        >
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <CardTitle className="text-base truncate flex items-center gap-2">
-                                  {student.firstname} {student.lastname}
-                                  {index < 3 && (
-                                    <Badge variant={index === 0 ? "default" : "secondary"} className="h-5">
-                                      #{index + 1}
-                                    </Badge>
-                                  )}
-                                </CardTitle>
-                                <CardDescription className="text-xs truncate mt-1">
-                                  {student.cin_number || 'N/A'}
-                                </CardDescription>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {studentsByClass[classItem.id].map((student, index) => (
+                          <Card 
+                            key={student.id} 
+                            className="hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
+                            onClick={() => setSelectedStudent(student)}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <CardTitle className="text-base truncate flex items-center gap-2">
+                                    {student.firstname} {student.lastname}
+                                    {index < 3 && (
+                                      <Badge variant={index === 0 ? "default" : "secondary"} className="h-5">
+                                        #{index + 1}
+                                      </Badge>
+                                    )}
+                                  </CardTitle>
+                                  <CardDescription className="text-xs truncate mt-1">
+                                    {student.cin_number || 'N/A'}
+                                  </CardDescription>
+                                </div>
                               </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                              <span className="text-sm font-medium text-muted-foreground">Moyenne</span>
-                              <span className="text-lg font-bold">
-                                {student.average > 0 ? student.average.toFixed(2) : '--'}/20
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
-                              <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                                <GraduationCap className="h-3.5 w-3.5" />
-                                Crédits
-                              </span>
-                              <span className="text-lg font-bold text-primary">
-                                {student.validatedCredits}/{student.totalCredits}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                <span className="text-sm font-medium text-muted-foreground">Moyenne</span>
+                                <span className="text-lg font-bold">
+                                  {student.average > 0 ? student.average.toFixed(2) : '--'}/20
+                                </span>
+                              </div>
+                              {isCredit && (
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
+                                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                                    <GraduationCap className="h-3.5 w-3.5" />
+                                    Crédits
+                                  </span>
+                                  <span className="text-lg font-bold text-primary">
+                                    {student.validatedCredits}/{student.totalCredits}
+                                  </span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-16">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-semibold mb-2">Aucun étudiant</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Aucun étudiant dans cette classe
+                      </p>
                     </div>
-                  </>
-                ) : (
-                  <div className="text-center py-16">
-                    <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <h3 className="text-lg font-semibold mb-2">Aucun étudiant</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Aucun étudiant dans cette classe
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-            ))}
+                  )}
+                </TabsContent>
+              );
+            })}
           </Tabs>
         </CardContent>
       </Card>
