@@ -1,19 +1,21 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, FileText, Award, Download, ArrowLeft, Users, GraduationCap, CheckCircle, XCircle, Settings } from "lucide-react";
-import { generateLMDBulletinPdf, generateLMDBulletinInDoc, BulletinData, SemesterData, SubjectGradeData } from "@/utils/bulletinPdfExport";
+import { generateLMDBulletinPdf, generateLMDBulletinInDoc, BulletinData, SemesterData, SubjectGradeData, StudentExtraData } from "@/utils/bulletinPdfExport";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useCycles } from "@/hooks/useCycles";
+import { useOptions } from "@/hooks/useOptions";
 import { useBulletinSettings } from "@/hooks/useBulletinSettings";
 import { BulletinSettingsDialog } from "./BulletinSettingsDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BulletinSectionProps {
   schoolId: string;
@@ -26,6 +28,27 @@ interface BulletinSectionProps {
   subjects: any[];
   loading: boolean;
 }
+
+// Helper pour récupérer les absences d'un étudiant
+const fetchStudentAbsences = async (studentId: string): Promise<{ total: number; justified: number }> => {
+  try {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('id, is_justified')
+      .eq('student_id', studentId)
+      .eq('status', 'absent');
+    
+    if (error) throw error;
+    
+    const total = data?.length || 0;
+    const justified = data?.filter(a => a.is_justified).length || 0;
+    
+    return { total, justified };
+  } catch (err) {
+    console.error('Error fetching absences:', err);
+    return { total: 0, justified: 0 };
+  }
+};
 
 export const BulletinSection = ({
   schoolId,
@@ -45,6 +68,7 @@ export const BulletinSection = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { selectedYear } = useAcademicYear();
   const { cycles } = useCycles(schoolId);
+  const { options } = useOptions(schoolId);
   const { settings: bulletinSettings, loading: loadingSettings, updateSettings } = useBulletinSettings(schoolId);
   
   // Charger les semestres pour l'année sélectionnée
@@ -248,12 +272,34 @@ export const BulletinSection = ({
       const fullData = getStudentFullData(student.id);
       const calculationSystem = getClassCalculationSystem(student.class_id);
       
+      // Récupérer les absences
+      const absences = await fetchStudentAbsences(student.id);
+      
+      // Récupérer infos cycle/option
+      const cycle = studentClass?.cycle_id ? cycles.find(c => c.id === studentClass.cycle_id) : null;
+      const option = studentClass?.option_id ? options.find(o => o.id === studentClass.option_id) : null;
+      
+      // Calculer le rang
+      const classStudents = studentsByClass[student.class_id] || [];
+      const rank = classStudents.findIndex(s => s.id === student.id) + 1;
+      
+      const extraData: StudentExtraData = {
+        cycleName: cycle?.name,
+        yearLevel: studentClass?.year_level,
+        optionName: option?.name,
+        totalAbsences: absences.total,
+        justifiedAbsences: absences.justified,
+        rank,
+        totalStudents: classStudents.length
+      };
+      
       const studentData = {
         id: student.id,
         firstname: student.firstname,
         lastname: student.lastname,
         email: student.email,
         cin_number: student.cin_number,
+        birth_date: student.birth_date,
         class_id: student.class_id,
         school_id: student.school_id,
         classes: studentClass,
@@ -269,7 +315,9 @@ export const BulletinSection = ({
           totalValidatedCredits: fullData.totalValidatedCredits,
           totalCredits: fullData.totalCredits,
           isAnnualBulletin: true,
-          calculationSystem
+          calculationSystem,
+          settings: bulletinSettings || undefined,
+          extraData
         };
         await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
       } else {
@@ -293,7 +341,9 @@ export const BulletinSection = ({
           currentSemester: semesterData,
           semesterNumber,
           isAnnualBulletin: false,
-          calculationSystem
+          calculationSystem,
+          settings: bulletinSettings || undefined,
+          extraData
         };
         await generateLMDBulletinPdf(bulletinData, logoBase64, academicYear);
       }
@@ -317,6 +367,8 @@ export const BulletinSection = ({
       const doc = new jsPDF();
       const studentClass = classes.find(c => c.id === classId);
       const calculationSystem = getClassCalculationSystem(classId);
+      const cycle = studentClass?.cycle_id ? cycles.find(c => c.id === studentClass.cycle_id) : null;
+      const option = studentClass?.option_id ? options.find(o => o.id === studentClass.option_id) : null;
 
       for (let index = 0; index < classStudents.length; index++) {
         const student = classStudents[index];
@@ -324,12 +376,24 @@ export const BulletinSection = ({
           doc.addPage();
         }
 
+        const absences = await fetchStudentAbsences(student.id);
+        const extraData: StudentExtraData = {
+          cycleName: cycle?.name,
+          yearLevel: studentClass?.year_level,
+          optionName: option?.name,
+          totalAbsences: absences.total,
+          justifiedAbsences: absences.justified,
+          rank: index + 1,
+          totalStudents: classStudents.length
+        };
+
         const studentData = {
           id: student.id,
           firstname: student.firstname,
           lastname: student.lastname,
           email: student.email,
           cin_number: student.cin_number,
+          birth_date: student.birth_date,
           class_id: student.class_id,
           school_id: student.school_id,
           classes: studentClass,
@@ -347,7 +411,9 @@ export const BulletinSection = ({
             totalValidatedCredits: fullData.totalValidatedCredits,
             totalCredits: fullData.totalCredits,
             isAnnualBulletin: true,
-            calculationSystem
+            calculationSystem,
+            settings: bulletinSettings || undefined,
+            extraData
           };
           await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
         } else {
@@ -367,7 +433,9 @@ export const BulletinSection = ({
               currentSemester: semesterData,
               semesterNumber: semNum,
               isAnnualBulletin: false,
-              calculationSystem
+              calculationSystem,
+              settings: bulletinSettings || undefined,
+              extraData
             };
             await generateLMDBulletinInDoc(doc, bulletinData, logoBase64, academicYear);
           }
