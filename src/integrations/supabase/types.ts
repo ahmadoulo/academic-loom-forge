@@ -415,6 +415,53 @@ export type Database = {
         }
         Relationships: []
       }
+      bulletin_settings: {
+        Row: {
+          created_at: string
+          custom_footer_text: string | null
+          id: string
+          school_id: string
+          show_decision: boolean
+          show_mention: boolean
+          show_observations: boolean
+          show_ranking: boolean
+          show_weighted_average: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_footer_text?: string | null
+          id?: string
+          school_id: string
+          show_decision?: boolean
+          show_mention?: boolean
+          show_observations?: boolean
+          show_ranking?: boolean
+          show_weighted_average?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_footer_text?: string | null
+          id?: string
+          school_id?: string
+          show_decision?: boolean
+          show_mention?: boolean
+          show_observations?: boolean
+          show_ranking?: boolean
+          show_weighted_average?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulletin_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_subjects: {
         Row: {
           class_id: string
