@@ -212,27 +212,41 @@ export const generateLMDBulletinInDoc = async (
   
   yPosition += 10;
   
-  // ===== FONCTION GÉNÉRATION TABLEAU DE NOTES (Style modèle) =====
+  // ===== FONCTION GÉNÉRATION TABLEAU DE NOTES =====
   const generateGradesTable = (semesterData: SemesterData, semesterLabel?: string): number => {
     const startY = yPosition;
     
-    // En-têtes du tableau
+    // En-têtes du tableau - SANS la colonne Code
     const headers = isCredit 
-      ? [['Code', 'Modules', 'Devoir', 'Examen', 'Moyenne', 'Crédits', 'Rslt']]
-      : [['Code', 'Modules', 'Devoir', 'Examen', 'Moyenne', 'Coef.', 'Rslt']];
+      ? [['Modules', 'Devoir', 'Examen', 'Moyenne', 'Crédits', 'Rslt']]
+      : [['Modules', 'Devoir', 'Examen', 'Moyenne', 'Coef.', 'Rslt']];
     
-    // Préparer les données avec validation
+    // Préparer les données
     const tableData: any[][] = [];
     
-    semesterData.subjectGrades.forEach((subject, index) => {
-      const code = subject.subjectCode || `M-${(index + 1).toString().padStart(3, '0')}`;
-      const devoir = subject.devoirAverage !== undefined ? subject.devoirAverage.toFixed(2) : '-';
-      const examen = subject.examenAverage !== undefined ? subject.examenAverage.toFixed(2) : '-';
+    semesterData.subjectGrades.forEach((subject) => {
+      // Calculer moyenne des devoirs et examens depuis les notes
+      const devoirGrades = subject.grades.filter(g => 
+        g.grade_type === 'devoir' || g.grade_type === 'controle' || g.grade_type === 'test'
+      );
+      const examenGrades = subject.grades.filter(g => 
+        g.grade_type === 'examen' || g.grade_type === 'exam'
+      );
+      
+      const devoirAvg = devoirGrades.length > 0 
+        ? devoirGrades.reduce((sum, g) => sum + Number(g.grade) + (Number(g.bonus) || 0), 0) / devoirGrades.length 
+        : null;
+      const examenAvg = examenGrades.length > 0 
+        ? examenGrades.reduce((sum, g) => sum + Number(g.grade) + (Number(g.bonus) || 0), 0) / examenGrades.length 
+        : null;
+      
+      const devoir = devoirAvg !== null ? devoirAvg.toFixed(2) : '-';
+      const examen = examenAvg !== null ? examenAvg.toFixed(2) : '-';
       const moyenne = subject.hasGrades && subject.average !== undefined ? subject.average.toFixed(2) : '-';
       const creditsOrCoef = isCredit ? subject.credits.toString() : subject.coefficient.toString();
       const rslt = subject.isValidated ? 'V' : 'NV';
       
-      tableData.push([code, subject.subjectName, devoir, examen, moyenne, creditsOrCoef, rslt]);
+      tableData.push([subject.subjectName, devoir, examen, moyenne, creditsOrCoef, rslt]);
     });
     
     autoTable(doc, {
@@ -255,17 +269,16 @@ export const generateLMDBulletinInDoc = async (
         fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 20, halign: 'center' },
-        1: { cellWidth: 70, halign: 'left' },
-        2: { cellWidth: 18, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 18, halign: 'center' },
-        6: { cellWidth: 15, halign: 'center' },
+        0: { cellWidth: 75, halign: 'left' }, // Modules (plus large sans Code)
+        1: { cellWidth: 22, halign: 'center' }, // Devoir
+        2: { cellWidth: 22, halign: 'center' }, // Examen
+        3: { cellWidth: 22, halign: 'center' }, // Moyenne
+        4: { cellWidth: 20, halign: 'center' }, // Credits/Coef
+        5: { cellWidth: 16, halign: 'center' }, // Rslt
       },
       didParseCell: (data) => {
         // Colorer la colonne Rslt
-        if (data.column.index === 6 && data.section === 'body') {
+        if (data.column.index === 5 && data.section === 'body') {
           const cellText = data.cell.raw as string;
           if (cellText === 'V') {
             data.cell.styles.textColor = [0, 100, 0];
@@ -296,12 +309,7 @@ export const generateLMDBulletinInDoc = async (
     
     // Moyenne + crédits à droite
     const avgText = `${semesterData.average.toFixed(2)}/20`;
-    const creditsText = isCredit ? `${semesterData.validatedCredits}/${semesterData.totalCredits}` : '';
-    
-    doc.text(avgText, rightMargin - 50, avgRowY + 5);
-    if (isCredit) {
-      doc.text(creditsText, rightMargin - 20, avgRowY + 5);
-    }
+    doc.text(avgText, rightMargin - 30, avgRowY + 5);
     
     return avgRowY + 10;
   };
@@ -316,10 +324,10 @@ export const generateLMDBulletinInDoc = async (
     
     // RÉCAPITULATIF ANNUEL
     const recapData = [
-      ['Moyenne générale', '', isCredit ? 'Moyenne' : '', isCredit ? 'crédits' : ''],
-      ['Moyenne Semestre 1', '', semester1.average.toFixed(2), isCredit ? semester1.validatedCredits.toString() : ''],
-      ['Moyenne Semestre 2', '', semester2.average.toFixed(2), isCredit ? semester2.validatedCredits.toString() : ''],
-      ['Moyenne annuelle', '', (bulletinData.annualAverage || 0).toFixed(2), isCredit ? `${bulletinData.totalValidatedCredits || 0} / ${bulletinData.totalCredits || 0}` : ''],
+      ['Moyenne générale', isCredit ? 'Moyenne' : 'Moyenne', isCredit ? 'Crédits' : ''],
+      ['Moyenne Semestre 1', semester1.average.toFixed(2), isCredit ? `${semester1.validatedCredits}/${semester1.totalCredits}` : ''],
+      ['Moyenne Semestre 2', semester2.average.toFixed(2), isCredit ? `${semester2.validatedCredits}/${semester2.totalCredits}` : ''],
+      ['Moyenne annuelle', (bulletinData.annualAverage || 0).toFixed(2), isCredit ? `${bulletinData.totalValidatedCredits || 0}/${bulletinData.totalCredits || 0}` : ''],
     ];
     
     if (showDecision) {
@@ -327,7 +335,7 @@ export const generateLMDBulletinInDoc = async (
         ? ((bulletinData.totalValidatedCredits || 0) >= (bulletinData.totalCredits || 0) && (bulletinData.totalCredits || 0) > 0)
         : ((bulletinData.annualAverage || 0) >= 10);
       const decision = isValidated ? 'Année validée' : 'Année non validée';
-      recapData.push(['Décision:', '', decision, '']);
+      recapData.push(['Décision:', decision, '']);
     }
     
     autoTable(doc, {
@@ -342,24 +350,17 @@ export const generateLMDBulletinInDoc = async (
         lineWidth: 0.2,
       },
       columnStyles: {
-        0: { cellWidth: 50, fontStyle: 'bold' },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 35, halign: 'center' },
-        3: { cellWidth: 35, halign: 'center' },
+        0: { cellWidth: 60, fontStyle: 'bold' },
+        1: { cellWidth: 40, halign: 'center' },
+        2: { cellWidth: 40, halign: 'center' },
       },
       didParseCell: (data) => {
-        // En-tête gris
         if (data.row.index === 0) {
           data.cell.styles.fillColor = [200, 200, 200];
           data.cell.styles.fontStyle = 'bold';
         }
-        // Ligne moyenne annuelle en surbrillance
         if (data.row.index === 3) {
           data.cell.styles.fillColor = [230, 230, 230];
-          data.cell.styles.fontStyle = 'bold';
-        }
-        // Ligne décision
-        if (data.row.index === 4) {
           data.cell.styles.fontStyle = 'bold';
         }
       }
@@ -374,8 +375,8 @@ export const generateLMDBulletinInDoc = async (
       yPosition = generateGradesTable(semData, 'Moyenne semestrielle');
       yPosition += 5;
       
-      // Récapitulatif simple pour bulletin semestriel (si mention/décision activés)
-      if (showMention || showDecision || showRanking) {
+      // Récapitulatif simple pour bulletin semestriel
+      if (showMention || showDecision) {
         const finalAvg = semData.average;
         let mention = '';
         if (finalAvg >= 16) mention = 'Très Bien';
@@ -395,9 +396,6 @@ export const generateLMDBulletinInDoc = async (
         }
         if (showDecision) {
           recapRows.push(['Décision:', isValidated ? 'Semestre validé' : 'Semestre non validé']);
-        }
-        if (showRanking && extraData?.rank) {
-          recapRows.push(['Classement:', `${extraData.rank}/${extraData.totalStudents || '-'}`]);
         }
         
         if (recapRows.length > 0) {
@@ -420,14 +418,49 @@ export const generateLMDBulletinInDoc = async (
     }
   }
   
+  // ===== ABSENCES ET CLASSEMENT =====
+  yPosition += 5;
+  
+  // Créer un petit tableau pour absences et classement
+  const statsData: any[][] = [];
+  
+  if (extraData?.totalAbsences !== undefined) {
+    const unjustified = (extraData.totalAbsences || 0) - (extraData.justifiedAbsences || 0);
+    statsData.push(['Nombre d\'absences:', `${extraData.totalAbsences}`, 'Non justifiées:', `${unjustified}`]);
+  }
+  
+  if (showRanking && extraData?.rank) {
+    statsData.push(['Classement:', `${extraData.rank} / ${extraData.totalStudents || '-'}`, '', '']);
+  }
+  
+  if (statsData.length > 0) {
+    autoTable(doc, {
+      body: statsData,
+      startY: yPosition,
+      theme: 'plain',
+      styles: {
+        fontSize: 9,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: { cellWidth: 45, fontStyle: 'bold' },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 40, fontStyle: 'bold' },
+        3: { cellWidth: 25 },
+      },
+    });
+    yPosition = (doc as any).lastAutoTable.finalY + 8;
+  }
+  
   // ===== DATE ET SIGNATURE =====
   yPosition += 5;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(`Date   ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, leftMargin, yPosition);
   
-  // Zone signature à droite (espace pour tampon/signature)
-  // Ne rien écrire pour laisser la place au cachet
+  // Signature à droite
+  doc.setFont('helvetica', 'bold');
+  doc.text('Le Directeur Pédagogique', rightMargin - 50, yPosition);
   
   // ===== FOOTER =====
   const footerY = doc.internal.pageSize.height - 15;
