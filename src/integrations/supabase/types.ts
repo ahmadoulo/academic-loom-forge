@@ -417,39 +417,51 @@ export type Database = {
       }
       bulletin_settings: {
         Row: {
+          accent_color: string | null
           created_at: string
           custom_footer_text: string | null
           id: string
+          primary_color: string | null
           school_id: string
+          secondary_color: string | null
           show_decision: boolean
           show_mention: boolean
           show_observations: boolean
           show_ranking: boolean
           show_weighted_average: boolean
+          template_style: string | null
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           created_at?: string
           custom_footer_text?: string | null
           id?: string
+          primary_color?: string | null
           school_id: string
+          secondary_color?: string | null
           show_decision?: boolean
           show_mention?: boolean
           show_observations?: boolean
           show_ranking?: boolean
           show_weighted_average?: boolean
+          template_style?: string | null
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           created_at?: string
           custom_footer_text?: string | null
           id?: string
+          primary_color?: string | null
           school_id?: string
+          secondary_color?: string | null
           show_decision?: boolean
           show_mention?: boolean
           show_observations?: boolean
           show_ranking?: boolean
           show_weighted_average?: boolean
+          template_style?: string | null
           updated_at?: string
         }
         Relationships: [
