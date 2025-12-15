@@ -53,6 +53,10 @@ export interface BulletinSettings {
   show_decision: boolean;
   show_observations: boolean;
   custom_footer_text?: string;
+  template_style?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
 }
 
 export interface StudentExtraData {
@@ -79,6 +83,14 @@ export interface BulletinData {
   settings?: BulletinSettings;
   extraData?: StudentExtraData;
 }
+
+// Helper to convert hex to RGB array
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result 
+    ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+    : [51, 51, 51];
+};
 
 // Génère un bulletin PDF complet
 export const generateLMDBulletinPdf = async (
@@ -121,6 +133,12 @@ export const generateLMDBulletinInDoc = async (
   const showDecision = settings?.show_decision !== false;
   const showRanking = settings?.show_ranking !== false;
   
+  // Template colors
+  const templateStyle = settings?.template_style || 'classic';
+  const primaryColor = hexToRgb(settings?.primary_color || '#333333');
+  const secondaryColor = hexToRgb(settings?.secondary_color || '#666666');
+  const accentColor = hexToRgb(settings?.accent_color || '#0066cc');
+  
   // ===== LOGO CENTRÉ =====
   if (schoolLogoBase64) {
     try {
@@ -135,18 +153,49 @@ export const generateLMDBulletinInDoc = async (
     yPosition += 5;
   }
   
-  // ===== TITRE ENCADRÉ =====
-  doc.setFillColor(51, 51, 51);
+  // ===== TITRE ENCADRÉ (selon template) =====
   const titleBoxWidth = 120;
   const titleBoxX = (pageWidth - titleBoxWidth) / 2;
-  doc.rect(titleBoxX, yPosition, titleBoxWidth, 10, 'F');
   
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 7, { align: 'center' });
+  if (templateStyle === 'modern') {
+    // Modern: ligne colorée à gauche
+    doc.setFillColor(...accentColor);
+    doc.rect(leftMargin, yPosition, 4, 12, 'F');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('BULLETIN DE NOTES', leftMargin + 10, yPosition + 8);
+  } else if (templateStyle === 'minimal') {
+    // Minimal: simple texte centré
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 7, { align: 'center' });
+    doc.setDrawColor(...secondaryColor);
+    doc.setLineWidth(0.5);
+    doc.line(titleBoxX, yPosition + 12, titleBoxX + titleBoxWidth, yPosition + 12);
+  } else if (templateStyle === 'elegant') {
+    // Elegant: bordure double
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(0.8);
+    doc.rect(titleBoxX - 2, yPosition - 2, titleBoxWidth + 4, 14);
+    doc.setLineWidth(0.3);
+    doc.rect(titleBoxX, yPosition, titleBoxWidth, 10);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 7, { align: 'center' });
+  } else {
+    // Classic: fond coloré
+    doc.setFillColor(...primaryColor);
+    doc.rect(titleBoxX, yPosition, titleBoxWidth, 10, 'F');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 7, { align: 'center' });
+  }
+  
   doc.setTextColor(0, 0, 0);
-  
   yPosition += 15;
   
   // ===== SOUS-TITRE FORMATION =====
@@ -159,7 +208,9 @@ export const generateLMDBulletinInDoc = async (
   if (formationText) {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...secondaryColor);
     doc.text(formationText, pageWidth / 2, yPosition, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
     yPosition += 8;
   }
   
@@ -216,7 +267,7 @@ export const generateLMDBulletinInDoc = async (
   const generateGradesTable = (semesterData: SemesterData, semesterLabel?: string): number => {
     const startY = yPosition;
     
-    // En-têtes du tableau - SANS la colonne Code
+    // En-têtes du tableau
     const headers = isCredit 
       ? [['Modules', 'Devoir', 'Examen', 'Moyenne', 'Crédits', 'Rslt']]
       : [['Modules', 'Devoir', 'Examen', 'Moyenne', 'Coef.', 'Rslt']];
@@ -225,7 +276,6 @@ export const generateLMDBulletinInDoc = async (
     const tableData: any[][] = [];
     
     semesterData.subjectGrades.forEach((subject) => {
-      // Calculer moyenne des devoirs et examens depuis les notes
       const devoirGrades = subject.grades.filter(g => 
         g.grade_type === 'devoir' || g.grade_type === 'controle' || g.grade_type === 'test'
       );
@@ -249,42 +299,50 @@ export const generateLMDBulletinInDoc = async (
       tableData.push([subject.subjectName, devoir, examen, moyenne, creditsOrCoef, rslt]);
     });
     
+    // Styles selon template
+    let headFillColor: [number, number, number] = [220, 220, 220];
+    let headTextColor: [number, number, number] = [0, 0, 0];
+    
+    if (templateStyle === 'modern' || templateStyle === 'elegant') {
+      headFillColor = secondaryColor;
+      headTextColor = [255, 255, 255];
+    }
+    
     autoTable(doc, {
       head: headers,
       body: tableData,
       startY: startY,
-      theme: 'grid',
+      theme: templateStyle === 'minimal' ? 'plain' : 'grid',
       styles: {
         fontSize: 8,
         cellPadding: 2,
         halign: 'center',
         valign: 'middle',
-        lineColor: [0, 0, 0],
-        lineWidth: 0.2,
+        lineColor: templateStyle === 'minimal' ? [200, 200, 200] : [0, 0, 0],
+        lineWidth: templateStyle === 'minimal' ? 0.1 : 0.2,
       },
       headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: [0, 0, 0],
+        fillColor: headFillColor,
+        textColor: headTextColor,
         fontStyle: 'bold',
         fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 75, halign: 'left' }, // Modules (plus large sans Code)
-        1: { cellWidth: 22, halign: 'center' }, // Devoir
-        2: { cellWidth: 22, halign: 'center' }, // Examen
-        3: { cellWidth: 22, halign: 'center' }, // Moyenne
-        4: { cellWidth: 20, halign: 'center' }, // Credits/Coef
-        5: { cellWidth: 16, halign: 'center' }, // Rslt
+        0: { cellWidth: 75, halign: 'left' },
+        1: { cellWidth: 22, halign: 'center' },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 22, halign: 'center' },
+        4: { cellWidth: 20, halign: 'center' },
+        5: { cellWidth: 16, halign: 'center' },
       },
       didParseCell: (data) => {
-        // Colorer la colonne Rslt
         if (data.column.index === 5 && data.section === 'body') {
           const cellText = data.cell.raw as string;
           if (cellText === 'V') {
-            data.cell.styles.textColor = [0, 100, 0];
+            data.cell.styles.textColor = [0, 128, 0];
             data.cell.styles.fontStyle = 'bold';
           } else if (cellText === 'NV') {
-            data.cell.styles.textColor = [180, 0, 0];
+            data.cell.styles.textColor = [200, 0, 0];
             data.cell.styles.fontStyle = 'bold';
           }
         }
@@ -293,74 +351,76 @@ export const generateLMDBulletinInDoc = async (
     
     let tableEndY = (doc as any).lastAutoTable.finalY;
     
-    // Ligne de moyenne semestrielle
+    // Ligne de moyenne semestrielle avec crédits
     const avgRowY = tableEndY;
-    doc.setFillColor(180, 180, 180);
+    const fillColorArr: [number, number, number] = templateStyle === 'elegant' ? primaryColor : [180, 180, 180];
+    doc.setFillColor(fillColorArr[0], fillColorArr[1], fillColorArr[2]);
     doc.rect(leftMargin, avgRowY, pageWidth - 30, 7, 'F');
     doc.setDrawColor(0, 0, 0);
     doc.rect(leftMargin, avgRowY, pageWidth - 30, 7, 'S');
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
+    const textColorVal = templateStyle === 'elegant' ? 255 : 0;
+    doc.setTextColor(textColorVal, textColorVal, textColorVal);
     
     const labelText = semesterLabel || 'Moyenne semestrielle';
     doc.text(labelText, leftMargin + 3, avgRowY + 5);
     
-    // Moyenne + crédits à droite
+    // Moyenne + crédits validés/total
     const avgText = `${semesterData.average.toFixed(2)}/20`;
-    doc.text(avgText, rightMargin - 30, avgRowY + 5);
+    const creditsText = isCredit ? `(${semesterData.validatedCredits}/${semesterData.totalCredits} crédits)` : '';
+    doc.text(`${avgText} ${creditsText}`, rightMargin - 55, avgRowY + 5);
     
+    doc.setTextColor(0, 0, 0);
     return avgRowY + 10;
   };
   
   // ===== GÉNÉRATION DU CONTENU =====
   if (isAnnualBulletin && semester1 && semester2) {
-    // BULLETIN ANNUEL - Afficher les deux semestres
     yPosition = generateGradesTable(semester1, 'Moyenne semestrielle');
     yPosition += 5;
     yPosition = generateGradesTable(semester2, 'Moyenne semestrielle');
     yPosition += 8;
     
-    // RÉCAPITULATIF ANNUEL
+    // RÉCAPITULATIF ANNUEL - Mini tableau propre
+    const recapHeaders = isCredit 
+      ? [['', 'Moyenne', 'Crédits validés']]
+      : [['', 'Moyenne', '']];
+    
     const recapData = [
-      ['Moyenne générale', isCredit ? 'Moyenne' : 'Moyenne', isCredit ? 'Crédits' : ''],
-      ['Moyenne Semestre 1', semester1.average.toFixed(2), isCredit ? `${semester1.validatedCredits}/${semester1.totalCredits}` : ''],
-      ['Moyenne Semestre 2', semester2.average.toFixed(2), isCredit ? `${semester2.validatedCredits}/${semester2.totalCredits}` : ''],
-      ['Moyenne annuelle', (bulletinData.annualAverage || 0).toFixed(2), isCredit ? `${bulletinData.totalValidatedCredits || 0}/${bulletinData.totalCredits || 0}` : ''],
+      ['Semestre 1', semester1.average.toFixed(2), isCredit ? `${semester1.validatedCredits}/${semester1.totalCredits}` : ''],
+      ['Semestre 2', semester2.average.toFixed(2), isCredit ? `${semester2.validatedCredits}/${semester2.totalCredits}` : ''],
+      ['Moyenne Annuelle', (bulletinData.annualAverage || 0).toFixed(2), isCredit ? `${bulletinData.totalValidatedCredits || 0}/${bulletinData.totalCredits || 0}` : ''],
     ];
     
-    if (showDecision) {
-      const isValidated = isCredit 
-        ? ((bulletinData.totalValidatedCredits || 0) >= (bulletinData.totalCredits || 0) && (bulletinData.totalCredits || 0) > 0)
-        : ((bulletinData.annualAverage || 0) >= 10);
-      const decision = isValidated ? 'Année validée' : 'Année non validée';
-      recapData.push(['Décision:', decision, '']);
-    }
-    
     autoTable(doc, {
+      head: recapHeaders,
       body: recapData,
       startY: yPosition,
       theme: 'grid',
+      tableWidth: 120,
+      margin: { left: leftMargin },
       styles: {
         fontSize: 9,
         cellPadding: 2,
-        halign: 'left',
+        halign: 'center',
         lineColor: [0, 0, 0],
         lineWidth: 0.2,
       },
+      headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+      },
       columnStyles: {
-        0: { cellWidth: 60, fontStyle: 'bold' },
-        1: { cellWidth: 40, halign: 'center' },
-        2: { cellWidth: 40, halign: 'center' },
+        0: { cellWidth: 50, halign: 'left', fontStyle: 'bold' },
+        1: { cellWidth: 35, halign: 'center' },
+        2: { cellWidth: 35, halign: 'center' },
       },
       didParseCell: (data) => {
-        if (data.row.index === 0) {
-          data.cell.styles.fillColor = [200, 200, 200];
-          data.cell.styles.fontStyle = 'bold';
-        }
-        if (data.row.index === 3) {
-          data.cell.styles.fillColor = [230, 230, 230];
+        if (data.row.index === 2 && data.section === 'body') {
+          data.cell.styles.fillColor = [240, 240, 240];
           data.cell.styles.fontStyle = 'bold';
         }
       }
@@ -368,14 +428,66 @@ export const generateLMDBulletinInDoc = async (
     
     yPosition = (doc as any).lastAutoTable.finalY + 5;
     
+    // Décision et mention
+    if (showDecision || showMention) {
+      const annualAvg = bulletinData.annualAverage || 0;
+      const isValidated = isCredit 
+        ? ((bulletinData.totalValidatedCredits || 0) >= (bulletinData.totalCredits || 0) && (bulletinData.totalCredits || 0) > 0)
+        : (annualAvg >= 10);
+      
+      let mention = '';
+      if (annualAvg >= 16) mention = 'Très Bien';
+      else if (annualAvg >= 14) mention = 'Bien';
+      else if (annualAvg >= 12) mention = 'Assez Bien';
+      else if (annualAvg >= 10) mention = 'Passable';
+      else mention = 'Insuffisant';
+      
+      const decisionData: any[][] = [];
+      if (showMention) decisionData.push(['Mention:', mention]);
+      if (showDecision) decisionData.push(['Décision:', isValidated ? 'Année validée' : 'Année non validée']);
+      
+      autoTable(doc, {
+        body: decisionData,
+        startY: yPosition,
+        theme: 'plain',
+        margin: { left: leftMargin },
+        styles: { fontSize: 9, cellPadding: 1 },
+        columnStyles: {
+          0: { cellWidth: 35, fontStyle: 'bold' },
+          1: { cellWidth: 60 },
+        },
+      });
+      yPosition = (doc as any).lastAutoTable.finalY + 3;
+    }
+    
   } else if (currentSemester || semester1 || semester2) {
-    // BULLETIN SEMESTRIEL
     const semData = currentSemester || semester1 || semester2;
     if (semData) {
       yPosition = generateGradesTable(semData, 'Moyenne semestrielle');
       yPosition += 5;
       
-      // Récapitulatif simple pour bulletin semestriel
+      // Mini récap pour semestriel si crédits
+      if (isCredit) {
+        const semRecapData = [
+          ['Crédits validés', `${semData.validatedCredits} / ${semData.totalCredits}`],
+        ];
+        
+        autoTable(doc, {
+          body: semRecapData,
+          startY: yPosition,
+          theme: 'grid',
+          tableWidth: 80,
+          margin: { left: leftMargin },
+          styles: { fontSize: 9, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.2 },
+          columnStyles: {
+            0: { cellWidth: 45, fontStyle: 'bold', fillColor: [240, 240, 240] },
+            1: { cellWidth: 35, halign: 'center' },
+          },
+        });
+        yPosition = (doc as any).lastAutoTable.finalY + 3;
+      }
+      
+      // Mention et décision
       if (showMention || showDecision) {
         const finalAvg = semData.average;
         let mention = '';
@@ -390,63 +502,59 @@ export const generateLMDBulletinInDoc = async (
           : (finalAvg >= 10);
         
         const recapRows: any[][] = [];
-        
-        if (showMention) {
-          recapRows.push(['Mention:', mention]);
-        }
-        if (showDecision) {
-          recapRows.push(['Décision:', isValidated ? 'Semestre validé' : 'Semestre non validé']);
-        }
+        if (showMention) recapRows.push(['Mention:', mention]);
+        if (showDecision) recapRows.push(['Décision:', isValidated ? 'Semestre validé' : 'Semestre non validé']);
         
         if (recapRows.length > 0) {
           autoTable(doc, {
             body: recapRows,
             startY: yPosition,
             theme: 'plain',
-            styles: {
-              fontSize: 9,
-              cellPadding: 2,
-            },
+            margin: { left: leftMargin },
+            styles: { fontSize: 9, cellPadding: 1 },
             columnStyles: {
-              0: { cellWidth: 40, fontStyle: 'bold' },
+              0: { cellWidth: 35, fontStyle: 'bold' },
               1: { cellWidth: 60 },
             },
           });
-          yPosition = (doc as any).lastAutoTable.finalY + 5;
+          yPosition = (doc as any).lastAutoTable.finalY + 3;
         }
       }
     }
   }
   
-  // ===== ABSENCES ET CLASSEMENT =====
+  // ===== ABSENCES ET CLASSEMENT (mini tableau propre) =====
   yPosition += 5;
   
-  // Créer un petit tableau pour absences et classement
-  const statsData: any[][] = [];
+  const statsRows: any[][] = [];
   
   if (extraData?.totalAbsences !== undefined) {
     const unjustified = (extraData.totalAbsences || 0) - (extraData.justifiedAbsences || 0);
-    statsData.push(['Nombre d\'absences:', `${extraData.totalAbsences}`, 'Non justifiées:', `${unjustified}`]);
+    statsRows.push(['Absences', `${extraData.totalAbsences}`, 'Non justifiées', `${unjustified}`]);
   }
   
   if (showRanking && extraData?.rank) {
-    statsData.push(['Classement:', `${extraData.rank} / ${extraData.totalStudents || '-'}`, '', '']);
+    statsRows.push(['Classement', `${extraData.rank} / ${extraData.totalStudents || '-'}`, '', '']);
   }
   
-  if (statsData.length > 0) {
+  if (statsRows.length > 0) {
     autoTable(doc, {
-      body: statsData,
+      body: statsRows,
       startY: yPosition,
-      theme: 'plain',
-      styles: {
-        fontSize: 9,
+      theme: 'grid',
+      tableWidth: 140,
+      margin: { left: leftMargin },
+      styles: { 
+        fontSize: 9, 
         cellPadding: 2,
+        lineColor: [150, 150, 150],
+        lineWidth: 0.15,
       },
       columnStyles: {
-        0: { cellWidth: 45, fontStyle: 'bold' },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 40, fontStyle: 'bold' },
-        3: { cellWidth: 25 },
+        0: { cellWidth: 35, fontStyle: 'bold', fillColor: [245, 245, 245] },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 45, fontStyle: 'bold', fillColor: [245, 245, 245] },
+        3: { cellWidth: 35, halign: 'center' },
       },
     });
     yPosition = (doc as any).lastAutoTable.finalY + 8;
@@ -458,7 +566,6 @@ export const generateLMDBulletinInDoc = async (
   doc.setFont('helvetica', 'normal');
   doc.text(`Date   ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, leftMargin, yPosition);
   
-  // Signature à droite
   doc.setFont('helvetica', 'bold');
   doc.text('Le Directeur Pédagogique', rightMargin - 50, yPosition);
   
@@ -466,7 +573,7 @@ export const generateLMDBulletinInDoc = async (
   const footerY = doc.internal.pageSize.height - 15;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(80, 80, 80);
+  doc.setTextColor(...secondaryColor);
   
   doc.text('NB: Pour être officiel, le bulletin doit porter le sceau de l\'établissement', leftMargin, footerY);
   
