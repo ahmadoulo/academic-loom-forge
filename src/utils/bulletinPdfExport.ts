@@ -25,7 +25,10 @@ export interface CurrentStudentData {
 export interface SubjectGradeData {
   subjectId: string;
   subjectName: string;
+  subjectCode?: string;
   grades: any[];
+  devoirAverage?: number;
+  examenAverage?: number;
   average?: number;
   hasGrades: boolean;
   credits: number;
@@ -109,260 +112,255 @@ export const generateLMDBulletinInDoc = async (
 ) => {
   const { student, semester1, semester2, currentSemester, semesterNumber, isAnnualBulletin, settings, extraData } = bulletinData;
   const pageWidth = doc.internal.pageSize.width;
-  let yPosition = 12;
+  const leftMargin = 15;
+  const rightMargin = pageWidth - 15;
+  let yPosition = 10;
   
   const isCredit = bulletinData.calculationSystem === 'credit';
   const showMention = settings?.show_mention !== false;
   const showDecision = settings?.show_decision !== false;
   const showRanking = settings?.show_ranking !== false;
   
-  // ===== EN-TÊTE =====
+  // ===== LOGO CENTRÉ =====
   if (schoolLogoBase64) {
     try {
-      doc.addImage(schoolLogoBase64, 'PNG', 15, yPosition, 20, 20);
+      const logoSize = 25;
+      doc.addImage(schoolLogoBase64, 'PNG', (pageWidth - logoSize) / 2, yPosition, logoSize, logoSize);
+      yPosition += 28;
     } catch (error) {
       console.error('Erreur logo:', error);
+      yPosition += 5;
     }
+  } else {
+    yPosition += 5;
   }
   
-  // Nom de l'école centré
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text(student.schools?.name || 'ÉTABLISSEMENT', pageWidth / 2, yPosition + 6, { align: 'center' });
+  // ===== TITRE ENCADRÉ =====
+  doc.setFillColor(51, 51, 51);
+  const titleBoxWidth = 120;
+  const titleBoxX = (pageWidth - titleBoxWidth) / 2;
+  doc.rect(titleBoxX, yPosition, titleBoxWidth, 10, 'F');
   
-  // Titre du bulletin
-  yPosition += 16;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  doc.text('BULLETIN DE NOTES', pageWidth / 2, yPosition + 7, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
   
-  // Session/Type
-  yPosition += 6;
-  doc.setFontSize(10);
+  yPosition += 15;
+  
+  // ===== SOUS-TITRE FORMATION =====
+  const formationText = extraData?.cycleName 
+    ? (extraData.optionName 
+      ? `${extraData.cycleName} - ${extraData.optionName}`
+      : extraData.cycleName)
+    : (student.classes?.name || '');
+  
+  if (formationText) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formationText, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 8;
+  }
+  
+  // ===== INFORMATIONS ÉTUDIANT =====
+  doc.setFontSize(9);
+  
+  // Colonne gauche
+  doc.setFont('helvetica', 'bold');
+  doc.text('Nom:', leftMargin, yPosition);
   doc.setFont('helvetica', 'normal');
-  let sessionText = isAnnualBulletin ? 'Bulletin Annuel' : (currentSemester?.name || `Semestre ${semesterNumber || 1}`);
-  doc.text(sessionText, pageWidth / 2, yPosition, { align: 'center' });
+  doc.text(`${student.lastname} ${student.firstname}`, leftMargin + 25, yPosition);
+  
+  // Colonne droite
+  doc.setFont('helvetica', 'bold');
+  doc.text('Année scolaire :', rightMargin - 60, yPosition);
+  doc.setFont('helvetica', 'normal');
+  doc.text(academicYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`, rightMargin - 20, yPosition);
+  
+  yPosition += 5;
+  
+  // Ligne 2
+  if (student.birth_date) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Né(e) le:', leftMargin, yPosition);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(student.birth_date).toLocaleDateString('fr-FR'), leftMargin + 25, yPosition);
+  }
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Session :', rightMargin - 60, yPosition);
+  doc.setFont('helvetica', 'normal');
+  const sessionText = isAnnualBulletin ? 'Annuel' : (currentSemester?.name || `Semestre ${semesterNumber || 1}`);
+  doc.text(sessionText, rightMargin - 20, yPosition);
+  
+  yPosition += 5;
+  
+  // Ligne 3
+  doc.setFont('helvetica', 'bold');
+  doc.text('Matricule:', leftMargin, yPosition);
+  doc.setFont('helvetica', 'normal');
+  doc.text(student.cin_number || 'N/A', leftMargin + 25, yPosition);
+  
+  if (extraData?.yearLevel) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Niveau :', rightMargin - 60, yPosition);
+    doc.setFont('helvetica', 'normal');
+    const niveauText = extraData.yearLevel === 1 ? '1er Niveau' : `${extraData.yearLevel}ème Niveau`;
+    doc.text(niveauText, rightMargin - 20, yPosition);
+  }
   
   yPosition += 10;
   
-  // ===== INFORMATIONS ÉTUDIANT - Format tableau compact =====
-  const leftMargin = 15;
-  const rightSection = pageWidth / 2 + 10;
-  
-  // Cadre d'information étudiant
-  doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(0.3);
-  doc.rect(leftMargin, yPosition - 3, pageWidth - 30, 28, 'S');
-  
-  doc.setFontSize(8);
-  
-  // Ligne 1
-  doc.setFont('helvetica', 'bold');
-  doc.text('Nom & Prénom:', leftMargin + 2, yPosition + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${student.lastname} ${student.firstname}`, leftMargin + 28, yPosition + 2);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Année scolaire:', rightSection, yPosition + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(academicYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`, rightSection + 28, yPosition + 2);
-  
-  // Ligne 2
-  yPosition += 5;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Matricule:', leftMargin + 2, yPosition + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(student.cin_number || 'N/A', leftMargin + 20, yPosition + 2);
-  
-  if (student.birth_date) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Né(e) le:', rightSection, yPosition + 2);
-    doc.setFont('helvetica', 'normal');
-    doc.text(new Date(student.birth_date).toLocaleDateString('fr-FR'), rightSection + 18, yPosition + 2);
-  }
-  
-  // Ligne 3 - Classe et Formation
-  yPosition += 5;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Classe:', leftMargin + 2, yPosition + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(student.classes?.name || '', leftMargin + 16, yPosition + 2);
-  
-  if (extraData?.cycleName) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Formation:', rightSection, yPosition + 2);
-    doc.setFont('helvetica', 'normal');
-    const formationText = extraData.optionName 
-      ? `${extraData.cycleName} - ${extraData.optionName}` 
-      : extraData.cycleName;
-    doc.text(formationText.substring(0, 35), rightSection + 22, yPosition + 2);
-  }
-  
-  // Ligne 4 - Absences
-  yPosition += 5;
-  if (extraData?.totalAbsences !== undefined) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Absences:', leftMargin + 2, yPosition + 2);
-    doc.setFont('helvetica', 'normal');
-    const absenceText = `${extraData.totalAbsences} (${extraData.justifiedAbsences || 0} justifiées)`;
-    doc.text(absenceText, leftMargin + 20, yPosition + 2);
-  }
-  
-  if (showRanking && extraData?.rank) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Classement:', rightSection, yPosition + 2);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${extraData.rank}/${extraData.totalStudents || '-'}`, rightSection + 24, yPosition + 2);
-  }
-  
-  yPosition += 12;
-  
-  // ===== FONCTION TABLEAU DE NOTES =====
-  const generateGradesTable = (semesterData: SemesterData, showHeader: boolean = false, headerLabel?: string) => {
-    if (showHeader && headerLabel) {
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setFillColor(52, 73, 94);
-      doc.rect(leftMargin, yPosition - 3, pageWidth - 30, 5, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.text(headerLabel, pageWidth / 2, yPosition, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-      yPosition += 4;
-    }
+  // ===== FONCTION GÉNÉRATION TABLEAU DE NOTES (Style modèle) =====
+  const generateGradesTable = (semesterData: SemesterData, semesterLabel?: string): number => {
+    const startY = yPosition;
     
-    const tableHeaders = isCredit 
-      ? ['Matière', 'Moyenne', 'Crédits', 'Validation']
-      : ['Matière', 'Moyenne', 'Coef.', 'Note Pond.'];
+    // En-têtes du tableau
+    const headers = isCredit 
+      ? [['Code', 'Modules', 'Devoir', 'Examen', 'Moyenne', 'Crédits', 'Rslt']]
+      : [['Code', 'Modules', 'Devoir', 'Examen', 'Moyenne', 'Coef.', 'Rslt']];
     
+    // Préparer les données avec validation
     const tableData: any[][] = [];
     
-    semesterData.subjectGrades.forEach((subject) => {
-      const note = subject.hasGrades && subject.average !== undefined 
-        ? subject.average.toFixed(2) 
-        : '-';
+    semesterData.subjectGrades.forEach((subject, index) => {
+      const code = subject.subjectCode || `M-${(index + 1).toString().padStart(3, '0')}`;
+      const devoir = subject.devoirAverage !== undefined ? subject.devoirAverage.toFixed(2) : '-';
+      const examen = subject.examenAverage !== undefined ? subject.examenAverage.toFixed(2) : '-';
+      const moyenne = subject.hasGrades && subject.average !== undefined ? subject.average.toFixed(2) : '-';
+      const creditsOrCoef = isCredit ? subject.credits.toString() : subject.coefficient.toString();
+      const rslt = subject.isValidated ? 'V' : 'NV';
       
-      if (isCredit) {
-        tableData.push([
-          subject.subjectName,
-          note,
-          subject.credits.toString(),
-          subject.isValidated ? 'V' : 'NV'
-        ]);
-      } else {
-        const weightedNote = subject.hasGrades && subject.average !== undefined
-          ? (subject.average * subject.coefficient).toFixed(2)
-          : '-';
-        tableData.push([
-          subject.subjectName,
-          note,
-          subject.coefficient.toString(),
-          weightedNote
-        ]);
-      }
+      tableData.push([code, subject.subjectName, devoir, examen, moyenne, creditsOrCoef, rslt]);
     });
     
     autoTable(doc, {
-      head: [tableHeaders],
+      head: headers,
       body: tableData,
-      startY: yPosition,
+      startY: startY,
       theme: 'grid',
       styles: {
-        fontSize: 7,
-        cellPadding: 1.5,
+        fontSize: 8,
+        cellPadding: 2,
         halign: 'center',
-        lineColor: [150, 150, 150],
-        lineWidth: 0.1,
+        valign: 'middle',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.2,
       },
       headStyles: {
-        fillColor: [66, 139, 202],
-        textColor: [255, 255, 255],
+        fillColor: [220, 220, 220],
+        textColor: [0, 0, 0],
         fontStyle: 'bold',
-        fontSize: 7,
+        fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 80, halign: 'left' },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 25 },
+        0: { cellWidth: 20, halign: 'center' },
+        1: { cellWidth: 70, halign: 'left' },
+        2: { cellWidth: 18, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 18, halign: 'center' },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 15, halign: 'center' },
       },
       didParseCell: (data) => {
-        if (isCredit && data.column.index === 3 && data.section === 'body') {
+        // Colorer la colonne Rslt
+        if (data.column.index === 6 && data.section === 'body') {
           const cellText = data.cell.raw as string;
           if (cellText === 'V') {
-            data.cell.styles.textColor = [0, 128, 0];
+            data.cell.styles.textColor = [0, 100, 0];
             data.cell.styles.fontStyle = 'bold';
           } else if (cellText === 'NV') {
-            data.cell.styles.textColor = [200, 0, 0];
+            data.cell.styles.textColor = [180, 0, 0];
             data.cell.styles.fontStyle = 'bold';
           }
         }
       }
     });
     
-    yPosition = (doc as any).lastAutoTable.finalY + 3;
+    let tableEndY = (doc as any).lastAutoTable.finalY;
     
-    // Résumé semestre compact
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
+    // Ligne de moyenne semestrielle
+    const avgRowY = tableEndY;
+    doc.setFillColor(180, 180, 180);
+    doc.rect(leftMargin, avgRowY, pageWidth - 30, 7, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(leftMargin, avgRowY, pageWidth - 30, 7, 'S');
     
-    // Petit cadre récapitulatif
-    const recapY = yPosition;
-    doc.setFillColor(245, 245, 245);
-    doc.rect(leftMargin, recapY - 2, pageWidth - 30, 8, 'F');
-    doc.setDrawColor(150, 150, 150);
-    doc.rect(leftMargin, recapY - 2, pageWidth - 30, 8, 'S');
-    
-    doc.text(`Moyenne: ${semesterData.average.toFixed(2)}/20`, leftMargin + 3, recapY + 3);
-    if (isCredit) {
-      doc.text(`Crédits validés: ${semesterData.validatedCredits}/${semesterData.totalCredits}`, rightSection - 20, recapY + 3);
-    }
-    
-    yPosition += 10;
-  };
-
-  // ===== GÉNÉRATION CONTENU =====
-  if (isAnnualBulletin && semester1 && semester2) {
-    generateGradesTable(semester1, true, 'SEMESTRE 1');
-    generateGradesTable(semester2, true, 'SEMESTRE 2');
-    
-    // Récapitulatif annuel
-    yPosition += 2;
-    doc.setFillColor(52, 73, 94);
-    doc.rect(leftMargin, yPosition - 2, pageWidth - 30, 6, 'F');
-    doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('RÉCAPITULATIF ANNUEL', pageWidth / 2, yPosition + 2, { align: 'center' });
     doc.setTextColor(0, 0, 0);
+    
+    const labelText = semesterLabel || 'Moyenne semestrielle';
+    doc.text(labelText, leftMargin + 3, avgRowY + 5);
+    
+    // Moyenne + crédits à droite
+    const avgText = `${semesterData.average.toFixed(2)}/20`;
+    const creditsText = isCredit ? `${semesterData.validatedCredits}/${semesterData.totalCredits}` : '';
+    
+    doc.text(avgText, rightMargin - 50, avgRowY + 5);
+    if (isCredit) {
+      doc.text(creditsText, rightMargin - 20, avgRowY + 5);
+    }
+    
+    return avgRowY + 10;
+  };
+  
+  // ===== GÉNÉRATION DU CONTENU =====
+  if (isAnnualBulletin && semester1 && semester2) {
+    // BULLETIN ANNUEL - Afficher les deux semestres
+    yPosition = generateGradesTable(semester1, 'Moyenne semestrielle');
+    yPosition += 5;
+    yPosition = generateGradesTable(semester2, 'Moyenne semestrielle');
     yPosition += 8;
     
-    // Tableau récapitulatif
-    const recapHeaders = isCredit 
-      ? ['', 'Moyenne', 'Crédits Validés', 'Total Crédits']
-      : ['', 'Moyenne'];
-    
-    const recapBody = isCredit ? [
-      ['Semestre 1', semester1.average.toFixed(2), semester1.validatedCredits.toString(), semester1.totalCredits.toString()],
-      ['Semestre 2', semester2.average.toFixed(2), semester2.validatedCredits.toString(), semester2.totalCredits.toString()],
-      ['TOTAL ANNUEL', (bulletinData.annualAverage || 0).toFixed(2), (bulletinData.totalValidatedCredits || 0).toString(), (bulletinData.totalCredits || 0).toString()]
-    ] : [
-      ['Semestre 1', semester1.average.toFixed(2)],
-      ['Semestre 2', semester2.average.toFixed(2)],
-      ['MOYENNE ANNUELLE', (bulletinData.annualAverage || 0).toFixed(2)]
+    // RÉCAPITULATIF ANNUEL
+    const recapData = [
+      ['Moyenne générale', '', isCredit ? 'Moyenne' : '', isCredit ? 'crédits' : ''],
+      ['Moyenne Semestre 1', '', semester1.average.toFixed(2), isCredit ? semester1.validatedCredits.toString() : ''],
+      ['Moyenne Semestre 2', '', semester2.average.toFixed(2), isCredit ? semester2.validatedCredits.toString() : ''],
+      ['Moyenne annuelle', '', (bulletinData.annualAverage || 0).toFixed(2), isCredit ? `${bulletinData.totalValidatedCredits || 0} / ${bulletinData.totalCredits || 0}` : ''],
     ];
     
+    if (showDecision) {
+      const isValidated = isCredit 
+        ? ((bulletinData.totalValidatedCredits || 0) >= (bulletinData.totalCredits || 0) && (bulletinData.totalCredits || 0) > 0)
+        : ((bulletinData.annualAverage || 0) >= 10);
+      const decision = isValidated ? 'Année validée' : 'Année non validée';
+      recapData.push(['Décision:', '', decision, '']);
+    }
+    
     autoTable(doc, {
-      head: [recapHeaders],
-      body: recapBody,
+      body: recapData,
       startY: yPosition,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
-      headStyles: { fillColor: [100, 100, 100], textColor: [255, 255, 255], fontStyle: 'bold' },
-      columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+      styles: {
+        fontSize: 9,
+        cellPadding: 2,
+        halign: 'left',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.2,
+      },
+      columnStyles: {
+        0: { cellWidth: 50, fontStyle: 'bold' },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 35, halign: 'center' },
+        3: { cellWidth: 35, halign: 'center' },
+      },
       didParseCell: (data) => {
-        if (data.row.index === 2) {
+        // En-tête gris
+        if (data.row.index === 0) {
+          data.cell.styles.fillColor = [200, 200, 200];
           data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fillColor = [230, 240, 250];
+        }
+        // Ligne moyenne annuelle en surbrillance
+        if (data.row.index === 3) {
+          data.cell.styles.fillColor = [230, 230, 230];
+          data.cell.styles.fontStyle = 'bold';
+        }
+        // Ligne décision
+        if (data.row.index === 4) {
+          data.cell.styles.fontStyle = 'bold';
         }
       }
     });
@@ -370,82 +368,81 @@ export const generateLMDBulletinInDoc = async (
     yPosition = (doc as any).lastAutoTable.finalY + 5;
     
   } else if (currentSemester || semester1 || semester2) {
+    // BULLETIN SEMESTRIEL
     const semData = currentSemester || semester1 || semester2;
     if (semData) {
-      generateGradesTable(semData, false);
-    }
-  }
-  
-  // ===== MENTION ET DÉCISION =====
-  const finalAverage = bulletinData.annualAverage || currentSemester?.average || semester1?.average || semester2?.average || 0;
-  const totalValCredits = bulletinData.totalValidatedCredits || currentSemester?.validatedCredits || 0;
-  const totalCred = bulletinData.totalCredits || currentSemester?.totalCredits || 0;
-  
-  if (showMention || showDecision) {
-    // Cadre pour mention/décision
-    doc.setFillColor(250, 250, 250);
-    doc.rect(leftMargin, yPosition - 2, pageWidth - 30, showMention && showDecision ? 12 : 8, 'F');
-    doc.setDrawColor(150, 150, 150);
-    doc.rect(leftMargin, yPosition - 2, pageWidth - 30, showMention && showDecision ? 12 : 8, 'S');
-    
-    doc.setFontSize(9);
-    
-    if (showMention) {
-      let mention = '';
-      if (finalAverage >= 16) mention = 'Très Bien';
-      else if (finalAverage >= 14) mention = 'Bien';
-      else if (finalAverage >= 12) mention = 'Assez Bien';
-      else if (finalAverage >= 10) mention = 'Passable';
-      else mention = 'Insuffisant';
+      yPosition = generateGradesTable(semData, 'Moyenne semestrielle');
+      yPosition += 5;
       
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Mention: ${mention}`, leftMargin + 3, yPosition + 2);
+      // Récapitulatif simple pour bulletin semestriel (si mention/décision activés)
+      if (showMention || showDecision || showRanking) {
+        const finalAvg = semData.average;
+        let mention = '';
+        if (finalAvg >= 16) mention = 'Très Bien';
+        else if (finalAvg >= 14) mention = 'Bien';
+        else if (finalAvg >= 12) mention = 'Assez Bien';
+        else if (finalAvg >= 10) mention = 'Passable';
+        else mention = 'Insuffisant';
+        
+        const isValidated = isCredit 
+          ? (semData.validatedCredits >= semData.totalCredits && semData.totalCredits > 0)
+          : (finalAvg >= 10);
+        
+        const recapRows: any[][] = [];
+        
+        if (showMention) {
+          recapRows.push(['Mention:', mention]);
+        }
+        if (showDecision) {
+          recapRows.push(['Décision:', isValidated ? 'Semestre validé' : 'Semestre non validé']);
+        }
+        if (showRanking && extraData?.rank) {
+          recapRows.push(['Classement:', `${extraData.rank}/${extraData.totalStudents || '-'}`]);
+        }
+        
+        if (recapRows.length > 0) {
+          autoTable(doc, {
+            body: recapRows,
+            startY: yPosition,
+            theme: 'plain',
+            styles: {
+              fontSize: 9,
+              cellPadding: 2,
+            },
+            columnStyles: {
+              0: { cellWidth: 40, fontStyle: 'bold' },
+              1: { cellWidth: 60 },
+            },
+          });
+          yPosition = (doc as any).lastAutoTable.finalY + 5;
+        }
+      }
     }
-    
-    if (showDecision) {
-      const isValidated = isCredit ? (totalValCredits >= totalCred && totalCred > 0) : (finalAverage >= 10);
-      const decision = isAnnualBulletin 
-        ? (isValidated ? 'Année validée' : 'Année non validée')
-        : (isValidated ? 'Semestre validé' : 'Semestre non validé');
-      
-      doc.setFont('helvetica', 'bold');
-      const decisionY = showMention ? yPosition + 7 : yPosition + 2;
-      doc.text(`Décision: ${decision}`, leftMargin + 3, decisionY);
-    }
-    
-    yPosition += showMention && showDecision ? 16 : 12;
   }
   
-  // ===== OBSERVATIONS =====
-  if (settings?.show_observations) {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Observations:', leftMargin, yPosition);
-    doc.setDrawColor(150, 150, 150);
-    doc.rect(leftMargin, yPosition + 2, pageWidth - 30, 15, 'S');
-    yPosition += 20;
-  }
-  
-  // ===== SIGNATURE =====
+  // ===== DATE ET SIGNATURE =====
   yPosition += 5;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Fait le: ${new Date().toLocaleDateString('fr-FR')}`, leftMargin, yPosition);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Le Directeur Pédagogique', pageWidth - 55, yPosition);
+  doc.text(`Date   ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, leftMargin, yPosition);
+  
+  // Zone signature à droite (espace pour tampon/signature)
+  // Ne rien écrire pour laisser la place au cachet
   
   // ===== FOOTER =====
-  const footerY = doc.internal.pageSize.height - 12;
+  const footerY = doc.internal.pageSize.height - 15;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(80, 80, 80);
+  
+  doc.text('NB: Pour être officiel, le bulletin doit porter le sceau de l\'établissement', leftMargin, footerY);
   
   if (settings?.custom_footer_text) {
-    doc.text(settings.custom_footer_text, pageWidth / 2, footerY - 4, { align: 'center' });
+    doc.text(settings.custom_footer_text, pageWidth / 2, footerY + 4, { align: 'center' });
+  } else {
+    doc.text(`${student.schools?.name || 'École'} - Système de gestion scolaire`, pageWidth / 2, footerY + 4, { align: 'center' });
   }
   
-  doc.text('NB: Pour être officiel, le bulletin doit porter le sceau de l\'établissement', pageWidth / 2, footerY, { align: 'center' });
-  doc.text(`${student.schools?.name || 'École'} - Système de gestion scolaire`, pageWidth / 2, footerY + 4, { align: 'center' });
   doc.setTextColor(0, 0, 0);
 };
 
@@ -461,6 +458,7 @@ export const generateStudentBulletin = async (
   const convertedGrades: SubjectGradeData[] = subjectGrades.map(sg => ({
     ...sg,
     credits: sg.credits || 1,
+    coefficient: sg.coefficient || 1,
     coefficientType: sg.coefficientType || 'coefficient',
     isValidated: sg.average && sg.average >= 10
   }));
@@ -495,6 +493,7 @@ export const generateStudentBulletinInDoc = async (
   const convertedGrades: SubjectGradeData[] = subjectGrades.map(sg => ({
     ...sg,
     credits: sg.credits || 1,
+    coefficient: sg.coefficient || 1,
     coefficientType: sg.coefficientType || 'coefficient',
     isValidated: sg.average && sg.average >= 10
   }));
