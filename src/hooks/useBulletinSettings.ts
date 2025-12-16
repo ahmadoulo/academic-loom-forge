@@ -22,27 +22,27 @@ export const BULLETIN_TEMPLATES: { id: BulletinTemplate; name: string; descripti
   {
     id: 'classic',
     name: 'Classique',
-    description: 'Double bordure, en-têtes colorés, boîtes informatives',
-    icon: '📋'
+    description: 'Bulletin scolaire traditionnel, très lisible',
+    icon: '📄',
   },
   {
     id: 'modern',
-    name: 'Moderne',
-    description: 'Bandeau dégradé, cartes arrondies, pilules colorées',
-    icon: '✨'
+    name: 'Officiel',
+    description: 'Mise en page administrative (tableaux + cadres simples)',
+    icon: '🗂️',
   },
   {
     id: 'minimal',
-    name: 'Minimaliste',
-    description: 'Ultra épuré, lignes fines, beaucoup d\'espace blanc',
-    icon: '◻️'
+    name: 'Épuré',
+    description: 'Très simple et aéré, proche des bulletins papier',
+    icon: '🧾',
   },
   {
     id: 'elegant',
-    name: 'Élégant',
-    description: 'Coins décoratifs, encadrés raffinés, triangles accent',
-    icon: '👑'
-  }
+    name: 'Encadré',
+    description: 'Double cadre fin, style établissement (sans décorations)',
+    icon: '🏫',
+  },
 ];
 
 export const PRESET_COLORS = [
