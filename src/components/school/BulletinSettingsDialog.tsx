@@ -110,52 +110,100 @@ export const BulletinSettingsDialog = ({
             {/* TAB: MODÈLE */}
             <TabsContent value="template" className="px-4 sm:px-6 py-4 mt-0">
               <div className="grid grid-cols-2 gap-3">
-                {BULLETIN_TEMPLATES.map((template) => (
-                  <div
-                    key={template.id}
-                    onClick={() => setLocalSettings(s => ({ ...s, template_style: template.id }))}
-                    className={cn(
-                      "relative p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
-                      localSettings.template_style === template.id
-                        ? "border-primary bg-primary/5"
-                        : "border-muted hover:border-muted-foreground/30"
-                    )}
-                  >
-                    {localSettings.template_style === template.id && (
-                      <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                        <Check className="h-3 w-3" />
-                      </div>
-                    )}
-                    
-                    {/* Mini preview */}
-                    <div 
-                      className="w-full h-16 rounded mb-2 border"
-                      style={{
-                        background: template.id === 'classic' 
-                          ? 'linear-gradient(to bottom, #f5f5f5 30%, white 30%)'
-                          : template.id === 'modern'
-                          ? `linear-gradient(to right, ${localSettings.primary_color || '#333'} 3px, white 3px)`
-                          : template.id === 'minimal'
-                          ? 'white'
-                          : `linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)`
-                      }}
+                {BULLETIN_TEMPLATES.map((template) => {
+                  const primaryCol = localSettings.primary_color || '#333';
+                  const accentCol = localSettings.accent_color || '#0066cc';
+                  
+                  return (
+                    <div
+                      key={template.id}
+                      onClick={() => setLocalSettings(s => ({ ...s, template_style: template.id }))}
+                      className={cn(
+                        "relative p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md",
+                        localSettings.template_style === template.id
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-muted-foreground/30"
+                      )}
                     >
-                      <div className="p-2">
-                        <div 
-                          className="h-2 w-12 rounded mb-1"
-                          style={{ backgroundColor: localSettings.primary_color || '#333' }}
-                        />
-                        <div className="space-y-0.5">
-                          <div className="h-1 w-full bg-muted rounded" />
-                          <div className="h-1 w-3/4 bg-muted rounded" />
+                      {localSettings.template_style === template.id && (
+                        <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                          <Check className="h-3 w-3" />
                         </div>
+                      )}
+                      
+                      {/* Template-specific preview */}
+                      <div className="w-full h-20 rounded mb-2 border overflow-hidden bg-white relative">
+                        {template.id === 'classic' && (
+                          <>
+                            <div className="absolute inset-1 border-2" style={{ borderColor: primaryCol }} />
+                            <div className="absolute inset-2 border" style={{ borderColor: primaryCol }} />
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-muted" />
+                            <div className="absolute top-9 left-3 right-3 h-2 rounded" style={{ backgroundColor: primaryCol }} />
+                            <div className="absolute top-12 left-3 right-3 space-y-1">
+                              <div className="h-1 bg-muted rounded" />
+                              <div className="h-1 bg-muted rounded w-3/4" />
+                            </div>
+                          </>
+                        )}
+                        {template.id === 'modern' && (
+                          <>
+                            <div className="h-6" style={{ backgroundColor: primaryCol }} />
+                            <div className="h-0.5" style={{ backgroundColor: accentCol }} />
+                            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white" />
+                            <div className="absolute top-8 left-2 right-2 flex gap-1">
+                              <div className="flex-1 h-4 rounded bg-muted/50" />
+                              <div className="flex-1 h-4 rounded bg-muted/50" />
+                            </div>
+                            <div className="absolute bottom-2 left-2 right-2 h-3 rounded" style={{ backgroundColor: primaryCol }} />
+                          </>
+                        )}
+                        {template.id === 'minimal' && (
+                          <>
+                            <div className="p-2">
+                              <div className="flex items-center gap-1 mb-2">
+                                <div className="w-2 h-2 rounded bg-muted" />
+                                <div className="h-1.5 w-10 bg-muted rounded" />
+                              </div>
+                              <div className="h-0.5 bg-muted/30 mb-2" />
+                              <div className="text-[8px] font-bold mb-1" style={{ color: primaryCol }}>Bulletin</div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between">
+                                  <div className="h-1 w-12 bg-muted rounded" />
+                                  <div className="h-1 w-4 bg-muted rounded" />
+                                </div>
+                                <div className="flex justify-between">
+                                  <div className="h-1 w-10 bg-muted rounded" />
+                                  <div className="h-1 w-4 bg-muted rounded" />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {template.id === 'elegant' && (
+                          <>
+                            <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: primaryCol }} />
+                            <div className="absolute top-1 right-1 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: primaryCol }} />
+                            <div className="absolute bottom-1 left-1 w-3 h-3 border-b-2 border-l-2" style={{ borderColor: primaryCol }} />
+                            <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2" style={{ borderColor: primaryCol }} />
+                            <div className="absolute top-5 left-1/2 -translate-x-1/2">
+                              <div className="w-4 h-4 rounded-full border" style={{ borderColor: accentCol }} />
+                            </div>
+                            <div className="absolute top-11 left-4 right-4 h-2 border rounded" style={{ borderColor: primaryCol }} />
+                            <div className="absolute bottom-3 left-4 right-4 h-3 rounded" style={{ backgroundColor: primaryCol }}>
+                              <div className="absolute left-0 top-0 w-0 h-0 border-l-4 border-t-4" style={{ borderLeftColor: 'transparent', borderTopColor: accentCol }} />
+                            </div>
+                          </>
+                        )}
                       </div>
+                      
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-base">{template.icon}</span>
+                        <h4 className="font-medium text-sm">{template.name}</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-tight">{template.description}</p>
                     </div>
-                    
-                    <h4 className="font-medium text-sm">{template.name}</h4>
-                    <p className="text-xs text-muted-foreground">{template.description}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </TabsContent>
 
