@@ -18,42 +18,40 @@ export interface BulletinSettings {
 
 export type BulletinTemplate = 'classic' | 'modern' | 'minimal' | 'elegant';
 
-export const BULLETIN_TEMPLATES: { id: BulletinTemplate; name: string; description: string; icon: string }[] = [
+export const BULLETIN_TEMPLATES: { id: BulletinTemplate; name: string; description: string; preview: string }[] = [
   {
     id: 'classic',
     name: 'Classique',
-    description: 'Bulletin scolaire traditionnel, très lisible',
-    icon: '📄',
+    description: 'Style traditionnel avec en-têtes gris',
+    preview: 'Bordures nettes, fond gris clair'
   },
   {
     id: 'modern',
-    name: 'Officiel',
-    description: 'Mise en page administrative (tableaux + cadres simples)',
-    icon: '🗂️',
+    name: 'Moderne',
+    description: 'Design épuré avec accents colorés',
+    preview: 'Lignes fines, couleurs vives'
   },
   {
     id: 'minimal',
-    name: 'Épuré',
-    description: 'Très simple et aéré, proche des bulletins papier',
-    icon: '🧾',
+    name: 'Minimaliste',
+    description: 'Simple et efficace',
+    preview: 'Peu de bordures, espacement généreux'
   },
   {
     id: 'elegant',
-    name: 'Encadré',
-    description: 'Double cadre fin, style établissement (sans décorations)',
-    icon: '🏫',
-  },
+    name: 'Élégant',
+    description: 'Style professionnel raffiné',
+    preview: 'Dégradés subtils, typographie soignée'
+  }
 ];
 
 export const PRESET_COLORS = [
-  { name: 'Marine Classique', primary: '#1a365d', secondary: '#4a5568', accent: '#c53030' },
-  { name: 'Indigo Moderne', primary: '#6366f1', secondary: '#818cf8', accent: '#8b5cf6' },
-  { name: 'Ardoise Minimale', primary: '#18181b', secondary: '#71717a', accent: '#3f3f46' },
-  { name: 'Violet Élégant', primary: '#7c3aed', secondary: '#a78bfa', accent: '#c084fc' },
-  { name: 'Émeraude', primary: '#047857', secondary: '#34d399', accent: '#10b981' },
-  { name: 'Bordeaux', primary: '#9f1239', secondary: '#fb7185', accent: '#e11d48' },
-  { name: 'Ocean', primary: '#0369a1', secondary: '#38bdf8', accent: '#0ea5e9' },
-  { name: 'Ambre', primary: '#b45309', secondary: '#fbbf24', accent: '#f59e0b' },
+  { name: 'Gris Classique', primary: '#333333', secondary: '#666666', accent: '#0066cc' },
+  { name: 'Bleu Professionnel', primary: '#1e3a5f', secondary: '#4a6fa5', accent: '#2980b9' },
+  { name: 'Vert Académique', primary: '#1b4332', secondary: '#40916c', accent: '#52b788' },
+  { name: 'Bordeaux Élégant', primary: '#722f37', secondary: '#9b4a54', accent: '#c9184a' },
+  { name: 'Violet Royal', primary: '#4a1a6b', secondary: '#7b4a9e', accent: '#9b59b6' },
+  { name: 'Orange Dynamique', primary: '#bf4a00', secondary: '#e67e22', accent: '#f39c12' },
 ];
 
 const defaultSettings: Omit<BulletinSettings, 'id' | 'school_id'> = {
