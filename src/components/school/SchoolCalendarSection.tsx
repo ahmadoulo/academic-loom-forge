@@ -167,6 +167,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         isTeacher={false}
         onReschedule={handleReschedule}
         onApproveReschedule={handleApproveReschedule}
+        showFilters={true}
       />
 
       {selectedSession && (
