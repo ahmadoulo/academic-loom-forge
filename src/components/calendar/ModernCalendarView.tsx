@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, BookOpen, User, MoreVertical, Edit, AlertTriangle, Calendar, Filter, X, GraduationCap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, BookOpen, User, MoreVertical, Edit, AlertTriangle, Calendar, Filter, X, GraduationCap, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { MoveSessionDialog } from "./MoveSessionDialog";
 
 interface CalendarEvent {
   id: string;
@@ -40,6 +41,7 @@ interface ModernCalendarViewProps {
   isTeacher?: boolean;
   onReschedule?: (sessionId: string) => void;
   onApproveReschedule?: (sessionId: string) => void;
+  onMoveSession?: (sessionId: string, newDate: Date) => Promise<void>;
   classes?: FilterOption[];
   teachers?: FilterOption[];
   showFilters?: boolean;
@@ -53,6 +55,7 @@ export function ModernCalendarView({
   isTeacher = false,
   onReschedule,
   onApproveReschedule,
+  onMoveSession,
   classes = [],
   teachers = [],
   showFilters = false,
@@ -62,6 +65,13 @@ export function ModernCalendarView({
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedTeacher, setSelectedTeacher] = useState<string>("all");
+  
+  // Drag and drop state
+  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [pendingMove, setPendingMove] = useState<{ event: CalendarEvent; newDate: Date } | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
 
   // Filter events based on selected class and teacher
   const filteredEvents = useMemo(() => {
@@ -191,6 +201,68 @@ export function ModernCalendarView({
   };
 
   const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
+    if (!canManage || !onMoveSession) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+    setDraggedEvent(event);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEvent(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: Date) => {
+    if (!draggedEvent || !canManage || !onMoveSession) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetDate(date);
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    if (!draggedEvent || !canManage || !onMoveSession) return;
+    
+    // Don't move if dropping on the same date
+    if (isSameDay(new Date(draggedEvent.session_date), date)) {
+      setDraggedEvent(null);
+      setDropTargetDate(null);
+      return;
+    }
+    
+    // Open confirmation dialog
+    setPendingMove({ event: draggedEvent, newDate: date });
+    setMoveDialogOpen(true);
+    setDraggedEvent(null);
+    setDropTargetDate(null);
+  };
+
+  const handleConfirmMove = async () => {
+    if (!pendingMove || !onMoveSession) return;
+    
+    setIsMoving(true);
+    try {
+      await onMoveSession(pendingMove.event.id, pendingMove.newDate);
+      setMoveDialogOpen(false);
+      setPendingMove(null);
+    } catch (error) {
+      console.error('Error moving session:', error);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const handleCancelMove = () => {
+    setMoveDialogOpen(false);
+    setPendingMove(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -337,15 +409,20 @@ export function ModernCalendarView({
                     const isCurrentMonth = isSameMonth(day, currentMonth);
                     const isDayToday = isToday(day);
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
 
                     return (
-                      <button
+                      <div
                         key={idx}
                         onClick={() => onDateSelect(day)}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
                         className={cn(
-                          "relative border-r border-b p-2 text-left transition-all hover:bg-muted/50 min-h-[110px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset",
+                          "relative border-r border-b p-2 text-left transition-all hover:bg-muted/50 min-h-[110px] cursor-pointer",
                           !isCurrentMonth && "bg-muted/20 text-muted-foreground/50",
                           isSelected && "bg-primary/5 ring-2 ring-primary ring-inset",
+                          isDropTarget && "bg-primary/10 ring-2 ring-primary ring-dashed",
                         )}
                       >
                         <div className={cn(
@@ -359,18 +436,31 @@ export function ModernCalendarView({
                         <div className="space-y-1 mt-1">
                           {dayEvents.slice(0, 3).map(event => {
                             const styles = getEventTypeStyles(event.type);
+                            const isDraggable = canManage && !!onMoveSession;
+                            const isRescheduled = event.is_rescheduled && event.reschedule_status === 'approved';
+                            
                             return (
                               <div
                                 key={event.id}
+                                draggable={isDraggable}
+                                onDragStart={(e) => handleDragStart(e, event)}
+                                onDragEnd={handleDragEnd}
                                 className={cn(
                                   "text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1",
-                                  styles.bg, styles.text
+                                  styles.bg, styles.text,
+                                  isDraggable && "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
+                                  draggedEvent?.id === event.id && "opacity-50"
                                 )}
                               >
                                 <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", styles.dot)} />
                                 <span className="truncate font-medium">
                                   {event.start_time?.slice(0, 5)} {event.title}
                                 </span>
+                                {isRescheduled && (
+                                  <span className="flex-shrink-0 px-1 py-0.5 text-[10px] font-semibold rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                                    Reporté
+                                  </span>
+                                )}
                                 {event.reschedule_status === 'pending' && (
                                   <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
                                 )}
@@ -383,7 +473,7 @@ export function ModernCalendarView({
                             </div>
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -540,6 +630,12 @@ export function ModernCalendarView({
                                 <Badge className={cn("text-xs", styles.badge)}>
                                   {event.type === 'course' ? 'Cours' : event.type === 'exam' ? 'Examen' : 'Devoir'}
                                 </Badge>
+                                {event.is_rescheduled && event.reschedule_status === 'approved' && (
+                                  <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                    Reporté
+                                  </Badge>
+                                )}
                               </div>
                               {event.reschedule_status === 'pending' && (
                                 <Badge variant="outline" className="mt-2 bg-orange-50 text-orange-600 border-orange-200">
@@ -652,6 +748,21 @@ export function ModernCalendarView({
           </ScrollArea>
         </Card>
       </div>
+
+      {/* Move Session Confirmation Dialog */}
+      {pendingMove && (
+        <MoveSessionDialog
+          open={moveDialogOpen}
+          onOpenChange={handleCancelMove}
+          sessionTitle={pendingMove.event.title}
+          originalDate={new Date(pendingMove.event.session_date)}
+          newDate={pendingMove.newDate}
+          startTime={pendingMove.event.start_time || undefined}
+          endTime={pendingMove.event.end_time || undefined}
+          onConfirm={handleConfirmMove}
+          loading={isMoving}
+        />
+      )}
     </div>
   );
 }
