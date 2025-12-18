@@ -134,6 +134,22 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
     }
   };
 
+  const handleMoveSession = async (sessionId: string, newDate: Date) => {
+    try {
+      await rescheduleAssignment(
+        sessionId, 
+        "Déplacement par glisser-déposer", 
+        newDate, 
+        false // isTeacher = false, so it applies directly
+      );
+      toast.success("Séance déplacée avec succès");
+    } catch (error) {
+      toast.error("Erreur lors du déplacement de la séance");
+      console.error(error);
+      throw error;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -167,6 +183,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         isTeacher={false}
         onReschedule={handleReschedule}
         onApproveReschedule={handleApproveReschedule}
+        onMoveSession={handleMoveSession}
         showFilters={true}
       />
 
