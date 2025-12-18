@@ -89,9 +89,26 @@ export const useTeachers = (schoolId?: string) => {
 
   const updateTeacher = async (teacherId: string, updates: Partial<CreateTeacherData>) => {
     try {
+      // Clean the updates object - remove undefined values and convert empty strings to null for date fields
+      const cleanedUpdates: Record<string, unknown> = {};
+      
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          // For date fields, convert empty strings to null
+          if ((key === 'birth_date' || key === 'join_date') && value === '') {
+            cleanedUpdates[key] = null;
+          } else if (typeof value === 'string' && value.trim() === '') {
+            // For other string fields, convert empty strings to null
+            cleanedUpdates[key] = null;
+          } else {
+            cleanedUpdates[key] = value;
+          }
+        }
+      });
+
       const { data, error } = await supabase
         .from('teachers')
-        .update(updates)
+        .update(cleanedUpdates)
         .eq('id', teacherId)
         .select()
         .single();
