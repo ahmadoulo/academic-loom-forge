@@ -81,26 +81,38 @@ export function TeacherForm({ open, onOpenChange, schoolId, teacher, onSuccess }
 
     setIsSubmitting(true);
     try {
-      const teacherData = {
+      const teacherData: Record<string, unknown> = {
         firstname: firstname.trim(),
         lastname: lastname.trim(),
-        email: email.trim() || undefined,
-        gender: gender || undefined,
-        mobile: mobile.trim() || undefined,
-        birth_date: birthDate || undefined,
-        qualification: qualification.trim() || undefined,
-        address: address.trim() || undefined,
-        salary: salary ? parseFloat(salary) : undefined,
-        join_date: joinDate || undefined,
         status: status || "active",
       };
 
+      // Only include optional fields if they have values
+      if (email.trim()) teacherData.email = email.trim();
+      if (gender) teacherData.gender = gender;
+      if (mobile.trim()) teacherData.mobile = mobile.trim();
+      if (birthDate) teacherData.birth_date = birthDate;
+      if (qualification.trim()) teacherData.qualification = qualification.trim();
+      if (address.trim()) teacherData.address = address.trim();
+      if (salary) teacherData.salary = parseFloat(salary);
+      if (joinDate) teacherData.join_date = joinDate;
+
       if (isEditing) {
-        await updateTeacher(teacher.id, teacherData);
+        await updateTeacher(teacher.id, teacherData as Partial<typeof teacherData>);
       } else {
         await createTeacher({
           school_id: schoolId,
-          ...teacherData,
+          firstname: firstname.trim(),
+          lastname: lastname.trim(),
+          email: email.trim() || undefined,
+          gender: gender || undefined,
+          mobile: mobile.trim() || undefined,
+          birth_date: birthDate || undefined,
+          qualification: qualification.trim() || undefined,
+          address: address.trim() || undefined,
+          salary: salary ? parseFloat(salary) : undefined,
+          join_date: joinDate || undefined,
+          status: status || "active",
         });
       }
       
