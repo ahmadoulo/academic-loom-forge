@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, BookOpen, User, MoreVertical, Edit, AlertTriangle, Calendar, Filter, X, GraduationCap, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, BookOpen, User, MoreVertical, Edit, AlertTriangle, Calendar, Filter, X, GraduationCap, RefreshCw, GripVertical, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -66,12 +66,19 @@ export function ModernCalendarView({
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedTeacher, setSelectedTeacher] = useState<string>("all");
   
-  // Drag and drop state
+  // Drag and drop state (unified for mouse and touch)
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [pendingMove, setPendingMove] = useState<{ event: CalendarEvent; newDate: Date } | null>(null);
   const [isMoving, setIsMoving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Touch drag state
+  const touchStartRef = useRef<{ x: number; y: number; event: CalendarEvent } | null>(null);
+  const dragGhostRef = useRef<HTMLDivElement | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const dayRefsRef = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Filter events based on selected class and teacher
   const filteredEvents = useMemo(() => {
@@ -150,7 +157,8 @@ export function ModernCalendarView({
           border: 'border-l-blue-500',
           text: 'text-blue-700 dark:text-blue-300',
           badge: 'bg-blue-500 text-white',
-          dot: 'bg-blue-500'
+          dot: 'bg-blue-500',
+          ghostBg: 'bg-blue-100/90 dark:bg-blue-900/90'
         };
       case 'exam':
         return {
@@ -158,7 +166,8 @@ export function ModernCalendarView({
           border: 'border-l-red-500',
           text: 'text-red-700 dark:text-red-300',
           badge: 'bg-red-500 text-white',
-          dot: 'bg-red-500'
+          dot: 'bg-red-500',
+          ghostBg: 'bg-red-100/90 dark:bg-red-900/90'
         };
       default:
         return {
@@ -166,7 +175,8 @@ export function ModernCalendarView({
           border: 'border-l-purple-500',
           text: 'text-purple-700 dark:text-purple-300',
           badge: 'bg-purple-500 text-white',
-          dot: 'bg-purple-500'
+          dot: 'bg-purple-500',
+          ghostBg: 'bg-purple-100/90 dark:bg-purple-900/90'
         };
     }
   };
@@ -177,7 +187,7 @@ export function ModernCalendarView({
   const weekStart = startOfWeek(currentWeek, { locale: fr });
   const weekEnd = endOfWeek(currentWeek, { locale: fr });
   const weekDaysArray = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const hours = Array.from({ length: 16 }, (_, i) => i + 6);
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h to 20h
 
   const getEventsForDay = (date: Date) => {
     return filteredEvents.filter(event => 
@@ -186,33 +196,92 @@ export function ModernCalendarView({
   };
 
   const getEventStartHour = (event: CalendarEvent) => {
-    if (!event.start_time) return 0;
+    if (!event.start_time) return 8;
     const [hour] = event.start_time.split(':').map(Number);
     return hour;
   };
 
-  const getEventDurationInHours = (event: CalendarEvent) => {
-    if (!event.start_time || !event.end_time) return 1;
+  const getEventStartMinutes = (event: CalendarEvent) => {
+    if (!event.start_time) return 0;
+    const [, minutes] = event.start_time.split(':').map(Number);
+    return minutes || 0;
+  };
+
+  const getEventDurationInMinutes = (event: CalendarEvent) => {
+    if (!event.start_time || !event.end_time) return 60;
     const [startHour, startMinute] = event.start_time.split(':').map(Number);
     const [endHour, endMinute] = event.end_time.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = endHour * 60 + endMinute;
-    return (endMinutes - startMinutes) / 60;
+    const startMinutes = startHour * 60 + (startMinute || 0);
+    const endMinutes = endHour * 60 + (endMinute || 0);
+    return Math.max(endMinutes - startMinutes, 30);
   };
 
   const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
 
-  // Drag and drop handlers
+  // Create and remove drag ghost for touch
+  const createDragGhost = useCallback((event: CalendarEvent, x: number, y: number) => {
+    if (dragGhostRef.current) {
+      document.body.removeChild(dragGhostRef.current);
+    }
+    
+    const ghost = document.createElement('div');
+    const styles = getEventTypeStyles(event.type);
+    ghost.className = `fixed pointer-events-none z-50 px-3 py-2 rounded-lg shadow-xl border-l-4 ${styles.ghostBg} ${styles.border} ${styles.text}`;
+    ghost.style.transform = 'translate(-50%, -50%)';
+    ghost.style.left = `${x}px`;
+    ghost.style.top = `${y}px`;
+    ghost.style.minWidth = '120px';
+    ghost.style.maxWidth = '200px';
+    ghost.innerHTML = `
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+        </svg>
+        <span class="font-medium text-sm truncate">${event.title}</span>
+      </div>
+    `;
+    document.body.appendChild(ghost);
+    dragGhostRef.current = ghost;
+  }, []);
+
+  const updateDragGhost = useCallback((x: number, y: number) => {
+    if (dragGhostRef.current) {
+      dragGhostRef.current.style.left = `${x}px`;
+      dragGhostRef.current.style.top = `${y}px`;
+    }
+  }, []);
+
+  const removeDragGhost = useCallback(() => {
+    if (dragGhostRef.current) {
+      document.body.removeChild(dragGhostRef.current);
+      dragGhostRef.current = null;
+    }
+  }, []);
+
+  // Find date at position for touch
+  const findDateAtPosition = useCallback((x: number, y: number): Date | null => {
+    for (const [dateStr, element] of dayRefsRef.current.entries()) {
+      const rect = element.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return new Date(dateStr);
+      }
+    }
+    return null;
+  }, []);
+
+  // Mouse drag handlers
   const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
     if (!canManage || !onMoveSession) return;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', event.id);
     setDraggedEvent(event);
+    setIsDragging(true);
   };
 
   const handleDragEnd = () => {
     setDraggedEvent(null);
     setDropTargetDate(null);
+    setIsDragging(false);
   };
 
   const handleDragOver = (e: React.DragEvent, date: Date) => {
@@ -232,17 +301,87 @@ export function ModernCalendarView({
     
     // Don't move if dropping on the same date
     if (isSameDay(new Date(draggedEvent.session_date), date)) {
-      setDraggedEvent(null);
-      setDropTargetDate(null);
+      handleDragEnd();
       return;
     }
     
     // Open confirmation dialog
     setPendingMove({ event: draggedEvent, newDate: date });
     setMoveDialogOpen(true);
+    handleDragEnd();
+  };
+
+  // Touch drag handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent, event: CalendarEvent) => {
+    if (!canManage || !onMoveSession) return;
+    
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      event
+    };
+  }, [canManage, onMoveSession]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || !canManage || !onMoveSession) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    
+    // Start dragging if moved more than 10px
+    if (!isDragging && (deltaX > 10 || deltaY > 10)) {
+      setIsDragging(true);
+      setDraggedEvent(touchStartRef.current.event);
+      createDragGhost(touchStartRef.current.event, touch.clientX, touch.clientY);
+      e.preventDefault();
+    }
+    
+    if (isDragging) {
+      e.preventDefault();
+      updateDragGhost(touch.clientX, touch.clientY);
+      
+      // Find target date
+      const targetDate = findDateAtPosition(touch.clientX, touch.clientY);
+      setDropTargetDate(targetDate);
+    }
+  }, [canManage, onMoveSession, isDragging, createDragGhost, updateDragGhost, findDateAtPosition]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    if (isDragging && draggedEvent && dropTargetDate) {
+      // Don't move if dropping on the same date
+      if (!isSameDay(new Date(draggedEvent.session_date), dropTargetDate)) {
+        setPendingMove({ event: draggedEvent, newDate: dropTargetDate });
+        setMoveDialogOpen(true);
+      }
+    }
+    
+    removeDragGhost();
+    setIsDragging(false);
     setDraggedEvent(null);
     setDropTargetDate(null);
-  };
+    touchStartRef.current = null;
+  }, [isDragging, draggedEvent, dropTargetDate, removeDragGhost]);
+
+  // Register day ref
+  const registerDayRef = useCallback((date: Date, element: HTMLDivElement | null) => {
+    const key = date.toISOString();
+    if (element) {
+      dayRefsRef.current.set(key, element);
+    } else {
+      dayRefsRef.current.delete(key);
+    }
+  }, []);
+
+  // Cleanup ghost on unmount
+  useEffect(() => {
+    return () => {
+      removeDragGhost();
+    };
+  }, [removeDragGhost]);
 
   const handleConfirmMove = async () => {
     if (!pendingMove || !onMoveSession) return;
@@ -264,6 +403,130 @@ export function ModernCalendarView({
     setPendingMove(null);
   };
 
+  // Render a draggable event pill for month view
+  const renderMonthEventPill = (event: CalendarEvent) => {
+    const styles = getEventTypeStyles(event.type);
+    const isDraggable = canManage && !!onMoveSession;
+    const isRescheduled = event.is_rescheduled && event.reschedule_status === 'approved';
+    const isBeingDragged = draggedEvent?.id === event.id;
+    
+    return (
+      <div
+        key={event.id}
+        draggable={isDraggable}
+        onDragStart={(e) => handleDragStart(e, event)}
+        onDragEnd={handleDragEnd}
+        onTouchStart={(e) => handleTouchStart(e, event)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={cn(
+          "text-xs px-2 py-1 rounded-md flex items-center gap-1.5 transition-all select-none",
+          styles.bg, styles.text,
+          isDraggable && "cursor-grab active:cursor-grabbing touch-none",
+          isDraggable && "hover:shadow-md hover:scale-[1.02]",
+          isBeingDragged && "opacity-40 scale-95"
+        )}
+      >
+        {isDraggable && (
+          <GripVertical className="h-3 w-3 opacity-40 flex-shrink-0" />
+        )}
+        <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", styles.dot)} />
+        <span className="truncate font-medium flex-1 min-w-0">
+          {event.start_time?.slice(0, 5)} {event.title}
+        </span>
+        {isRescheduled && (
+          <span className="flex-shrink-0 px-1 py-0.5 text-[9px] font-semibold rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+            Reporté
+          </span>
+        )}
+        {event.reschedule_status === 'pending' && (
+          <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+        )}
+      </div>
+    );
+  };
+
+  // Render week view event card
+  const renderWeekEventCard = (event: CalendarEvent, day: Date, columnEvents: CalendarEvent[], eventIndex: number) => {
+    const startHour = getEventStartHour(event);
+    const startMinutes = getEventStartMinutes(event);
+    const durationMinutes = getEventDurationInMinutes(event);
+    
+    // Calculate position (7h is the first hour displayed)
+    const topPosition = ((startHour - 7) * 60 + startMinutes) * (48 / 60); // 48px per hour
+    const height = Math.max(durationMinutes * (48 / 60), 36); // Minimum 36px height
+    
+    const styles = getEventTypeStyles(event.type);
+    const isDraggable = canManage && !!onMoveSession;
+    const isBeingDragged = draggedEvent?.id === event.id;
+    const isRescheduled = event.is_rescheduled && event.reschedule_status === 'approved';
+    
+    // Handle overlapping events
+    const overlappingEvents = columnEvents.filter(other => {
+      if (other.id === event.id) return false;
+      const otherStart = getEventStartHour(other) * 60 + getEventStartMinutes(other);
+      const otherEnd = otherStart + getEventDurationInMinutes(other);
+      const eventStart = startHour * 60 + startMinutes;
+      const eventEnd = eventStart + durationMinutes;
+      return !(eventEnd <= otherStart || eventStart >= otherEnd);
+    });
+    
+    const width = overlappingEvents.length > 0 ? `calc(${100 / (overlappingEvents.length + 1)}% - 4px)` : 'calc(100% - 8px)';
+    const leftOffset = overlappingEvents.length > 0 ? `calc(${(eventIndex % (overlappingEvents.length + 1)) * (100 / (overlappingEvents.length + 1))}% + 4px)` : '4px';
+    
+    return (
+      <div
+        key={event.id}
+        draggable={isDraggable}
+        onDragStart={(e) => handleDragStart(e, event)}
+        onDragEnd={handleDragEnd}
+        onTouchStart={(e) => handleTouchStart(e, event)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={cn(
+          "absolute rounded-md shadow-sm border-l-[3px] overflow-hidden transition-all",
+          styles.bg, styles.border,
+          isDraggable && "cursor-grab active:cursor-grabbing touch-none",
+          isDraggable && "hover:shadow-lg hover:z-30",
+          isBeingDragged && "opacity-40 scale-95"
+        )}
+        style={{
+          top: `${topPosition}px`,
+          height: `${height}px`,
+          left: leftOffset,
+          width: width,
+          zIndex: 10 + eventIndex
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDateSelect(day);
+        }}
+      >
+        <div className="p-1.5 h-full flex flex-col overflow-hidden">
+          <div className="flex items-start gap-1">
+            {isDraggable && <Move className="h-3 w-3 opacity-40 flex-shrink-0 mt-0.5" />}
+            <div className={cn("font-semibold text-[11px] leading-tight truncate flex-1", styles.text)}>
+              {event.title}
+            </div>
+            {isRescheduled && (
+              <RefreshCw className="h-3 w-3 text-orange-500 flex-shrink-0" />
+            )}
+          </div>
+          {height >= 48 && event.start_time && (
+            <div className={cn("text-[10px] opacity-75 mt-0.5", styles.text)}>
+              {event.start_time?.slice(0, 5)} - {event.end_time?.slice(0, 5)}
+            </div>
+          )}
+          {height >= 60 && event.class_name && (
+            <div className={cn("text-[10px] font-medium mt-auto truncate", styles.text)}>
+              {event.class_name}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with Filters */}
@@ -274,6 +537,11 @@ export function ModernCalendarView({
             <h2 className="text-2xl font-semibold tracking-tight">Calendrier</h2>
             <p className="text-sm text-muted-foreground">
               {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+              {canManage && onMoveSession && (
+                <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">
+                  Glissez pour déplacer
+                </span>
+              )}
             </p>
           </div>
           
@@ -387,7 +655,7 @@ export function ModernCalendarView({
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid lg:grid-cols-[1fr_380px] gap-4">
+      <div className="grid lg:grid-cols-[1fr_380px] gap-4" ref={calendarRef}>
         {/* Calendar */}
         <Card className="overflow-hidden shadow-sm">
           <CardContent className="p-0">
@@ -414,15 +682,16 @@ export function ModernCalendarView({
                     return (
                       <div
                         key={idx}
+                        ref={(el) => registerDayRef(day, el)}
                         onClick={() => onDateSelect(day)}
                         onDragOver={(e) => handleDragOver(e, day)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, day)}
                         className={cn(
-                          "relative border-r border-b p-2 text-left transition-all hover:bg-muted/50 min-h-[110px] cursor-pointer",
+                          "relative border-r border-b p-2 text-left transition-all hover:bg-muted/50 min-h-[120px] cursor-pointer",
                           !isCurrentMonth && "bg-muted/20 text-muted-foreground/50",
                           isSelected && "bg-primary/5 ring-2 ring-primary ring-inset",
-                          isDropTarget && "bg-primary/10 ring-2 ring-primary ring-dashed",
+                          isDropTarget && "bg-primary/20 ring-2 ring-primary ring-dashed scale-[0.98]",
                         )}
                       >
                         <div className={cn(
@@ -433,40 +702,8 @@ export function ModernCalendarView({
                           {format(day, 'd')}
                         </div>
                         
-                        <div className="space-y-1 mt-1">
-                          {dayEvents.slice(0, 3).map(event => {
-                            const styles = getEventTypeStyles(event.type);
-                            const isDraggable = canManage && !!onMoveSession;
-                            const isRescheduled = event.is_rescheduled && event.reschedule_status === 'approved';
-                            
-                            return (
-                              <div
-                                key={event.id}
-                                draggable={isDraggable}
-                                onDragStart={(e) => handleDragStart(e, event)}
-                                onDragEnd={handleDragEnd}
-                                className={cn(
-                                  "text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1",
-                                  styles.bg, styles.text,
-                                  isDraggable && "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
-                                  draggedEvent?.id === event.id && "opacity-50"
-                                )}
-                              >
-                                <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", styles.dot)} />
-                                <span className="truncate font-medium">
-                                  {event.start_time?.slice(0, 5)} {event.title}
-                                </span>
-                                {isRescheduled && (
-                                  <span className="flex-shrink-0 px-1 py-0.5 text-[10px] font-semibold rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
-                                    Reporté
-                                  </span>
-                                )}
-                                {event.reschedule_status === 'pending' && (
-                                  <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
-                                )}
-                              </div>
-                            );
-                          })}
+                        <div className="space-y-1 mt-1.5">
+                          {dayEvents.slice(0, 3).map(event => renderMonthEventPill(event))}
                           {dayEvents.length > 3 && (
                             <div className="text-xs text-primary font-medium pl-1 hover:underline">
                               +{dayEvents.length - 3} autres
@@ -479,23 +716,29 @@ export function ModernCalendarView({
                 </div>
               </>
             ) : (
-              // Week View
-              <ScrollArea className="h-[600px]">
-                <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b sticky top-0 z-20 bg-background">
-                  <div className="p-3 border-r bg-muted/30" />
+              // Week View - Improved layout
+              <div className="overflow-hidden">
+                {/* Week header */}
+                <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b bg-muted/30">
+                  <div className="p-2 border-r" />
                   {weekDaysArray.map((day) => (
                     <div 
                       key={day.toISOString()} 
+                      ref={(el) => registerDayRef(day, el)}
                       className={cn(
-                        "p-3 text-center border-r",
-                        isToday(day) && "bg-primary/5"
+                        "p-2 text-center border-r transition-colors",
+                        isToday(day) && "bg-primary/10",
+                        dropTargetDate && isSameDay(day, dropTargetDate) && "bg-primary/20"
                       )}
+                      onDragOver={(e) => handleDragOver(e, day)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, day)}
                     >
-                      <div className="text-xs text-muted-foreground font-medium uppercase">
+                      <div className="text-[10px] text-muted-foreground font-medium uppercase">
                         {format(day, 'EEE', { locale: fr })}
                       </div>
                       <div className={cn(
-                        "text-lg font-semibold mt-1",
+                        "text-base font-semibold",
                         isToday(day) && "text-primary"
                       )}>
                         {format(day, 'd')}
@@ -504,90 +747,63 @@ export function ModernCalendarView({
                   ))}
                 </div>
                 
-                <div className="relative grid grid-cols-[60px_repeat(7,1fr)]">
-                  <div className="sticky left-0 z-10 bg-background">
-                    {hours.map((hour) => (
-                      <div 
-                        key={hour} 
-                        className="h-16 border-b border-r bg-muted/20 px-2 py-1 text-xs font-medium text-muted-foreground"
-                      >
-                        {hour.toString().padStart(2, '0')}:00
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {weekDaysArray.map((day) => {
-                    const dayEvents = getEventsForDay(day);
-                    const isCurrentDay = isToday(day);
-                    
-                    return (
-                      <div
-                        key={day.toISOString()}
-                        className={cn(
-                          "relative border-r",
-                          isCurrentDay && "bg-primary/5"
-                        )}
-                      >
-                        {hours.map((hour) => (
-                          <div
-                            key={hour}
-                            className="h-16 border-b hover:bg-muted/30 cursor-pointer transition-colors"
-                            onClick={() => onDateSelect(day)}
-                          />
-                        ))}
-                        
-                        <div className="absolute inset-0 pointer-events-none">
-                          {dayEvents.map((event, idx) => {
-                            const startHour = getEventStartHour(event);
-                            const duration = getEventDurationInHours(event);
-                            const topPosition = (startHour - 6) * 64;
-                            const height = Math.max(duration * 64, 32);
-                            const styles = getEventTypeStyles(event.type);
-                            
-                            return (
-                              <div
-                                key={event.id}
-                                className={cn(
-                                  "absolute left-0.5 right-0.5 rounded-md shadow-sm pointer-events-auto cursor-pointer hover:shadow-md transition-shadow overflow-hidden border-l-2",
-                                  styles.bg, styles.border
-                                )}
-                                style={{
-                                  top: `${topPosition}px`,
-                                  height: `${height}px`,
-                                  zIndex: 5 + idx
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDateSelect(day);
-                                }}
-                              >
-                                <div className="p-1.5 h-full flex flex-col">
-                                  <div className={cn("font-semibold text-xs truncate", styles.text)}>{event.title}</div>
-                                  {event.start_time && (
-                                    <div className={cn("text-xs opacity-80", styles.text)}>
-                                      {event.start_time?.slice(0, 5)} - {event.end_time?.slice(0, 5)}
-                                    </div>
-                                  )}
-                                  {event.class_name && (
-                                    <div className={cn("text-xs font-medium mt-auto truncate", styles.text)}>
-                                      {event.class_name}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                {/* Time grid */}
+                <ScrollArea className="h-[560px]">
+                  <div className="relative grid grid-cols-[50px_repeat(7,1fr)] min-w-[700px]">
+                    {/* Hours column */}
+                    <div className="sticky left-0 z-10 bg-background">
+                      {hours.map((hour) => (
+                        <div 
+                          key={hour} 
+                          className="h-12 border-b border-r px-1 flex items-start pt-0.5 text-[10px] font-medium text-muted-foreground bg-muted/10"
+                        >
+                          {hour.toString().padStart(2, '0')}:00
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                      ))}
+                    </div>
+                    
+                    {/* Day columns */}
+                    {weekDaysArray.map((day) => {
+                      const dayEvents = getEventsForDay(day);
+                      const isCurrentDay = isToday(day);
+                      const isDropTargetDay = dropTargetDate && isSameDay(day, dropTargetDate);
+                      
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "relative border-r",
+                            isCurrentDay && "bg-primary/5",
+                            isDropTargetDay && "bg-primary/10"
+                          )}
+                          onDragOver={(e) => handleDragOver(e, day)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, day)}
+                        >
+                          {/* Hour slots */}
+                          {hours.map((hour) => (
+                            <div
+                              key={hour}
+                              className="h-12 border-b hover:bg-muted/30 cursor-pointer transition-colors"
+                              onClick={() => onDateSelect(day)}
+                            />
+                          ))}
+                          
+                          {/* Events overlay */}
+                          <div className="absolute inset-0 overflow-hidden">
+                            {dayEvents.map((event, idx) => renderWeekEventCard(event, day, dayEvents, idx))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Events sidebar - Redesigned */}
+        {/* Events sidebar */}
         <Card className="shadow-sm overflow-hidden">
           <div className="p-4 border-b bg-muted/30">
             <div className="flex items-center justify-between">
