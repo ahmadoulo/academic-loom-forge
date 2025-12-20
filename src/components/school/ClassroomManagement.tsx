@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useClassrooms } from "@/hooks/useClassrooms";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useClasses } from "@/hooks/useClasses";
@@ -13,12 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Plus, Building2, Users, MapPin, Trash2, Calendar, Clock, 
-  Wand2, CheckCircle2, AlertTriangle, ChevronRight, Settings2,
-  Sparkles, LayoutGrid, List
+  Wand2, CheckCircle2, AlertTriangle, ChevronRight, Filter,
+  Sparkles, LayoutGrid, List, Lightbulb, ArrowRight, X,
+  CalendarRange, Search, Edit2, Check
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -32,6 +34,23 @@ interface AutoAssignmentResult {
   className: string;
   studentCount: number;
   reason: string;
+  efficiency?: number; // % d'efficacité de la salle
+}
+
+interface ProblemResult {
+  assignment: any;
+  className: string;
+  studentCount: number;
+  reason: string;
+  solutions: Solution[];
+}
+
+interface Solution {
+  id: string;
+  label: string;
+  description: string;
+  action: () => void;
+  type: "primary" | "secondary";
 }
 
 export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
@@ -45,8 +64,13 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const [isAutoAssignDialogOpen, setIsAutoAssignDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [autoAssignResults, setAutoAssignResults] = useState<AutoAssignmentResult[]>([]);
   const [autoAssignStep, setAutoAssignStep] = useState<"preview" | "processing" | "complete">("preview");
+  
+  // Filtres pour l'assignation automatique
+  const [filterClassId, setFilterClassId] = useState<string>("all");
+  const [filterDateRange, setFilterDateRange] = useState<"7" | "14" | "30" | "all">("7");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"valid" | "invalid">("valid");
   
   const [newClassroom, setNewClassroom] = useState({
     name: "",
@@ -70,35 +94,54 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     return counts;
   }, [students]);
 
-  // Sessions non assignées à une salle
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Sessions non assignées à une salle avec filtres
+  const today = startOfDay(new Date());
   
+  const getDateRangeEnd = useCallback(() => {
+    if (filterDateRange === "all") return null;
+    return endOfDay(addDays(today, parseInt(filterDateRange)));
+  }, [filterDateRange, today]);
+
   const unassignedSessions = useMemo(() => {
     const assignedSessionIds = new Set(classroomAssignments.map(ca => ca.assignment_id));
+    const dateEnd = getDateRangeEnd();
+    
+    return assignments.filter((assignment) => {
+      if (assignment.type !== "course") return false;
+      if (!assignment.session_date || !assignment.start_time || !assignment.end_time) return false;
+      
+      const sessionDate = parseISO(assignment.session_date);
+      if (sessionDate < today) return false;
+      if (dateEnd && sessionDate > dateEnd) return false;
+      if (assignedSessionIds.has(assignment.id)) return false;
+      if (filterClassId !== "all" && assignment.class_id !== filterClassId) return false;
+      
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchTitle = assignment.title?.toLowerCase().includes(query);
+        const matchClass = assignment.classes?.name?.toLowerCase().includes(query);
+        if (!matchTitle && !matchClass) return false;
+      }
+      
+      return true;
+    });
+  }, [assignments, classroomAssignments, today, getDateRangeEnd, filterClassId, searchQuery]);
+
+  const availableSessions = useMemo(() => {
     return assignments.filter(
       (assignment) =>
         assignment.type === "course" &&
         assignment.session_date &&
         assignment.start_time &&
         assignment.end_time &&
-        new Date(assignment.session_date) >= today &&
-        !assignedSessionIds.has(assignment.id)
+        parseISO(assignment.session_date) >= today
     );
-  }, [assignments, classroomAssignments]);
+  }, [assignments, today]);
 
-  const availableSessions = assignments.filter(
-    (assignment) =>
-      assignment.type === "course" &&
-      assignment.session_date &&
-      assignment.start_time &&
-      assignment.end_time &&
-      new Date(assignment.session_date) >= today
-  );
-
-  // Algorithme d'assignation automatique
-  const calculateAutoAssignments = useMemo(() => {
-    const results: AutoAssignmentResult[] = [];
+  // Algorithme d'assignation automatique OPTIMISÉ
+  const { validAssignments, problemAssignments } = useMemo(() => {
+    const valid: AutoAssignmentResult[] = [];
+    const problems: ProblemResult[] = [];
     const tempAssignments = new Map<string, { date: string; start: string; end: string }[]>();
 
     // Initialiser les créneaux occupés par salle
@@ -114,21 +157,35 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       }
     });
 
+    // Trier les séances par nombre d'étudiants décroissant (les plus grandes classes en premier)
+    const sortedSessions = [...unassignedSessions].sort((a, b) => {
+      const countA = studentCountByClass[a.class_id] || 0;
+      const countB = studentCountByClass[b.class_id] || 0;
+      return countB - countA; // Plus grand en premier
+    });
+
     // Pour chaque séance non assignée
-    for (const session of unassignedSessions) {
+    for (const session of sortedSessions) {
       const classInfo = classes.find(c => c.id === session.class_id);
       const studentCount = studentCountByClass[session.class_id] || 0;
       const className = classInfo?.name || "Classe inconnue";
 
-      // Trouver la salle optimale
-      const sortedClassrooms = [...classrooms]
+      // Trouver toutes les salles avec capacité suffisante, triées par "best fit"
+      // Best fit = la salle la plus proche de la capacité nécessaire (moins de gaspillage)
+      const suitableClassrooms = [...classrooms]
         .filter(c => c.is_active && c.capacity >= studentCount)
-        .sort((a, b) => a.capacity - b.capacity); // Préférer la plus petite salle adaptée
+        .map(c => ({
+          ...c,
+          waste: c.capacity - studentCount, // Gaspillage de places
+          efficiency: Math.round((studentCount / c.capacity) * 100)
+        }))
+        .sort((a, b) => a.waste - b.waste); // Moins de gaspillage en premier
 
       let bestClassroom = null;
       let assignmentReason = "";
+      let efficiency = 0;
 
-      for (const classroom of sortedClassrooms) {
+      for (const classroom of suitableClassrooms) {
         const slots = tempAssignments.get(classroom.id) || [];
         const hasConflict = slots.some(slot => 
           slot.date === session.session_date &&
@@ -138,7 +195,8 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
         if (!hasConflict) {
           bestClassroom = classroom;
-          assignmentReason = `Capacité ${classroom.capacity} places pour ${studentCount} étudiants`;
+          efficiency = classroom.efficiency;
+          assignmentReason = `${classroom.capacity} places • ${efficiency}% utilisé`;
           
           // Marquer ce créneau comme occupé
           slots.push({
@@ -152,36 +210,109 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       }
 
       if (bestClassroom) {
-        results.push({
+        valid.push({
           assignment: session,
           classroom: bestClassroom,
           className,
           studentCount,
           reason: assignmentReason,
-        });
-      } else if (sortedClassrooms.length === 0) {
-        // Aucune salle avec capacité suffisante
-        results.push({
-          assignment: session,
-          classroom: null,
-          className,
-          studentCount,
-          reason: `Aucune salle avec capacité ≥ ${studentCount} places disponible`,
+          efficiency
         });
       } else {
-        // Toutes les salles sont occupées
-        results.push({
-          assignment: session,
-          classroom: null,
-          className,
-          studentCount,
-          reason: "Toutes les salles adaptées sont occupées à cet horaire",
-        });
+        // Créer les solutions pour les problèmes
+        const solutions: Solution[] = [];
+        
+        if (suitableClassrooms.length === 0) {
+          // Aucune salle avec capacité suffisante
+          const largestRoom = classrooms.reduce((max, c) => 
+            c.is_active && c.capacity > (max?.capacity || 0) ? c : max, 
+            null as typeof classrooms[0] | null
+          );
+          
+          if (largestRoom) {
+            solutions.push({
+              id: "use_largest",
+              label: `Utiliser ${largestRoom.name}`,
+              description: `Salle de ${largestRoom.capacity} places (capacité insuffisante de ${studentCount - largestRoom.capacity} places)`,
+              action: () => {
+                assignClassroom({
+                  classroom_id: largestRoom.id,
+                  assignment_id: session.id,
+                });
+              },
+              type: "secondary"
+            });
+          }
+          
+          solutions.push({
+            id: "create_room",
+            label: "Créer une nouvelle salle",
+            description: `Créer une salle avec au moins ${studentCount} places`,
+            action: () => {
+              setNewClassroom(prev => ({ ...prev, capacity: studentCount + 5 }));
+              setIsAutoAssignDialogOpen(false);
+              setIsAddDialogOpen(true);
+            },
+            type: "primary"
+          });
+          
+          problems.push({
+            assignment: session,
+            className,
+            studentCount,
+            reason: `Aucune salle disponible avec ${studentCount}+ places`,
+            solutions
+          });
+        } else {
+          // Toutes les salles sont occupées
+          const conflictingRooms = suitableClassrooms.map(classroom => {
+            const slots = tempAssignments.get(classroom.id) || [];
+            const conflictSlot = slots.find(slot => 
+              slot.date === session.session_date &&
+              slot.start < session.end_time! &&
+              slot.end > session.start_time!
+            );
+            return { classroom, conflictSlot };
+          }).filter(r => r.conflictSlot);
+
+          solutions.push({
+            id: "reschedule",
+            label: "Reporter la séance",
+            description: "Déplacer cette séance à un autre créneau horaire",
+            action: () => {
+              toast.info("Utilisez le calendrier pour reporter cette séance");
+              setIsAutoAssignDialogOpen(false);
+            },
+            type: "secondary"
+          });
+
+          // Si une salle sera libre bientôt
+          const nextAvailableRoom = suitableClassrooms[0];
+          if (nextAvailableRoom) {
+            solutions.push({
+              id: "wait_slot",
+              label: `Attendre un créneau libre`,
+              description: `${nextAvailableRoom.name} sera disponible à un autre horaire`,
+              action: () => {
+                toast.info(`Consultez le planning de ${nextAvailableRoom.name}`);
+              },
+              type: "secondary"
+            });
+          }
+
+          problems.push({
+            assignment: session,
+            className,
+            studentCount,
+            reason: `Toutes les salles adaptées sont occupées le ${format(parseISO(session.session_date!), "dd/MM à HH:mm", { locale: fr })}`,
+            solutions
+          });
+        }
       }
     }
 
-    return results;
-  }, [unassignedSessions, classrooms, classroomAssignments, classes, studentCountByClass]);
+    return { validAssignments: valid, problemAssignments: problems };
+  }, [unassignedSessions, classrooms, classroomAssignments, classes, studentCountByClass, assignClassroom]);
 
   const handleCreateClassroom = () => {
     createClassroom({
@@ -206,7 +337,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     setAutoAssignStep("processing");
     setIsProcessing(true);
 
-    const validAssignments = autoAssignResults.filter(r => r.classroom !== null);
     let successCount = 0;
 
     for (const result of validAssignments) {
@@ -219,8 +349,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
             onSuccess: () => resolve(),
             onError: (error) => reject(error),
           } as any);
-          // Fallback si pas de callback
-          setTimeout(resolve, 500);
+          setTimeout(resolve, 300);
         });
         successCount++;
       } catch (error) {
@@ -234,9 +363,21 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   };
 
   const openAutoAssignDialog = () => {
-    setAutoAssignResults(calculateAutoAssignments);
     setAutoAssignStep("preview");
+    setActiveTab(problemAssignments.length > 0 ? "invalid" : "valid");
     setIsAutoAssignDialogOpen(true);
+  };
+
+  const handleManualRoomChange = (assignmentId: string, newClassroomId: string) => {
+    // Trouver et mettre à jour dans la liste des résultats
+    const result = validAssignments.find(r => r.assignment.id === assignmentId);
+    if (result) {
+      const newRoom = classrooms.find(c => c.id === newClassroomId);
+      if (newRoom) {
+        result.classroom = newRoom;
+        result.reason = `${newRoom.capacity} places (manuel)`;
+      }
+    }
   };
 
   const getClassroomStatus = (classroomId: string) => {
@@ -262,13 +403,14 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const getOccupancyRate = (classroomId: string) => {
     const roomAssignments = getClassroomAssignments(classroomId);
     const futureAssignments = roomAssignments.filter(
-      ca => ca.assignments && new Date(ca.assignments.session_date) >= today
+      ca => ca.assignments && parseISO(ca.assignments.session_date) >= today
     );
-    return Math.min((futureAssignments.length / 20) * 100, 100); // Max 20 séances
+    return Math.min((futureAssignments.length / 20) * 100, 100);
   };
 
-  const validAutoAssignments = autoAssignResults.filter(r => r.classroom !== null);
-  const invalidAutoAssignments = autoAssignResults.filter(r => r.classroom === null);
+  // Stats pour le header
+  const totalProblems = problemAssignments.length;
+  const totalAssignable = validAssignments.length;
 
   return (
     <div className="space-y-6">
@@ -281,6 +423,19 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Alerte problèmes si présents */}
+          {totalProblems > 0 && (
+            <Button 
+              variant="destructive"
+              size="sm"
+              onClick={openAutoAssignDialog}
+              className="gap-2 animate-pulse"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {totalProblems} problème(s)
+            </Button>
+          )}
+
           {/* Bouton Assignation Automatique */}
           <Button 
             variant="default" 
@@ -290,9 +445,9 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           >
             <Wand2 className="h-4 w-4" />
             Assignation Auto
-            {unassignedSessions.length > 0 && (
+            {totalAssignable > 0 && (
               <Badge variant="secondary" className="ml-1 bg-background/20">
-                {unassignedSessions.length}
+                {totalAssignable}
               </Badge>
             )}
           </Button>
@@ -353,7 +508,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                             <div className="flex flex-col">
                               <span>{session.title} - {session.classes?.name}</span>
                               <span className="text-xs text-muted-foreground">
-                                {format(new Date(session.session_date!), "dd/MM/yyyy", { locale: fr })} • {session.start_time}-{session.end_time} • {studentCount} étudiants
+                                {format(parseISO(session.session_date!), "dd/MM/yyyy", { locale: fr })} • {session.start_time}-{session.end_time} • {studentCount} étudiants
                               </span>
                             </div>
                           </SelectItem>
@@ -463,70 +618,177 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
         </div>
       </div>
 
-      {/* Dialog Assignation Automatique */}
+      {/* Dialog Assignation Automatique Amélioré */}
       <Dialog open={isAutoAssignDialogOpen} onOpenChange={setIsAutoAssignDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Assignation Automatique des Salles
             </DialogTitle>
             <DialogDescription>
-              Optimisation basée sur la capacité des salles et le nombre d'étudiants par classe
+              Optimisation intelligente basée sur la capacité et le nombre d'étudiants
             </DialogDescription>
           </DialogHeader>
 
           {autoAssignStep === "preview" && (
             <>
-              <Tabs defaultValue="valid" className="flex-1 overflow-hidden flex flex-col">
+              {/* Barre de filtres */}
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                </div>
+                
+                <Select value={filterClassId} onValueChange={setFilterClassId}>
+                  <SelectTrigger className="w-[180px] h-8">
+                    <SelectValue placeholder="Toutes les classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les classes</SelectItem>
+                    {classes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={filterDateRange} onValueChange={(v: any) => setFilterDateRange(v)}>
+                  <SelectTrigger className="w-[140px] h-8">
+                    <CalendarRange className="h-3 w-3 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 prochains jours</SelectItem>
+                    <SelectItem value="14">14 prochains jours</SelectItem>
+                    <SelectItem value="30">30 prochains jours</SelectItem>
+                    <SelectItem value="all">Toutes les dates</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="relative flex-1 min-w-[150px]">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-7 text-sm"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Alerte si problèmes */}
+              {problemAssignments.length > 0 && activeTab === "valid" && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between">
+                    <span>{problemAssignments.length} séance(s) avec problème nécessitent votre attention</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setActiveTab("invalid")}
+                      className="ml-2 bg-background"
+                    >
+                      Voir les problèmes
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex-1 overflow-hidden flex flex-col">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="valid" className="gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Assignables ({validAutoAssignments.length})
+                    Assignables ({validAssignments.length})
                   </TabsTrigger>
-                  <TabsTrigger value="invalid" className="gap-2">
+                  <TabsTrigger value="invalid" className="gap-2 relative">
                     <AlertTriangle className="h-4 w-4" />
-                    Problèmes ({invalidAutoAssignments.length})
+                    Problèmes ({problemAssignments.length})
+                    {problemAssignments.length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full animate-pulse" />
+                    )}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="valid" className="flex-1 overflow-hidden mt-4">
-                  <ScrollArea className="h-[300px] pr-4">
-                    {validAutoAssignments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <CheckCircle2 className="h-10 w-10 text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">Aucune séance à assigner</p>
+                  <ScrollArea className="h-[320px] pr-4">
+                    {validAssignments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-3" />
+                        <p className="font-medium">Aucune séance à assigner</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Modifiez les filtres ou vérifiez les problèmes
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {validAutoAssignments.map((result, index) => (
+                        {validAssignments.map((result, index) => (
                           <div
                             key={index}
-                            className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                            className="p-3 rounded-lg border bg-card hover:bg-accent/30 transition-all group"
                           >
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start justify-between gap-3">
+                              {/* Info séance */}
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">
-                                  {result.assignment.title}
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm truncate">
+                                    {result.assignment.title}
+                                  </p>
+                                  {result.efficiency && result.efficiency >= 80 && (
+                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                      Optimal
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {result.className} • <Users className="h-3 w-3 inline" /> {result.studentCount}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {result.className} • {result.studentCount} étudiants
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="outline" className="text-xs">
-                                    {format(new Date(result.assignment.session_date), "dd MMM", { locale: fr })}
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <Badge variant="outline" className="text-xs font-normal">
+                                    <Calendar className="h-3 w-3 mr-1" />
+                                    {format(parseISO(result.assignment.session_date), "EEE dd MMM", { locale: fr })}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground">
+                                  <Badge variant="outline" className="text-xs font-normal">
+                                    <Clock className="h-3 w-3 mr-1" />
                                     {result.assignment.start_time} - {result.assignment.end_time}
-                                  </span>
+                                  </Badge>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                <div className="text-right">
-                                  <p className="font-medium text-sm">{result.classroom.name}</p>
-                                  <p className="text-xs text-muted-foreground">{result.reason}</p>
-                                </div>
+
+                              {/* Arrow */}
+                              <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
+
+                              {/* Salle assignée */}
+                              <div className="text-right min-w-[120px]">
+                                <Select
+                                  value={result.classroom.id}
+                                  onValueChange={(v) => handleManualRoomChange(result.assignment.id, v)}
+                                >
+                                  <SelectTrigger className="h-8 w-auto border-0 bg-primary/10 hover:bg-primary/20">
+                                    <div className="flex items-center gap-1">
+                                      <Building2 className="h-3 w-3" />
+                                      <span className="font-medium">{result.classroom.name}</span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {classrooms.filter(c => c.is_active && c.capacity >= result.studentCount).map(c => (
+                                      <SelectItem key={c.id} value={c.id}>
+                                        <span>{c.name} ({c.capacity} places)</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {result.reason}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -537,29 +799,77 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                 </TabsContent>
 
                 <TabsContent value="invalid" className="flex-1 overflow-hidden mt-4">
-                  <ScrollArea className="h-[300px] pr-4">
-                    {invalidAutoAssignments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
-                        <p className="text-sm text-muted-foreground">Toutes les séances peuvent être assignées</p>
+                  <ScrollArea className="h-[320px] pr-4">
+                    {problemAssignments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <CheckCircle2 className="h-12 w-12 text-green-500 mb-3" />
+                        <p className="font-medium text-green-600">Aucun problème détecté</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Toutes les séances peuvent être assignées automatiquement
+                        </p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        {invalidAutoAssignments.map((result, index) => (
+                      <div className="space-y-3">
+                        {problemAssignments.map((problem, index) => (
                           <div
                             key={index}
-                            className="p-3 rounded-lg border border-destructive/30 bg-destructive/5"
+                            className="p-4 rounded-lg border-2 border-destructive/30 bg-destructive/5"
                           >
-                            <div className="flex items-start gap-3">
-                              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm">{result.assignment.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {result.className} • {result.studentCount} étudiants
+                            {/* Info problème */}
+                            <div className="flex items-start gap-3 mb-3">
+                              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="font-medium">{problem.assignment.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {problem.className} • {problem.studentCount} étudiants
                                 </p>
-                                <p className="text-xs text-destructive mt-1">{result.reason}</p>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <Badge variant="outline" className="text-xs border-destructive/30">
+                                    <Calendar className="h-3 w-3 mr-1" />
+                                    {format(parseISO(problem.assignment.session_date), "EEE dd MMM yyyy", { locale: fr })}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs border-destructive/30">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {problem.assignment.start_time} - {problem.assignment.end_time}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-destructive mt-2 font-medium">
+                                  {problem.reason}
+                                </p>
                               </div>
                             </div>
+
+                            {/* Solutions */}
+                            {problem.solutions.length > 0 && (
+                              <div className="bg-background rounded-lg p-3 border">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  <span className="text-sm font-medium">Solutions proposées</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {problem.solutions.map((solution) => (
+                                    <div 
+                                      key={solution.id}
+                                      className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                                    >
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium">{solution.label}</p>
+                                        <p className="text-xs text-muted-foreground">{solution.description}</p>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant={solution.type === "primary" ? "default" : "outline"}
+                                        onClick={solution.action}
+                                        className="shrink-0 gap-1"
+                                      >
+                                        <Check className="h-3 w-3" />
+                                        Appliquer
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -568,41 +878,50 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                 </TabsContent>
               </Tabs>
 
-              <DialogFooter className="gap-2">
+              <DialogFooter className="gap-2 border-t pt-4">
                 <Button variant="outline" onClick={() => setIsAutoAssignDialogOpen(false)}>
                   Annuler
                 </Button>
                 <Button 
                   onClick={handleAutoAssign} 
-                  disabled={validAutoAssignments.length === 0}
+                  disabled={validAssignments.length === 0}
                   className="gap-2"
                 >
                   <Wand2 className="h-4 w-4" />
-                  Assigner {validAutoAssignments.length} séance(s)
+                  Assigner {validAssignments.length} séance(s)
                 </Button>
               </DialogFooter>
             </>
           )}
 
           {autoAssignStep === "processing" && (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
               <p className="text-muted-foreground">Assignation en cours...</p>
+              <Progress value={66} className="w-48" />
             </div>
           )}
 
           {autoAssignStep === "complete" && (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
               <div className="text-center">
-                <p className="font-medium">Assignation terminée</p>
-                <p className="text-sm text-muted-foreground">
-                  {validAutoAssignments.length} séance(s) ont été assignées avec succès
+                <p className="font-medium text-lg">Assignation terminée</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {validAssignments.length} séance(s) ont été assignées avec succès
                 </p>
               </div>
-              <Button onClick={() => setIsAutoAssignDialogOpen(false)}>
+              {problemAssignments.length > 0 && (
+                <Alert className="max-w-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    {problemAssignments.length} séance(s) nécessitent une attention manuelle
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Button onClick={() => setIsAutoAssignDialogOpen(false)} className="mt-2">
                 Fermer
               </Button>
             </div>
@@ -671,7 +990,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                             >
                               <span className="truncate flex-1">{session.classes?.name}</span>
                               <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <span>{format(new Date(session.session_date), "dd/MM", { locale: fr })}</span>
+                                <span>{format(parseISO(session.session_date), "dd/MM", { locale: fr })}</span>
                                 <Button
                                   variant="ghost"
                                   size="sm"
