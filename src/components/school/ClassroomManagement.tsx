@@ -3,6 +3,7 @@ import { useClassrooms } from "@/hooks/useClassrooms";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
+import { useSchoolYears } from "@/hooks/useSchoolYears";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -16,13 +17,14 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Plus, Building2, Users, MapPin, Trash2, Calendar, Clock, 
-  Wand2, CheckCircle2, AlertTriangle, ChevronRight, Filter,
+  Wand2, CheckCircle2, AlertTriangle, Filter,
   Sparkles, LayoutGrid, List, Lightbulb, ArrowRight, X,
-  CalendarRange, Search, Edit2, Check
+  CalendarRange, Search, Check, Building, Layers, Eye
 } from "lucide-react";
-import { format, addDays, startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { format, addDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClassroomManagementProps {
   schoolId: string;
@@ -34,7 +36,8 @@ interface AutoAssignmentResult {
   className: string;
   studentCount: number;
   reason: string;
-  efficiency?: number; // % d'efficacité de la salle
+  efficiency?: number;
+  manualOverrideClassroomId?: string;
 }
 
 interface ProblemResult {
@@ -58,19 +61,30 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const { assignments } = useAssignments({ schoolId });
   const { classes } = useClasses(schoolId);
   const { students } = useStudents(schoolId);
+  const { schoolYears } = useSchoolYears();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isAutoAssignDialogOpen, setIsAutoAssignDialogOpen] = useState(false);
+  const [isArchitectViewOpen, setIsArchitectViewOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoAssignStep, setAutoAssignStep] = useState<"preview" | "processing" | "complete">("preview");
+  
+  // Vue architecte
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; start: string; end: string } | null>(null);
+  const [architectDate, setArchitectDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [architectStartTime, setArchitectStartTime] = useState("08:00");
+  const [architectEndTime, setArchitectEndTime] = useState("10:00");
   
   // Filtres pour l'assignation automatique
   const [filterClassId, setFilterClassId] = useState<string>("all");
   const [filterDateRange, setFilterDateRange] = useState<"7" | "14" | "30" | "all">("7");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"valid" | "invalid">("valid");
+  
+  // State pour gérer les changements manuels de salle
+  const [manualOverrides, setManualOverrides] = useState<Record<string, string>>({});
   
   const [newClassroom, setNewClassroom] = useState({
     name: "",
@@ -84,6 +98,17 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     classroom_id: "",
     assignment_id: "",
   });
+
+  // Récupérer l'année scolaire courante
+  const currentYear = useMemo(() => {
+    return schoolYears.find(y => y.is_current);
+  }, [schoolYears]);
+
+  // Filtrer les classes de l'année en cours uniquement
+  const currentYearClasses = useMemo(() => {
+    if (!currentYear) return classes;
+    return classes.filter(c => (c as any).school_year_id === currentYear.id);
+  }, [classes, currentYear]);
 
   // Calculer le nombre d'étudiants par classe
   const studentCountByClass = useMemo(() => {
@@ -124,8 +149,13 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       }
       
       return true;
+    }).sort((a, b) => {
+      // Trier du plus récent au plus ancien
+      const dateA = parseISO(a.session_date!);
+      const dateB = parseISO(b.session_date!);
+      return dateA.getTime() - dateB.getTime();
     });
-  }, [assignments, classroomAssignments, today, getDateRangeEnd, filterClassId, searchQuery]);
+  }, [assignments, classroomAssignments, today, getDateRangeEnd, filterClassId, searchQuery, currentYear]);
 
   const availableSessions = useMemo(() => {
     return assignments.filter(
@@ -138,11 +168,48 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     );
   }, [assignments, today]);
 
-  // Algorithme d'assignation automatique OPTIMISÉ
+  // Fonction pour vérifier la disponibilité d'une salle
+  const checkRoomAvailability = useCallback((
+    classroomId: string,
+    sessionDate: string,
+    startTime: string,
+    endTime: string,
+    excludeAssignmentId?: string,
+    tempAssignments?: Map<string, { date: string; start: string; end: string; assignmentId: string }[]>
+  ): boolean => {
+    // Vérifier les assignations existantes en base
+    const existingConflict = classroomAssignments.some(ca => {
+      if (ca.classroom_id !== classroomId) return false;
+      if (excludeAssignmentId && ca.assignment_id === excludeAssignmentId) return false;
+      if (!ca.assignments) return false;
+      
+      return ca.assignments.session_date === sessionDate &&
+        ca.assignments.start_time < endTime &&
+        ca.assignments.end_time > startTime;
+    });
+
+    if (existingConflict) return false;
+
+    // Vérifier les assignations temporaires (pour l'algo d'assignation auto)
+    if (tempAssignments) {
+      const slots = tempAssignments.get(classroomId) || [];
+      const tempConflict = slots.some(slot => 
+        slot.date === sessionDate &&
+        slot.start < endTime &&
+        slot.end > startTime &&
+        slot.assignmentId !== excludeAssignmentId
+      );
+      if (tempConflict) return false;
+    }
+
+    return true;
+  }, [classroomAssignments]);
+
+  // Algorithme d'assignation automatique OPTIMISÉ avec support des changements manuels
   const { validAssignments, problemAssignments } = useMemo(() => {
     const valid: AutoAssignmentResult[] = [];
     const problems: ProblemResult[] = [];
-    const tempAssignments = new Map<string, { date: string; start: string; end: string }[]>();
+    const tempAssignments = new Map<string, { date: string; start: string; end: string; assignmentId: string }[]>();
 
     // Initialiser les créneaux occupés par salle
     classroomAssignments.forEach(ca => {
@@ -152,6 +219,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           date: ca.assignments.session_date,
           start: ca.assignments.start_time,
           end: ca.assignments.end_time,
+          assignmentId: ca.assignment_id,
         });
         tempAssignments.set(ca.classroom_id, slots);
       }
@@ -161,7 +229,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     const sortedSessions = [...unassignedSessions].sort((a, b) => {
       const countA = studentCountByClass[a.class_id] || 0;
       const countB = studentCountByClass[b.class_id] || 0;
-      return countB - countA; // Plus grand en premier
+      return countB - countA;
     });
 
     // Pour chaque séance non assignée
@@ -170,39 +238,105 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       const studentCount = studentCountByClass[session.class_id] || 0;
       const className = classInfo?.name || "Classe inconnue";
 
-      // Trouver toutes les salles avec capacité suffisante, triées par "best fit"
+      // Vérifier si une salle a été manuellement sélectionnée
+      const manualRoomId = manualOverrides[session.id];
+      
+      if (manualRoomId) {
+        const manualRoom = classrooms.find(c => c.id === manualRoomId);
+        if (manualRoom) {
+          const isAvailable = checkRoomAvailability(
+            manualRoomId,
+            session.session_date!,
+            session.start_time!,
+            session.end_time!,
+            session.id,
+            tempAssignments
+          );
+
+          if (isAvailable) {
+            // Marquer ce créneau comme occupé
+            const slots = tempAssignments.get(manualRoomId) || [];
+            slots.push({
+              date: session.session_date!,
+              start: session.start_time!,
+              end: session.end_time!,
+              assignmentId: session.id,
+            });
+            tempAssignments.set(manualRoomId, slots);
+
+            valid.push({
+              assignment: session,
+              classroom: manualRoom,
+              className,
+              studentCount,
+              reason: `${manualRoom.capacity} places (sélection manuelle)`,
+              efficiency: Math.round((studentCount / manualRoom.capacity) * 100),
+              manualOverrideClassroomId: manualRoomId
+            });
+            continue;
+          } else {
+            // La salle manuelle n'est pas disponible
+            problems.push({
+              assignment: session,
+              className,
+              studentCount,
+              reason: `La salle ${manualRoom.name} sélectionnée est occupée à cet horaire`,
+              solutions: [{
+                id: "clear_selection",
+                label: "Annuler la sélection",
+                description: "Laisser l'algorithme choisir automatiquement",
+                action: () => {
+                  setManualOverrides(prev => {
+                    const next = { ...prev };
+                    delete next[session.id];
+                    return next;
+                  });
+                },
+                type: "primary"
+              }]
+            });
+            continue;
+          }
+        }
+      }
+
+      // Trouver toutes les salles avec capacité suffisante
       // Best fit = la salle la plus proche de la capacité nécessaire (moins de gaspillage)
       const suitableClassrooms = [...classrooms]
         .filter(c => c.is_active && c.capacity >= studentCount)
         .map(c => ({
           ...c,
-          waste: c.capacity - studentCount, // Gaspillage de places
+          waste: c.capacity - studentCount,
           efficiency: Math.round((studentCount / c.capacity) * 100)
         }))
-        .sort((a, b) => a.waste - b.waste); // Moins de gaspillage en premier
+        .sort((a, b) => a.waste - b.waste);
 
       let bestClassroom = null;
       let assignmentReason = "";
       let efficiency = 0;
 
       for (const classroom of suitableClassrooms) {
-        const slots = tempAssignments.get(classroom.id) || [];
-        const hasConflict = slots.some(slot => 
-          slot.date === session.session_date &&
-          slot.start < session.end_time! &&
-          slot.end > session.start_time!
+        const isAvailable = checkRoomAvailability(
+          classroom.id,
+          session.session_date!,
+          session.start_time!,
+          session.end_time!,
+          session.id,
+          tempAssignments
         );
 
-        if (!hasConflict) {
+        if (isAvailable) {
           bestClassroom = classroom;
           efficiency = classroom.efficiency;
           assignmentReason = `${classroom.capacity} places • ${efficiency}% utilisé`;
           
           // Marquer ce créneau comme occupé
+          const slots = tempAssignments.get(classroom.id) || [];
           slots.push({
             date: session.session_date!,
             start: session.start_time!,
             end: session.end_time!,
+            assignmentId: session.id,
           });
           tempAssignments.set(classroom.id, slots);
           break;
@@ -265,16 +399,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           });
         } else {
           // Toutes les salles sont occupées
-          const conflictingRooms = suitableClassrooms.map(classroom => {
-            const slots = tempAssignments.get(classroom.id) || [];
-            const conflictSlot = slots.find(slot => 
-              slot.date === session.session_date &&
-              slot.start < session.end_time! &&
-              slot.end > session.start_time!
-            );
-            return { classroom, conflictSlot };
-          }).filter(r => r.conflictSlot);
-
           solutions.push({
             id: "reschedule",
             label: "Reporter la séance",
@@ -286,17 +410,20 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
             type: "secondary"
           });
 
-          // Si une salle sera libre bientôt
           const nextAvailableRoom = suitableClassrooms[0];
           if (nextAvailableRoom) {
             solutions.push({
               id: "wait_slot",
-              label: `Attendre un créneau libre`,
-              description: `${nextAvailableRoom.name} sera disponible à un autre horaire`,
+              label: `Consulter le planning`,
+              description: `Voir quand ${nextAvailableRoom.name} sera disponible`,
               action: () => {
-                toast.info(`Consultez le planning de ${nextAvailableRoom.name}`);
+                setIsAutoAssignDialogOpen(false);
+                setIsArchitectViewOpen(true);
+                setArchitectDate(session.session_date!);
+                setArchitectStartTime(session.start_time!);
+                setArchitectEndTime(session.end_time!);
               },
-              type: "secondary"
+              type: "primary"
             });
           }
 
@@ -304,7 +431,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
             assignment: session,
             className,
             studentCount,
-            reason: `Toutes les salles adaptées sont occupées le ${format(parseISO(session.session_date!), "dd/MM à HH:mm", { locale: fr })}`,
+            reason: `Toutes les salles adaptées sont occupées le ${format(parseISO(session.session_date!), "EEEE dd MMMM", { locale: fr })} de ${session.start_time} à ${session.end_time}`,
             solutions
           });
         }
@@ -312,7 +439,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     }
 
     return { validAssignments: valid, problemAssignments: problems };
-  }, [unassignedSessions, classrooms, classroomAssignments, classes, studentCountByClass, assignClassroom]);
+  }, [unassignedSessions, classrooms, classroomAssignments, classes, studentCountByClass, assignClassroom, manualOverrides, checkRoomAvailability]);
 
   const handleCreateClassroom = () => {
     createClassroom({
@@ -324,7 +451,23 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     setNewClassroom({ name: "", capacity: 30, building: "", floor: "", equipment: [] });
   };
 
-  const handleAssignClassroom = () => {
+  const handleAssignClassroom = async () => {
+    // Vérifier la disponibilité avant d'assigner
+    const session = assignments.find(a => a.id === assignmentForm.assignment_id);
+    if (session) {
+      const isAvailable = checkRoomAvailability(
+        assignmentForm.classroom_id,
+        session.session_date!,
+        session.start_time!,
+        session.end_time!
+      );
+
+      if (!isAvailable) {
+        toast.error("Cette salle est déjà occupée à cet horaire");
+        return;
+      }
+    }
+
     assignClassroom({
       classroom_id: assignmentForm.classroom_id,
       assignment_id: assignmentForm.assignment_id,
@@ -341,9 +484,11 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
     for (const result of validAssignments) {
       try {
+        const classroomId = result.manualOverrideClassroomId || result.classroom.id;
+        
         await new Promise<void>((resolve, reject) => {
           assignClassroom({
-            classroom_id: result.classroom.id,
+            classroom_id: classroomId,
             assignment_id: result.assignment.id,
           }, {
             onSuccess: () => resolve(),
@@ -359,25 +504,91 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
     setIsProcessing(false);
     setAutoAssignStep("complete");
+    setManualOverrides({});
     toast.success(`${successCount} séance(s) assignée(s) automatiquement`);
   };
 
   const openAutoAssignDialog = () => {
     setAutoAssignStep("preview");
     setActiveTab(problemAssignments.length > 0 ? "invalid" : "valid");
+    setManualOverrides({});
     setIsAutoAssignDialogOpen(true);
   };
 
   const handleManualRoomChange = (assignmentId: string, newClassroomId: string) => {
-    // Trouver et mettre à jour dans la liste des résultats
-    const result = validAssignments.find(r => r.assignment.id === assignmentId);
-    if (result) {
-      const newRoom = classrooms.find(c => c.id === newClassroomId);
-      if (newRoom) {
-        result.classroom = newRoom;
-        result.reason = `${newRoom.capacity} places (manuel)`;
+    setManualOverrides(prev => ({
+      ...prev,
+      [assignmentId]: newClassroomId
+    }));
+  };
+
+  // Récupérer les salles disponibles pour un créneau donné dans la vue architecte
+  const getAvailableRoomsForSlot = useMemo(() => {
+    if (!selectedTimeSlot) return { available: classrooms, occupied: [] };
+
+    const available: typeof classrooms = [];
+    const occupied: { classroom: typeof classrooms[0]; session: any }[] = [];
+
+    classrooms.forEach(classroom => {
+      if (!classroom.is_active) return;
+
+      const isOccupied = classroomAssignments.some(ca => {
+        if (ca.classroom_id !== classroom.id) return false;
+        if (!ca.assignments) return false;
+        
+        return ca.assignments.session_date === selectedTimeSlot.date &&
+          ca.assignments.start_time < selectedTimeSlot.end &&
+          ca.assignments.end_time > selectedTimeSlot.start;
+      });
+
+      if (isOccupied) {
+        const occupyingAssignment = classroomAssignments.find(ca => 
+          ca.classroom_id === classroom.id &&
+          ca.assignments?.session_date === selectedTimeSlot.date &&
+          ca.assignments?.start_time < selectedTimeSlot.end &&
+          ca.assignments?.end_time > selectedTimeSlot.start
+        );
+        occupied.push({ classroom, session: occupyingAssignment?.assignments });
+      } else {
+        available.push(classroom);
       }
-    }
+    });
+
+    return { available, occupied };
+  }, [classrooms, classroomAssignments, selectedTimeSlot]);
+
+  // Grouper les salles par bâtiment pour la vue architecte
+  const classroomsByBuilding = useMemo(() => {
+    const grouped: Record<string, typeof classrooms> = {};
+    
+    classrooms.forEach(classroom => {
+      if (!classroom.is_active) return;
+      const building = classroom.building || "Sans bâtiment";
+      if (!grouped[building]) {
+        grouped[building] = [];
+      }
+      grouped[building].push(classroom);
+    });
+
+    // Trier les salles par étage puis par nom
+    Object.keys(grouped).forEach(building => {
+      grouped[building].sort((a, b) => {
+        const floorA = a.floor || "0";
+        const floorB = b.floor || "0";
+        if (floorA !== floorB) return floorA.localeCompare(floorB);
+        return a.name.localeCompare(b.name);
+      });
+    });
+
+    return grouped;
+  }, [classrooms]);
+
+  const handleApplyArchitectSlot = () => {
+    setSelectedTimeSlot({
+      date: architectDate,
+      start: architectStartTime,
+      end: architectEndTime
+    });
   };
 
   const getClassroomStatus = (classroomId: string) => {
@@ -408,7 +619,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     return Math.min((futureAssignments.length / 20) * 100, 100);
   };
 
-  // Stats pour le header
   const totalProblems = problemAssignments.length;
   const totalAssignable = validAssignments.length;
 
@@ -423,7 +633,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Alerte problèmes si présents */}
           {totalProblems > 0 && (
             <Button 
               variant="destructive"
@@ -436,7 +645,18 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
             </Button>
           )}
 
-          {/* Bouton Assignation Automatique */}
+          <Button 
+            variant="outline"
+            onClick={() => {
+              setSelectedTimeSlot(null);
+              setIsArchitectViewOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            Vue Architecte
+          </Button>
+
           <Button 
             variant="default" 
             onClick={openAutoAssignDialog}
@@ -618,7 +838,189 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
         </div>
       </div>
 
-      {/* Dialog Assignation Automatique Amélioré */}
+      {/* Dialog Vue Architecte */}
+      <Dialog open={isArchitectViewOpen} onOpenChange={setIsArchitectViewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-primary" />
+              Vue Architecte des Bâtiments
+            </DialogTitle>
+            <DialogDescription>
+              Visualisez la disponibilité des salles par bâtiment sur un créneau donné
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Sélection du créneau */}
+          <div className="flex flex-wrap items-end gap-3 p-4 bg-muted/50 rounded-lg">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Date</Label>
+              <Input
+                type="date"
+                value={architectDate}
+                onChange={(e) => setArchitectDate(e.target.value)}
+                className="w-36 h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Heure début</Label>
+              <Input
+                type="time"
+                value={architectStartTime}
+                onChange={(e) => setArchitectStartTime(e.target.value)}
+                className="w-28 h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Heure fin</Label>
+              <Input
+                type="time"
+                value={architectEndTime}
+                onChange={(e) => setArchitectEndTime(e.target.value)}
+                className="w-28 h-9"
+              />
+            </div>
+            <Button onClick={handleApplyArchitectSlot} className="gap-2 h-9">
+              <Eye className="h-4 w-4" />
+              Voir disponibilité
+            </Button>
+          </div>
+
+          {selectedTimeSlot && (
+            <Alert className="bg-primary/5 border-primary/20">
+              <Calendar className="h-4 w-4" />
+              <AlertDescription>
+                Créneau sélectionné : <strong>{format(parseISO(selectedTimeSlot.date), "EEEE dd MMMM yyyy", { locale: fr })}</strong> de <strong>{selectedTimeSlot.start}</strong> à <strong>{selectedTimeSlot.end}</strong>
+                <span className="ml-3 text-green-600 dark:text-green-400">
+                  • {getAvailableRoomsForSlot.available.length} salle(s) disponible(s)
+                </span>
+                <span className="ml-2 text-destructive">
+                  • {getAvailableRoomsForSlot.occupied.length} occupée(s)
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-6 py-2">
+              {Object.entries(classroomsByBuilding).map(([building, rooms]) => {
+                const availableInBuilding = selectedTimeSlot 
+                  ? rooms.filter(r => getAvailableRoomsForSlot.available.some(a => a.id === r.id))
+                  : rooms;
+                const occupiedInBuilding = selectedTimeSlot
+                  ? rooms.filter(r => getAvailableRoomsForSlot.occupied.some(o => o.classroom.id === r.id))
+                  : [];
+
+                // Grouper par étage
+                const byFloor: Record<string, typeof rooms> = {};
+                rooms.forEach(room => {
+                  const floor = room.floor || "RDC";
+                  if (!byFloor[floor]) byFloor[floor] = [];
+                  byFloor[floor].push(room);
+                });
+
+                return (
+                  <Card key={building} className="overflow-hidden">
+                    <CardHeader className="bg-muted/30 py-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Building className="h-5 w-5 text-primary" />
+                          {building}
+                        </CardTitle>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            {selectedTimeSlot ? availableInBuilding.length : rooms.length} disponible(s)
+                          </Badge>
+                          {selectedTimeSlot && occupiedInBuilding.length > 0 && (
+                            <Badge variant="destructive">
+                              {occupiedInBuilding.length} occupée(s)
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="space-y-4">
+                        {Object.entries(byFloor).sort().map(([floor, floorRooms]) => (
+                          <div key={floor}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Layers className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium text-muted-foreground">
+                                Étage {floor}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                              {floorRooms.map(room => {
+                                const isAvailable = !selectedTimeSlot || 
+                                  getAvailableRoomsForSlot.available.some(a => a.id === room.id);
+                                const occupyingSession = getAvailableRoomsForSlot.occupied.find(
+                                  o => o.classroom.id === room.id
+                                )?.session;
+
+                                return (
+                                  <div
+                                    key={room.id}
+                                    className={`
+                                      p-3 rounded-lg border-2 transition-all
+                                      ${isAvailable 
+                                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30' 
+                                        : 'border-destructive/30 bg-destructive/5'
+                                      }
+                                    `}
+                                  >
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-semibold text-sm">{room.name}</span>
+                                      {isAvailable ? (
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <X className="h-4 w-4 text-destructive" />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Users className="h-3 w-3" />
+                                      {room.capacity} places
+                                    </div>
+                                    {!isAvailable && occupyingSession && (
+                                      <div className="mt-2 p-2 bg-background rounded text-xs">
+                                        <p className="font-medium truncate">{occupyingSession.classes?.name}</p>
+                                        <p className="text-muted-foreground">
+                                          {occupyingSession.start_time} - {occupyingSession.end_time}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              {Object.keys(classroomsByBuilding).length === 0 && (
+                <div className="text-center py-12">
+                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="font-medium">Aucune salle configurée</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Créez des salles pour visualiser leur disponibilité
+                  </p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setIsArchitectViewOpen(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Assignation Automatique */}
       <Dialog open={isAutoAssignDialogOpen} onOpenChange={setIsAutoAssignDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -645,7 +1047,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
-                    {classes.map(c => (
+                    {currentYearClasses.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -685,7 +1087,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                 </div>
               </div>
 
-              {/* Alerte si problèmes */}
+              {/* Alerte problèmes visible si on est sur l'onglet valid */}
               {problemAssignments.length > 0 && activeTab === "valid" && (
                 <Alert variant="destructive" className="py-2">
                   <AlertTriangle className="h-4 w-4" />
@@ -713,7 +1115,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                     <AlertTriangle className="h-4 w-4" />
                     Problèmes ({problemAssignments.length})
                     {problemAssignments.length > 0 && (
-                      <span className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full animate-pulse" />
+                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full animate-pulse" />
                     )}
                   </TabsTrigger>
                 </TabsList>
@@ -730,69 +1132,98 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {validAssignments.map((result, index) => (
-                          <div
-                            key={index}
-                            className="p-3 rounded-lg border bg-card hover:bg-accent/30 transition-all group"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              {/* Info séance */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm truncate">
-                                    {result.assignment.title}
+                        {validAssignments.map((result, index) => {
+                          const currentRoomId = result.manualOverrideClassroomId || result.classroom.id;
+                          const currentRoom = classrooms.find(c => c.id === currentRoomId) || result.classroom;
+
+                          return (
+                            <div
+                              key={index}
+                              className="p-3 rounded-lg border bg-card hover:bg-accent/30 transition-all group"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-sm truncate">
+                                      {result.assignment.title}
+                                    </p>
+                                    {result.efficiency && result.efficiency >= 80 && (
+                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                        Optimal
+                                      </Badge>
+                                    )}
+                                    {result.manualOverrideClassroomId && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Manuel
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {result.className} • <Users className="h-3 w-3 inline" /> {result.studentCount}
                                   </p>
-                                  {result.efficiency && result.efficiency >= 80 && (
-                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                      Optimal
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      <Calendar className="h-3 w-3 mr-1" />
+                                      {format(parseISO(result.assignment.session_date), "EEE dd MMM", { locale: fr })}
                                     </Badge>
-                                  )}
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      {result.assignment.start_time} - {result.assignment.end_time}
+                                    </Badge>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {result.className} • <Users className="h-3 w-3 inline" /> {result.studentCount}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <Badge variant="outline" className="text-xs font-normal">
-                                    <Calendar className="h-3 w-3 mr-1" />
-                                    {format(parseISO(result.assignment.session_date), "EEE dd MMM", { locale: fr })}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs font-normal">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {result.assignment.start_time} - {result.assignment.end_time}
-                                  </Badge>
+
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
+
+                                <div className="text-right min-w-[140px]">
+                                  <Select
+                                    value={currentRoomId}
+                                    onValueChange={(v) => handleManualRoomChange(result.assignment.id, v)}
+                                  >
+                                    <SelectTrigger className="h-8 w-auto border-0 bg-primary/10 hover:bg-primary/20">
+                                      <div className="flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        <span className="font-medium">{currentRoom.name}</span>
+                                      </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {classrooms
+                                        .filter(c => c.is_active && c.capacity >= result.studentCount)
+                                        .map(c => {
+                                          const isAvail = checkRoomAvailability(
+                                            c.id,
+                                            result.assignment.session_date,
+                                            result.assignment.start_time,
+                                            result.assignment.end_time,
+                                            result.assignment.id
+                                          );
+                                          return (
+                                            <SelectItem 
+                                              key={c.id} 
+                                              value={c.id}
+                                              disabled={!isAvail && c.id !== currentRoomId}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span>{c.name} ({c.capacity} places)</span>
+                                                {!isAvail && c.id !== currentRoomId && (
+                                                  <Badge variant="destructive" className="text-[10px] py-0">
+                                                    Occupée
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </SelectItem>
+                                          );
+                                        })}
+                                    </SelectContent>
+                                  </Select>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {currentRoom.capacity} places • {Math.round((result.studentCount / currentRoom.capacity) * 100)}% utilisé
+                                  </p>
                                 </div>
-                              </div>
-
-                              {/* Arrow */}
-                              <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
-
-                              {/* Salle assignée */}
-                              <div className="text-right min-w-[120px]">
-                                <Select
-                                  value={result.classroom.id}
-                                  onValueChange={(v) => handleManualRoomChange(result.assignment.id, v)}
-                                >
-                                  <SelectTrigger className="h-8 w-auto border-0 bg-primary/10 hover:bg-primary/20">
-                                    <div className="flex items-center gap-1">
-                                      <Building2 className="h-3 w-3" />
-                                      <span className="font-medium">{result.classroom.name}</span>
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {classrooms.filter(c => c.is_active && c.capacity >= result.studentCount).map(c => (
-                                      <SelectItem key={c.id} value={c.id}>
-                                        <span>{c.name} ({c.capacity} places)</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {result.reason}
-                                </p>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </ScrollArea>
@@ -815,7 +1246,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                             key={index}
                             className="p-4 rounded-lg border-2 border-destructive/30 bg-destructive/5"
                           >
-                            {/* Info problème */}
                             <div className="flex items-start gap-3 mb-3">
                               <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                               <div className="flex-1">
@@ -826,7 +1256,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                                 <div className="flex items-center gap-2 mt-1.5">
                                   <Badge variant="outline" className="text-xs border-destructive/30">
                                     <Calendar className="h-3 w-3 mr-1" />
-                                    {format(parseISO(problem.assignment.session_date), "EEE dd MMM yyyy", { locale: fr })}
+                                    {format(parseISO(problem.assignment.session_date), "EEEE dd MMM yyyy", { locale: fr })}
                                   </Badge>
                                   <Badge variant="outline" className="text-xs border-destructive/30">
                                     <Clock className="h-3 w-3 mr-1" />
@@ -839,7 +1269,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                               </div>
                             </div>
 
-                            {/* Solutions */}
                             {problem.solutions.length > 0 && (
                               <div className="bg-background rounded-lg p-3 border">
                                 <div className="flex items-center gap-2 mb-2">
@@ -965,7 +1394,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Taux d'occupation */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Occupation</span>
@@ -974,7 +1402,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                     <Progress value={occupancyRate} className="h-1.5" />
                   </div>
 
-                  {/* Prochaines séances */}
                   {roomAssignments.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-medium text-muted-foreground">Prochaines séances</p>
@@ -1042,18 +1469,25 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                       </div>
                       <div>
                         <p className="font-medium">{classroom.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {classroom.capacity} places • {classroom.building || "—"}
-                        </p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {classroom.capacity} places
+                          </span>
+                          {classroom.building && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {classroom.building}
+                            </span>
+                          )}
+                          <span>{roomAssignments.length} séances</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{roomAssignments.length} séances</p>
-                        <Badge variant={status === "libre" ? "secondary" : "destructive"} className="text-xs">
-                          {status}
-                        </Badge>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={status === "libre" ? "secondary" : "destructive"}>
+                        {status}
+                      </Badge>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1073,17 +1507,15 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
       {classrooms.length === 0 && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Building2 className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Aucune salle de cours</h3>
-            <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">
-              Créez vos salles de cours pour pouvoir les assigner automatiquement à vos séances
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="font-semibold text-lg mb-1">Aucune salle configurée</h3>
+            <p className="text-muted-foreground text-sm text-center mb-4">
+              Ajoutez vos premières salles de cours pour commencer à les gérer
             </p>
             <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Créer une Salle
+              Créer une salle
             </Button>
           </CardContent>
         </Card>
