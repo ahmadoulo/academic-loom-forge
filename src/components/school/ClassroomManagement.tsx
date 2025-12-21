@@ -19,12 +19,11 @@ import {
   Plus, Building2, Users, MapPin, Trash2, Calendar, Clock, 
   Wand2, CheckCircle2, AlertTriangle, Filter,
   Sparkles, LayoutGrid, List, Lightbulb, ArrowRight, X,
-  CalendarRange, Search, Check, Building, Layers, Eye
+  CalendarRange, Search, Check, Building, Eye, DoorOpen
 } from "lucide-react";
 import { format, addDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ClassroomManagementProps {
   schoolId: string;
@@ -56,6 +55,12 @@ interface Solution {
   type: "primary" | "secondary";
 }
 
+interface OccupancySlot {
+  start: string;
+  end: string;
+  session: any;
+}
+
 export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const { classrooms, assignments: classroomAssignments, createClassroom, deleteClassroom, assignClassroom, unassignClassroom } = useClassrooms(schoolId);
   const { assignments } = useAssignments({ schoolId });
@@ -75,7 +80,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; start: string; end: string } | null>(null);
   const [architectDate, setArchitectDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [architectStartTime, setArchitectStartTime] = useState("08:00");
-  const [architectEndTime, setArchitectEndTime] = useState("10:00");
+  const [architectEndTime, setArchitectEndTime] = useState("18:00");
   
   // Filtres pour l'assignation automatique
   const [filterClassId, setFilterClassId] = useState<string>("all");
@@ -150,7 +155,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       
       return true;
     }).sort((a, b) => {
-      // Trier du plus récent au plus ancien
+      // Trier du plus proche au plus lointain
       const dateA = parseISO(a.session_date!);
       const dateB = parseISO(b.session_date!);
       return dateA.getTime() - dateB.getTime();
@@ -204,6 +209,64 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
     return true;
   }, [classroomAssignments]);
+
+  // Récupérer les créneaux d'occupation d'une salle pour une plage horaire donnée
+  const getRoomOccupancySlots = useCallback((
+    classroomId: string,
+    date: string,
+    startTime: string,
+    endTime: string
+  ): OccupancySlot[] => {
+    const slots: OccupancySlot[] = [];
+    
+    classroomAssignments.forEach(ca => {
+      if (ca.classroom_id !== classroomId) return;
+      if (!ca.assignments) return;
+      if (ca.assignments.session_date !== date) return;
+      
+      // Vérifier si la séance chevauche la plage demandée
+      const sessionStart = ca.assignments.start_time;
+      const sessionEnd = ca.assignments.end_time;
+      
+      if (sessionStart < endTime && sessionEnd > startTime) {
+        slots.push({
+          start: sessionStart,
+          end: sessionEnd,
+          session: ca.assignments
+        });
+      }
+    });
+    
+    // Trier par heure de début
+    return slots.sort((a, b) => a.start.localeCompare(b.start));
+  }, [classroomAssignments]);
+
+  // Calculer les plages libres pour une salle sur un créneau donné
+  const getFreeSlots = useCallback((
+    occupancySlots: OccupancySlot[],
+    startTime: string,
+    endTime: string
+  ): { start: string; end: string }[] => {
+    if (occupancySlots.length === 0) {
+      return [{ start: startTime, end: endTime }];
+    }
+    
+    const freeSlots: { start: string; end: string }[] = [];
+    let currentStart = startTime;
+    
+    for (const slot of occupancySlots) {
+      if (slot.start > currentStart) {
+        freeSlots.push({ start: currentStart, end: slot.start });
+      }
+      currentStart = slot.end > currentStart ? slot.end : currentStart;
+    }
+    
+    if (currentStart < endTime) {
+      freeSlots.push({ start: currentStart, end: endTime });
+    }
+    
+    return freeSlots;
+  }, []);
 
   // Algorithme d'assignation automatique OPTIMISÉ avec support des changements manuels
   const { validAssignments, problemAssignments } = useMemo(() => {
@@ -509,9 +572,10 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   };
 
   const openAutoAssignDialog = () => {
+    // Réinitialiser les filtres et l'état pour permettre une nouvelle assignation
     setAutoAssignStep("preview");
-    setActiveTab(problemAssignments.length > 0 ? "invalid" : "valid");
     setManualOverrides({});
+    setActiveTab(problemAssignments.length > 0 ? "invalid" : "valid");
     setIsAutoAssignDialogOpen(true);
   };
 
@@ -522,40 +586,46 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     }));
   };
 
-  // Récupérer les salles disponibles pour un créneau donné dans la vue architecte
-  const getAvailableRoomsForSlot = useMemo(() => {
-    if (!selectedTimeSlot) return { available: classrooms, occupied: [] };
+  // Récupérer les salles disponibles pour un créneau donné dans la vue architecte avec détails
+  const getAvailableRoomsForSlotDetailed = useMemo(() => {
+    if (!selectedTimeSlot) {
+      return { 
+        available: classrooms.filter(c => c.is_active).map(c => ({ classroom: c, freeSlots: [], occupancySlots: [] })), 
+        partial: [], 
+        occupied: [] 
+      };
+    }
 
-    const available: typeof classrooms = [];
-    const occupied: { classroom: typeof classrooms[0]; session: any }[] = [];
+    const available: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
+    const partial: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
+    const occupied: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
 
     classrooms.forEach(classroom => {
       if (!classroom.is_active) return;
 
-      const isOccupied = classroomAssignments.some(ca => {
-        if (ca.classroom_id !== classroom.id) return false;
-        if (!ca.assignments) return false;
-        
-        return ca.assignments.session_date === selectedTimeSlot.date &&
-          ca.assignments.start_time < selectedTimeSlot.end &&
-          ca.assignments.end_time > selectedTimeSlot.start;
-      });
+      const occupancySlots = getRoomOccupancySlots(
+        classroom.id,
+        selectedTimeSlot.date,
+        selectedTimeSlot.start,
+        selectedTimeSlot.end
+      );
 
-      if (isOccupied) {
-        const occupyingAssignment = classroomAssignments.find(ca => 
-          ca.classroom_id === classroom.id &&
-          ca.assignments?.session_date === selectedTimeSlot.date &&
-          ca.assignments?.start_time < selectedTimeSlot.end &&
-          ca.assignments?.end_time > selectedTimeSlot.start
-        );
-        occupied.push({ classroom, session: occupyingAssignment?.assignments });
+      const freeSlots = getFreeSlots(occupancySlots, selectedTimeSlot.start, selectedTimeSlot.end);
+
+      if (occupancySlots.length === 0) {
+        // Entièrement libre
+        available.push({ classroom, freeSlots, occupancySlots });
+      } else if (freeSlots.length > 0) {
+        // Partiellement occupée
+        partial.push({ classroom, freeSlots, occupancySlots });
       } else {
-        available.push(classroom);
+        // Entièrement occupée sur la plage
+        occupied.push({ classroom, freeSlots, occupancySlots });
       }
     });
 
-    return { available, occupied };
-  }, [classrooms, classroomAssignments, selectedTimeSlot]);
+    return { available, partial, occupied };
+  }, [classrooms, classroomAssignments, selectedTimeSlot, getRoomOccupancySlots, getFreeSlots]);
 
   // Grouper les salles par bâtiment pour la vue architecte
   const classroomsByBuilding = useMemo(() => {
@@ -581,6 +651,31 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
     });
 
     return grouped;
+  }, [classrooms]);
+
+  // Grouper les salles par bâtiment et étage pour la vue architecte 3D
+  const buildingsWithFloors = useMemo(() => {
+    const buildings: Record<string, { floors: Record<string, typeof classrooms>; maxFloor: number }> = {};
+    
+    classrooms.forEach(classroom => {
+      if (!classroom.is_active) return;
+      const buildingName = classroom.building || "Bâtiment Principal";
+      const floorName = classroom.floor || "RDC";
+      
+      if (!buildings[buildingName]) {
+        buildings[buildingName] = { floors: {}, maxFloor: 0 };
+      }
+      if (!buildings[buildingName].floors[floorName]) {
+        buildings[buildingName].floors[floorName] = [];
+      }
+      buildings[buildingName].floors[floorName].push(classroom);
+      
+      // Calculer le nombre d'étages
+      const floorNum = parseInt(floorName.replace(/\D/g, '')) || 0;
+      buildings[buildingName].maxFloor = Math.max(buildings[buildingName].maxFloor, floorNum);
+    });
+
+    return buildings;
   }, [classrooms]);
 
   const handleApplyArchitectSlot = () => {
@@ -617,6 +712,17 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       ca => ca.assignments && parseISO(ca.assignments.session_date) >= today
     );
     return Math.min((futureAssignments.length / 20) * 100, 100);
+  };
+
+  // Fonction pour obtenir le statut d'une salle dans la vue architecte
+  const getArchitectRoomStatus = (classroomId: string) => {
+    const available = getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === classroomId);
+    if (available) return "available";
+    
+    const partial = getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === classroomId);
+    if (partial) return "partial";
+    
+    return "occupied";
   };
 
   const totalProblems = problemAssignments.length;
@@ -660,7 +766,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           <Button 
             variant="default" 
             onClick={openAutoAssignDialog}
-            disabled={unassignedSessions.length === 0 || classrooms.length === 0}
+            disabled={classrooms.length === 0}
             className="gap-2"
           >
             <Wand2 className="h-4 w-4" />
@@ -838,23 +944,23 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
         </div>
       </div>
 
-      {/* Dialog Vue Architecte */}
+      {/* Dialog Vue Architecte Immersive */}
       <Dialog open={isArchitectViewOpen} onOpenChange={setIsArchitectViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building className="h-5 w-5 text-primary" />
-              Vue Architecte des Bâtiments
+              Vue Architecte - Bâtiments
             </DialogTitle>
             <DialogDescription>
-              Visualisez la disponibilité des salles par bâtiment sur un créneau donné
+              Visualisez vos bâtiments et la disponibilité des salles en temps réel
             </DialogDescription>
           </DialogHeader>
 
           {/* Sélection du créneau */}
-          <div className="flex flex-wrap items-end gap-3 p-4 bg-muted/50 rounded-lg">
+          <div className="flex flex-wrap items-end gap-3 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border">
             <div className="space-y-1.5">
-              <Label className="text-xs">Date</Label>
+              <Label className="text-xs font-medium">Date</Label>
               <Input
                 type="date"
                 value={architectDate}
@@ -863,7 +969,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Heure début</Label>
+              <Label className="text-xs font-medium">Heure début</Label>
               <Input
                 type="time"
                 value={architectStartTime}
@@ -872,7 +978,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Heure fin</Label>
+              <Label className="text-xs font-medium">Heure fin</Label>
               <Input
                 type="time"
                 value={architectEndTime}
@@ -880,132 +986,204 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                 className="w-28 h-9"
               />
             </div>
-            <Button onClick={handleApplyArchitectSlot} className="gap-2 h-9">
+            <Button onClick={handleApplyArchitectSlot} className="gap-2 h-9 bg-primary hover:bg-primary/90">
               <Eye className="h-4 w-4" />
-              Voir disponibilité
+              Analyser
             </Button>
           </div>
 
           {selectedTimeSlot && (
-            <Alert className="bg-primary/5 border-primary/20">
-              <Calendar className="h-4 w-4" />
-              <AlertDescription>
-                Créneau sélectionné : <strong>{format(parseISO(selectedTimeSlot.date), "EEEE dd MMMM yyyy", { locale: fr })}</strong> de <strong>{selectedTimeSlot.start}</strong> à <strong>{selectedTimeSlot.end}</strong>
-                <span className="ml-3 text-green-600 dark:text-green-400">
-                  • {getAvailableRoomsForSlot.available.length} salle(s) disponible(s)
-                </span>
-                <span className="ml-2 text-destructive">
-                  • {getAvailableRoomsForSlot.occupied.length} occupée(s)
-                </span>
-              </AlertDescription>
-            </Alert>
+            <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{format(parseISO(selectedTimeSlot.date), "EEEE dd MMMM yyyy", { locale: fr })}</span>
+                <span className="text-muted-foreground">de {selectedTimeSlot.start} à {selectedTimeSlot.end}</span>
+              </div>
+              <div className="flex items-center gap-4 ml-auto">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.available.length} libre(s)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-amber-500" />
+                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.partial.length} partielle(s)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.occupied.length} occupée(s)</span>
+                </div>
+              </div>
+            </div>
           )}
 
           <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-6 py-2">
-              {Object.entries(classroomsByBuilding).map(([building, rooms]) => {
-                const availableInBuilding = selectedTimeSlot 
-                  ? rooms.filter(r => getAvailableRoomsForSlot.available.some(a => a.id === r.id))
-                  : rooms;
-                const occupiedInBuilding = selectedTimeSlot
-                  ? rooms.filter(r => getAvailableRoomsForSlot.occupied.some(o => o.classroom.id === r.id))
-                  : [];
-
-                // Grouper par étage
-                const byFloor: Record<string, typeof rooms> = {};
-                rooms.forEach(room => {
-                  const floor = room.floor || "RDC";
-                  if (!byFloor[floor]) byFloor[floor] = [];
-                  byFloor[floor].push(room);
+            <div className="space-y-8 py-4">
+              {Object.entries(buildingsWithFloors).map(([buildingName, buildingData]) => {
+                const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
+                  const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                  const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                  return numB - numA; // Trier du plus haut au plus bas
                 });
 
                 return (
-                  <Card key={building} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30 py-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Building className="h-5 w-5 text-primary" />
-                          {building}
-                        </CardTitle>
-                        <div className="flex gap-2">
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            {selectedTimeSlot ? availableInBuilding.length : rooms.length} disponible(s)
-                          </Badge>
-                          {selectedTimeSlot && occupiedInBuilding.length > 0 && (
-                            <Badge variant="destructive">
-                              {occupiedInBuilding.length} occupée(s)
-                            </Badge>
-                          )}
-                        </div>
+                  <div key={buildingName} className="space-y-3">
+                    {/* En-tête du bâtiment */}
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building className="h-5 w-5 text-primary" />
                       </div>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="space-y-4">
-                        {Object.entries(byFloor).sort().map(([floor, floorRooms]) => (
-                          <div key={floor}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Layers className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium text-muted-foreground">
-                                Étage {floor}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                              {floorRooms.map(room => {
-                                const isAvailable = !selectedTimeSlot || 
-                                  getAvailableRoomsForSlot.available.some(a => a.id === room.id);
-                                const occupyingSession = getAvailableRoomsForSlot.occupied.find(
-                                  o => o.classroom.id === room.id
-                                )?.session;
+                      <div>
+                        <h3 className="font-bold text-lg">{buildingName}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {Object.values(buildingData.floors).flat().length} salles • {floorNames.length} étage(s)
+                        </p>
+                      </div>
+                    </div>
 
-                                return (
-                                  <div
-                                    key={room.id}
-                                    className={`
-                                      p-3 rounded-lg border-2 transition-all
-                                      ${isAvailable 
-                                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30' 
-                                        : 'border-destructive/30 bg-destructive/5'
-                                      }
-                                    `}
-                                  >
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="font-semibold text-sm">{room.name}</span>
-                                      {isAvailable ? (
-                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                      ) : (
-                                        <X className="h-4 w-4 text-destructive" />
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Users className="h-3 w-3" />
-                                      {room.capacity} places
-                                    </div>
-                                    {!isAvailable && occupyingSession && (
-                                      <div className="mt-2 p-2 bg-background rounded text-xs">
-                                        <p className="font-medium truncate">{occupyingSession.classes?.name}</p>
-                                        <p className="text-muted-foreground">
-                                          {occupyingSession.start_time} - {occupyingSession.end_time}
-                                        </p>
-                                      </div>
-                                    )}
+                    {/* Vue du bâtiment en façade */}
+                    <div className="relative">
+                      {/* Bâtiment container avec effet 3D */}
+                      <div className="relative bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg overflow-hidden border-x-4 border-t-4 border-slate-400 dark:border-slate-600 shadow-2xl">
+                        {/* Toit */}
+                        <div className="absolute -top-0 left-0 right-0 h-3 bg-gradient-to-b from-slate-500 to-slate-400 dark:from-slate-600 dark:to-slate-700 rounded-t-lg" />
+                        
+                        {/* Étages */}
+                        <div className="pt-4">
+                          {floorNames.map((floorName, floorIndex) => {
+                            const rooms = buildingData.floors[floorName];
+                            const isGroundFloor = floorName === "RDC" || floorName === "0";
+                            
+                            return (
+                              <div key={floorName} className="relative">
+                                {/* Ligne de séparation d'étage */}
+                                {floorIndex > 0 && (
+                                  <div className="absolute top-0 left-0 right-0 h-1 bg-slate-400 dark:bg-slate-600" />
+                                )}
+                                
+                                <div className="p-4">
+                                  {/* Label d'étage */}
+                                  <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 origin-center">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                      {floorName}
+                                    </span>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                                  
+                                  {/* Fenêtres/Salles */}
+                                  <div className="ml-8 flex flex-wrap gap-3">
+                                    {rooms.map((room) => {
+                                      const status = selectedTimeSlot ? getArchitectRoomStatus(room.id) : "available";
+                                      const roomDetails = 
+                                        getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === room.id) ||
+                                        getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === room.id) ||
+                                        getAvailableRoomsForSlotDetailed.occupied.find(r => r.classroom.id === room.id);
+                                      
+                                      return (
+                                        <div 
+                                          key={room.id}
+                                          className={`
+                                            relative group cursor-pointer transition-all duration-300
+                                            w-24 h-20 rounded-lg border-2 shadow-md
+                                            flex flex-col items-center justify-center text-center p-2
+                                            hover:scale-105 hover:shadow-xl hover:z-10
+                                            ${status === "available" 
+                                              ? "bg-green-50 dark:bg-green-950/50 border-green-400 dark:border-green-600" 
+                                              : status === "partial"
+                                              ? "bg-amber-50 dark:bg-amber-950/50 border-amber-400 dark:border-amber-600"
+                                              : "bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-600"
+                                            }
+                                          `}
+                                        >
+                                          {/* Icône de porte */}
+                                          <DoorOpen className={`h-4 w-4 mb-1 ${
+                                            status === "available" ? "text-green-600" :
+                                            status === "partial" ? "text-amber-600" : "text-red-600"
+                                          }`} />
+                                          
+                                          {/* Nom de la salle */}
+                                          <span className="font-bold text-xs truncate w-full">{room.name}</span>
+                                          
+                                          {/* Capacité */}
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                            <Users className="h-2.5 w-2.5" />
+                                            {room.capacity}
+                                          </span>
+                                          
+                                          {/* Indicateur de statut */}
+                                          <div className={`
+                                            absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background
+                                            ${status === "available" ? "bg-green-500" :
+                                              status === "partial" ? "bg-amber-500" : "bg-red-500"
+                                            }
+                                          `} />
+
+                                          {/* Tooltip détaillé au survol */}
+                                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-popover border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                            <div className="space-y-2">
+                                              <div className="flex items-center justify-between">
+                                                <span className="font-bold">{room.name}</span>
+                                                <Badge variant={status === "available" ? "default" : status === "partial" ? "secondary" : "destructive"} className="text-[10px]">
+                                                  {status === "available" ? "Libre" : status === "partial" ? "Partiel" : "Occupée"}
+                                                </Badge>
+                                              </div>
+                                              <div className="text-xs text-muted-foreground">
+                                                <p>Capacité: {room.capacity} places</p>
+                                                {room.building && <p>Bâtiment: {room.building}</p>}
+                                                {room.floor && <p>Étage: {room.floor}</p>}
+                                              </div>
+                                              
+                                              {selectedTimeSlot && roomDetails && (
+                                                <div className="border-t pt-2 mt-2 space-y-1">
+                                                  {roomDetails.occupancySlots.length > 0 && (
+                                                    <div>
+                                                      <p className="text-[10px] font-medium text-red-600 dark:text-red-400">Occupée:</p>
+                                                      {roomDetails.occupancySlots.map((slot, i) => (
+                                                        <p key={i} className="text-[10px] text-muted-foreground">
+                                                          {slot.start} - {slot.end}: {slot.session?.classes?.name || slot.session?.title}
+                                                        </p>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {roomDetails.freeSlots.length > 0 && (
+                                                    <div>
+                                                      <p className="text-[10px] font-medium text-green-600 dark:text-green-400">Disponible:</p>
+                                                      {roomDetails.freeSlots.map((slot, i) => (
+                                                        <p key={i} className="text-[10px] text-muted-foreground">
+                                                          {slot.start} - {slot.end}
+                                                        </p>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Base du bâtiment */}
+                        <div className="h-4 bg-gradient-to-t from-slate-500 to-slate-400 dark:from-slate-700 dark:to-slate-600" />
                       </div>
-                    </CardContent>
-                  </Card>
+                      
+                      {/* Sol / Fondations */}
+                      <div className="h-3 bg-gradient-to-b from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950 rounded-b-lg" />
+                    </div>
+                  </div>
                 );
               })}
 
-              {Object.keys(classroomsByBuilding).length === 0 && (
+              {Object.keys(buildingsWithFloors).length === 0 && (
                 <div className="text-center py-12">
                   <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                   <p className="font-medium">Aucune salle configurée</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Créez des salles pour visualiser leur disponibilité
+                    Créez des salles avec leur bâtiment et étage pour les visualiser ici
                   </p>
                 </div>
               )}
@@ -1339,7 +1517,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
               <div className="text-center">
                 <p className="font-medium text-lg">Assignation terminée</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {validAssignments.length} séance(s) ont été assignées avec succès
+                  Les séances ont été assignées avec succès
                 </p>
               </div>
               {problemAssignments.length > 0 && (
