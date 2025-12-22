@@ -15,11 +15,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArchitectViewDialog } from "./ArchitectViewDialog";
 import { 
   Plus, Building2, Users, MapPin, Trash2, Calendar, Clock, 
   Wand2, CheckCircle2, AlertTriangle, Filter,
   Sparkles, LayoutGrid, List, Lightbulb, ArrowRight, X,
-  CalendarRange, Search, Check, Building, Eye, DoorOpen, XCircle
+  CalendarRange, Search, Check, Eye
 } from "lucide-react";
 import { format, addDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -75,12 +76,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoAssignStep, setAutoAssignStep] = useState<"preview" | "processing" | "complete">("preview");
-  
-  // Vue architecte
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ date: string; start: string; end: string } | null>(null);
-  const [architectDate, setArchitectDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [architectStartTime, setArchitectStartTime] = useState("08:00");
-  const [architectEndTime, setArchitectEndTime] = useState("18:00");
   
   // Filtres pour l'assignation automatique
   const [filterClassId, setFilterClassId] = useState<string>("all");
@@ -491,9 +486,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
               action: () => {
                 setIsAutoAssignDialogOpen(false);
                 setIsArchitectViewOpen(true);
-                setArchitectDate(session.session_date!);
-                setArchitectStartTime(session.start_time!);
-                setArchitectEndTime(session.end_time!);
               },
               type: "primary"
             });
@@ -594,107 +586,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       [assignmentId]: newClassroomId
     }));
   };
-
-  // Récupérer les salles disponibles pour un créneau donné dans la vue architecte avec détails
-  const getAvailableRoomsForSlotDetailed = useMemo(() => {
-    if (!selectedTimeSlot) {
-      return { 
-        available: classrooms.filter(c => c.is_active).map(c => ({ classroom: c, freeSlots: [], occupancySlots: [] })), 
-        partial: [], 
-        occupied: [] 
-      };
-    }
-
-    const available: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
-    const partial: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
-    const occupied: { classroom: typeof classrooms[0]; freeSlots: { start: string; end: string }[]; occupancySlots: OccupancySlot[] }[] = [];
-
-    classrooms.forEach(classroom => {
-      if (!classroom.is_active) return;
-
-      const occupancySlots = getRoomOccupancySlots(
-        classroom.id,
-        selectedTimeSlot.date,
-        selectedTimeSlot.start,
-        selectedTimeSlot.end
-      );
-
-      const freeSlots = getFreeSlots(occupancySlots, selectedTimeSlot.start, selectedTimeSlot.end);
-
-      if (occupancySlots.length === 0) {
-        // Entièrement libre
-        available.push({ classroom, freeSlots, occupancySlots });
-      } else if (freeSlots.length > 0) {
-        // Partiellement occupée
-        partial.push({ classroom, freeSlots, occupancySlots });
-      } else {
-        // Entièrement occupée sur la plage
-        occupied.push({ classroom, freeSlots, occupancySlots });
-      }
-    });
-
-    return { available, partial, occupied };
-  }, [classrooms, classroomAssignments, selectedTimeSlot, getRoomOccupancySlots, getFreeSlots]);
-
-  // Grouper les salles par bâtiment pour la vue architecte
-  const classroomsByBuilding = useMemo(() => {
-    const grouped: Record<string, typeof classrooms> = {};
-    
-    classrooms.forEach(classroom => {
-      if (!classroom.is_active) return;
-      const building = classroom.building || "Sans bâtiment";
-      if (!grouped[building]) {
-        grouped[building] = [];
-      }
-      grouped[building].push(classroom);
-    });
-
-    // Trier les salles par étage puis par nom
-    Object.keys(grouped).forEach(building => {
-      grouped[building].sort((a, b) => {
-        const floorA = a.floor || "0";
-        const floorB = b.floor || "0";
-        if (floorA !== floorB) return floorA.localeCompare(floorB);
-        return a.name.localeCompare(b.name);
-      });
-    });
-
-    return grouped;
-  }, [classrooms]);
-
-  // Grouper les salles par bâtiment et étage pour la vue architecte 3D
-  const buildingsWithFloors = useMemo(() => {
-    const buildings: Record<string, { floors: Record<string, typeof classrooms>; maxFloor: number }> = {};
-    
-    classrooms.forEach(classroom => {
-      if (!classroom.is_active) return;
-      const buildingName = classroom.building || "Bâtiment Principal";
-      const floorName = classroom.floor || "RDC";
-      
-      if (!buildings[buildingName]) {
-        buildings[buildingName] = { floors: {}, maxFloor: 0 };
-      }
-      if (!buildings[buildingName].floors[floorName]) {
-        buildings[buildingName].floors[floorName] = [];
-      }
-      buildings[buildingName].floors[floorName].push(classroom);
-      
-      // Calculer le nombre d'étages
-      const floorNum = parseInt(floorName.replace(/\D/g, '')) || 0;
-      buildings[buildingName].maxFloor = Math.max(buildings[buildingName].maxFloor, floorNum);
-    });
-
-    return buildings;
-  }, [classrooms]);
-
-  const handleApplyArchitectSlot = () => {
-    setSelectedTimeSlot({
-      date: architectDate,
-      start: architectStartTime,
-      end: architectEndTime
-    });
-  };
-
   const getClassroomStatus = (classroomId: string) => {
     const now = new Date();
     const currentTime = format(now, "HH:mm");
@@ -721,17 +612,6 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       ca => ca.assignments && parseISO(ca.assignments.session_date) >= today
     );
     return Math.min((futureAssignments.length / 20) * 100, 100);
-  };
-
-  // Fonction pour obtenir le statut d'une salle dans la vue architecte
-  const getArchitectRoomStatus = (classroomId: string) => {
-    const available = getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === classroomId);
-    if (available) return "available";
-    
-    const partial = getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === classroomId);
-    if (partial) return "partial";
-    
-    return "occupied";
   };
 
   const totalProblems = problemAssignments.length;
@@ -762,10 +642,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
 
           <Button 
             variant="outline"
-            onClick={() => {
-              setSelectedTimeSlot(null);
-              setIsArchitectViewOpen(true);
-            }}
+            onClick={() => setIsArchitectViewOpen(true)}
             className="gap-2"
           >
             <Eye className="h-4 w-4" />
@@ -953,319 +830,13 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
         </div>
       </div>
 
-      {/* Dialog Vue Architecte Immersive */}
-      <Dialog open={isArchitectViewOpen} onOpenChange={setIsArchitectViewOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5 text-primary" />
-              Vue Architecte - Bâtiments
-            </DialogTitle>
-            <DialogDescription>
-              Visualisez vos bâtiments et la disponibilité des salles en temps réel
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Sélection du créneau */}
-          <div className="flex flex-wrap items-end gap-3 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Date</Label>
-              <Input
-                type="date"
-                value={architectDate}
-                onChange={(e) => setArchitectDate(e.target.value)}
-                className="w-36 h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Heure début</Label>
-              <Input
-                type="time"
-                value={architectStartTime}
-                onChange={(e) => setArchitectStartTime(e.target.value)}
-                className="w-28 h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Heure fin</Label>
-              <Input
-                type="time"
-                value={architectEndTime}
-                onChange={(e) => setArchitectEndTime(e.target.value)}
-                className="w-28 h-9"
-              />
-            </div>
-            <Button onClick={handleApplyArchitectSlot} className="gap-2 h-9 bg-primary hover:bg-primary/90">
-              <Eye className="h-4 w-4" />
-              Analyser
-            </Button>
-          </div>
-
-          {selectedTimeSlot && (
-            <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{format(parseISO(selectedTimeSlot.date), "EEEE dd MMMM yyyy", { locale: fr })}</span>
-                <span className="text-muted-foreground">de {selectedTimeSlot.start} à {selectedTimeSlot.end}</span>
-              </div>
-              <div className="flex items-center gap-4 ml-auto">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.available.length} libre(s)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.partial.length} partielle(s)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-xs">{getAvailableRoomsForSlotDetailed.occupied.length} occupée(s)</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-10 py-4">
-              {Object.entries(buildingsWithFloors).map(([buildingName, buildingData]) => {
-                const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
-                  const numA = parseInt(a.replace(/\D/g, '')) || 0;
-                  const numB = parseInt(b.replace(/\D/g, '')) || 0;
-                  return numB - numA; // Trier du plus haut au plus bas
-                });
-                
-                const allRooms = Object.values(buildingData.floors).flat();
-                const maxRoomsPerFloor = Math.max(...Object.values(buildingData.floors).map(r => r.length));
-
-                return (
-                  <div key={buildingName} className="space-y-4">
-                    {/* En-tête du bâtiment */}
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Building className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">{buildingName}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {allRooms.length} salles • {floorNames.length} étage(s)
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Vue du bâtiment - Façade réaliste */}
-                    <div className="relative mx-auto" style={{ maxWidth: `${Math.max(maxRoomsPerFloor * 100 + 80, 400)}px` }}>
-                      {/* Toit en triangle */}
-                      <div className="relative mx-4">
-                        <div 
-                          className="h-0 w-0 mx-auto"
-                          style={{
-                            borderLeft: `${Math.max(maxRoomsPerFloor * 50 + 40, 200)}px solid transparent`,
-                            borderRight: `${Math.max(maxRoomsPerFloor * 50 + 40, 200)}px solid transparent`,
-                            borderBottom: '40px solid',
-                            borderBottomColor: 'hsl(var(--muted))',
-                          }}
-                        />
-                        {/* Ligne du toit */}
-                        <div className="absolute bottom-0 left-0 right-0 h-2 bg-slate-600 dark:bg-slate-500" />
-                      </div>
-
-                      {/* Corps du bâtiment */}
-                      <div className="relative bg-gradient-to-b from-stone-200 via-stone-100 to-stone-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 border-4 border-slate-500 dark:border-slate-400 shadow-2xl mx-4">
-                        {/* Texture de briques subtile */}
-                        <div className="absolute inset-0 opacity-10 dark:opacity-5" 
-                          style={{
-                            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.1) 20px, rgba(0,0,0,0.1) 21px), repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.05) 40px, rgba(0,0,0,0.05) 41px)',
-                          }}
-                        />
-                        
-                        {/* Étages */}
-                        {floorNames.map((floorName, floorIndex) => {
-                          const rooms = buildingData.floors[floorName];
-                          const isGroundFloor = floorName.toLowerCase() === "rdc" || floorName === "0";
-                          
-                          return (
-                            <div key={floorName} className="relative">
-                              {/* Séparation entre étages */}
-                              {floorIndex > 0 && (
-                                <div className="h-2 bg-gradient-to-b from-slate-400 to-slate-300 dark:from-slate-500 dark:to-slate-600 border-y border-slate-500 dark:border-slate-400" />
-                              )}
-                              
-                              <div className="flex items-stretch py-4 px-3 gap-1">
-                                {/* Label d'étage sur le côté */}
-                                <div className="w-10 flex items-center justify-center shrink-0">
-                                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 -rotate-90 whitespace-nowrap bg-stone-300/80 dark:bg-slate-600/80 px-2 py-0.5 rounded">
-                                    {floorName}
-                                  </span>
-                                </div>
-                                
-                                {/* Fenêtres/Salles */}
-                                <div className="flex-1 flex flex-wrap gap-3 justify-center">
-                                  {rooms.map((room) => {
-                                    const status = selectedTimeSlot ? getArchitectRoomStatus(room.id) : "available";
-                                    const roomDetails = 
-                                      getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === room.id) ||
-                                      getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === room.id) ||
-                                      getAvailableRoomsForSlotDetailed.occupied.find(r => r.classroom.id === room.id);
-                                    
-                                    // Couleur de la fenêtre selon le statut
-                                    const windowColor = status === "available" 
-                                      ? "from-green-200 to-green-300 dark:from-green-800 dark:to-green-900" 
-                                      : status === "partial"
-                                      ? "from-amber-200 to-amber-300 dark:from-amber-800 dark:to-amber-900"
-                                      : "from-red-200 to-red-300 dark:from-red-800 dark:to-red-900";
-                                    
-                                    const borderColor = status === "available" 
-                                      ? "border-green-500" 
-                                      : status === "partial"
-                                      ? "border-amber-500"
-                                      : "border-red-500";
-                                    
-                                    return (
-                                      <div 
-                                        key={room.id}
-                                        className={`
-                                          relative group cursor-pointer transition-all duration-300
-                                          hover:scale-110 hover:z-20
-                                        `}
-                                      >
-                                        {/* Fenêtre avec cadre */}
-                                        <div className={`
-                                          relative w-[80px] h-[70px] rounded-t-lg
-                                          bg-gradient-to-b ${windowColor}
-                                          border-4 ${borderColor}
-                                          shadow-lg
-                                          flex flex-col items-center justify-center text-center p-1
-                                        `}>
-                                          {/* Reflet de vitre */}
-                                          <div className="absolute inset-2 bg-gradient-to-br from-white/40 to-transparent rounded-t pointer-events-none" />
-                                          
-                                          {/* Croisillon de fenêtre */}
-                                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="absolute w-0.5 h-full bg-slate-600/30 dark:bg-slate-400/30" />
-                                            <div className="absolute w-full h-0.5 bg-slate-600/30 dark:bg-slate-400/30" style={{ top: '50%' }} />
-                                          </div>
-                                          
-                                          {/* Contenu */}
-                                          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 relative z-10 drop-shadow-sm">{room.name}</span>
-                                          <span className="text-[9px] text-slate-600 dark:text-slate-300 flex items-center gap-0.5 relative z-10">
-                                            <Users className="h-2.5 w-2.5" />
-                                            {room.capacity}
-                                          </span>
-                                        </div>
-                                        
-                                        {/* Rebord de fenêtre */}
-                                        <div className="h-2 bg-slate-500 dark:bg-slate-400 rounded-b shadow-md" />
-                                        
-                                        {/* Indicateur de statut */}
-                                        <div className={`
-                                          absolute -top-2 -right-2 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-lg z-10
-                                          flex items-center justify-center
-                                          ${status === "available" ? "bg-green-500" :
-                                            status === "partial" ? "bg-amber-500" : "bg-red-500"
-                                          }
-                                        `}>
-                                          {status === "available" && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
-                                          {status === "partial" && <Clock className="h-2.5 w-2.5 text-white" />}
-                                          {status === "occupied" && <AlertTriangle className="h-2.5 w-2.5 text-white" />}
-                                        </div>
-
-                                        {/* Tooltip détaillé au survol */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-60 p-3 bg-popover border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                          <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                              <span className="font-bold">{room.name}</span>
-                                              <Badge variant={status === "available" ? "default" : status === "partial" ? "secondary" : "destructive"} className="text-[10px]">
-                                                {status === "available" ? "Libre" : status === "partial" ? "Partiellement libre" : "Occupée"}
-                                              </Badge>
-                                            </div>
-                                            <div className="text-xs text-muted-foreground space-y-0.5">
-                                              <p className="flex items-center gap-1"><Users className="h-3 w-3" /> {room.capacity} places</p>
-                                              {room.building && <p className="flex items-center gap-1"><Building className="h-3 w-3" /> {room.building}</p>}
-                                              {room.floor && <p className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Étage {room.floor}</p>}
-                                            </div>
-                                            
-                                            {selectedTimeSlot && roomDetails && (
-                                              <div className="border-t pt-2 mt-2 space-y-1.5">
-                                                {roomDetails.occupancySlots.length > 0 && (
-                                                  <div>
-                                                    <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
-                                                      <XCircle className="h-3 w-3" /> Occupée:
-                                                    </p>
-                                                    {roomDetails.occupancySlots.map((slot, i) => (
-                                                      <p key={i} className="text-[10px] text-muted-foreground ml-4">
-                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}: {slot.session?.classes?.name || slot.session?.title || "Séance"}
-                                                      </p>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                                {roomDetails.freeSlots.length > 0 && (
-                                                  <div>
-                                                    <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-                                                      <CheckCircle2 className="h-3 w-3" /> Disponible:
-                                                    </p>
-                                                    {roomDetails.freeSlots.map((slot, i) => (
-                                                      <p key={i} className="text-[10px] text-muted-foreground ml-4">
-                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}
-                                                      </p>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-                                          {/* Flèche du tooltip */}
-                                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                                            <div className="border-8 border-transparent border-t-popover" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Entrée du bâtiment (RDC) */}
-                        {floorNames.length > 0 && (
-                          <div className="flex justify-center pb-0">
-                            <div className="w-16 h-8 bg-gradient-to-b from-amber-800 to-amber-900 dark:from-amber-700 dark:to-amber-800 border-t-4 border-x-4 border-amber-950 dark:border-amber-600 rounded-t-lg flex items-center justify-center">
-                              <DoorOpen className="h-4 w-4 text-amber-200" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Fondations */}
-                      <div className="h-4 bg-gradient-to-b from-stone-500 to-stone-600 dark:from-slate-600 dark:to-slate-700 mx-2 rounded-b" />
-                      
-                      {/* Sol / Pelouse */}
-                      <div className="h-3 bg-gradient-to-b from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 rounded-b-lg mx-1" />
-                    </div>
-                  </div>
-                );
-              })}
-
-              {Object.keys(buildingsWithFloors).length === 0 && (
-                <div className="text-center py-12">
-                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="font-medium">Aucune salle configurée</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Créez des salles avec leur bâtiment et étage pour les visualiser ici
-                  </p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="border-t pt-4">
-            <Button variant="outline" onClick={() => setIsArchitectViewOpen(false)}>
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Vue Architecte Dialog */}
+      <ArchitectViewDialog
+        open={isArchitectViewOpen}
+        onOpenChange={setIsArchitectViewOpen}
+        classrooms={classrooms}
+        classroomAssignments={classroomAssignments}
+      />
 
       {/* Dialog Assignation Automatique */}
       <Dialog open={isAutoAssignDialogOpen} onOpenChange={setIsAutoAssignDialogOpen}>
