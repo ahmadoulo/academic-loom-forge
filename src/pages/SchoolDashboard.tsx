@@ -54,6 +54,7 @@ import { useAutoAbsenceNotifications } from "@/hooks/useAutoAbsenceNotifications
 import { useSchoolAnalytics } from "@/hooks/useSchoolAnalytics";
 import { useDocumentRequests } from "@/hooks/useDocumentRequests";
 import { ClassroomManagement } from "@/components/school/ClassroomManagement";
+import { ClassroomAvailabilityWidget } from "@/components/school/ClassroomAvailabilityWidget";
 import { TimetableSection } from "@/components/school/TimetableSection";
 import { BulletinSection } from "@/components/school/BulletinSection";
 import { YearPreparationWizard } from "@/components/school/YearPreparationWizard";
@@ -769,6 +770,9 @@ const SchoolDashboard = () => {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Widget disponibilité des salles */}
+                    <ClassroomAvailabilityWidget schoolId={school.id} />
                   </div>
 
                   {/* Meilleurs étudiants */}
