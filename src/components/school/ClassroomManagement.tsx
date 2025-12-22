@@ -19,7 +19,7 @@ import {
   Plus, Building2, Users, MapPin, Trash2, Calendar, Clock, 
   Wand2, CheckCircle2, AlertTriangle, Filter,
   Sparkles, LayoutGrid, List, Lightbulb, ArrowRight, X,
-  CalendarRange, Search, Check, Building, Eye, DoorOpen
+  CalendarRange, Search, Check, Building, Eye, DoorOpen, XCircle
 } from "lucide-react";
 import { format, addDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -251,21 +251,30 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
       return [{ start: startTime, end: endTime }];
     }
     
+    // Trier les créneaux par heure de début
+    const sortedSlots = [...occupancySlots].sort((a, b) => a.start.localeCompare(b.start));
+    
     const freeSlots: { start: string; end: string }[] = [];
     let currentStart = startTime;
     
-    for (const slot of occupancySlots) {
+    for (const slot of sortedSlots) {
+      // S'il y a un espace libre avant le créneau occupé
       if (slot.start > currentStart) {
         freeSlots.push({ start: currentStart, end: slot.start });
       }
-      currentStart = slot.end > currentStart ? slot.end : currentStart;
+      // Avancer le curseur à la fin de ce créneau occupé (s'il est plus tard)
+      if (slot.end > currentStart) {
+        currentStart = slot.end;
+      }
     }
     
+    // S'il reste du temps libre après le dernier créneau occupé
     if (currentStart < endTime) {
       freeSlots.push({ start: currentStart, end: endTime });
     }
     
-    return freeSlots;
+    // Filtrer les créneaux invalides (durée nulle)
+    return freeSlots.filter(slot => slot.start < slot.end);
   }, []);
 
   // Algorithme d'assignation automatique OPTIMISÉ avec support des changements manuels
@@ -1017,16 +1026,19 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           )}
 
           <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-8 py-4">
+            <div className="space-y-10 py-4">
               {Object.entries(buildingsWithFloors).map(([buildingName, buildingData]) => {
                 const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
                   const numA = parseInt(a.replace(/\D/g, '')) || 0;
                   const numB = parseInt(b.replace(/\D/g, '')) || 0;
                   return numB - numA; // Trier du plus haut au plus bas
                 });
+                
+                const allRooms = Object.values(buildingData.floors).flat();
+                const maxRoomsPerFloor = Math.max(...Object.values(buildingData.floors).map(r => r.length));
 
                 return (
-                  <div key={buildingName} className="space-y-3">
+                  <div key={buildingName} className="space-y-4">
                     {/* En-tête du bâtiment */}
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -1035,144 +1047,201 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                       <div>
                         <h3 className="font-bold text-lg">{buildingName}</h3>
                         <p className="text-xs text-muted-foreground">
-                          {Object.values(buildingData.floors).flat().length} salles • {floorNames.length} étage(s)
+                          {allRooms.length} salles • {floorNames.length} étage(s)
                         </p>
                       </div>
                     </div>
 
-                    {/* Vue du bâtiment en façade */}
-                    <div className="relative">
-                      {/* Bâtiment container avec effet 3D */}
-                      <div className="relative bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg overflow-hidden border-x-4 border-t-4 border-slate-400 dark:border-slate-600 shadow-2xl">
-                        {/* Toit */}
-                        <div className="absolute -top-0 left-0 right-0 h-3 bg-gradient-to-b from-slate-500 to-slate-400 dark:from-slate-600 dark:to-slate-700 rounded-t-lg" />
+                    {/* Vue du bâtiment - Façade réaliste */}
+                    <div className="relative mx-auto" style={{ maxWidth: `${Math.max(maxRoomsPerFloor * 100 + 80, 400)}px` }}>
+                      {/* Toit en triangle */}
+                      <div className="relative mx-4">
+                        <div 
+                          className="h-0 w-0 mx-auto"
+                          style={{
+                            borderLeft: `${Math.max(maxRoomsPerFloor * 50 + 40, 200)}px solid transparent`,
+                            borderRight: `${Math.max(maxRoomsPerFloor * 50 + 40, 200)}px solid transparent`,
+                            borderBottom: '40px solid',
+                            borderBottomColor: 'hsl(var(--muted))',
+                          }}
+                        />
+                        {/* Ligne du toit */}
+                        <div className="absolute bottom-0 left-0 right-0 h-2 bg-slate-600 dark:bg-slate-500" />
+                      </div>
+
+                      {/* Corps du bâtiment */}
+                      <div className="relative bg-gradient-to-b from-stone-200 via-stone-100 to-stone-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 border-4 border-slate-500 dark:border-slate-400 shadow-2xl mx-4">
+                        {/* Texture de briques subtile */}
+                        <div className="absolute inset-0 opacity-10 dark:opacity-5" 
+                          style={{
+                            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.1) 20px, rgba(0,0,0,0.1) 21px), repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.05) 40px, rgba(0,0,0,0.05) 41px)',
+                          }}
+                        />
                         
                         {/* Étages */}
-                        <div className="pt-4">
-                          {floorNames.map((floorName, floorIndex) => {
-                            const rooms = buildingData.floors[floorName];
-                            const isGroundFloor = floorName === "RDC" || floorName === "0";
-                            
-                            return (
-                              <div key={floorName} className="relative">
-                                {/* Ligne de séparation d'étage */}
-                                {floorIndex > 0 && (
-                                  <div className="absolute top-0 left-0 right-0 h-1 bg-slate-400 dark:bg-slate-600" />
-                                )}
+                        {floorNames.map((floorName, floorIndex) => {
+                          const rooms = buildingData.floors[floorName];
+                          const isGroundFloor = floorName.toLowerCase() === "rdc" || floorName === "0";
+                          
+                          return (
+                            <div key={floorName} className="relative">
+                              {/* Séparation entre étages */}
+                              {floorIndex > 0 && (
+                                <div className="h-2 bg-gradient-to-b from-slate-400 to-slate-300 dark:from-slate-500 dark:to-slate-600 border-y border-slate-500 dark:border-slate-400" />
+                              )}
+                              
+                              <div className="flex items-stretch py-4 px-3 gap-1">
+                                {/* Label d'étage sur le côté */}
+                                <div className="w-10 flex items-center justify-center shrink-0">
+                                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 -rotate-90 whitespace-nowrap bg-stone-300/80 dark:bg-slate-600/80 px-2 py-0.5 rounded">
+                                    {floorName}
+                                  </span>
+                                </div>
                                 
-                                <div className="p-4">
-                                  {/* Label d'étage */}
-                                  <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 origin-center">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                      {floorName}
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Fenêtres/Salles */}
-                                  <div className="ml-8 flex flex-wrap gap-3">
-                                    {rooms.map((room) => {
-                                      const status = selectedTimeSlot ? getArchitectRoomStatus(room.id) : "available";
-                                      const roomDetails = 
-                                        getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === room.id) ||
-                                        getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === room.id) ||
-                                        getAvailableRoomsForSlotDetailed.occupied.find(r => r.classroom.id === room.id);
-                                      
-                                      return (
-                                        <div 
-                                          key={room.id}
-                                          className={`
-                                            relative group cursor-pointer transition-all duration-300
-                                            w-24 h-20 rounded-lg border-2 shadow-md
-                                            flex flex-col items-center justify-center text-center p-2
-                                            hover:scale-105 hover:shadow-xl hover:z-10
-                                            ${status === "available" 
-                                              ? "bg-green-50 dark:bg-green-950/50 border-green-400 dark:border-green-600" 
-                                              : status === "partial"
-                                              ? "bg-amber-50 dark:bg-amber-950/50 border-amber-400 dark:border-amber-600"
-                                              : "bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-600"
-                                            }
-                                          `}
-                                        >
-                                          {/* Icône de porte */}
-                                          <DoorOpen className={`h-4 w-4 mb-1 ${
-                                            status === "available" ? "text-green-600" :
-                                            status === "partial" ? "text-amber-600" : "text-red-600"
-                                          }`} />
+                                {/* Fenêtres/Salles */}
+                                <div className="flex-1 flex flex-wrap gap-3 justify-center">
+                                  {rooms.map((room) => {
+                                    const status = selectedTimeSlot ? getArchitectRoomStatus(room.id) : "available";
+                                    const roomDetails = 
+                                      getAvailableRoomsForSlotDetailed.available.find(r => r.classroom.id === room.id) ||
+                                      getAvailableRoomsForSlotDetailed.partial.find(r => r.classroom.id === room.id) ||
+                                      getAvailableRoomsForSlotDetailed.occupied.find(r => r.classroom.id === room.id);
+                                    
+                                    // Couleur de la fenêtre selon le statut
+                                    const windowColor = status === "available" 
+                                      ? "from-green-200 to-green-300 dark:from-green-800 dark:to-green-900" 
+                                      : status === "partial"
+                                      ? "from-amber-200 to-amber-300 dark:from-amber-800 dark:to-amber-900"
+                                      : "from-red-200 to-red-300 dark:from-red-800 dark:to-red-900";
+                                    
+                                    const borderColor = status === "available" 
+                                      ? "border-green-500" 
+                                      : status === "partial"
+                                      ? "border-amber-500"
+                                      : "border-red-500";
+                                    
+                                    return (
+                                      <div 
+                                        key={room.id}
+                                        className={`
+                                          relative group cursor-pointer transition-all duration-300
+                                          hover:scale-110 hover:z-20
+                                        `}
+                                      >
+                                        {/* Fenêtre avec cadre */}
+                                        <div className={`
+                                          relative w-[80px] h-[70px] rounded-t-lg
+                                          bg-gradient-to-b ${windowColor}
+                                          border-4 ${borderColor}
+                                          shadow-lg
+                                          flex flex-col items-center justify-center text-center p-1
+                                        `}>
+                                          {/* Reflet de vitre */}
+                                          <div className="absolute inset-2 bg-gradient-to-br from-white/40 to-transparent rounded-t pointer-events-none" />
                                           
-                                          {/* Nom de la salle */}
-                                          <span className="font-bold text-xs truncate w-full">{room.name}</span>
+                                          {/* Croisillon de fenêtre */}
+                                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="absolute w-0.5 h-full bg-slate-600/30 dark:bg-slate-400/30" />
+                                            <div className="absolute w-full h-0.5 bg-slate-600/30 dark:bg-slate-400/30" style={{ top: '50%' }} />
+                                          </div>
                                           
-                                          {/* Capacité */}
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                          {/* Contenu */}
+                                          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 relative z-10 drop-shadow-sm">{room.name}</span>
+                                          <span className="text-[9px] text-slate-600 dark:text-slate-300 flex items-center gap-0.5 relative z-10">
                                             <Users className="h-2.5 w-2.5" />
                                             {room.capacity}
                                           </span>
-                                          
-                                          {/* Indicateur de statut */}
-                                          <div className={`
-                                            absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background
-                                            ${status === "available" ? "bg-green-500" :
-                                              status === "partial" ? "bg-amber-500" : "bg-red-500"
-                                            }
-                                          `} />
+                                        </div>
+                                        
+                                        {/* Rebord de fenêtre */}
+                                        <div className="h-2 bg-slate-500 dark:bg-slate-400 rounded-b shadow-md" />
+                                        
+                                        {/* Indicateur de statut */}
+                                        <div className={`
+                                          absolute -top-2 -right-2 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-lg z-10
+                                          flex items-center justify-center
+                                          ${status === "available" ? "bg-green-500" :
+                                            status === "partial" ? "bg-amber-500" : "bg-red-500"
+                                          }
+                                        `}>
+                                          {status === "available" && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                                          {status === "partial" && <Clock className="h-2.5 w-2.5 text-white" />}
+                                          {status === "occupied" && <AlertTriangle className="h-2.5 w-2.5 text-white" />}
+                                        </div>
 
-                                          {/* Tooltip détaillé au survol */}
-                                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-popover border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                            <div className="space-y-2">
-                                              <div className="flex items-center justify-between">
-                                                <span className="font-bold">{room.name}</span>
-                                                <Badge variant={status === "available" ? "default" : status === "partial" ? "secondary" : "destructive"} className="text-[10px]">
-                                                  {status === "available" ? "Libre" : status === "partial" ? "Partiel" : "Occupée"}
-                                                </Badge>
-                                              </div>
-                                              <div className="text-xs text-muted-foreground">
-                                                <p>Capacité: {room.capacity} places</p>
-                                                {room.building && <p>Bâtiment: {room.building}</p>}
-                                                {room.floor && <p>Étage: {room.floor}</p>}
-                                              </div>
-                                              
-                                              {selectedTimeSlot && roomDetails && (
-                                                <div className="border-t pt-2 mt-2 space-y-1">
-                                                  {roomDetails.occupancySlots.length > 0 && (
-                                                    <div>
-                                                      <p className="text-[10px] font-medium text-red-600 dark:text-red-400">Occupée:</p>
-                                                      {roomDetails.occupancySlots.map((slot, i) => (
-                                                        <p key={i} className="text-[10px] text-muted-foreground">
-                                                          {slot.start} - {slot.end}: {slot.session?.classes?.name || slot.session?.title}
-                                                        </p>
-                                                      ))}
-                                                    </div>
-                                                  )}
-                                                  {roomDetails.freeSlots.length > 0 && (
-                                                    <div>
-                                                      <p className="text-[10px] font-medium text-green-600 dark:text-green-400">Disponible:</p>
-                                                      {roomDetails.freeSlots.map((slot, i) => (
-                                                        <p key={i} className="text-[10px] text-muted-foreground">
-                                                          {slot.start} - {slot.end}
-                                                        </p>
-                                                      ))}
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              )}
+                                        {/* Tooltip détaillé au survol */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-60 p-3 bg-popover border rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                          <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-bold">{room.name}</span>
+                                              <Badge variant={status === "available" ? "default" : status === "partial" ? "secondary" : "destructive"} className="text-[10px]">
+                                                {status === "available" ? "Libre" : status === "partial" ? "Partiellement libre" : "Occupée"}
+                                              </Badge>
                                             </div>
+                                            <div className="text-xs text-muted-foreground space-y-0.5">
+                                              <p className="flex items-center gap-1"><Users className="h-3 w-3" /> {room.capacity} places</p>
+                                              {room.building && <p className="flex items-center gap-1"><Building className="h-3 w-3" /> {room.building}</p>}
+                                              {room.floor && <p className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Étage {room.floor}</p>}
+                                            </div>
+                                            
+                                            {selectedTimeSlot && roomDetails && (
+                                              <div className="border-t pt-2 mt-2 space-y-1.5">
+                                                {roomDetails.occupancySlots.length > 0 && (
+                                                  <div>
+                                                    <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                                                      <XCircle className="h-3 w-3" /> Occupée:
+                                                    </p>
+                                                    {roomDetails.occupancySlots.map((slot, i) => (
+                                                      <p key={i} className="text-[10px] text-muted-foreground ml-4">
+                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}: {slot.session?.classes?.name || slot.session?.title || "Séance"}
+                                                      </p>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                                {roomDetails.freeSlots.length > 0 && (
+                                                  <div>
+                                                    <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                      <CheckCircle2 className="h-3 w-3" /> Disponible:
+                                                    </p>
+                                                    {roomDetails.freeSlots.map((slot, i) => (
+                                                      <p key={i} className="text-[10px] text-muted-foreground ml-4">
+                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}
+                                                      </p>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+                                          {/* Flèche du tooltip */}
+                                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                                            <div className="border-8 border-transparent border-t-popover" />
                                           </div>
                                         </div>
-                                      );
-                                    })}
-                                  </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          );
+                        })}
                         
-                        {/* Base du bâtiment */}
-                        <div className="h-4 bg-gradient-to-t from-slate-500 to-slate-400 dark:from-slate-700 dark:to-slate-600" />
+                        {/* Entrée du bâtiment (RDC) */}
+                        {floorNames.length > 0 && (
+                          <div className="flex justify-center pb-0">
+                            <div className="w-16 h-8 bg-gradient-to-b from-amber-800 to-amber-900 dark:from-amber-700 dark:to-amber-800 border-t-4 border-x-4 border-amber-950 dark:border-amber-600 rounded-t-lg flex items-center justify-center">
+                              <DoorOpen className="h-4 w-4 text-amber-200" />
+                            </div>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Fondations */}
+                      <div className="h-4 bg-gradient-to-b from-stone-500 to-stone-600 dark:from-slate-600 dark:to-slate-700 mx-2 rounded-b" />
                       
-                      {/* Sol / Fondations */}
-                      <div className="h-3 bg-gradient-to-b from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950 rounded-b-lg" />
+                      {/* Sol / Pelouse */}
+                      <div className="h-3 bg-gradient-to-b from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 rounded-b-lg mx-1" />
                     </div>
                   </div>
                 );
