@@ -6,6 +6,7 @@ import { RescheduleSessionDialog } from "@/components/calendar/RescheduleSession
 import { ApproveRescheduleDialog } from "@/components/calendar/ApproveRescheduleDialog";
 import { SessionForm, SessionFormData } from "./SessionForm";
 import { useAssignments } from "@/hooks/useAssignments";
+import { useClassrooms } from "@/hooks/useClassrooms";
 import { useOptionalSemester } from "@/hooks/useSemester";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const { assignments, createAssignment, rescheduleAssignment, approveReschedule, rejectReschedule, loading } = useAssignments({ schoolId });
+  const { assignClassroomAsync } = useClassrooms(schoolId);
   const semesterContext = useOptionalSemester();
   const currentSemester = semesterContext?.currentSemester;
 
@@ -73,6 +75,19 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
       if (result.error) {
         toast.error(result.error);
       } else {
+        // If a classroom was selected, assign it
+        if (data.classroom_id && result.data?.id) {
+          try {
+            await assignClassroomAsync({
+              classroom_id: data.classroom_id,
+              assignment_id: result.data.id,
+            });
+          } catch (classroomError) {
+            console.error("Erreur lors de l'assignation de la salle:", classroomError);
+            // Don't fail the whole operation if classroom assignment fails
+          }
+        }
+        
         const message = (result as any).message || "Séance créée avec succès";
         toast.success(message);
         setIsDialogOpen(false);

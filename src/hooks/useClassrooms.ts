@@ -244,6 +244,7 @@ export function useClassrooms(schoolId: string) {
     updateClassroom: updateClassroom.mutate,
     deleteClassroom: deleteClassroom.mutate,
     assignClassroom: assignClassroom.mutate,
+    assignClassroomAsync: assignClassroom.mutateAsync,
     unassignClassroom: unassignClassroom.mutate,
   };
 }

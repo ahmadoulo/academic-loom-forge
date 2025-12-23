@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Building2, Users, Calendar, Clock, Eye, 
-  CheckCircle2, AlertTriangle, DoorOpen
+  CheckCircle2, AlertTriangle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -421,11 +421,16 @@ export function ArchitectViewDialog({
                                                   <p className="text-[10px] font-medium text-rose-600 dark:text-rose-400 mb-1">
                                                     Occupé :
                                                   </p>
-                                                  <div className="flex flex-wrap gap-1">
+                                                  <div className="space-y-1">
                                                     {roomDetails.occupancySlots.map((slot, i) => (
-                                                      <span key={i} className="text-[10px] bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded">
-                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}
-                                                      </span>
+                                                      <div key={i} className="text-[10px] bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded">
+                                                        <span className="font-medium">{slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}</span>
+                                                        {slot.session && (
+                                                          <span className="block text-rose-600 dark:text-rose-400">
+                                                            {slot.session.subjects?.name || slot.session.title} • {slot.session.classes?.name}
+                                                          </span>
+                                                        )}
+                                                      </div>
                                                     ))}
                                                   </div>
                                                 </div>
@@ -457,13 +462,6 @@ export function ArchitectViewDialog({
                         );
                       })}
                       
-                      {/* Building entrance */}
-                      <div className="flex justify-center py-2 bg-muted/30 border-t">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <DoorOpen className="h-4 w-4" />
-                          <span className="text-xs">Entrée</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 );
