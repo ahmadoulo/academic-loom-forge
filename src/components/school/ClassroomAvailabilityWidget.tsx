@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
 import { useClassrooms } from "@/hooks/useClassrooms";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Building2, Users, Calendar, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Building2, Users, CheckCircle2, Clock, XCircle, CalendarDays } from "lucide-react";
+import { format, parseISO, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface ClassroomAvailabilityWidgetProps {
@@ -17,7 +16,7 @@ export function ClassroomAvailabilityWidget({ schoolId }: ClassroomAvailabilityW
   const { classrooms, assignments: classroomAssignments } = useClassrooms(schoolId);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
-  // Calculer la disponibilité des salles pour la date sélectionnée
+  // Calculate room availability for the selected date
   const roomsAvailability = useMemo(() => {
     const available: typeof classrooms = [];
     const occupied: { classroom: typeof classrooms[0]; sessions: any[] }[] = [];
@@ -29,7 +28,7 @@ export function ClassroomAvailabilityWidget({ schoolId }: ClassroomAvailabilityW
     classrooms.forEach(classroom => {
       if (!classroom.is_active) return;
 
-      // Trouver toutes les séances pour cette salle ce jour-là
+      // Find all sessions for this room on this day
       const dayAssignments = classroomAssignments.filter(ca => {
         if (ca.classroom_id !== classroom.id) return false;
         if (!ca.assignments) return false;
@@ -41,29 +40,32 @@ export function ClassroomAvailabilityWidget({ schoolId }: ClassroomAvailabilityW
       if (sessions.length === 0) {
         available.push(classroom);
       } else {
-        // Calculer les créneaux libres
+        // Calculate free slots
         const sortedSessions = [...sessions].sort((a, b) => 
           (a?.start_time || "").localeCompare(b?.start_time || "")
         );
 
         const freeSlots: { start: string; end: string }[] = [];
-        let currentStart = dayStart;
+        let currentEnd = dayStart;
 
         for (const session of sortedSessions) {
-          if (session?.start_time && session.start_time > currentStart) {
-            freeSlots.push({ start: currentStart, end: session.start_time });
+          if (session?.start_time && session.start_time > currentEnd) {
+            freeSlots.push({ start: currentEnd, end: session.start_time });
           }
-          if (session?.end_time && session.end_time > currentStart) {
-            currentStart = session.end_time;
+          if (session?.end_time && session.end_time > currentEnd) {
+            currentEnd = session.end_time;
           }
         }
 
-        if (currentStart < dayEnd) {
-          freeSlots.push({ start: currentStart, end: dayEnd });
+        if (currentEnd < dayEnd) {
+          freeSlots.push({ start: currentEnd, end: dayEnd });
         }
 
-        if (freeSlots.length > 0) {
-          partial.push({ classroom, sessions, freeSlots });
+        // Filter valid slots
+        const validFreeSlots = freeSlots.filter(s => s.start < s.end);
+
+        if (validFreeSlots.length > 0) {
+          partial.push({ classroom, sessions, freeSlots: validFreeSlots });
         } else {
           occupied.push({ classroom, sessions });
         }
@@ -73,126 +75,138 @@ export function ClassroomAvailabilityWidget({ schoolId }: ClassroomAvailabilityW
     return { available, occupied, partial };
   }, [classrooms, classroomAssignments, selectedDate]);
 
-  const isToday = selectedDate === format(new Date(), "yyyy-MM-dd");
   const totalRooms = classrooms.filter(c => c.is_active).length;
+  const dateIsToday = isToday(parseISO(selectedDate));
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="h-full">
+      <CardHeader className="pb-2 space-y-0">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Building2 className="h-5 w-5 text-primary" />
-              Disponibilité des Salles
-            </CardTitle>
-            <CardDescription>
-              {isToday ? "Aujourd'hui" : format(parseISO(selectedDate), "EEEE dd MMMM", { locale: fr })}
-            </CardDescription>
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Building2 className="h-4 w-4 text-primary" />
+            Salles de cours
+          </CardTitle>
+          <div className="relative">
+            <CalendarDays className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-32 h-7 text-xs pl-8"
+            />
           </div>
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-36 h-8 text-xs"
-          />
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {dateIsToday ? "Aujourd'hui" : format(parseISO(selectedDate), "EEEE d MMMM", { locale: fr })}
+        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Résumé rapide */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {roomsAvailability.available.length}
-            </p>
-            <p className="text-[10px] text-muted-foreground">Libres</p>
-          </div>
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-            </div>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {roomsAvailability.partial.length}
-            </p>
-            <p className="text-[10px] text-muted-foreground">Partielles</p>
-          </div>
-          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <XCircle className="h-4 w-4 text-red-600" />
-            </div>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {roomsAvailability.occupied.length}
-            </p>
-            <p className="text-[10px] text-muted-foreground">Occupées</p>
-          </div>
-        </div>
-
-        {/* Liste des salles */}
+      
+      <CardContent className="pt-3">
         {totalRooms === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Aucune salle configurée</p>
+          <div className="text-center py-8 text-muted-foreground">
+            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Aucune salle</p>
           </div>
         ) : (
-          <ScrollArea className="h-[180px]">
-            <div className="space-y-2 pr-3">
-              {/* Salles libres */}
-              {roomsAvailability.available.map(room => (
-                <div key={room.id} className="flex items-center justify-between p-2 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-900/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="font-medium text-sm">{room.name}</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Users className="h-3 w-3" />
-                      {room.capacity}
-                    </span>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                    Toute la journée
-                  </Badge>
-                </div>
-              ))}
-
-              {/* Salles partiellement libres */}
-              {roomsAvailability.partial.map(({ classroom, freeSlots }) => (
-                <div key={classroom.id} className="flex items-center justify-between p-2 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className="font-medium text-sm">{classroom.name}</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Users className="h-3 w-3" />
-                      {classroom.capacity}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">
-                      {freeSlots.map(s => `${s.start}-${s.end}`).join(", ")}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Salles occupées */}
-              {roomsAvailability.occupied.map(({ classroom }) => (
-                <div key={classroom.id} className="flex items-center justify-between p-2 rounded-lg border bg-red-50/50 dark:bg-red-950/20 border-red-200/50 dark:border-red-900/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="font-medium text-sm">{classroom.name}</span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Users className="h-3 w-3" />
-                      {classroom.capacity}
-                    </span>
-                  </div>
-                  <Badge variant="destructive" className="text-[10px]">
-                    Occupée
-                  </Badge>
-                </div>
-              ))}
+          <div className="space-y-3">
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mb-1" />
+                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {roomsAvailability.available.length}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Libres</span>
+              </div>
+              <div className="flex flex-col items-center p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mb-1" />
+                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                  {roomsAvailability.partial.length}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Partielles</span>
+              </div>
+              <div className="flex flex-col items-center p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200/50 dark:border-rose-800/30">
+                <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 mb-1" />
+                <span className="text-xl font-bold text-rose-600 dark:text-rose-400">
+                  {roomsAvailability.occupied.length}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Occupées</span>
+              </div>
             </div>
-          </ScrollArea>
+
+            {/* Rooms list */}
+            <ScrollArea className="h-[160px]">
+              <div className="space-y-1.5 pr-2">
+                {/* Available rooms */}
+                {roomsAvailability.available.slice(0, 4).map(room => (
+                  <div 
+                    key={room.id} 
+                    className="flex items-center justify-between p-2 rounded-md bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/20"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="font-medium text-sm truncate">{room.name}</span>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 shrink-0">
+                        <Users className="h-2.5 w-2.5" />
+                        {room.capacity}
+                      </span>
+                    </div>
+                    <Badge 
+                      variant="secondary" 
+                      className="text-[9px] h-4 px-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0"
+                    >
+                      Libre
+                    </Badge>
+                  </div>
+                ))}
+                {roomsAvailability.available.length > 4 && (
+                  <p className="text-[10px] text-muted-foreground text-center py-1">
+                    +{roomsAvailability.available.length - 4} autres libres
+                  </p>
+                )}
+
+                {/* Partial rooms */}
+                {roomsAvailability.partial.slice(0, 3).map(({ classroom, freeSlots }) => (
+                  <div 
+                    key={classroom.id} 
+                    className="flex items-center justify-between p-2 rounded-md bg-amber-50/60 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/20"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span className="font-medium text-sm truncate">{classroom.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                      <Clock className="h-2.5 w-2.5" />
+                      <span className="max-w-[80px] truncate">
+                        {freeSlots.slice(0, 2).map(s => `${s.start.substring(0,5)}-${s.end.substring(0,5)}`).join(", ")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Occupied rooms */}
+                {roomsAvailability.occupied.slice(0, 2).map(({ classroom }) => (
+                  <div 
+                    key={classroom.id} 
+                    className="flex items-center justify-between p-2 rounded-md bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/20"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                      <span className="font-medium text-sm truncate">{classroom.name}</span>
+                    </div>
+                    <Badge variant="destructive" className="text-[9px] h-4 px-1.5 shrink-0">
+                      Occupée
+                    </Badge>
+                  </div>
+                ))}
+                {roomsAvailability.occupied.length > 2 && (
+                  <p className="text-[10px] text-muted-foreground text-center py-1">
+                    +{roomsAvailability.occupied.length - 2} autres occupées
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
