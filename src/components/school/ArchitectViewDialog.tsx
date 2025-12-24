@@ -218,7 +218,7 @@ export function ArchitectViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
             <Building2 className="h-5 w-5 text-primary" />
@@ -297,9 +297,9 @@ export function ArchitectViewDialog({
           )}
         </div>
 
-        {/* Buildings view with proper scroll */}
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-6 space-y-8">
+        {/* Buildings view with proper scroll - touch-friendly */}
+        <div className="flex-1 min-h-0 overflow-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-6 space-y-8 pb-10">
             <TooltipProvider delayDuration={200}>
               {buildingEntries.map(([buildingName, buildingData]) => {
                 const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
@@ -478,7 +478,7 @@ export function ArchitectViewDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
         <div className="px-6 py-3 border-t bg-muted/30 shrink-0 flex justify-end">
