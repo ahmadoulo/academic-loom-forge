@@ -1228,13 +1228,19 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
                           const session = assignment.assignments;
                           if (!session) return null;
 
+                          const subjectName = session.subjects?.name;
+                          const className = session.classes?.name;
+                          const displayText = subjectName 
+                            ? `${subjectName} - ${className}`
+                            : className || session.title;
+
                           return (
                             <div
                               key={assignment.id}
                               className="flex items-center justify-between p-1.5 bg-muted/50 rounded text-xs"
                             >
-                              <span className="truncate flex-1">{session.classes?.name}</span>
-                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <span className="truncate flex-1" title={displayText}>{displayText}</span>
+                              <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
                                 <span>{format(parseISO(session.session_date), "dd/MM", { locale: fr })}</span>
                                 <Button
                                   variant="ghost"
