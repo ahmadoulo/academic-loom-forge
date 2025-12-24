@@ -296,54 +296,81 @@ export function SessionForm({ onSubmit, onCancel, classes, teachers, loading, sc
         </div>
       </div>
 
-      {/* Salle de cours (optionnel) */}
-      {showClassroomSelector && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+      {/* Salle de cours (optionnel) - Toujours visible */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-primary" />
-            <Label className="text-sm font-medium">Salle de cours (optionnel)</Label>
+            <Label className="text-sm font-medium">Salle de cours</Label>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">Optionnel</span>
           </div>
-          
-          <Select
-            value={formData.classroom_id || "none"}
-            onValueChange={(value) => setFormData({ ...formData, classroom_id: value === "none" ? undefined : value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Aucune salle assignée" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">
-                <span className="text-muted-foreground">Aucune salle assignée</span>
-              </SelectItem>
-              {availableClassrooms.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">
-                  Aucune salle disponible sur ce créneau
-                </div>
-              ) : (
-                availableClassrooms.map((classroom) => (
-                  <SelectItem key={classroom.id} value={classroom.id}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                      <span>{classroom.name}</span>
-                      <span className="text-muted-foreground text-xs flex items-center gap-0.5">
-                        <Users className="h-2.5 w-2.5" />
-                        {classroom.capacity}
-                      </span>
-                      {classroom.building && (
-                        <span className="text-muted-foreground text-xs">• {classroom.building}</span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-          
-          <p className="text-xs text-muted-foreground">
-            {availableClassrooms.length} salle(s) disponible(s) pour ce créneau
-          </p>
         </div>
-      )}
+        
+        {showClassroomSelector ? (
+          <>
+            <Select
+              value={formData.classroom_id || "none"}
+              onValueChange={(value) => setFormData({ ...formData, classroom_id: value === "none" ? undefined : value })}
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Choisir une salle..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>Assigner plus tard</span>
+                  </div>
+                </SelectItem>
+                {availableClassrooms.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground text-center">
+                    Aucune salle disponible sur ce créneau
+                  </div>
+                ) : (
+                  availableClassrooms.map((classroom) => (
+                    <SelectItem key={classroom.id} value={classroom.id}>
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{classroom.name}</span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span className="flex items-center gap-0.5">
+                              <Users className="h-3 w-3" />
+                              {classroom.capacity} places
+                            </span>
+                            {classroom.building && (
+                              <span>• {classroom.building}</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex items-center gap-2 text-xs">
+              <div className={cn(
+                "h-2 w-2 rounded-full",
+                availableClassrooms.length > 0 ? "bg-green-500" : "bg-amber-500"
+              )} />
+              <span className="text-muted-foreground">
+                {availableClassrooms.length > 0 
+                  ? `${availableClassrooms.length} salle(s) disponible(s) pour ce créneau`
+                  : "Toutes les salles sont occupées sur ce créneau"
+                }
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" />
+            <span>Remplissez la date et les horaires pour voir les salles disponibles</span>
+          </div>
+        )}
+      </div>
 
       {/* Section Récurrence */}
       <div className="space-y-4 rounded-lg border border-border bg-muted/50 p-4">
