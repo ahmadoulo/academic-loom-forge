@@ -200,8 +200,8 @@ export function ArchitectViewDialog({
     });
   };
 
-  const getRoomStatus = (roomId: string): "available" | "partial" | "occupied" => {
-    if (!selectedTimeSlot) return "available";
+  const getRoomStatus = (roomId: string): "available" | "partial" | "occupied" | "neutral" => {
+    if (!selectedTimeSlot) return "neutral";
     
     if (roomsWithDetails.available.find(r => r.classroom.id === roomId)) return "available";
     if (roomsWithDetails.partial.find(r => r.classroom.id === roomId)) return "partial";
@@ -265,7 +265,7 @@ export function ArchitectViewDialog({
             </Button>
           </div>
 
-          {selectedTimeSlot && (
+          {selectedTimeSlot ? (
             <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-border/50">
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -293,6 +293,13 @@ export function ArchitectViewDialog({
                   <span className="text-muted-foreground hidden sm:inline">occupées</span>
                 </span>
               </div>
+            </div>
+          ) : (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Sélectionnez une date et une plage horaire puis cliquez sur "Analyser" pour voir la disponibilité
+              </p>
             </div>
           )}
         </div>
@@ -348,12 +355,14 @@ export function ArchitectViewDialog({
                                   const roomDetails = getRoomDetails(room.id);
 
                                   const statusStyles = {
+                                    neutral: "bg-muted/50 border-border hover:border-muted-foreground/50",
                                     available: "bg-emerald-50 border-emerald-300 hover:border-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-700",
                                     partial: "bg-amber-50 border-amber-300 hover:border-amber-400 dark:bg-amber-950/30 dark:border-amber-700",
                                     occupied: "bg-rose-50 border-rose-300 hover:border-rose-400 dark:bg-rose-950/30 dark:border-rose-700"
                                   };
 
                                   const statusBadge = {
+                                    neutral: { color: "bg-muted-foreground/40", icon: Building2 },
                                     available: { color: "bg-emerald-500", icon: CheckCircle2 },
                                     partial: { color: "bg-amber-500", icon: Clock },
                                     occupied: { color: "bg-rose-500", icon: AlertTriangle }
@@ -395,10 +404,10 @@ export function ArchitectViewDialog({
                                           <div className="flex items-center justify-between gap-3">
                                             <span className="font-semibold">{room.name}</span>
                                             <Badge 
-                                              variant={status === "available" ? "default" : status === "partial" ? "secondary" : "destructive"}
+                                              variant={status === "available" ? "default" : status === "partial" ? "secondary" : status === "occupied" ? "destructive" : "outline"}
                                               className="text-[10px] h-5"
                                             >
-                                              {status === "available" ? "Libre" : status === "partial" ? "Partiel" : "Occupée"}
+                                              {status === "available" ? "Libre" : status === "partial" ? "Partiel" : status === "occupied" ? "Occupée" : "—"}
                                             </Badge>
                                           </div>
 
