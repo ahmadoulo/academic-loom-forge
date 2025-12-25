@@ -26,6 +26,14 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
   const [error, setError] = useState<string | null>(null);
 
   const fetchClasses = async () => {
+    // IMPORTANT: Si on n'est pas en mode "includeAllYears" et qu'aucun yearId n'est fourni,
+    // on ne charge pas les classes pour éviter d'afficher toutes les années par erreur
+    if (!includeAllYears && !yearId) {
+      setClasses([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       let query = supabase
@@ -39,18 +47,19 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
         query = query.eq('school_id', schoolId);
       }
 
-      // IMPORTANT: Toujours filtrer par année scolaire si fournie
-      // Ne jamais afficher toutes les années à la fois (sauf si explicitement demandé)
+      // Filtrer par année scolaire sauf si on veut toutes les années
       if (yearId && yearId !== 'all' && !includeAllYears) {
         query = query.eq('school_year_id', yearId);
       }
+
+      // Ne pas charger les classes archivées par défaut
+      query = query.eq('archived', false);
 
       const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
       
       // Pour chaque classe, compter tous les étudiants inscrits dans cette année
-      // (sans filtrer par is_active car après migration, les anciens étudiants ont is_active=false)
       const classesWithCount = await Promise.all((data || []).map(async (cls: any) => {
         const { count, error: countError } = await supabase
           .from('student_school')
@@ -81,6 +90,9 @@ export const useClassesByYear = (schoolId?: string, yearId?: string, includeAllY
   useEffect(() => {
     if (schoolId) {
       fetchClasses();
+    } else {
+      setClasses([]);
+      setLoading(false);
     }
   }, [schoolId, yearId, includeAllYears]);
 
