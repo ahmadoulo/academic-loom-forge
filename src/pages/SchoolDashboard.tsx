@@ -142,8 +142,9 @@ const SchoolDashboard = () => {
   }, [schoolId, getSchoolByIdentifier]);
 
   // Get academic year for filtering - use getYearForDisplay to respect user selection
-  const { getYearForDisplay, currentYear: contextCurrentYear, selectedYear: contextSelectedYear } = useAcademicYear();
+  const { getYearForDisplay, currentYear: contextCurrentYear, selectedYear: contextSelectedYear, loading: academicYearLoading } = useAcademicYear();
   // IMPORTANT: Ne jamais utiliser 'all' dans le dashboard école - toujours filtrer par une année spécifique
+  // Et ne pas charger les classes tant que l'année n'est pas définie
   const displayYearId = contextSelectedYear?.id === 'all' 
     ? contextCurrentYear?.id 
     : (getYearForDisplay() || contextCurrentYear?.id);
@@ -151,6 +152,7 @@ const SchoolDashboard = () => {
   const { students, loading: studentsLoading, importStudents, createStudent, updateStudent, archiveStudent, restoreStudent } = useStudents(school?.id);
   
   // Use filtered classes by selected year (or current if none selected)
+  // IMPORTANT: On passe displayYearId uniquement s'il est défini pour éviter de charger toutes les classes
   const { createClass: createClassOriginal, updateClass: updateClassOriginal, archiveClass: archiveClassOriginal, restoreClass } = useClasses(school?.id);
   const { classes, loading: classesLoading, refetch: refetchClasses } = useClassesByYear(school?.id, displayYearId);
   
