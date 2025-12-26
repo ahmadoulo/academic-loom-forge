@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 import { 
   Users, 
   GraduationCap, 
@@ -20,10 +21,14 @@ import {
   AlertCircle,
   CheckCircle2,
   User,
-  Briefcase
+  Briefcase,
+  DoorOpen,
+  Building2,
+  MapPin
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useClassrooms } from "@/hooks/useClassrooms";
 
 interface AdvancedSearchDialogProps {
   schoolId: string;
@@ -48,7 +53,14 @@ export function AdvancedSearchDialog({
 }: AdvancedSearchDialogProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"students" | "teachers">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "teachers" | "classrooms">("students");
+  
+  // État pour la recherche de salles
+  const [roomSearchDate, setRoomSearchDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [roomSearchStartTime, setRoomSearchStartTime] = useState("08:00");
+  const [roomSearchEndTime, setRoomSearchEndTime] = useState("10:00");
+  
+  const { classrooms, assignments: classroomAssignments } = useClassrooms(schoolId);
 
   const normalizedTerm = searchTerm.trim().toLowerCase();
 
@@ -73,6 +85,56 @@ export function AdvancedSearchDialog({
       return target.includes(normalizedTerm);
     }).slice(0, 10);
   }, [normalizedTerm, teachers, schoolId]);
+
+  // Recherche de disponibilité des salles
+  const classroomAvailability = useMemo(() => {
+    if (!classrooms.length) return [];
+
+    // Convertir les heures de recherche en minutes pour comparaison
+    const searchStartMinutes = parseInt(roomSearchStartTime.split(':')[0]) * 60 + parseInt(roomSearchStartTime.split(':')[1] || '0');
+    const searchEndMinutes = parseInt(roomSearchEndTime.split(':')[0]) * 60 + parseInt(roomSearchEndTime.split(':')[1] || '0');
+
+    return classrooms
+      .filter(room => room.is_active !== false)
+      .map(room => {
+        // Trouver les assignations pour cette salle à la date sélectionnée
+        const roomAssignments = classroomAssignments
+          .filter(ca => 
+            ca.classroom_id === room.id && 
+            ca.assignments?.session_date === roomSearchDate
+          )
+          .map(ca => ca.assignments)
+          .filter(Boolean);
+
+        // Vérifier les conflits
+        const conflicts = roomAssignments.filter(assignment => {
+          if (!assignment?.start_time || !assignment?.end_time) return false;
+          
+          const assignmentStart = parseInt(assignment.start_time.split(':')[0]) * 60 + parseInt(assignment.start_time.split(':')[1] || '0');
+          const assignmentEnd = parseInt(assignment.end_time.split(':')[0]) * 60 + parseInt(assignment.end_time.split(':')[1] || '0');
+          
+          // Vérifier si les plages horaires se chevauchent
+          return !(searchEndMinutes <= assignmentStart || searchStartMinutes >= assignmentEnd);
+        });
+
+        return {
+          ...room,
+          isAvailable: conflicts.length === 0,
+          conflicts: conflicts.map(c => ({
+            startTime: c?.start_time || '',
+            endTime: c?.end_time || '',
+            className: c?.classes?.name || '',
+            subjectName: c?.subjects?.name || ''
+          }))
+        };
+      })
+      .sort((a, b) => {
+        // Les salles disponibles en premier
+        if (a.isAvailable && !b.isAvailable) return -1;
+        if (!a.isAvailable && b.isAvailable) return 1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [classrooms, classroomAssignments, roomSearchDate, roomSearchStartTime, roomSearchEndTime]);
 
   const getStudentStats = (student: any) => {
     const studentGrades = grades.filter((g) => g.student_id === student.id);
@@ -161,41 +223,43 @@ export function AdvancedSearchDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          {!normalizedTerm ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Search className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Rechercher dans votre école</h3>
-              <p className="text-muted-foreground max-w-md">
-                Tapez un nom, prénom, email ou numéro CIN pour trouver rapidement un étudiant ou un professeur avec toutes ses informations.
-              </p>
-            </div>
-          ) : (
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex flex-col h-full">
-              <div className="border-b px-6 py-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <TabsList className="h-9">
-                    <TabsTrigger value="students" className="gap-2 px-4">
-                      <Users className="h-4 w-4" />
-                      Étudiants
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex flex-col h-full">
+            <div className="border-b px-6 py-3 bg-muted/30">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <TabsList className="h-9">
+                  <TabsTrigger value="students" className="gap-2 px-3">
+                    <Users className="h-4 w-4" />
+                    <span className="hidden sm:inline">Étudiants</span>
+                    {normalizedTerm && (
                       <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                         {filteredStudents.length}
                       </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="teachers" className="gap-2 px-4">
-                      <GraduationCap className="h-4 w-4" />
-                      Professeurs
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="teachers" className="gap-2 px-3">
+                    <GraduationCap className="h-4 w-4" />
+                    <span className="hidden sm:inline">Professeurs</span>
+                    {normalizedTerm && (
                       <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                         {filteredTeachers.length}
                       </Badge>
-                    </TabsTrigger>
-                  </TabsList>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="classrooms" className="gap-2 px-3">
+                    <DoorOpen className="h-4 w-4" />
+                    <span className="hidden sm:inline">Salles</span>
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {classroomAvailability.filter(r => r.isAvailable).length}
+                    </Badge>
+                  </TabsTrigger>
+                </TabsList>
+                {normalizedTerm && activeTab !== 'classrooms' && (
                   <span className="text-sm text-muted-foreground">
                     {totalResults} résultat{totalResults > 1 ? "s" : ""}
                   </span>
-                </div>
+                )}
               </div>
+            </div>
 
               <ScrollArea className="flex-1 h-[450px]">
                 <TabsContent value="students" className="m-0 p-4">
@@ -453,9 +517,135 @@ export function AdvancedSearchDialog({
                     </div>
                   )}
                 </TabsContent>
+
+                {/* Onglet Salles de cours */}
+                <TabsContent value="classrooms" className="m-0 p-4">
+                  <div className="space-y-4">
+                    {/* Filtres de date/heure */}
+                    <div className="p-4 border rounded-lg bg-muted/30">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Vérifier la disponibilité
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">Date</Label>
+                          <Input
+                            type="date"
+                            value={roomSearchDate}
+                            onChange={(e) => setRoomSearchDate(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Heure début</Label>
+                          <Input
+                            type="time"
+                            value={roomSearchStartTime}
+                            onChange={(e) => setRoomSearchStartTime(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Heure fin</Label>
+                          <Input
+                            type="time"
+                            value={roomSearchEndTime}
+                            onChange={(e) => setRoomSearchEndTime(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(roomSearchDate), "EEEE d MMMM yyyy", { locale: fr })} de {roomSearchStartTime} à {roomSearchEndTime}
+                      </p>
+                    </div>
+
+                    {/* Résultats */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {classroomAvailability.length === 0 ? (
+                        <div className="col-span-full text-center py-8">
+                          <DoorOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">Aucune salle de cours configurée</p>
+                        </div>
+                      ) : (
+                        classroomAvailability.map((room) => (
+                          <div 
+                            key={room.id} 
+                            className={`p-4 rounded-lg border transition-all ${
+                              room.isAvailable 
+                                ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' 
+                                : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                                  room.isAvailable 
+                                    ? 'bg-green-100 dark:bg-green-900/50' 
+                                    : 'bg-red-100 dark:bg-red-900/50'
+                                }`}>
+                                  {room.isAvailable ? (
+                                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  ) : (
+                                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h5 className="font-semibold">{room.name}</h5>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Users className="h-3 w-3" />
+                                    <span>{room.capacity} places</span>
+                                    {room.building && (
+                                      <>
+                                        <Building2 className="h-3 w-3 ml-1" />
+                                        <span>{room.building}</span>
+                                      </>
+                                    )}
+                                    {room.floor && (
+                                      <>
+                                        <MapPin className="h-3 w-3 ml-1" />
+                                        <span>Étage {room.floor}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant={room.isAvailable ? "default" : "destructive"} className="shrink-0">
+                                {room.isAvailable ? "Disponible" : "Occupée"}
+                              </Badge>
+                            </div>
+                            
+                            {!room.isAvailable && room.conflicts.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800">
+                                <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-1">Occupée par :</p>
+                                <div className="space-y-1">
+                                  {room.conflicts.map((conflict, idx) => (
+                                    <div key={idx} className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {conflict.startTime?.slice(0,5)} - {conflict.endTime?.slice(0,5)}
+                                      {conflict.className && <span>• {conflict.className}</span>}
+                                      {conflict.subjectName && <span>({conflict.subjectName})</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    {/* Résumé */}
+                    <div className="flex items-center justify-between text-sm pt-2 border-t">
+                      <span className="text-muted-foreground">
+                        {classroomAvailability.filter(r => r.isAvailable).length} salle{classroomAvailability.filter(r => r.isAvailable).length > 1 ? 's' : ''} disponible{classroomAvailability.filter(r => r.isAvailable).length > 1 ? 's' : ''} sur {classroomAvailability.length}
+                      </span>
+                    </div>
+                  </div>
+                </TabsContent>
               </ScrollArea>
             </Tabs>
-          )}
         </div>
       </DialogContent>
     </Dialog>

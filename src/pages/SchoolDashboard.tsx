@@ -777,11 +777,11 @@ const SchoolDashboard = () => {
                     <ClassroomAvailabilityWidget schoolId={school.id} />
                   </div>
 
-                  {/* Meilleurs étudiants */}
+                  {/* Meilleurs étudiants par classe */}
                   <Card className="mb-6">
                     <CardHeader>
-                      <CardTitle>Meilleurs Étudiants</CardTitle>
-                      <CardDescription>Classement par moyenne générale</CardDescription>
+                      <CardTitle>Meilleurs Étudiants par Classe</CardTitle>
+                      <CardDescription>Top 3 de chaque classe par moyenne générale</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {analyticsLoading ? (
@@ -789,26 +789,48 @@ const SchoolDashboard = () => {
                           <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
                       ) : topStudentsByClass.length > 0 ? (
-                        <div className="space-y-2">
-                          {topStudentsByClass.map((student, index) => (
-                            <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                                  index === 0 ? 'bg-yellow-500 text-white' :
-                                  index === 1 ? 'bg-gray-400 text-white' :
-                                  index === 2 ? 'bg-orange-600 text-white' :
-                                  'bg-accent text-foreground'
-                                }`}>
-                                  {index + 1}
-                                </div>
-                                <div>
-                                  <p className="font-medium">{student.firstname} {student.lastname}</p>
-                                  <p className="text-sm text-muted-foreground">{student.className}</p>
-                                </div>
+                        <div className="space-y-6">
+                          {topStudentsByClass.map((classData) => (
+                            <div key={classData.classId} className="border rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <School className="h-4 w-4 text-primary" />
+                                <h4 className="font-semibold">{classData.className}</h4>
+                                <Badge variant="outline" className="ml-auto">
+                                  {classData.students.length} étudiant{classData.students.length > 1 ? 's' : ''}
+                                </Badge>
                               </div>
-                              <div className="text-right">
-                                <div className="text-lg font-bold">{student.average}/20</div>
-                                <div className="text-xs text-muted-foreground">{student.totalGrades} notes</div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {classData.students.map((student, index) => (
+                                  <div 
+                                    key={student.id} 
+                                    className="flex items-center gap-3 p-3 bg-accent/30 rounded-lg"
+                                  >
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                      index === 0 ? 'bg-yellow-500 text-white' :
+                                      index === 1 ? 'bg-gray-400 text-white' :
+                                      'bg-orange-600 text-white'
+                                    }`}>
+                                      {index + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm truncate">
+                                        {student.firstname} {student.lastname}
+                                      </p>
+                                      <div className="flex items-center gap-1">
+                                        <span className={`text-sm font-bold ${
+                                          student.average >= 14 ? 'text-green-600' :
+                                          student.average >= 10 ? 'text-amber-600' :
+                                          'text-red-600'
+                                        }`}>
+                                          {student.average}/20
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ({student.totalGrades} notes)
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           ))}
