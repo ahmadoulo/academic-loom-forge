@@ -9,7 +9,20 @@ interface AnalyticsDashboardProps {
   schoolId?: string;
   teacherId?: string;
   classId?: string;
-  performanceBySubject?: Array<{ subject: string; average: number; trend: 'up' | 'down' | 'stable' }>;
+  performanceBySubject?: Array<{ 
+    subject: string; 
+    subjectId?: string;
+    average: number; 
+    trend: 'up' | 'down' | 'stable';
+    teacherName?: string;
+    byClass?: Array<{
+      classId: string;
+      className: string;
+      average: number;
+      totalGrades: number;
+      teacherName: string;
+    }>;
+  }>;
   attendanceByMonth?: Array<{ month: string; rate: number }>;
   gradeDistribution?: Array<{ grade: string; count: number; color: string }>;
   overallStats?: {
@@ -119,25 +132,71 @@ export const AnalyticsDashboard = ({
           <Card>
             <CardHeader>
               <CardTitle>Performance par Matière</CardTitle>
-              <CardDescription>Moyennes et tendances par matière</CardDescription>
+              <CardDescription>Moyennes par matière et par classe avec le professeur assigné</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {performanceBySubject.length > 0 ? performanceBySubject.map((subject) => (
-                  <div key={subject.subject} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">{subject.subject}</p>
-                        <p className="text-sm text-muted-foreground">Moyenne: {subject.average}/20</p>
+                  <div key={subject.subject} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-semibold">{subject.subject}</p>
+                          {subject.teacherName && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              Prof: {subject.teacherName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className={`text-lg font-bold ${
+                            subject.average >= 14 ? 'text-green-600' :
+                            subject.average >= 10 ? 'text-amber-600' :
+                            'text-red-600'
+                          }`}>
+                            {subject.average}/20
+                          </span>
+                          <p className="text-xs text-muted-foreground">Moyenne globale</p>
+                        </div>
+                        {subject.trend === 'up' && <TrendingUp className="h-4 w-4 text-green-500" />}
+                        {subject.trend === 'down' && <TrendingDown className="h-4 w-4 text-red-500" />}
+                        {subject.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-gray-400" />}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Progress value={(subject.average / 20) * 100} className="w-20" />
-                      {subject.trend === 'up' && <TrendingUp className="h-4 w-4 text-green-500" />}
-                      {subject.trend === 'down' && <TrendingDown className="h-4 w-4 text-red-500" />}
-                      {subject.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-gray-400" />}
-                    </div>
+                    
+                    {subject.byClass && subject.byClass.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Détail par classe</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {subject.byClass.map((classData) => (
+                            <div 
+                              key={classData.classId} 
+                              className="flex items-center justify-between p-2 bg-accent/30 rounded-lg text-sm"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{classData.className}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {classData.teacherName}
+                                </p>
+                              </div>
+                              <div className="ml-2 shrink-0">
+                                <span className={`font-bold ${
+                                  classData.average >= 14 ? 'text-green-600' :
+                                  classData.average >= 10 ? 'text-amber-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {classData.average}/20
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )) : (
                   <p className="text-muted-foreground text-center py-4">Aucune donnée disponible</p>

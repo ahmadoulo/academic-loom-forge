@@ -20,15 +20,36 @@ interface TopStudent {
 
 interface SubjectPerformance {
   subject: string;
+  subjectId: string;
   average: number;
   totalGrades: number;
   trend: 'up' | 'down' | 'stable';
+  teacherName: string;
+  byClass: Array<{
+    classId: string;
+    className: string;
+    average: number;
+    totalGrades: number;
+    teacherName: string;
+  }>;
 }
 
 interface GradeDistribution {
   grade: string;
   count: number;
   color: string;
+}
+
+interface TopStudentByClass {
+  classId: string;
+  className: string;
+  students: Array<{
+    id: string;
+    firstname: string;
+    lastname: string;
+    average: number;
+    totalGrades: number;
+  }>;
 }
 
 export const useSchoolAnalytics = (schoolId?: string) => {
@@ -135,33 +156,40 @@ export const useSchoolAnalytics = (schoolId?: string) => {
     }).sort((a, b) => b.totalAbsences - a.totalAbsences);
   }, [classes, students, attendance]);
 
-  // Calculate top students by class
-  const topStudentsByClass = useMemo((): TopStudent[] => {
-    if (!grades.length || !students.length) return [];
+  // Calculate top students grouped by class
+  const topStudentsByClass = useMemo((): TopStudentByClass[] => {
+    if (!grades.length || !students.length || !classes.length) return [];
 
-    const studentAverages = students.map(student => {
-      const studentGrades = grades.filter(g => g.student_id === student.id);
-      const average = studentGrades.length > 0
-        ? studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length
-        : 0;
+    return classes.map(classItem => {
+      const classStudents = students.filter(s => s.class_id === classItem.id);
+      
+      const studentAverages = classStudents.map(student => {
+        const studentGrades = grades.filter(g => g.student_id === student.id);
+        const average = studentGrades.length > 0
+          ? studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length
+          : 0;
+
+        return {
+          id: student.id,
+          firstname: student.firstname,
+          lastname: student.lastname,
+          average: Number(average.toFixed(2)),
+          totalGrades: studentGrades.length
+        };
+      });
 
       return {
-        id: student.id,
-        firstname: student.firstname,
-        lastname: student.lastname,
-        className: student.classes?.name || 'N/A',
-        average: Number(average.toFixed(2)),
-        totalGrades: studentGrades.length
+        classId: classItem.id,
+        className: classItem.name,
+        students: studentAverages
+          .filter(s => s.totalGrades > 0)
+          .sort((a, b) => b.average - a.average)
+          .slice(0, 3) // Top 3 par classe
       };
-    });
+    }).filter(c => c.students.length > 0);
+  }, [grades, students, classes]);
 
-    return studentAverages
-      .filter(s => s.totalGrades > 0)
-      .sort((a, b) => b.average - a.average)
-      .slice(0, 10);
-  }, [grades, students]);
-
-  // Calculate performance by subject
+  // Calculate performance by subject with class breakdown
   const performanceBySubject = useMemo((): SubjectPerformance[] => {
     if (!grades.length || !subjects.length) return [];
 
@@ -171,17 +199,49 @@ export const useSchoolAnalytics = (schoolId?: string) => {
         ? subjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / subjectGrades.length
         : 0;
 
-      // Simple trend calculation (could be improved with historical data)
+      // Get teacher name from subject or grades
+      const teacherFromGrades = subjectGrades[0]?.teachers;
+      const teacherName = teacherFromGrades 
+        ? `${teacherFromGrades.firstname || ''} ${teacherFromGrades.lastname || ''}`.trim() 
+        : 'Non assigné';
+
+      // Calculate performance by class
+      const byClass = classes.map(classItem => {
+        const classStudentIds = students.filter(s => s.class_id === classItem.id).map(s => s.id);
+        const classSubjectGrades = subjectGrades.filter(g => classStudentIds.includes(g.student_id));
+        const classAverage = classSubjectGrades.length > 0
+          ? classSubjectGrades.reduce((sum, g) => sum + Number(g.grade), 0) / classSubjectGrades.length
+          : 0;
+
+        // Get teacher for this specific class if different
+        const classTeacher = classSubjectGrades[0]?.teachers;
+        const classTeacherName = classTeacher 
+          ? `${classTeacher.firstname || ''} ${classTeacher.lastname || ''}`.trim() 
+          : teacherName;
+
+        return {
+          classId: classItem.id,
+          className: classItem.name,
+          average: Number(classAverage.toFixed(2)),
+          totalGrades: classSubjectGrades.length,
+          teacherName: classTeacherName
+        };
+      }).filter(c => c.totalGrades > 0);
+
+      // Simple trend calculation
       const trend: 'up' | 'down' | 'stable' = average >= 14 ? 'up' : average >= 12 ? 'stable' : 'down';
 
       return {
         subject: subject.name,
+        subjectId: subject.id,
         average: Number(average.toFixed(2)),
         totalGrades: subjectGrades.length,
-        trend
+        trend,
+        teacherName,
+        byClass
       };
     }).filter(s => s.totalGrades > 0);
-  }, [grades, subjects]);
+  }, [grades, subjects, classes, students]);
 
   // Calculate grade distribution
   const gradeDistribution = useMemo((): GradeDistribution[] => {
@@ -248,7 +308,14 @@ export const useSchoolAnalytics = (schoolId?: string) => {
     const presentCount = attendance.filter(a => a.status === 'present').length;
     const attendanceRate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 0;
 
-    const studentsInDifficulty = topStudentsByClass.filter(s => s.average < 10).length;
+    // Count students in difficulty from all classes
+    const allStudentAverages = students.map(student => {
+      const studentGrades = grades.filter(g => g.student_id === student.id);
+      if (studentGrades.length === 0) return null;
+      return studentGrades.reduce((sum, g) => sum + Number(g.grade), 0) / studentGrades.length;
+    }).filter((avg): avg is number => avg !== null);
+    
+    const studentsInDifficulty = allStudentAverages.filter(avg => avg < 10).length;
 
     return {
       averageGrade: Number(averageGrade.toFixed(1)),
@@ -256,7 +323,7 @@ export const useSchoolAnalytics = (schoolId?: string) => {
       attendanceRate: Math.round(attendanceRate),
       studentsInDifficulty
     };
-  }, [grades, attendance, topStudentsByClass]);
+  }, [grades, attendance, students]);
 
   return {
     loading,
