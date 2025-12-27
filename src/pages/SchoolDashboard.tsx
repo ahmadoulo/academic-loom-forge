@@ -26,9 +26,13 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useGrades } from "@/hooks/useGrades";
 import { useAssignments } from "@/hooks/useAssignments";
 import { AnalyticsDashboard } from "@/components/analytics/Dashboard";
-import { StatsCard } from "@/components/analytics/StatsCard";
-import { QuickActions } from "@/components/analytics/QuickActions";
-import { RecentActivity } from "@/components/analytics/RecentActivity";
+import { 
+  SchoolOverviewHeader, 
+  SchoolMetricsGrid, 
+  SchoolInsightsGrid,
+  SchoolQuickActions,
+  SchoolActivityFeed
+} from "@/components/school/dashboard";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { SchoolSettings } from "@/components/settings/SchoolSettings";
 import { SchoolSettingsPage } from "@/components/settings/SchoolSettingsPage";
@@ -578,269 +582,52 @@ const SchoolDashboard = () => {
                   assignments={assignments}
                 />
               </div>
-              {/* Enhanced Stats Cards - Only on Analytics Dashboard */}
+              {/* Analytics Dashboard - Reorganized SaaS Style */}
               {activeTab === "analytics" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 lg:mb-6">
-                <StatsCard
-                  title="Étudiants"
-                  value={stats.totalStudents}
-                  icon={Users}
-                  description="Inscrits dans l'école"
-                  change={`Moyenne ${stats.avgStudentsPerClass} par classe`}
-                  changeType="positive"
-                />
-                <StatsCard 
-                  title="Classes"
-                  value={stats.totalClasses}
-                  icon={School}
-                  description="Classes actives"
-                  change={`${stats.totalSubjects} matières total`}
-                  changeType="neutral"
-                />
-                <StatsCard 
-                  title="Professeurs"
-                  value={stats.totalTeachers}
-                  icon={GraduationCap}
-                  description="Enseignants actifs"
-                  change={`${stats.totalSubjects} matières assignées`}
-                  changeType="positive"
-                />
-                <StatsCard 
-                  title="Moyenne Générale"
-                  value={`${stats.avgGrade}/20`}
-                  icon={TrendingUp}
-                  description="Performance globale"
-                  change={`${stats.totalGrades} notes saisies`}
-                  changeType={Number(stats.avgGrade) >= 10 ? "positive" : "negative"}
-                />
-              </div>
-            )}
+                <div className="space-y-6">
+                  {/* Overview Header */}
+                  <SchoolOverviewHeader
+                    schoolName={school.name}
+                    academicYear={selectedYear?.name || currentYear?.name}
+                    totalStudents={stats.totalStudents}
+                    totalClasses={stats.totalClasses}
+                    avgGrade={Number(stats.avgGrade)}
+                  />
 
-            {/* Main Content */}
-            <div className="space-y-6 lg:space-y-8">
-              {activeTab === "analytics" && (
-                <div className="space-y-6 lg:space-y-8">
-                  {/* Dashboard Content Grid */}
-                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8 mb-6 lg:mb-8">
-                    <div className="xl:col-span-1">
-                      <QuickActions actions={quickActions} />
-                    </div>
-                    <div className="xl:col-span-2">
-                      <RecentActivity activities={recentActivities} />
+                  {/* Metrics Grid */}
+                  <SchoolMetricsGrid
+                    totalStudents={stats.totalStudents}
+                    totalTeachers={stats.totalTeachers}
+                    totalClasses={stats.totalClasses}
+                    totalSubjects={stats.totalSubjects}
+                    avgGrade={Number(stats.avgGrade)}
+                    successRate={overallStats?.successRate || 0}
+                    attendanceRate={overallStats?.attendanceRate || 0}
+                    studentsInDifficulty={overallStats?.studentsInDifficulty || 0}
+                    avgStudentsPerClass={stats.avgStudentsPerClass}
+                    totalGrades={stats.totalGrades}
+                  />
+
+                  {/* Quick Actions & Activity Feed */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <SchoolQuickActions actions={quickActions} />
+                    <div className="lg:col-span-2">
+                      <SchoolActivityFeed activities={recentActivities} />
                     </div>
                   </div>
-                  
-                  {/* Nouvelles sections avec données réelles */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {/* Absences par classe */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Absences par Classe</CardTitle>
-                        <CardDescription>Résumé des absences par classe</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {analyticsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                          </div>
-                        ) : absencesByClass.length > 0 ? (
-                          <div className="space-y-3">
-                            {absencesByClass.slice(0, 5).map((item) => (
-                              <div key={item.classId} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div>
-                                  <p className="font-medium">{item.className}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {item.totalAbsences} absences • {item.totalStudents} étudiants
-                                  </p>
-                                </div>
-                                <Badge variant={item.absenceRate > 15 ? "destructive" : item.absenceRate > 10 ? "outline" : "default"}>
-                                  {item.absenceRate.toFixed(1)}%
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-center py-8">Aucune donnée d'absence disponible</p>
-                        )}
-                      </CardContent>
-                    </Card>
 
-                    {/* Demandes de documents */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Demandes de Documents</CardTitle>
-                        <CardDescription>Résumé des demandes en cours</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {documentRequestsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                          </div>
-                        ) : documentRequests.length > 0 ? (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="text-center p-3 border rounded-lg">
-                                <div className="text-2xl font-bold">
-                                  {documentRequests.filter(r => r.status === 'pending').length}
-                                </div>
-                                <div className="text-xs text-muted-foreground">En attente</div>
-                              </div>
-                              <div className="text-center p-3 border rounded-lg">
-                                <div className="text-2xl font-bold">
-                                  {documentRequests.filter(r => r.status === 'processing').length}
-                                </div>
-                                <div className="text-xs text-muted-foreground">En cours</div>
-                              </div>
-                              <div className="text-center p-3 border rounded-lg">
-                                <div className="text-2xl font-bold">
-                                  {documentRequests.filter(r => r.status === 'completed').length}
-                                </div>
-                                <div className="text-xs text-muted-foreground">Complétées</div>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              {documentRequests.slice(0, 3).map((request) => (
-                                <div key={request.id} className="flex items-center justify-between p-2 border rounded text-sm">
-                                  <span>{request.document_type}</span>
-                                  <Badge variant={
-                                    request.status === 'completed' ? 'default' : 
-                                    request.status === 'processing' ? 'outline' : 
-                                    'secondary'
-                                  }>
-                                    {request.status}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-center py-8">Aucune demande de document</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                  {/* Insights Grid */}
+                  <SchoolInsightsGrid
+                    absencesByClass={absencesByClass}
+                    topStudentsByClass={topStudentsByClass}
+                    documentRequests={documentRequests}
+                    admissions={admissions}
+                    loading={analyticsLoading || documentRequestsLoading}
+                    onViewAdmissions={() => setActiveTab('admissions')}
+                    classroomWidget={<ClassroomAvailabilityWidget schoolId={school.id} />}
+                  />
 
-                    {/* Demandes d'admission */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <ClipboardList className="h-5 w-5" />
-                          Demandes d'Admission
-                        </CardTitle>
-                        <CardDescription>Résumé des admissions</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="text-center p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/30">
-                              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                {admissions.filter(a => a.status === 'nouveau').length}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">Nouvelles</div>
-                            </div>
-                            <div className="text-center p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-950/30">
-                              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                                {admissions.filter(a => a.status === 'en_cours').length}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">En cours</div>
-                            </div>
-                            <div className="text-center p-4 border rounded-lg bg-green-50 dark:bg-green-950/30">
-                              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                                {admissions.filter(a => a.status === 'traite').length}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">Traitées</div>
-                            </div>
-                            <div className="text-center p-4 border rounded-lg bg-red-50 dark:bg-red-950/30">
-                              <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                                {admissions.filter(a => a.status === 'refuse').length}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">Refusées</div>
-                            </div>
-                          </div>
-                          {admissions.length > 0 ? (
-                            <Button 
-                              variant="outline" 
-                              className="w-full"
-                              onClick={() => setActiveTab('admissions')}
-                            >
-                              Voir toutes les admissions
-                            </Button>
-                          ) : (
-                            <p className="text-muted-foreground text-center py-4 text-sm">
-                              Aucune demande d'admission
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Widget disponibilité des salles */}
-                    <ClassroomAvailabilityWidget schoolId={school.id} />
-                  </div>
-
-                  {/* Meilleurs étudiants par classe */}
-                  <Card className="mb-6">
-                    <CardHeader>
-                      <CardTitle>Meilleurs Étudiants par Classe</CardTitle>
-                      <CardDescription>Top 3 de chaque classe par moyenne générale</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {analyticsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                      ) : topStudentsByClass.length > 0 ? (
-                        <div className="space-y-6">
-                          {topStudentsByClass.map((classData) => (
-                            <div key={classData.classId} className="border rounded-lg p-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <School className="h-4 w-4 text-primary" />
-                                <h4 className="font-semibold">{classData.className}</h4>
-                                <Badge variant="outline" className="ml-auto">
-                                  {classData.students.length} étudiant{classData.students.length > 1 ? 's' : ''}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                {classData.students.map((student, index) => (
-                                  <div 
-                                    key={student.id} 
-                                    className="flex items-center gap-3 p-3 bg-accent/30 rounded-lg"
-                                  >
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                                      index === 0 ? 'bg-yellow-500 text-white' :
-                                      index === 1 ? 'bg-gray-400 text-white' :
-                                      'bg-orange-600 text-white'
-                                    }`}>
-                                      {index + 1}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm truncate">
-                                        {student.firstname} {student.lastname}
-                                      </p>
-                                      <div className="flex items-center gap-1">
-                                        <span className={`text-sm font-bold ${
-                                          student.average >= 14 ? 'text-green-600' :
-                                          student.average >= 10 ? 'text-amber-600' :
-                                          'text-red-600'
-                                        }`}>
-                                          {student.average}/20
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                          ({student.totalGrades} notes)
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground text-center py-8">Aucune note disponible</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                  
+                  {/* Analytics Charts */}
                   <AnalyticsDashboard 
                     schoolId={school.id}
                     performanceBySubject={performanceBySubject}
@@ -1190,10 +977,9 @@ const SchoolDashboard = () => {
               {activeTab === "textbooks" && school?.id && (
                 <TextbooksSection schoolId={school.id} />
               )}
-            </div>
-          </main>
+            </main>
+          </div>
         </div>
-      </div>
 
       {/* Removed duplicate Student Dialog - only one is kept at the end of the file */}
 
