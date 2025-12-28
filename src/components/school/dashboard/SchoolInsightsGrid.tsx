@@ -6,22 +6,13 @@ import {
   School, 
   FileText, 
   ClipboardList, 
-  Building2,
   ChevronRight,
   Loader2,
-  AlertTriangle,
   CheckCircle,
   Clock,
-  Trophy
+  Trophy,
+  XCircle
 } from "lucide-react";
-
-interface AbsenceByClass {
-  classId: string;
-  className: string;
-  totalAbsences: number;
-  totalStudents: number;
-  absenceRate: number;
-}
 
 interface TopStudentByClass {
   classId: string;
@@ -47,7 +38,7 @@ interface Admission {
 }
 
 interface SchoolInsightsGridProps {
-  absencesByClass: AbsenceByClass[];
+  absencesByClass?: any[];
   topStudentsByClass: TopStudentByClass[];
   documentRequests: DocumentRequest[];
   admissions: Admission[];
@@ -57,7 +48,6 @@ interface SchoolInsightsGridProps {
 }
 
 export function SchoolInsightsGrid({
-  absencesByClass,
   topStudentsByClass,
   documentRequests,
   admissions,
@@ -83,139 +73,95 @@ export function SchoolInsightsGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Absences par classe */}
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Première rangée: Documents, Admissions, Salles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Demandes de documents */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
+              <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                <FileText className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="text-base">Absences par Classe</CardTitle>
-                <CardDescription className="text-xs">Taux d'absentéisme</CardDescription>
+                <CardTitle className="text-base">Documents</CardTitle>
+                <CardDescription className="text-xs">Demandes en cours</CardDescription>
               </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {absencesByClass.length > 0 ? (
-            <div className="space-y-2">
-              {absencesByClass.slice(0, 4).map((item) => (
-                <div 
-                  key={item.classId} 
-                  className="flex items-center justify-between p-3 bg-accent/30 rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <School className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium text-sm">{item.className}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.totalAbsences} absences • {item.totalStudents} étudiants
-                      </p>
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={item.absenceRate > 15 ? "destructive" : item.absenceRate > 10 ? "outline" : "secondary"}
-                    className="font-mono"
-                  >
-                    {item.absenceRate.toFixed(1)}%
-                  </Badge>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
+                <Clock className="h-4 w-4 mx-auto mb-1 text-amber-600" />
+                <div className="text-xl font-bold text-amber-600">{pendingDocs}</div>
+                <div className="text-xs text-muted-foreground">En attente</div>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
+                <FileText className="h-4 w-4 mx-auto mb-1 text-blue-600" />
+                <div className="text-xl font-bold text-blue-600">{processingDocs}</div>
+                <div className="text-xs text-muted-foreground">En cours</div>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
+                <CheckCircle className="h-4 w-4 mx-auto mb-1 text-green-600" />
+                <div className="text-xl font-bold text-green-600">{completedDocs}</div>
+                <div className="text-xs text-muted-foreground">Terminées</div>
+              </div>
+            </div>
+            {documentRequests.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground mt-3">Aucune demande</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Demandes d'admission */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
+                  <ClipboardList className="h-4 w-4 text-purple-600" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-              <p className="text-sm">Aucune absence enregistrée</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Demandes de documents */}
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-              <FileText className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <CardTitle className="text-base">Demandes de Documents</CardTitle>
-              <CardDescription className="text-xs">Suivi des demandes</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
-              <div className="text-xl font-bold text-amber-600">{pendingDocs}</div>
-              <div className="text-xs text-muted-foreground">En attente</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
-              <div className="text-xl font-bold text-blue-600">{processingDocs}</div>
-              <div className="text-xs text-muted-foreground">En cours</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
-              <div className="text-xl font-bold text-green-600">{completedDocs}</div>
-              <div className="text-xs text-muted-foreground">Complétées</div>
-            </div>
-          </div>
-          {documentRequests.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground">Aucune demande</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Demandes d'admission */}
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
-                <ClipboardList className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Demandes d'Admission</CardTitle>
-                <CardDescription className="text-xs">Nouvelles inscriptions</CardDescription>
+                <div>
+                  <CardTitle className="text-base">Admissions</CardTitle>
+                  <CardDescription className="text-xs">Nouvelles inscriptions</CardDescription>
+                </div>
               </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
-              <div className="text-xl font-bold text-blue-600">{newAdmissions}</div>
-              <div className="text-xs text-muted-foreground">Nouvelles</div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="text-center p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/50">
+                <div className="text-lg font-bold text-blue-600">{newAdmissions}</div>
+                <div className="text-xs text-muted-foreground">Nouvelles</div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
+                <div className="text-lg font-bold text-amber-600">{inProgressAdmissions}</div>
+                <div className="text-xs text-muted-foreground">En cours</div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
+                <div className="text-lg font-bold text-green-600">{processedAdmissions}</div>
+                <div className="text-xs text-muted-foreground">Acceptées</div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200/50">
+                <div className="text-lg font-bold text-red-600">{rejectedAdmissions}</div>
+                <div className="text-xs text-muted-foreground">Refusées</div>
+              </div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50">
-              <div className="text-xl font-bold text-amber-600">{inProgressAdmissions}</div>
-              <div className="text-xs text-muted-foreground">En cours</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200/50">
-              <div className="text-xl font-bold text-green-600">{processedAdmissions}</div>
-              <div className="text-xs text-muted-foreground">Traitées</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200/50">
-              <div className="text-xl font-bold text-red-600">{rejectedAdmissions}</div>
-              <div className="text-xs text-muted-foreground">Refusées</div>
-            </div>
-          </div>
-          {admissions.length > 0 && onViewAdmissions && (
-            <Button variant="outline" size="sm" className="w-full" onClick={onViewAdmissions}>
-              Voir toutes les admissions
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+            {admissions.length > 0 && onViewAdmissions && (
+              <Button variant="outline" size="sm" className="w-full" onClick={onViewAdmissions}>
+                Gérer les admissions
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Disponibilité des salles */}
-      {classroomWidget}
+        {/* Disponibilité des salles */}
+        {classroomWidget}
+      </div>
 
       {/* Meilleurs étudiants par classe */}
-      <Card className="lg:col-span-2 hover:shadow-md transition-shadow">
+      <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30">
@@ -223,18 +169,18 @@ export function SchoolInsightsGrid({
             </div>
             <div>
               <CardTitle className="text-base">Meilleurs Étudiants par Classe</CardTitle>
-              <CardDescription className="text-xs">Top 3 de chaque classe par moyenne</CardDescription>
+              <CardDescription className="text-xs">Top 3 de chaque classe basé sur la moyenne générale</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {topStudentsByClass.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {topStudentsByClass.slice(0, 6).map((classData) => (
-                <div key={classData.classId} className="p-4 bg-accent/30 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {topStudentsByClass.slice(0, 8).map((classData) => (
+                <div key={classData.classId} className="p-4 bg-accent/30 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/50">
                     <School className="h-4 w-4 text-primary" />
-                    <h4 className="font-semibold text-sm">{classData.className}</h4>
+                    <h4 className="font-semibold text-sm truncate">{classData.className}</h4>
                   </div>
                   <div className="space-y-2">
                     {classData.students.slice(0, 3).map((student, index) => (
@@ -242,7 +188,7 @@ export function SchoolInsightsGrid({
                         key={student.id} 
                         className="flex items-center gap-2 p-2 bg-background rounded-lg"
                       >
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                           index === 0 ? 'bg-yellow-500 text-white' :
                           index === 1 ? 'bg-gray-400 text-white' :
                           'bg-orange-600 text-white'
@@ -254,13 +200,17 @@ export function SchoolInsightsGrid({
                             {student.firstname} {student.lastname}
                           </p>
                         </div>
-                        <span className={`text-sm font-bold ${
-                          student.average >= 14 ? 'text-green-600' :
-                          student.average >= 10 ? 'text-amber-600' :
-                          'text-red-600'
-                        }`}>
+                        <Badge 
+                          variant="outline"
+                          className={`shrink-0 font-mono text-xs ${
+                            student.average >= 16 ? 'bg-green-50 text-green-700 border-green-200' :
+                            student.average >= 14 ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            student.average >= 10 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-red-50 text-red-700 border-red-200'
+                          }`}
+                        >
                           {student.average}/20
-                        </span>
+                        </Badge>
                       </div>
                     ))}
                   </div>
@@ -268,9 +218,10 @@ export function SchoolInsightsGrid({
               ))}
             </div>
           ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <Users className="h-8 w-8 mx-auto mb-2" />
-              <p className="text-sm">Aucune note disponible</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
+              <p className="font-medium">Aucune note disponible</p>
+              <p className="text-sm">Les classements apparaîtront après l'ajout des notes</p>
             </div>
           )}
         </CardContent>
