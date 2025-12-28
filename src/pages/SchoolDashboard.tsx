@@ -31,7 +31,8 @@ import {
   SchoolMetricsGrid, 
   SchoolInsightsGrid,
   SchoolQuickActions,
-  SchoolActivityFeed
+  SchoolActivityFeed,
+  SchoolAttendanceInsights
 } from "@/components/school/dashboard";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { SchoolSettings } from "@/components/settings/SchoolSettings";
@@ -616,9 +617,16 @@ const SchoolDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Attendance Insights - Real Data */}
+                  <SchoolAttendanceInsights
+                    schoolId={school.id}
+                    classes={classes}
+                    students={students.map(s => ({ id: s.id, class_id: s.class_id }))}
+                  />
+
                   {/* Insights Grid */}
                   <SchoolInsightsGrid
-                    absencesByClass={absencesByClass}
+                    absencesByClass={[]}
                     topStudentsByClass={topStudentsByClass}
                     documentRequests={documentRequests}
                     admissions={admissions}
