@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Building2, Users, Calendar, Clock, Eye, 
   CheckCircle2, AlertTriangle
@@ -307,175 +307,174 @@ export function ArchitectViewDialog({
         {/* Buildings view with proper scroll - touch-friendly */}
         <div className="flex-1 min-h-0 overflow-auto overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="p-6 space-y-8 pb-10">
-            <TooltipProvider delayDuration={200}>
-              {buildingEntries.map(([buildingName, buildingData]) => {
-                const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
-                  const numA = parseInt(a.replace(/\D/g, '')) || 0;
-                  const numB = parseInt(b.replace(/\D/g, '')) || 0;
-                  return numB - numA;
-                });
-                
-                const allRooms = Object.values(buildingData.floors).flat();
+            {buildingEntries.map(([buildingName, buildingData]) => {
+              const floorNames = Object.keys(buildingData.floors).sort((a, b) => {
+                const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                return numB - numA;
+              });
+              
+              const allRooms = Object.values(buildingData.floors).flat();
 
-                return (
-                  <div key={buildingName} className="space-y-3">
-                    {/* Building header */}
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{buildingName}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {allRooms.length} salle(s) • {floorNames.length} niveau(x)
-                        </p>
-                      </div>
+              return (
+                <div key={buildingName} className="space-y-3">
+                  {/* Building header */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-primary" />
                     </div>
-
-                    {/* Building structure - Clean card-based design */}
-                    <div className="relative rounded-xl overflow-hidden border bg-card shadow-sm">
-                      {/* Floors */}
-                      {floorNames.map((floorName, floorIndex) => {
-                        const rooms = buildingData.floors[floorName];
-                        
-                        return (
-                          <div key={floorName} className={floorIndex > 0 ? "border-t" : ""}>
-                            <div className="flex">
-                              {/* Floor label */}
-                              <div className="w-14 shrink-0 bg-muted/50 flex items-center justify-center border-r py-4">
-                                <span className="font-medium text-xs text-muted-foreground -rotate-90 whitespace-nowrap">
-                                  {floorName}
-                                </span>
-                              </div>
-
-                              {/* Rooms grid */}
-                              <div className="flex-1 p-3 flex flex-wrap gap-2">
-                                {rooms.map((room) => {
-                                  const status = getRoomStatus(room.id);
-                                  const roomDetails = getRoomDetails(room.id);
-
-                                  const statusStyles = {
-                                    neutral: "bg-muted/50 border-border hover:border-muted-foreground/50",
-                                    available: "bg-emerald-50 border-emerald-300 hover:border-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-700",
-                                    partial: "bg-amber-50 border-amber-300 hover:border-amber-400 dark:bg-amber-950/30 dark:border-amber-700",
-                                    occupied: "bg-rose-50 border-rose-300 hover:border-rose-400 dark:bg-rose-950/30 dark:border-rose-700"
-                                  };
-
-                                  const statusBadge = {
-                                    neutral: { color: "bg-muted-foreground/40", icon: Building2 },
-                                    available: { color: "bg-emerald-500", icon: CheckCircle2 },
-                                    partial: { color: "bg-amber-500", icon: Clock },
-                                    occupied: { color: "bg-rose-500", icon: AlertTriangle }
-                                  };
-
-                                  const StatusIcon = statusBadge[status].icon;
-
-                                  return (
-                                    <Tooltip key={room.id}>
-                                      <TooltipTrigger asChild>
-                                        <div 
-                                          className={`
-                                            relative min-w-[110px] max-w-[140px] p-3 rounded-lg border-2 cursor-pointer
-                                            transition-all duration-150 hover:shadow-md
-                                            ${statusStyles[status]}
-                                          `}
-                                        >
-                                          {/* Status indicator */}
-                                          <div className={`absolute top-1.5 right-1.5 w-4 h-4 rounded-full ${statusBadge[status].color} flex items-center justify-center`}>
-                                            <StatusIcon className="h-2.5 w-2.5 text-white" />
-                                          </div>
-
-                                          {/* Room info */}
-                                          <div className="pr-4">
-                                            <p className="font-semibold text-sm truncate">{room.name}</p>
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                                              <Users className="h-3 w-3" />
-                                              <span>{room.capacity}</span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent 
-                                        side="top" 
-                                        className="max-w-[280px] p-0"
-                                      >
-                                        <div className="p-3 space-y-2">
-                                          {/* Header */}
-                                          <div className="flex items-center justify-between gap-3">
-                                            <span className="font-semibold">{room.name}</span>
-                                            <Badge 
-                                              variant={status === "available" ? "default" : status === "partial" ? "secondary" : status === "occupied" ? "destructive" : "outline"}
-                                              className="text-[10px] h-5"
-                                            >
-                                              {status === "available" ? "Libre" : status === "partial" ? "Partiel" : status === "occupied" ? "Occupée" : "—"}
-                                            </Badge>
-                                          </div>
-
-                                          {/* Info */}
-                                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                            <span className="flex items-center gap-1">
-                                              <Users className="h-3 w-3" />
-                                              {room.capacity} places
-                                            </span>
-                                            {room.building && (
-                                              <span>{room.building}</span>
-                                            )}
-                                          </div>
-
-                                          {/* Availability details */}
-                                          {selectedTimeSlot && roomDetails && (
-                                            <div className="border-t pt-2 space-y-1.5">
-                                              {roomDetails.occupancySlots.length > 0 && (
-                                                <div>
-                                                  <p className="text-[10px] font-medium text-rose-600 dark:text-rose-400 mb-1">
-                                                    Occupé :
-                                                  </p>
-                                                  <div className="space-y-1">
-                                                    {roomDetails.occupancySlots.map((slot, i) => (
-                                                      <div key={i} className="text-[10px] bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded">
-                                                        <span className="font-medium">{slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}</span>
-                                                        {slot.session && (
-                                                          <span className="block text-rose-600 dark:text-rose-400">
-                                                            {slot.session.subjects?.name || slot.session.title} • {slot.session.classes?.name}
-                                                          </span>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                              )}
-                                              {roomDetails.freeSlots.length > 0 && (
-                                                <div>
-                                                  <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mb-1">
-                                                    Disponible :
-                                                  </p>
-                                                  <div className="flex flex-wrap gap-1">
-                                                    {roomDetails.freeSlots.map((slot, i) => (
-                                                      <span key={i} className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">
-                                                        {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}
-                                                      </span>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      
+                    <div>
+                      <h3 className="font-semibold">{buildingName}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {allRooms.length} salle(s) • {floorNames.length} niveau(x)
+                      </p>
                     </div>
                   </div>
-                );
-              })}
-            </TooltipProvider>
+
+                  {/* Building structure - Clean card-based design */}
+                  <div className="relative rounded-xl overflow-hidden border bg-card shadow-sm">
+                    {/* Floors */}
+                    {floorNames.map((floorName, floorIndex) => {
+                      const rooms = buildingData.floors[floorName];
+                      
+                      return (
+                        <div key={floorName} className={floorIndex > 0 ? "border-t" : ""}>
+                          <div className="flex">
+                            {/* Floor label */}
+                            <div className="w-14 shrink-0 bg-muted/50 flex items-center justify-center border-r py-4">
+                              <span className="font-medium text-xs text-muted-foreground -rotate-90 whitespace-nowrap">
+                                {floorName}
+                              </span>
+                            </div>
+
+                            {/* Rooms grid */}
+                            <div className="flex-1 p-3 flex flex-wrap gap-2">
+                              {rooms.map((room) => {
+                                const status = getRoomStatus(room.id);
+                                const roomDetails = getRoomDetails(room.id);
+
+                                const statusStyles = {
+                                  neutral: "bg-muted/50 border-border hover:border-muted-foreground/50",
+                                  available: "bg-emerald-50 border-emerald-300 hover:border-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-700",
+                                  partial: "bg-amber-50 border-amber-300 hover:border-amber-400 dark:bg-amber-950/30 dark:border-amber-700",
+                                  occupied: "bg-rose-50 border-rose-300 hover:border-rose-400 dark:bg-rose-950/30 dark:border-rose-700"
+                                };
+
+                                const statusBadge = {
+                                  neutral: { color: "bg-muted-foreground/40", icon: Building2 },
+                                  available: { color: "bg-emerald-500", icon: CheckCircle2 },
+                                  partial: { color: "bg-amber-500", icon: Clock },
+                                  occupied: { color: "bg-rose-500", icon: AlertTriangle }
+                                };
+
+                                const StatusIcon = statusBadge[status].icon;
+
+                                return (
+                                  <Popover key={room.id}>
+                                    <PopoverTrigger asChild>
+                                      <div 
+                                        className={`
+                                          relative min-w-[110px] max-w-[140px] p-3 rounded-lg border-2 cursor-pointer
+                                          transition-all duration-150 hover:shadow-md active:scale-[0.98]
+                                          ${statusStyles[status]}
+                                        `}
+                                      >
+                                        {/* Status indicator */}
+                                        <div className={`absolute top-1.5 right-1.5 w-4 h-4 rounded-full ${statusBadge[status].color} flex items-center justify-center`}>
+                                          <StatusIcon className="h-2.5 w-2.5 text-white" />
+                                        </div>
+
+                                        {/* Room info */}
+                                        <div className="pr-4">
+                                          <p className="font-semibold text-sm truncate">{room.name}</p>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                            <Users className="h-3 w-3" />
+                                            <span>{room.capacity}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent 
+                                      side="top" 
+                                      className="w-72 p-0"
+                                      align="center"
+                                    >
+                                      <div className="p-3 space-y-2">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="font-semibold">{room.name}</span>
+                                          <Badge 
+                                            variant={status === "available" ? "default" : status === "partial" ? "secondary" : status === "occupied" ? "destructive" : "outline"}
+                                            className="text-[10px] h-5"
+                                          >
+                                            {status === "available" ? "Libre" : status === "partial" ? "Partiel" : status === "occupied" ? "Occupée" : "—"}
+                                          </Badge>
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                          <span className="flex items-center gap-1">
+                                            <Users className="h-3 w-3" />
+                                            {room.capacity} places
+                                          </span>
+                                          {room.building && (
+                                            <span>{room.building}</span>
+                                          )}
+                                        </div>
+
+                                        {/* Availability details */}
+                                        {selectedTimeSlot && roomDetails && (
+                                          <div className="border-t pt-2 space-y-1.5">
+                                            {roomDetails.occupancySlots.length > 0 && (
+                                              <div>
+                                                <p className="text-[10px] font-medium text-rose-600 dark:text-rose-400 mb-1">
+                                                  Occupé :
+                                                </p>
+                                                <div className="space-y-1">
+                                                  {roomDetails.occupancySlots.map((slot, i) => (
+                                                    <div key={i} className="text-[10px] bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded">
+                                                      <span className="font-medium">{slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}</span>
+                                                      {slot.session && (
+                                                        <span className="block text-rose-600 dark:text-rose-400">
+                                                          {slot.session.subjects?.name || slot.session.title} • {slot.session.classes?.name}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {roomDetails.freeSlots.length > 0 && (
+                                              <div>
+                                                <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mb-1">
+                                                  Disponible :
+                                                </p>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {roomDetails.freeSlots.map((slot, i) => (
+                                                    <span key={i} className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">
+                                                      {slot.start.substring(0, 5)} - {slot.end.substring(0, 5)}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                  </div>
+                </div>
+              );
+            })}
 
             {buildingEntries.length === 0 && (
               <div className="text-center py-12">
