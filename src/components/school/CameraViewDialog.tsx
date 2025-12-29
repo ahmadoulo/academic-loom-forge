@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import {
   VolumeX,
   RefreshCw,
   MapPin,
-  ExternalLink,
   Play,
   Copy,
   Check
@@ -37,30 +36,8 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
   const [isMuted, setIsMuted] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  // Cleanup HLS on unmount or dialog close
-  useEffect(() => {
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, []);
-
-  // Reset state when dialog closes
-  useEffect(() => {
-    if (!open) {
-      stopStream();
-      setIsPlaying(false);
-      setHasError(false);
-      setErrorMessage("");
-    }
-  }, [open]);
-
-  if (!camera) return null;
-
   // Convert RTSP URL to HLS URL for Wowza streams
-  const getHlsUrl = (rtspUrl: string): string | null => {
+  const getHlsUrl = useCallback((rtspUrl: string): string | null => {
     try {
       // Parse RTSP URL: rtsp://host:port/application/stream
       const url = new URL(rtspUrl.replace('rtsp://', 'https://'));
@@ -77,9 +54,41 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
     } catch {
       return null;
     }
-  };
+  }, []);
 
-  const startStream = async () => {
+  // Stop stream function - defined before useEffect that uses it
+  const stopStream = useCallback(() => {
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = "";
+    }
+    setIsPlaying(false);
+  }, []);
+
+  // Cleanup HLS on unmount
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      stopStream();
+      setHasError(false);
+      setErrorMessage("");
+    }
+  }, [open, stopStream]);
+
+  const startStream = useCallback(() => {
     if (!videoRef.current || !camera) return;
     
     setIsLoading(true);
@@ -153,26 +162,14 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
       setHasError(true);
       setErrorMessage("Votre navigateur ne supporte pas la lecture HLS.");
     }
-  };
+  }, [camera, getHlsUrl]);
 
-  const stopStream = () => {
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.src = "";
-    }
-    setIsPlaying(false);
-  };
-
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     stopStream();
     startStream();
-  };
+  }, [stopStream, startStream]);
 
-  const handleFullscreen = () => {
+  const handleFullscreen = useCallback(() => {
     const videoContainer = document.getElementById('camera-video-container');
     if (videoContainer) {
       if (!document.fullscreenElement) {
@@ -181,9 +178,10 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
         document.exitFullscreen();
       }
     }
-  };
+  }, []);
 
-  const copyRtspUrl = async () => {
+  const copyRtspUrl = useCallback(async () => {
+    if (!camera) return;
     try {
       await navigator.clipboard.writeText(camera.rtsp_url);
       setCopied(true);
@@ -192,7 +190,9 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
     } catch {
       toast({ title: "Erreur", description: "Impossible de copier l'URL.", variant: "destructive" });
     }
-  };
+  }, [camera, toast]);
+
+  if (!camera) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
