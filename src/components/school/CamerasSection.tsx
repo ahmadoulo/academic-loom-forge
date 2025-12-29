@@ -222,27 +222,29 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
               <CardContent>
                 <div className="space-y-3">
                   {/* Preview Placeholder */}
-                  <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.3))]" />
+                  <div className="aspect-video bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 rounded-lg flex items-center justify-center relative overflow-hidden group-hover:from-zinc-200 group-hover:to-zinc-300 dark:group-hover:from-zinc-700 dark:group-hover:to-zinc-800 transition-colors">
                     <div className="flex flex-col items-center gap-2 z-10">
-                      <Video className="h-8 w-8 text-muted-foreground/50" />
-                      <span className="text-xs text-muted-foreground">Cliquer pour voir</span>
-                    </div>
-                    {camera.is_active && (
-                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        <span className="text-xs font-medium text-green-600 dark:text-green-400">LIVE</span>
+                      <div className="p-3 rounded-full bg-background/80">
+                        <Video className="h-6 w-6 text-muted-foreground" />
                       </div>
-                    )}
+                      <span className="text-xs text-muted-foreground font-medium">Cliquer pour voir</span>
+                    </div>
+                    {/* Status indicator - shows active/configured status, not live status */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                      <span className={`h-2 w-2 rounded-full ${camera.is_active ? 'bg-green-500' : 'bg-zinc-400'}`}></span>
+                      <span className={`text-xs font-medium ${camera.is_active ? 'text-green-600 dark:text-green-400' : 'text-zinc-500'}`}>
+                        {camera.is_active ? 'Prête' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Status */}
+                  {/* Status & Description */}
                   <div className="flex items-center justify-between">
-                    <Badge variant={camera.is_active ? "default" : "secondary"} className="text-xs">
-                      {camera.is_active ? "Active" : "Inactive"}
+                    <Badge 
+                      variant={camera.is_active ? "default" : "secondary"} 
+                      className={`text-xs ${camera.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100' : ''}`}
+                    >
+                      {camera.is_active ? "Configurée" : "Désactivée"}
                     </Badge>
                     {camera.description && (
                       <p className="text-xs text-muted-foreground truncate max-w-[150px]">

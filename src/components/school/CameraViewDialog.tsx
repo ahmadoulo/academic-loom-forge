@@ -12,7 +12,7 @@ import {
   Play,
   Copy,
   Check,
-  X
+  Square
 } from "lucide-react";
 import { SchoolCamera } from "@/hooks/useSchoolCameras";
 import Hls from "hls.js";
@@ -38,8 +38,8 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Convert RTSP URL to HLS URL for Wowza streams
-  const getHlsUrl = (rtspUrl: string): string | null => {
+  // Convert RTSP URL to HLS URL for Wowza/streaming servers
+  const getHlsUrl = useCallback((rtspUrl: string): string | null => {
     try {
       const url = new URL(rtspUrl.replace('rtsp://', 'https://'));
       const pathParts = url.pathname.split('/').filter(Boolean);
@@ -53,19 +53,35 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
     } catch {
       return null;
     }
-  };
+  }, []);
 
-  // Stop stream function
+  // Stop stream function - properly cleanup HLS and video
   const stopStream = useCallback(() => {
+    console.log("Stopping stream...");
+    
+    // Destroy HLS instance
     if (hlsRef.current) {
-      hlsRef.current.destroy();
+      try {
+        hlsRef.current.stopLoad();
+        hlsRef.current.detachMedia();
+        hlsRef.current.destroy();
+      } catch (e) {
+        console.error("Error destroying HLS:", e);
+      }
       hlsRef.current = null;
     }
+    
+    // Clean up video element
     if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.src = "";
-      videoRef.current.load();
+      try {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      } catch (e) {
+        console.error("Error cleaning video:", e);
+      }
     }
+    
     setIsPlaying(false);
     setIsLoading(false);
   }, []);
@@ -80,120 +96,158 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Cleanup HLS on unmount
-  useEffect(() => {
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, []);
-
-  // Reset state when dialog closes
+  // Cleanup when dialog closes or component unmounts
   useEffect(() => {
     if (!open) {
       stopStream();
       setHasError(false);
       setErrorMessage("");
+      
+      // Exit fullscreen if active
       if (document.fullscreenElement) {
-        document.exitFullscreen();
+        document.exitFullscreen().catch(() => {});
       }
     }
+    
+    // Cleanup on unmount
+    return () => {
+      stopStream();
+    };
   }, [open, stopStream]);
 
-  const startStream = () => {
-    if (!camera || !videoRef.current) return;
-    
-    setIsLoading(true);
-    setHasError(false);
-    setErrorMessage("");
-
-    const hlsUrl = getHlsUrl(camera.rtsp_url);
-    
-    if (!hlsUrl) {
-      setHasError(true);
-      setErrorMessage("Format d'URL non supporté");
-      setIsLoading(false);
+  const startStream = useCallback(() => {
+    if (!camera || !videoRef.current) {
+      console.log("Cannot start stream: missing camera or video ref");
       return;
     }
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-      });
+    
+    console.log("Starting stream for:", camera.name);
+    
+    // Ensure previous stream is stopped
+    stopStream();
+    
+    // Small delay to ensure cleanup is complete
+    setTimeout(() => {
+      if (!videoRef.current) return;
       
-      hlsRef.current = hls;
+      setIsLoading(true);
+      setHasError(false);
+      setErrorMessage("");
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      const hlsUrl = getHlsUrl(camera.rtsp_url);
+      
+      if (!hlsUrl) {
+        setHasError(true);
+        setErrorMessage("Format d'URL non supporté");
         setIsLoading(false);
-        setIsPlaying(true);
-        videoRef.current?.play().catch(() => {});
-      });
+        return;
+      }
 
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
+      console.log("HLS URL:", hlsUrl);
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          // Add retry settings for better reliability
+          manifestLoadingMaxRetry: 3,
+          manifestLoadingRetryDelay: 1000,
+          levelLoadingMaxRetry: 3,
+          fragLoadingMaxRetry: 3,
+        });
+        
+        hlsRef.current = hls;
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log("HLS manifest parsed, starting playback");
+          setIsLoading(false);
+          setIsPlaying(true);
+          if (videoRef.current) {
+            videoRef.current.play().catch((e) => {
+              console.error("Play error:", e);
+            });
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          console.error("HLS Error:", data.type, data.details);
+          
+          if (data.fatal) {
+            setIsLoading(false);
+            setHasError(true);
+            setIsPlaying(false);
+            
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                setErrorMessage("Flux inaccessible - Vérifiez la connexion");
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                setErrorMessage("Erreur de lecture média");
+                hls.recoverMediaError();
+                break;
+              default:
+                setErrorMessage("Flux indisponible");
+            }
+          }
+        });
+
+        hls.loadSource(hlsUrl);
+        hls.attachMedia(videoRef.current);
+        
+      } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS support
+        videoRef.current.src = hlsUrl;
+        
+        const handleLoaded = () => {
+          setIsLoading(false);
+          setIsPlaying(true);
+          videoRef.current?.play().catch(() => {});
+        };
+        
+        const handleError = () => {
           setIsLoading(false);
           setHasError(true);
-          
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              setErrorMessage("Flux HLS inaccessible");
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              setErrorMessage("Erreur de lecture");
-              hls.recoverMediaError();
-              break;
-            default:
-              setErrorMessage("Flux indisponible");
-          }
-        }
-      });
-
-      hls.loadSource(hlsUrl);
-      hls.attachMedia(videoRef.current);
-      
-    } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-      videoRef.current.src = hlsUrl;
-      
-      videoRef.current.addEventListener('loadedmetadata', () => {
-        setIsLoading(false);
-        setIsPlaying(true);
-        videoRef.current?.play().catch(() => {});
-      }, { once: true });
-      
-      videoRef.current.addEventListener('error', () => {
+          setIsPlaying(false);
+          setErrorMessage("Impossible de charger le flux");
+        };
+        
+        videoRef.current.addEventListener('loadedmetadata', handleLoaded, { once: true });
+        videoRef.current.addEventListener('error', handleError, { once: true });
+      } else {
         setIsLoading(false);
         setHasError(true);
-        setErrorMessage("Impossible de charger le flux");
-      }, { once: true });
-    } else {
-      setIsLoading(false);
-      setHasError(true);
-      setErrorMessage("Navigateur non compatible HLS");
-    }
-  };
+        setErrorMessage("Navigateur non compatible HLS");
+      }
+    }, 100);
+  }, [camera, stopStream, getHlsUrl]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     stopStream();
-    setTimeout(() => startStream(), 100);
-  };
+    setTimeout(() => startStream(), 200);
+  }, [stopStream, startStream]);
+
+  const handleStop = useCallback(() => {
+    stopStream();
+  }, [stopStream]);
 
   const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-    
     try {
       if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
+        // Try video element first for better mobile experience
+        if (videoRef.current?.requestFullscreen) {
+          await videoRef.current.requestFullscreen();
+        } else if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        }
       } else {
         await document.exitFullscreen();
       }
     } catch (err) {
       console.error("Fullscreen error:", err);
+      toast({ title: "Plein écran non disponible", variant: "destructive" });
     }
   };
 
@@ -205,7 +259,7 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
       toast({ title: "URL copiée" });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: "Erreur de copie", variant: "destructive" });
     }
   };
 
@@ -213,20 +267,22 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1400px] p-0 gap-0 bg-black/95 border-white/10 overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-[1400px] p-0 gap-0 bg-black border-0 overflow-hidden [&>button]:hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-white/5 to-transparent border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/20">
               <Video className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-white">{camera.name}</h2>
+              <h2 className="font-semibold text-white text-sm">{camera.name}</h2>
               {camera.location && (
-                <p className="text-xs text-white/50">{camera.location}</p>
+                <p className="text-xs text-zinc-500">{camera.location}</p>
               )}
             </div>
-            {isPlaying && (
+            
+            {/* Status Badge - Dynamic based on actual stream state */}
+            {isPlaying ? (
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 rounded-full ml-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -234,28 +290,57 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
                 </span>
                 <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Live</span>
               </div>
+            ) : isLoading ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/20 rounded-full ml-2">
+                <span className="animate-spin h-2 w-2 border border-yellow-400 border-t-transparent rounded-full"></span>
+                <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Connexion</span>
+              </div>
+            ) : hasError ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 rounded-full ml-2">
+                <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Erreur</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-700/50 rounded-full ml-2">
+                <span className="h-2 w-2 rounded-full bg-zinc-500"></span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Arrêté</span>
+              </div>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            {isPlaying && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800 gap-2 h-8"
+                onClick={handleStop}
+              >
+                <Square className="h-3.5 w-3.5" />
+                Arrêter
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-8"
+              onClick={() => onOpenChange(false)}
+            >
+              Fermer
+            </Button>
+          </div>
         </div>
 
         {/* Video Container */}
         <div 
           ref={containerRef}
-          className="relative bg-black w-full"
-          style={{ height: isFullscreen ? '100vh' : 'calc(90vh - 120px)', minHeight: '500px' }}
+          className="relative bg-black w-full flex items-center justify-center"
+          style={{ height: 'calc(90vh - 56px)', minHeight: '500px' }}
         >
-          {/* Video element */}
+          {/* Video element - always rendered */}
           <video
             ref={videoRef}
-            className={`w-full h-full object-contain ${isPlaying ? 'block' : 'hidden'}`}
+            className={`w-full h-full object-contain bg-black ${isPlaying ? 'block' : 'hidden'}`}
             muted={isMuted}
             playsInline
             autoPlay={false}
@@ -263,24 +348,24 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
           {/* Not started state */}
           {!isPlaying && !isLoading && !hasError && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-6">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-zinc-900 to-black">
+              <div className="flex flex-col items-center gap-8">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl animate-pulse scale-150" />
-                  <div className="relative p-10 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 backdrop-blur-sm">
-                    <Video className="h-16 w-16 text-primary" />
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse scale-150" />
+                  <div className="relative p-8 rounded-full bg-zinc-800/80 border border-zinc-700">
+                    <Video className="h-12 w-12 text-zinc-400" />
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="font-bold text-xl text-white">Prêt à diffuser</p>
-                  <p className="text-sm text-white/40 mt-1">
-                    Cliquez pour démarrer le flux en direct
+                  <p className="font-semibold text-lg text-white">Flux vidéo prêt</p>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Démarrez pour voir le flux en direct
                   </p>
                 </div>
                 <Button 
                   onClick={startStream} 
                   size="lg" 
-                  className="gap-3 px-10 py-6 text-base font-semibold shadow-2xl shadow-primary/40 hover:shadow-primary/60 transition-all hover:scale-105"
+                  className="gap-3 px-8 py-6 text-base font-semibold shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all hover:scale-105"
                 >
                   <Play className="h-5 w-5" />
                   Démarrer le flux
@@ -291,36 +376,43 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
           {/* Loading state */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-5">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+              <div className="flex flex-col items-center gap-6">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-primary/40 rounded-full blur-2xl animate-pulse" />
-                  <div className="relative animate-spin rounded-full h-14 w-14 border-4 border-primary/30 border-t-primary"></div>
+                  <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl animate-pulse" />
+                  <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-primary/20 border-t-primary"></div>
                 </div>
-                <p className="text-sm text-white/60 font-medium">Connexion au flux...</p>
+                <div className="text-center">
+                  <p className="text-sm text-white font-medium">Connexion au flux...</p>
+                  <p className="text-xs text-zinc-500 mt-1">Veuillez patienter</p>
+                </div>
               </div>
             </div>
           )}
 
           {/* Error state */}
           {hasError && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-5 text-center p-8 max-w-md">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-zinc-900 to-black">
+              <div className="flex flex-col items-center gap-6 text-center p-8 max-w-md">
                 <div className="p-6 rounded-full bg-red-500/10 border border-red-500/20">
-                  <VideoOff className="h-12 w-12 text-red-400" />
+                  <VideoOff className="h-10 w-10 text-red-400" />
                 </div>
                 <div>
                   <p className="font-semibold text-lg text-white">{errorMessage}</p>
-                  <p className="text-sm text-white/40 mt-2">
-                    Utilisez VLC avec l'URL RTSP pour un accès direct
+                  <p className="text-sm text-zinc-500 mt-2">
+                    Vérifiez que la caméra est en ligne ou utilisez VLC avec l'URL RTSP
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="secondary" onClick={handleRefresh} className="gap-2">
+                  <Button onClick={handleRefresh} className="gap-2">
                     <RefreshCw className="h-4 w-4" />
                     Réessayer
                   </Button>
-                  <Button variant="outline" onClick={copyRtspUrl} className="gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <Button 
+                    variant="outline" 
+                    onClick={copyRtspUrl} 
+                    className="gap-2 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
+                  >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     Copier URL
                   </Button>
@@ -329,16 +421,17 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
             </div>
           )}
 
-          {/* Video Controls */}
+          {/* Video Controls Overlay */}
           {isPlaying && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 hover:opacity-100 transition-all duration-300">
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/70 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="text-white hover:bg-white/20 h-10 w-10"
                     onClick={() => setIsMuted(!isMuted)}
+                    title={isMuted ? "Activer le son" : "Couper le son"}
                   >
                     {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   </Button>
@@ -347,25 +440,38 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
                     size="icon"
                     className="text-white hover:bg-white/20 h-10 w-10"
                     onClick={handleRefresh}
+                    title="Rafraîchir le flux"
                   >
                     <RefreshCw className="h-5 w-5" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 h-10 w-10"
+                    onClick={handleStop}
+                    title="Arrêter le flux"
+                  >
+                    <Square className="h-5 w-5" />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
+                
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-white/20 gap-2 h-10 px-4"
+                    className="text-white hover:bg-white/20 gap-2 h-10 px-3"
                     onClick={copyRtspUrl}
+                    title="Copier l'URL RTSP"
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    <span className="text-xs">RTSP</span>
+                    <span className="text-xs hidden sm:inline">RTSP</span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="text-white hover:bg-white/20 h-10 w-10"
                     onClick={toggleFullscreen}
+                    title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
                   >
                     {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
                   </Button>
