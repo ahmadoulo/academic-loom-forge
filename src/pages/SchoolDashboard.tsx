@@ -83,6 +83,7 @@ import { ClipboardList } from "lucide-react";
 import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
 import { TextbooksSection } from "@/components/school/TextbooksSection";
 import { AbsenceJustificationsManagement } from "@/components/school/AbsenceJustificationsManagement";
+import { CamerasSection } from "@/components/school/CamerasSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -984,6 +985,10 @@ const SchoolDashboard = () => {
               
               {activeTab === "textbooks" && school?.id && (
                 <TextbooksSection schoolId={school.id} />
+              )}
+
+              {activeTab === "cameras" && school?.id && (
+                <CamerasSection schoolId={school.id} />
               )}
             </main>
           </div>

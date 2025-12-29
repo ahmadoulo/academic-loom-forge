@@ -23,7 +23,8 @@ import {
   PinOff,
   CreditCard,
   UserPlus,
-  FileCheck
+  FileCheck,
+  Camera
 } from "lucide-react";
 
 import {
@@ -154,6 +155,12 @@ const menuStructure = [
         title: "Salles de Cours", 
         value: "classrooms",
         icon: Building2,
+        href: "/school"
+      },
+      { 
+        title: "Caméras", 
+        value: "cameras",
+        icon: Camera,
         href: "/school"
       },
     ]
