@@ -480,13 +480,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "attendance_justification_reviewed_by_fkey"
-            columns: ["justification_reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "user_credentials"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "attendance_school_year_id_fkey"
             columns: ["school_year_id"]
             isOneToOne: false
@@ -1369,13 +1362,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "exam_documents_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
             foreignKeyName: "exam_documents_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
@@ -1518,13 +1504,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "grades_bonus_given_by_fkey"
-            columns: ["bonus_given_by"]
-            isOneToOne: false
-            referencedRelation: "user_credentials"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "grades_school_semester_id_fkey"
             columns: ["school_semester_id"]
@@ -1766,59 +1745,6 @@ export type Database = {
           },
           {
             foreignKeyName: "options_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string
-          first_name: string | null
-          id: string
-          is_active: boolean
-          last_name: string | null
-          phone: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          school_id: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email: string
-          first_name?: string | null
-          id?: string
-          is_active?: boolean
-          last_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          school_id?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          first_name?: string | null
-          id?: string
-          is_active?: boolean
-          last_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          school_id?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -2179,13 +2105,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "school_payments_recorded_by_fkey"
-            columns: ["recorded_by"]
-            isOneToOne: false
-            referencedRelation: "user_credentials"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "school_payments_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
@@ -2373,13 +2292,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "school_textbook_notes_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_credentials"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "school_textbook_notes_target_teacher_id_fkey"
             columns: ["target_teacher_id"]
             isOneToOne: false
@@ -2538,69 +2450,7 @@ export type Database = {
           updated_at?: string
           website?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "schools_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "user_credentials"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_accounts: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          invitation_expires_at: string | null
-          invitation_token: string | null
-          is_active: boolean
-          password_hash: string | null
-          school_id: string
-          student_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          invitation_expires_at?: string | null
-          invitation_token?: string | null
-          is_active?: boolean
-          password_hash?: string | null
-          school_id: string
-          student_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          invitation_expires_at?: string | null
-          invitation_token?: string | null
-          is_active?: boolean
-          password_hash?: string | null
-          school_id?: string
-          student_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_accounts_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_accounts_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       student_exam_attempts: {
         Row: {
@@ -2802,13 +2652,6 @@ export type Database = {
           transition_type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "student_transitions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
           {
             foreignKeyName: "student_transitions_from_class_id_fkey"
             columns: ["from_class_id"]
@@ -3179,91 +3022,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "teachers_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_credentials: {
-        Row: {
-          created_at: string
-          email: string
-          first_name: string
-          id: string
-          is_active: boolean
-          last_login: string | null
-          last_name: string
-          password_hash: string
-          role: string
-          school_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          first_name: string
-          id?: string
-          is_active?: boolean
-          last_login?: string | null
-          last_name: string
-          password_hash: string
-          role?: string
-          school_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          first_name?: string
-          id?: string
-          is_active?: boolean
-          last_login?: string | null
-          last_name?: string
-          password_hash?: string
-          role?: string
-          school_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_credentials_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          granted_by: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          school_id: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          granted_by?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          school_id?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          granted_by?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          school_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
