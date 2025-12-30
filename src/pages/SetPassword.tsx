@@ -37,9 +37,10 @@ export default function SetPassword() {
       // Nettoyer le token des espaces blancs
       const cleanToken = token.trim();
       
+      // Chercher dans app_users (nouveau système unifié)
       const { data: account, error } = await supabase
-        .from('student_accounts')
-        .select('id, email, student_id, school_id, invitation_token, invitation_expires_at, is_active, password_hash')
+        .from('app_users')
+        .select('id, email, invitation_token, invitation_expires_at, is_active, password_hash')
         .eq('invitation_token', cleanToken)
         .maybeSingle();
 
@@ -129,18 +130,13 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('🔐 Hashage du mot de passe avec bcrypt (rounds: 12)...');
+      console.log('🔐 Appel de l\'edge function set-user-password...');
       
-      // Hasher le mot de passe avec bcrypt (12 rounds) côté client
-      const passwordHash = await bcrypt.hash(password, 12);
-      
-      console.log('✅ Mot de passe hashé, appel de l\'edge function');
-      
-      // Appeler l'edge function qui gère la définition du mot de passe de manière sécurisée
-      const { data, error } = await supabase.functions.invoke('set-student-password', {
+      // Appeler l'edge function unifiée qui gère la définition du mot de passe
+      const { data, error } = await supabase.functions.invoke('set-user-password', {
         body: {
           token: token.trim(),
-          passwordHash: passwordHash
+          password: password
         }
       });
 

@@ -81,7 +81,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
             firstname,
             lastname
           ),
-          bonus_given_by_credential:user_credentials!grades_bonus_given_by_fkey (
+          bonus_given_by_credential:app_users!grades_bonus_given_by_fkey (
             first_name,
             last_name
           )
@@ -115,7 +115,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
-      setGrades(data || []);
+      setGrades((data || []) as GradeWithDetails[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des notes');
       toast.error('Erreur lors du chargement des notes');
@@ -263,7 +263,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
             firstname,
             lastname
           ),
-          bonus_given_by_credential:user_credentials!grades_bonus_given_by_fkey (
+          bonus_given_by_credential:app_users!grades_bonus_given_by_fkey (
             first_name,
             last_name
           )
@@ -273,7 +273,7 @@ export const useGrades = (subjectId?: string, studentId?: string, teacherId?: st
       if (error) throw error;
       
       setGrades(prev => prev.map(grade => 
-        grade.id === gradeId ? data : grade
+        grade.id === gradeId ? (data as GradeWithDetails) : grade
       ));
       toast.success('Bonus ajouté avec succès');
       return data;

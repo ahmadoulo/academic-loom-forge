@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import bcrypt from 'bcryptjs';
 
 export interface SchoolOwner {
   id: string;
@@ -28,27 +27,22 @@ export const useSchoolOwners = () => {
     try {
       setLoading(true);
       
-      // Hash password with bcrypt
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(ownerData.password, salt);
-      
-      const { data, error } = await supabase
-        .from('user_credentials')
-        .insert([{
+      // Utiliser l'Edge Function pour créer le compte
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
           email: ownerData.email,
-          password_hash: passwordHash,
-          first_name: ownerData.first_name,
-          last_name: ownerData.last_name,
+          password: ownerData.password,
+          firstName: ownerData.first_name,
+          lastName: ownerData.last_name,
           role: 'school_admin',
-          school_id: ownerData.school_id,
-          is_active: true,
-        }])
-        .select()
-        .single();
+          schoolId: ownerData.school_id
+        }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
-      return data;
+      return data.user;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création du propriétaire';
       toast.error(message);
@@ -62,15 +56,12 @@ export const useSchoolOwners = () => {
     try {
       setLoading(true);
       
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(newPassword, salt);
-      
-      const { error } = await supabase
-        .from('user_credentials')
-        .update({ password_hash: passwordHash })
-        .eq('id', ownerId);
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId: ownerId, newPassword }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       toast.success('Mot de passe modifié avec succès');
     } catch (err) {
@@ -87,7 +78,7 @@ export const useSchoolOwners = () => {
       setLoading(true);
       
       const { error } = await supabase
-        .from('user_credentials')
+        .from('app_users')
         .update({ is_active: isActive })
         .eq('id', ownerId);
 

@@ -62,11 +62,12 @@ export const useStudentAccounts = (schoolId?: string) => {
 
       if (enrollmentsError) throw enrollmentsError;
 
-      // Récupérer les comptes étudiants existants
+      // Récupérer les comptes étudiants existants depuis app_users
       const { data: studentAccounts, error: accountsError } = await supabase
-        .from('student_accounts')
+        .from('app_users')
         .select('id, student_id, school_id, email, is_active, invitation_token, created_at')
-        .eq('school_id', schoolId);
+        .eq('school_id', schoolId)
+        .not('student_id', 'is', null);
 
       if (accountsError) throw accountsError;
 
@@ -126,9 +127,9 @@ export const useStudentAccounts = (schoolId?: string) => {
 
   const createStudentAccount = async (studentId: string, email: string) => {
     try {
-      // Vérifier si un compte existe déjà
+      // Vérifier si un compte existe déjà dans app_users
       const { data: existingAccount } = await supabase
-        .from('student_accounts')
+        .from('app_users')
         .select('id')
         .eq('student_id', studentId)
         .maybeSingle();
@@ -138,23 +139,30 @@ export const useStudentAccounts = (schoolId?: string) => {
         return;
       }
 
-      // Créer le compte étudiant
-      const invitationToken = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+      // Récupérer les infos de l'étudiant
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('firstname, lastname')
+        .eq('id', studentId)
+        .single();
 
-      const { error } = await supabase
-        .from('student_accounts')
-        .insert({
-          student_id: studentId,
-          school_id: schoolId,
-          email: email,
-          invitation_token: invitationToken,
-          invitation_expires_at: expiresAt.toISOString(),
-          is_active: false
-        });
+      if (studentError) throw studentError;
+
+      // Créer le compte via l'Edge Function
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
+          email,
+          firstName: student.firstname,
+          lastName: student.lastname,
+          role: 'student',
+          schoolId: schoolId,
+          studentId: studentId,
+          sendInvitation: false
+        }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success('Compte créé avec succès');
       await fetchAccounts();
@@ -171,7 +179,7 @@ export const useStudentAccounts = (schoolId?: string) => {
       let accountId: string;
       
       const { data: existingAccount } = await supabase
-        .from('student_accounts')
+        .from('app_users')
         .select('id')
         .eq('student_id', studentId)
         .maybeSingle();
@@ -181,7 +189,7 @@ export const useStudentAccounts = (schoolId?: string) => {
         
         // Récupérer l'ID du compte nouvellement créé
         const { data: newAccount } = await supabase
-          .from('student_accounts')
+          .from('app_users')
           .select('id')
           .eq('student_id', studentId)
           .maybeSingle();

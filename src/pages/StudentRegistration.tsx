@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Building2, ArrowLeft } from 'lucide-react';
+
 export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -31,10 +32,10 @@ export default function StudentRegistration() {
         return;
       }
 
-      // Vérifier si un compte étudiant existe avec cet email
+      // Vérifier si un compte étudiant existe avec cet email dans app_users
       const { data: account, error: accountError } = await supabase
-        .from('student_accounts')
-        .select('id, email, is_active')
+        .from('app_users')
+        .select('id, email, is_active, student_id, app_user_roles(role)')
         .eq('email', email)
         .eq('school_id', school.id)
         .maybeSingle();
@@ -47,6 +48,16 @@ export default function StudentRegistration() {
 
       if (!account) {
         toast.error('Aucun compte trouvé avec cet email pour cette école. Contactez votre administrateur.');
+        setLoading(false);
+        return;
+      }
+
+      // Vérifier que c'est bien un compte étudiant
+      const roles = account.app_user_roles as { role: string }[] | null;
+      const isStudent = roles?.some(r => r.role === 'student');
+      
+      if (!isStudent) {
+        toast.error('Ce compte n\'est pas un compte étudiant.');
         setLoading(false);
         return;
       }
