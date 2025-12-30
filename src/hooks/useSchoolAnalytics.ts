@@ -281,27 +281,32 @@ export const useSchoolAnalytics = (schoolId?: string) => {
   const attendanceByMonth = useMemo(() => {
     if (!attendance.length) return [];
 
-    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Sep', 'Oct', 'Nov', 'Déc'];
-    const monthlyData: { [key: string]: { present: number; total: number } } = {};
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const monthlyData: { [key: number]: { present: number; total: number } } = {};
 
     attendance.forEach(record => {
       const date = new Date(record.date);
-      const monthKey = months[date.getMonth()];
+      const monthIndex = date.getMonth();
       
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { present: 0, total: 0 };
+      if (!monthlyData[monthIndex]) {
+        monthlyData[monthIndex] = { present: 0, total: 0 };
       }
       
-      monthlyData[monthKey].total++;
+      monthlyData[monthIndex].total++;
       if (record.status === 'present') {
-        monthlyData[monthKey].present++;
+        monthlyData[monthIndex].present++;
       }
     });
 
-    return Object.entries(monthlyData).map(([month, data]) => ({
-      month,
-      rate: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0
-    }));
+    // Convert to array sorted by month index
+    return Object.entries(monthlyData)
+      .map(([monthIndex, data]) => ({
+        month: monthNames[parseInt(monthIndex)],
+        monthIndex: parseInt(monthIndex),
+        rate: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0
+      }))
+      .sort((a, b) => a.monthIndex - b.monthIndex)
+      .map(({ month, rate }) => ({ month, rate }));
   }, [attendance]);
 
   // Calculate overall stats

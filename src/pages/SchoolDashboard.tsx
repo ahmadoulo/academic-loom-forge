@@ -601,12 +601,7 @@ const SchoolDashboard = () => {
                     totalTeachers={stats.totalTeachers}
                     totalClasses={stats.totalClasses}
                     totalSubjects={stats.totalSubjects}
-                    avgGrade={Number(stats.avgGrade)}
-                    successRate={overallStats?.successRate || 0}
-                    attendanceRate={overallStats?.attendanceRate || 0}
-                    studentsInDifficulty={overallStats?.studentsInDifficulty || 0}
                     avgStudentsPerClass={stats.avgStudentsPerClass}
-                    totalGrades={stats.totalGrades}
                   />
 
                   {/* Quick Actions & Activity Feed */}
