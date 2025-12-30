@@ -125,18 +125,19 @@ export const useStudentAccounts = (schoolId?: string) => {
     }
   };
 
-  const createStudentAccount = async (studentId: string, email: string) => {
+  const createStudentAccount = async (studentId: string, email: string): Promise<string | null> => {
     try {
-      // Vérifier si un compte existe déjà dans app_users
+      // Vérifier si un compte existe déjà dans app_users pour cet étudiant
       const { data: existingAccount } = await supabase
         .from('app_users')
         .select('id')
         .eq('student_id', studentId)
+        .eq('school_id', schoolId)
         .maybeSingle();
 
       if (existingAccount) {
         toast.info('Un compte existe déjà pour cet étudiant');
-        return;
+        return existingAccount.id;
       }
 
       // Récupérer les infos de l'étudiant
@@ -157,18 +158,25 @@ export const useStudentAccounts = (schoolId?: string) => {
           role: 'student',
           schoolId: schoolId,
           studentId: studentId,
-          sendInvitation: false
+          sendInvitation: true // Will generate invitation token
         }
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error('Erreur lors de la création du compte');
+      }
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       toast.success('Compte créé avec succès');
       await fetchAccounts();
-    } catch (err) {
+      return data?.user?.id || null;
+    } catch (err: any) {
       console.error('Erreur création compte:', err);
-      toast.error('Erreur lors de la création du compte');
+      toast.error(err.message || 'Erreur lors de la création du compte');
       throw err;
     }
   };
@@ -176,28 +184,32 @@ export const useStudentAccounts = (schoolId?: string) => {
   const sendInvitation = async (studentId: string, email: string) => {
     try {
       // D'abord créer ou récupérer le compte
-      let accountId: string;
+      let accountId: string | null = null;
       
       const { data: existingAccount } = await supabase
         .from('app_users')
         .select('id')
         .eq('student_id', studentId)
+        .eq('school_id', schoolId)
         .maybeSingle();
 
       if (!existingAccount) {
-        await createStudentAccount(studentId, email);
-        
-        // Récupérer l'ID du compte nouvellement créé
-        const { data: newAccount } = await supabase
-          .from('app_users')
-          .select('id')
-          .eq('student_id', studentId)
-          .maybeSingle();
-        
-        if (!newAccount) {
-          throw new Error('Impossible de créer le compte');
+        // Create account - this will also generate invitation token
+        accountId = await createStudentAccount(studentId, email);
+        if (!accountId) {
+          // Fetch the newly created account
+          const { data: newAccount } = await supabase
+            .from('app_users')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+            .maybeSingle();
+          
+          if (!newAccount) {
+            throw new Error('Impossible de créer le compte');
+          }
+          accountId = newAccount.id;
         }
-        accountId = newAccount.id;
       } else {
         accountId = existingAccount.id;
       }
@@ -208,13 +220,20 @@ export const useStudentAccounts = (schoolId?: string) => {
         body: { accountId, email, appUrl }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Invitation error:', error);
+        throw new Error('Erreur lors de l\'envoi de l\'invitation');
+      }
 
-      toast.success('Invitation envoyée avec succès');
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success(data?.warning ? 'Compte créé (vérifiez la configuration email)' : 'Invitation envoyée avec succès');
       await fetchAccounts();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur lors de l\'envoi de l\'invitation:', err);
-      toast.error('Erreur lors de l\'envoi de l\'invitation');
+      toast.error(err.message || 'Erreur lors de l\'envoi de l\'invitation');
       throw err;
     }
   };
