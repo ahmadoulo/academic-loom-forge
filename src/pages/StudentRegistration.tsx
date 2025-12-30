@@ -6,89 +6,58 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Mail, Building2, ArrowLeft } from 'lucide-react';
+import { Mail, Building2, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function StudentRegistration() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [schoolIdentifier, setSchoolIdentifier] = useState('');
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setStatus('idle');
+    setMessage('');
 
     try {
-      // Vérifier si l'école existe
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('identifier', schoolIdentifier)
-        .single();
-
-      if (schoolError || !school) {
-        toast.error('Identifiant d\'école invalide');
-        setLoading(false);
-        return;
-      }
-
-      // Vérifier si un compte étudiant existe avec cet email dans app_users
-      const { data: account, error: accountError } = await supabase
-        .from('app_users')
-        .select('id, email, is_active, student_id, app_user_roles(role)')
-        .eq('email', email)
-        .eq('school_id', school.id)
-        .maybeSingle();
-
-      if (accountError) {
-        toast.error('Erreur lors de la vérification du compte');
-        setLoading(false);
-        return;
-      }
-
-      if (!account) {
-        toast.error('Aucun compte trouvé avec cet email pour cette école. Contactez votre administrateur.');
-        setLoading(false);
-        return;
-      }
-
-      // Vérifier que c'est bien un compte étudiant
-      const roles = account.app_user_roles as { role: string }[] | null;
-      const isStudent = roles?.some(r => r.role === 'student');
-      
-      if (!isStudent) {
-        toast.error('Ce compte n\'est pas un compte étudiant.');
-        setLoading(false);
-        return;
-      }
-
-      if (account.is_active) {
-        toast.info('Votre compte est déjà actif. Vous pouvez vous connecter.');
-        navigate('/auth');
-        return;
-      }
-
-      // Envoyer l'email d'invitation
-      const { error: inviteError } = await supabase.functions.invoke('send-student-invitation', {
+      const { data, error } = await supabase.functions.invoke('verify-student-account', {
         body: { 
-          accountId: account.id,
-          email: account.email,
+          email: email.trim().toLowerCase(),
+          schoolIdentifier: schoolIdentifier.trim(),
           appUrl: window.location.origin,
         }
       });
 
-      if (inviteError) {
-        console.error('Erreur lors de l\'envoi de l\'invitation:', inviteError);
-        toast.error('Erreur lors de l\'envoi de l\'email d\'invitation');
-        setLoading(false);
+      if (error) {
+        console.error('Erreur edge function:', error);
+        setStatus('error');
+        setMessage('Une erreur est survenue. Veuillez réessayer.');
         return;
       }
 
-      toast.success('Email d\'invitation envoyé ! Vérifiez votre boîte de réception.');
-      
+      if (data.success) {
+        setStatus('success');
+        setMessage(data.message || 'Email d\'activation envoyé ! Vérifiez votre boîte de réception.');
+        if (data.warning) {
+          console.warn('Warning:', data.warning);
+        }
+      } else {
+        setStatus('error');
+        setMessage(data.message || 'Erreur lors de la vérification');
+        
+        // Rediriger vers connexion si déjà actif
+        if (data.error === 'already_active') {
+          setTimeout(() => navigate('/auth'), 2000);
+        }
+      }
     } catch (err) {
       console.error('Erreur:', err);
-      toast.error('Une erreur est survenue');
+      setStatus('error');
+      setMessage('Une erreur inattendue est survenue');
     } finally {
       setLoading(false);
     }
@@ -109,56 +78,90 @@ export default function StudentRegistration() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Inscription Étudiant</CardTitle>
+              <CardTitle>Activer mon compte étudiant</CardTitle>
               <CardDescription>
-                Créez votre compte étudiant pour accéder à la plateforme
+                Entrez votre email et l'identifiant de votre école pour recevoir un lien d'activation
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="votre.email@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="schoolIdentifier">Identifiant de l'école</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="schoolIdentifier"
-                      type="text"
-                      placeholder="ex: lycee-victor-hugo"
-                      value={schoolIdentifier}
-                      onChange={(e) => setSchoolIdentifier(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Contactez votre école si vous ne connaissez pas cet identifiant
+              {status === 'success' ? (
+                <div className="space-y-4">
+                  <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-700 dark:text-green-300">
+                      {message}
+                    </AlertDescription>
+                  </Alert>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Consultez votre boîte email (pensez à vérifier les spams)
                   </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      setStatus('idle');
+                      setEmail('');
+                      setSchoolIdentifier('');
+                    }}
+                  >
+                    Renvoyer un email
+                  </Button>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {status === 'error' && message && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{message}</AlertDescription>
+                    </Alert>
+                  )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Vérification...' : 'Recevoir l\'invitation'}
-                </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="votre.email@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-9"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
 
-                <p className="text-sm text-muted-foreground text-center">
-                  Vous recevrez un email pour définir votre mot de passe
-                </p>
-              </form>
+                  <div className="space-y-2">
+                    <Label htmlFor="schoolIdentifier">Identifiant de l'école</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="schoolIdentifier"
+                        type="text"
+                        placeholder="ex: lycee-victor-hugo"
+                        value={schoolIdentifier}
+                        onChange={(e) => setSchoolIdentifier(e.target.value)}
+                        className="pl-9"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Contactez votre école si vous ne connaissez pas cet identifiant
+                    </p>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Vérification en cours...' : 'Recevoir le lien d\'activation'}
+                  </Button>
+
+                  <p className="text-sm text-muted-foreground text-center">
+                    Vous recevrez un email pour définir votre mot de passe
+                  </p>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
