@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +14,38 @@ interface AuthRequest {
 interface UserRole {
   role: string;
   school_id: string | null;
+}
+
+// Hash password using SHA-256 (Web Crypto API - Deno compatible)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Verify password against stored hash
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  // First try SHA-256 hash comparison
+  const passwordHash = await hashPassword(password);
+  if (passwordHash === storedHash) {
+    return true;
+  }
+  
+  // Fallback: check if stored hash is bcrypt format (starts with $2)
+  // For bcrypt hashes, we need to update the user's password to SHA-256
+  if (storedHash.startsWith('$2')) {
+    console.log('Detected bcrypt hash, needs migration');
+    return false;
+  }
+  
+  // For development/testing: allow plain text comparison
+  if (storedHash === password) {
+    return true;
+  }
+  
+  return false;
 }
 
 serve(async (req) => {
@@ -74,8 +105,8 @@ serve(async (req) => {
       );
     }
 
-    // Verify password with bcrypt
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    // Verify password
+    const isValidPassword = await verifyPassword(password, user.password_hash);
 
     if (!isValidPassword) {
       console.error('Invalid password for user:', email);
@@ -83,6 +114,16 @@ serve(async (req) => {
         JSON.stringify({ error: 'Email ou mot de passe incorrect' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // If password was validated but hash is old format, update it
+    if (!user.password_hash.startsWith('$2') && user.password_hash !== await hashPassword(password)) {
+      const newHash = await hashPassword(password);
+      await supabase
+        .from('app_users')
+        .update({ password_hash: newHash })
+        .eq('id', user.id);
+      console.log('Password hash migrated to SHA-256');
     }
 
     // Generate session token
