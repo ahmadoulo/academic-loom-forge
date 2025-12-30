@@ -2,12 +2,10 @@ import { useState } from "react";
 import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
-import { LogOut, Settings, User, Menu, School, Users, HelpCircle, GraduationCap } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut, Settings, User, Menu, School, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AcademicYearDisplay } from "@/components/layout/AcademicYearDisplay";
 import { SemesterDisplay } from "@/components/layout/SemesterDisplay";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +14,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -53,6 +50,8 @@ export function AuthenticatedHeader({
   userRole,
   sidebarContent
 }: AuthenticatedHeaderProps) {
+  const navigate = useNavigate();
+  const { user, primaryRole, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const handleCloseMobileMenu = () => {
@@ -67,48 +66,32 @@ export function AuthenticatedHeader({
       })
     : sidebarContent;
   
-  // Mock user pour l'accès libre
-  const profile = {
-    first_name: "Admin",
-    last_name: "Global",
-    email: "admin@eduvate.com",
-    role: "global_admin"
-  };
-
-  const defaultMenuItems = [
-    { 
-      title: "Écoles", 
-      value: "schools",
-      icon: School,
-      description: "Gérer les établissements"
-    },
-    { 
-      title: "Paramètres", 
-      value: "settings",
-      icon: Settings,
-      description: "Utilisateurs et rôles"
-    },
-    { 
-      title: "Support Écoles", 
-      value: "support",
-      icon: HelpCircle,
-      description: "Assistance utilisateurs"
-    },
-  ];
-
-  const menuItems = customMenuItems || defaultMenuItems;
+  // Get user display info from auth context
+  const displayName = user ? `${user.first_name} ${user.last_name}` : "Utilisateur";
+  const displayEmail = user?.email || "";
+  const displayInitials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}` : "U";
+  const displayRole = primaryRole || "user";
 
   const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      global_admin: { label: "Admin Global", className: "bg-primary/10 text-primary" },
-      school_admin: { label: "Admin École", className: "bg-blue-500/10 text-blue-600" },
-      teacher: { label: "Professeur", className: "bg-green-500/10 text-green-600" },
-      student: { label: "Étudiant", className: "bg-orange-500/10 text-orange-600" },
-      parent: { label: "Parent", className: "bg-indigo-500/10 text-indigo-600" },
+    const roleConfig: Record<string, { label: string; className: string }> = {
+      global_admin: { label: "Admin Global", className: "bg-primary/10 text-primary border-primary/20" },
+      admin: { label: "Admin Global", className: "bg-primary/10 text-primary border-primary/20" },
+      school_admin: { label: "Admin École", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+      teacher: { label: "Professeur", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+      student: { label: "Étudiant", className: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+      parent: { label: "Parent", className: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
     };
     
-    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
-    return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
+    const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
+    return <Badge variant="outline" className={`${config.className} font-medium`}>{config.label}</Badge>;
+  };
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const handleProfileClick = () => {
+    navigate('/profile');
   };
 
   return (
@@ -185,7 +168,7 @@ export function AuthenticatedHeader({
           <AcademicYearDisplay />
           <SemesterDisplay />
           <div className="hidden sm:block">
-            {profile?.role && getRoleBadge(profile.role)}
+            {getRoleBadge(displayRole)}
           </div>
           <ThemeToggle />
           
@@ -193,9 +176,9 @@ export function AuthenticatedHeader({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="" />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+                  <AvatarImage src={user?.avatar_url || ""} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                    {displayInitials}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -204,27 +187,27 @@ export function AuthenticatedHeader({
               <div className="flex items-center justify-start gap-2 p-2">
                 <div className="flex flex-col space-y-1 leading-none">
                   <p className="font-medium text-sm">
-                    {profile?.first_name} {profile?.last_name}
+                    {displayName}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {profile?.email}
+                    {displayEmail}
                   </p>
                 </div>
               </div>
               <div className="sm:hidden px-2 pb-2">
-                {profile?.role && getRoleBadge(profile.role)}
+                {getRoleBadge(displayRole)}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSettingsClick}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Paramètres</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfileClick}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profil</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => console.log('Déconnexion simulée')}>
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Déconnexion</span>
               </DropdownMenuItem>

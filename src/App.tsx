@@ -11,6 +11,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SchoolDashboard from "./pages/SchoolDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import ProfilePage from "./pages/ProfilePage";
 import AttendanceScan from "./pages/AttendanceScan";
 import StudentRegistration from "./pages/StudentRegistration";
 import SetPassword from "./pages/SetPassword";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/dashboard" element={<Index />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/school" element={<SchoolDashboard />} />
               <Route path="/school/:schoolId" element={<SchoolDashboard />} />
               <Route path="/school/:identifier/admission" element={<PublicAdmissionForm />} />
