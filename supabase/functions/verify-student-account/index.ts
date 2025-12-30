@@ -32,7 +32,8 @@ serve(async (req) => {
       );
     }
 
-    console.log('Vérification compte étudiant:', { email, schoolIdentifier });
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log('Vérification compte étudiant:', { email: normalizedEmail, schoolIdentifier });
 
     // 1. Vérifier si l'école existe
     const { data: school, error: schoolError } = await supabaseClient
@@ -55,8 +56,8 @@ serve(async (req) => {
 
     console.log('École trouvée:', school.name);
 
-    // 2. Chercher le compte étudiant dans app_users
-    const { data: account, error: accountError } = await supabaseClient
+    // 2. D'abord chercher dans app_users (compte existant)
+    const { data: existingAccount, error: accountError } = await supabaseClient
       .from('app_users')
       .select(`
         id, 
@@ -67,25 +68,71 @@ serve(async (req) => {
         last_name,
         students(firstname, lastname)
       `)
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalizedEmail)
       .eq('school_id', school.id)
       .not('student_id', 'is', null)
       .maybeSingle();
 
     if (accountError) {
-      console.error('Erreur recherche compte:', accountError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'verification_error',
-          message: 'Erreur lors de la vérification du compte' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+      console.error('Erreur recherche compte app_users:', accountError);
     }
 
+    let account = existingAccount;
+    let studentInfo = null;
+
+    // 3. Si pas trouvé dans app_users, chercher dans students directement
     if (!account) {
-      console.log('Aucun compte étudiant trouvé pour:', email, 'dans école:', school.id);
+      console.log('Pas de compte app_users, recherche dans students...');
+      
+      const { data: student, error: studentError } = await supabaseClient
+        .from('students')
+        .select('id, firstname, lastname, email, class_id')
+        .eq('email', normalizedEmail)
+        .eq('school_id', school.id)
+        .maybeSingle();
+
+      if (studentError) {
+        console.error('Erreur recherche student:', studentError);
+      }
+
+      if (student) {
+        console.log('Étudiant trouvé dans students:', student.id);
+        studentInfo = student;
+
+        // Créer automatiquement le compte app_users pour cet étudiant
+        const { data: newAccount, error: createError } = await supabaseClient
+          .from('app_users')
+          .insert({
+            email: normalizedEmail,
+            first_name: student.firstname,
+            last_name: student.lastname,
+            student_id: student.id,
+            school_id: school.id,
+            is_active: false,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Erreur création compte app_users:', createError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'account_creation_error',
+              message: 'Erreur lors de la création du compte. Contactez votre établissement.' 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+
+        console.log('Compte app_users créé:', newAccount.id);
+        account = newAccount;
+      }
+    }
+
+    // 4. Si toujours pas trouvé
+    if (!account) {
+      console.log('Aucun étudiant trouvé pour:', normalizedEmail, 'dans école:', school.id);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -96,7 +143,7 @@ serve(async (req) => {
       );
     }
 
-    // 3. Vérifier si le compte est déjà actif
+    // 5. Vérifier si le compte est déjà actif
     if (account.is_active) {
       console.log('Compte déjà actif:', account.id);
       return new Response(
@@ -109,7 +156,7 @@ serve(async (req) => {
       );
     }
 
-    // 4. Générer un token d'invitation et l'envoyer
+    // 6. Générer un token d'invitation
     const invitationToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -134,7 +181,7 @@ serve(async (req) => {
       );
     }
 
-    // 5. Construire l'URL d'invitation dynamique
+    // 7. Construire l'URL d'invitation dynamique
     let baseUrl = (appUrl && String(appUrl).trim()) || '';
 
     if (!baseUrl) {
@@ -156,10 +203,11 @@ serve(async (req) => {
 
     const invitationUrl = `${baseUrl}/set-password?token=${invitationToken}`;
 
-    const firstName = account.students?.firstname || account.first_name || '';
-    const lastName = account.students?.lastname || account.last_name || '';
+    // Récupérer le nom
+    const firstName = studentInfo?.firstname || account.students?.firstname || account.first_name || '';
+    const lastName = studentInfo?.lastname || account.students?.lastname || account.last_name || '';
 
-    // 6. Envoyer l'email d'invitation
+    // 8. Envoyer l'email d'invitation
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     
     if (!resendApiKey) {
@@ -200,7 +248,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'EduVate <noreply@ndiambour-it.com>',
-        to: [account.email],
+        to: [normalizedEmail],
         subject: `Activez votre compte étudiant - ${school.name}`,
         html: emailHtml,
       }),
