@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,9 +15,18 @@ interface CreateUserRequest {
   schoolId?: string;
   teacherId?: string;
   studentId?: string;
-  password?: string; // If provided, set password directly
-  sendInvitation?: boolean; // If true, generate invitation token
-  createdBy: string; // ID of the user creating this account
+  password?: string;
+  sendInvitation?: boolean;
+  createdBy?: string;
+}
+
+// Hash password using SHA-256 (Deno compatible)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function generatePassword(length: number = 12): string {
@@ -33,7 +41,6 @@ function generatePassword(length: number = 12): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -72,17 +79,22 @@ serve(async (req) => {
 
     console.log(`Creating user account for: ${email} with role: ${role}`);
 
-    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if email already exists
-    const { data: existingUser } = await supabase
+    // Check if email already exists in this school (for school-scoped roles)
+    let existingUserQuery = supabase
       .from('app_users')
       .select('id')
-      .eq('email', email.toLowerCase().trim())
-      .single();
+      .eq('email', email.toLowerCase().trim());
+    
+    // For student accounts, check within the same school
+    if (role === 'student' && schoolId) {
+      existingUserQuery = existingUserQuery.eq('school_id', schoolId);
+    }
+
+    const { data: existingUser } = await existingUserQuery.maybeSingle();
 
     if (existingUser) {
       return new Response(
@@ -100,17 +112,17 @@ serve(async (req) => {
 
     if (password) {
       // Direct password set
-      passwordHash = await bcrypt.hash(password);
+      passwordHash = await hashPassword(password);
       isActive = true;
     } else if (sendInvitation) {
       // Generate invitation token
       invitationToken = crypto.randomUUID();
-      invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+      invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     } else {
-      // Generate random password
+      // Generate random password for later invitation
       generatedPassword = generatePassword();
-      passwordHash = await bcrypt.hash(generatedPassword);
-      isActive = true;
+      passwordHash = await hashPassword(generatedPassword);
+      isActive = false; // Will be activated when invitation is sent
     }
 
     // Create user
@@ -135,7 +147,7 @@ serve(async (req) => {
     if (createError) {
       console.error('Failed to create user:', createError);
       return new Response(
-        JSON.stringify({ error: 'Erreur lors de la création du compte' }),
+        JSON.stringify({ error: 'Erreur lors de la création du compte', details: createError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -147,7 +159,7 @@ serve(async (req) => {
         user_id: newUser.id,
         role: role,
         school_id: ['school_admin', 'teacher', 'student'].includes(role) ? schoolId : null,
-        granted_by: createdBy
+        granted_by: createdBy || null
       });
 
     if (roleError) {
@@ -155,7 +167,7 @@ serve(async (req) => {
       // Rollback user creation
       await supabase.from('app_users').delete().eq('id', newUser.id);
       return new Response(
-        JSON.stringify({ error: 'Erreur lors de l\'attribution du rôle' }),
+        JSON.stringify({ error: 'Erreur lors de l\'attribution du rôle', details: roleError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -173,8 +185,8 @@ serve(async (req) => {
           is_active: newUser.is_active
         },
         role,
-        generatedPassword, // Only returned if auto-generated (copy to clipboard)
-        invitationToken, // Only returned if invitation was requested
+        generatedPassword,
+        invitationToken,
         invitationExpiresAt
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -183,7 +195,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Create user error:', error);
     return new Response(
-      JSON.stringify({ error: 'Erreur serveur lors de la création du compte' }),
+      JSON.stringify({ error: 'Erreur serveur lors de la création du compte', details: String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
