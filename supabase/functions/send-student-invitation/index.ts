@@ -23,16 +23,19 @@ serve(async (req) => {
       throw new Error('accountId ou email requis');
     }
 
-    // Récupérer le compte étudiant
+    // Récupérer le compte étudiant (nouveau système: app_users)
     let query = supabaseClient
-      .from('student_accounts')
-      .select('*, student:students(firstname, lastname), schools(name)');
+      .from('app_users')
+      .select('id, email, school_id, student_id, first_name, last_name, schools(name), students(firstname, lastname)');
 
     if (accountId) {
       query = query.eq('id', accountId);
     } else {
       query = query.eq('email', email);
     }
+
+    // Important: uniquement les comptes étudiants
+    query = query.not('student_id', 'is', null);
 
     const { data: account, error: accountError } = await query.single();
 
@@ -41,16 +44,17 @@ serve(async (req) => {
       throw new Error('Compte étudiant non trouvé');
     }
 
-    // Toujours générer un nouveau token à chaque envoi d'invitation
+    // Générer un nouveau token à chaque envoi d'invitation
     const invitationToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     const { error: updateError } = await supabaseClient
-      .from('student_accounts')
+      .from('app_users')
       .update({
         invitation_token: invitationToken,
-        invitation_expires_at: expiresAt.toISOString()
+        invitation_expires_at: expiresAt.toISOString(),
+        is_active: false,
       })
       .eq('id', account.id);
 
@@ -59,23 +63,23 @@ serve(async (req) => {
       throw updateError;
     }
 
-    console.log('Token généré:', invitationToken);
-
     // Construire l'URL d'invitation
     const baseUrl = appUrl || Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
     const invitationUrl = `${baseUrl}/set-password?token=${invitationToken}`;
 
-    console.log('URL d\'invitation:', invitationUrl);
+    const firstName = account.students?.firstname || account.first_name || '';
+    const lastName = account.students?.lastname || account.last_name || '';
+    const schoolName = account.schools?.name || 'votre école';
 
     const emailHtml = `
-      <h1>Bienvenue ${account.student?.firstname} ${account.student?.lastname} !</h1>
-      <p>Votre compte étudiant a été créé pour l'école <strong>${account.schools?.name}</strong>.</p>
+      <h1>Bienvenue ${firstName} ${lastName} !</h1>
+      <p>Votre compte étudiant a été créé pour l'école <strong>${schoolName}</strong>.</p>
       <p>Pour activer votre compte et définir votre mot de passe, cliquez sur le lien ci-dessous :</p>
       <p><a href="${invitationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px;">Définir mon mot de passe</a></p>
       <p>Ce lien est valable pendant 7 jours.</p>
       <p>Si vous n'avez pas demandé cette invitation, ignorez simplement cet email.</p>
       <br>
-      <p>Cordialement,<br>L'équipe ${account.schools?.name}</p>
+      <p>Cordialement,<br>L'équipe ${schoolName}</p>
     `;
 
     // Envoyer l'email via Resend
@@ -99,18 +103,16 @@ serve(async (req) => {
     });
 
     const resendData = await resendResponse.json();
-    
+
     if (!resendResponse.ok) {
       console.error('Erreur Resend:', resendData);
-      
-      // En mode test, Resend limite l'envoi d'emails
-      // Retourner quand même un succès pour ne pas bloquer le workflow
+      // Ne pas bloquer le workflow côté app
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          warning: 'Mode test Resend: vérifiez que le domaine est configuré sur resend.com/domains',
+        JSON.stringify({
+          success: true,
+          warning: "Mode test email: vérifiez la configuration de l'envoi.",
           invitationUrl,
-          error: resendData
+          error: resendData,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -140,3 +142,4 @@ serve(async (req) => {
     );
   }
 });
+
