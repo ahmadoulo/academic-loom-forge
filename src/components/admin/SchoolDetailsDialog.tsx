@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSchools } from "@/hooks/useSchools";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
-import { useSchoolOwners } from "@/hooks/useSchoolOwners";
 import { useSchoolStats } from "@/hooks/useSchoolStats";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -36,13 +35,20 @@ interface SchoolDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface Owner {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_active: boolean;
+}
+
 export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDetailsDialogProps) {
   const navigate = useNavigate();
   const { getSchoolById, updateSchool } = useSchools();
   const { subscriptions } = useSubscriptions();
-  const { updateOwnerPassword, toggleOwnerStatus } = useSchoolOwners();
   const [school, setSchool] = useState<any>(null);
-  const [owner, setOwner] = useState<any>(null);
+  const [owner, setOwner] = useState<Owner | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -62,14 +68,14 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
       const data = await getSchoolById(schoolId);
       setSchool(data);
 
-      // Load owner info if exists
+      // Load owner info from app_users if exists
       if (data.owner_id) {
         const { data: ownerData } = await supabase
-          .from('user_credentials')
-          .select('*')
+          .from('app_users')
+          .select('id, email, first_name, last_name, is_active')
           .eq('id', data.owner_id)
           .single();
-        setOwner(ownerData);
+        setOwner(ownerData as Owner | null);
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -82,20 +88,34 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
     if (!school || !owner) return;
     
     const newStatus = !owner.is_active;
-    await toggleOwnerStatus(owner.id, newStatus);
+    
+    // Update owner status
+    await supabase.from('app_users').update({ is_active: newStatus }).eq('id', owner.id);
     await updateSchool(school.id, { is_active: newStatus } as any);
     await loadSchoolDetails();
+    
+    toast.success(newStatus ? 'Compte activé' : 'Compte désactivé');
   };
 
   const handleChangePassword = async () => {
-    if (!owner || !newPassword) {
-      toast.error('Veuillez entrer un nouveau mot de passe');
+    if (!owner || !newPassword || newPassword.length < 8) {
+      toast.error('Veuillez entrer un mot de passe valide (min 8 caractères)');
       return;
     }
     
-    await updateOwnerPassword(owner.id, newPassword);
-    setNewPassword("");
-    setShowPasswordDialog(false);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId: owner.id, requestedBy: 'admin', newPassword }
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Mot de passe modifié avec succès');
+      setNewPassword("");
+      setShowPasswordDialog(false);
+    } catch (error) {
+      toast.error('Erreur lors du changement de mot de passe');
+    }
   };
 
   const schoolSubscription = subscriptions.find(sub => sub.school_id === schoolId);

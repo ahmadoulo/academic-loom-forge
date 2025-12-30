@@ -18,10 +18,19 @@ interface SchoolUserManagementProps {
   schoolId: string;
 }
 
+interface AppUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_active: boolean;
+  app_user_roles: { role: string }[];
+}
+
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
-  const { createUserCredential, loading, hashPassword } = useCustomAuth();
+  const { createUserCredential, loading } = useCustomAuth();
   
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -35,18 +44,18 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     password: "",
   });
 
-  // Fetch users for this school
+  // Fetch users for this school from app_users
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
       const { data, error } = await supabase
-        .from('user_credentials')
-        .select('*')
+        .from('app_users')
+        .select('id, email, first_name, last_name, is_active, app_user_roles(role)')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []) as AppUser[]);
     } catch (err) {
       toast.error('Erreur lors du chargement des utilisateurs');
     } finally {
@@ -54,7 +63,6 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     }
   };
 
-  // Use effect to fetch users on component mount
   React.useEffect(() => {
     fetchUsers();
   }, [schoolId]);
@@ -105,8 +113,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           role: "student",
           password: "",
         });
-        
-        // Refresh users list
+        setGeneratedPassword("");
+        setShowPassword(false);
         fetchUsers();
       }
     } catch (error) {
@@ -116,38 +124,31 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
 
   const handleResetPassword = async (userId: string) => {
     try {
-      const newPassword = generatePassword();
-      const passwordHash = await hashPassword(newPassword);
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId, requestedBy: 'school_admin' }
+      });
       
-      const { error } = await supabase
-        .from('user_credentials')
-        .update({ password_hash: passwordHash })
-        .eq('id', userId);
-        
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
       
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(newPassword);
-        toast.success(`Nouveau mot de passe généré et copié: ${newPassword}`, {
-          duration: 10000
-        });
+      if (navigator.clipboard && data.newPassword) {
+        await navigator.clipboard.writeText(data.newPassword);
+        toast.success(`Nouveau mot de passe copié: ${data.newPassword}`, { duration: 10000 });
       } else {
-        toast.success(`Nouveau mot de passe généré: ${newPassword}`, {
-          duration: 10000
-        });
+        toast.success(`Nouveau mot de passe: ${data.newPassword}`, { duration: 10000 });
       }
     } catch (error) {
-      toast.error('Erreur lors de la génération du mot de passe');
+      toast.error('Erreur lors de la réinitialisation du mot de passe');
     }
   };
 
   const deleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('user_credentials')
-        .delete()
-        .eq('id', userId);
-        
+      // Delete roles first
+      await supabase.from('app_user_roles').delete().eq('user_id', userId);
+      
+      // Then delete user
+      const { error } = await supabase.from('app_users').delete().eq('id', userId);
       if (error) throw error;
       
       toast.success('Utilisateur supprimé avec succès');
@@ -157,14 +158,15 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
+  const getRoleBadge = (roles: { role: string }[]) => {
+    const role = roles[0]?.role || 'unknown';
+    const roleConfig: Record<string, { label: string; className: string }> = {
       teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
       student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      parent: { label: "Parent", className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+      school_admin: { label: "Admin", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
     };
     
-    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
+    const config = roleConfig[role] || { label: role, className: "" };
     return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
   };
 
@@ -241,21 +243,15 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   <SelectContent>
                     <SelectItem value="student">Étudiant</SelectItem>
                     <SelectItem value="teacher">Professeur</SelectItem>
-                    <SelectItem value="parent">Parent</SelectItem>
+                    <SelectItem value="school_admin">Administrateur</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Génération et affichage du mot de passe */}
               <div className="space-y-3">
                 <Label>Mot de passe</Label>
                 {!showPassword ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleGeneratePassword}
-                    className="w-full"
-                  >
+                  <Button type="button" variant="outline" onClick={handleGeneratePassword} className="w-full">
                     <Key className="h-4 w-4 mr-2" />
                     Générer un mot de passe
                   </Button>
@@ -263,12 +259,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
                       <code className="flex-1 text-sm font-mono">{generatedPassword}</code>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigator.clipboard.writeText(generatedPassword)}
-                      >
+                      <Button type="button" variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(generatedPassword)}>
                         Copier
                       </Button>
                     </div>
@@ -335,40 +326,40 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                 {filteredUsers.map((user) => (
-                   <TableRow key={user.id}>
-                     <TableCell className="min-w-0">
-                       <div className="flex items-center space-x-3">
-                         <Avatar className="h-8 w-8 flex-shrink-0">
-                           <AvatarImage src="" />
-                           <AvatarFallback className="text-xs bg-gradient-primary text-white">
-                             {user.first_name[0]}{user.last_name[0]}
-                           </AvatarFallback>
-                         </Avatar>
-                         <div className="min-w-0 flex-1">
-                           <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
-                           <div className="text-sm text-muted-foreground truncate">{user.email}</div>
-                           <div className="sm:hidden mt-1">
-                             {getRoleBadge(user.role)}
-                           </div>
-                         </div>
-                       </div>
-                     </TableCell>
-                     <TableCell className="hidden sm:table-cell">
-                       {getRoleBadge(user.role)}
-                     </TableCell>
-                     <TableCell className="hidden lg:table-cell">
-                       <Badge variant={user.is_active ? "default" : "secondary"}>
-                         {user.is_active ? "Actif" : "Inactif"}
-                       </Badge>
-                     </TableCell>
-                     <TableCell>
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="ghost" size="sm">
-                             <MoreVertical className="h-4 w-4" />
-                           </Button>
-                         </DropdownMenuTrigger>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                          <AvatarImage src="" />
+                          <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                            {user.first_name[0]}{user.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
+                          <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                          <div className="sm:hidden mt-1">
+                            {getRoleBadge(user.app_user_roles)}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {getRoleBadge(user.app_user_roles)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Badge variant={user.is_active ? "default" : "secondary"}>
+                        {user.is_active ? "Actif" : "Inactif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
                             <Edit className="h-4 w-4 mr-2" />

@@ -12,16 +12,26 @@ import { Label } from "@/components/ui/label";
 import { useAuth, UserRole } from "@/hooks/useAuth";
 import { useSchools } from "@/hooks/useSchools";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key, Copy } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+
+interface AppUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  school_id: string | null;
+  is_active: boolean;
+  app_user_roles: { role: string; school_id: string | null }[];
+}
 
 export function UserManagement() {
   const { profile } = useAuth();
   const { schools } = useSchools();
-  const { createUserCredential, loading, hashPassword } = useCustomAuth();
+  const { createUserCredential, loading } = useCustomAuth();
   
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -34,17 +44,17 @@ export function UserManagement() {
     password: "",
   });
 
-  // Fetch users from user_credentials table
+  // Fetch users from app_users table
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
       const { data, error } = await supabase
-        .from('user_credentials')
-        .select('*')
+        .from('app_users')
+        .select('id, email, first_name, last_name, school_id, is_active, app_user_roles(role, school_id)')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []) as AppUser[]);
     } catch (err) {
       toast.error('Erreur lors du chargement des utilisateurs');
     } finally {
@@ -52,7 +62,6 @@ export function UserManagement() {
     }
   };
 
-  // Use effect to fetch users on component mount
   React.useEffect(() => {
     fetchUsers();
   }, []);
@@ -85,16 +94,11 @@ export function UserManagement() {
       });
 
       if (result) {
-        // Copy password to clipboard
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(generatedPassword);
-          toast.success(`Utilisateur créé! Mot de passe copié: ${generatedPassword}`, {
-            duration: 10000
-          });
+          toast.success(`Utilisateur créé! Mot de passe copié: ${generatedPassword}`, { duration: 10000 });
         } else {
-          toast.success(`Utilisateur créé! Mot de passe: ${generatedPassword}`, {
-            duration: 10000
-          });
+          toast.success(`Utilisateur créé! Mot de passe: ${generatedPassword}`, { duration: 10000 });
         }
 
         setIsCreateDialogOpen(false);
@@ -107,7 +111,6 @@ export function UserManagement() {
           password: "",
         });
         
-        // Refresh users list
         fetchUsers();
       }
     } catch (error) {
@@ -117,41 +120,35 @@ export function UserManagement() {
 
   const handleResetPassword = async (userId: string) => {
     try {
-      const newPassword = generatePassword();
-      const passwordHash = await hashPassword(newPassword);
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId, requestedBy: profile?.id || 'admin' }
+      });
       
-      const { error } = await supabase
-        .from('user_credentials')
-        .update({ password_hash: passwordHash })
-        .eq('id', userId);
-        
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
       
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(newPassword);
-        toast.success(`Nouveau mot de passe généré et copié: ${newPassword}`, {
-          duration: 10000
-        });
+      if (navigator.clipboard && data.newPassword) {
+        await navigator.clipboard.writeText(data.newPassword);
+        toast.success(`Nouveau mot de passe copié: ${data.newPassword}`, { duration: 10000 });
       } else {
-        toast.success(`Nouveau mot de passe généré: ${newPassword}`, {
-          duration: 10000
-        });
+        toast.success(`Nouveau mot de passe: ${data.newPassword}`, { duration: 10000 });
       }
     } catch (error) {
       toast.error('Erreur lors de la génération du mot de passe');
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
+  const getRoleBadge = (roles: { role: string }[]) => {
+    const role = roles[0]?.role || 'unknown';
+    const roleConfig: Record<string, { label: string; className: string }> = {
       global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+      admin: { label: "Admin", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
       school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
       teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
       student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      parent: { label: "Parent", className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
     };
     
-    const config = roleConfig[role as keyof typeof roleConfig] || { label: role, className: "" };
+    const config = roleConfig[role] || { label: role, className: "" };
     return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
   };
 
@@ -163,11 +160,8 @@ export function UserManagement() {
 
   const deleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('user_credentials')
-        .delete()
-        .eq('id', userId);
-        
+      await supabase.from('app_user_roles').delete().eq('user_id', userId);
+      const { error } = await supabase.from('app_users').delete().eq('id', userId);
       if (error) throw error;
       
       toast.success('Utilisateur supprimé avec succès');
@@ -177,7 +171,7 @@ export function UserManagement() {
     }
   };
 
-  const canManageUsers = profile?.role === 'global_admin' || profile?.role === 'school_admin';
+  const canManageUsers = profile?.role === 'global_admin' || profile?.role === 'admin' || profile?.role === 'school_admin';
 
   if (usersLoading || loading) {
     return (
@@ -263,8 +257,7 @@ export function UserManagement() {
                   <SelectContent>
                     <SelectItem value="student">Étudiant</SelectItem>
                     <SelectItem value="teacher">Professeur</SelectItem>
-                    <SelectItem value="parent">Parent</SelectItem>
-                    {profile?.role === 'global_admin' && (
+                    {(profile?.role === 'global_admin' || profile?.role === 'admin') && (
                       <>
                         <SelectItem value="school_admin">Admin École</SelectItem>
                         <SelectItem value="global_admin">Admin Global</SelectItem>
@@ -338,60 +331,60 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                 {filteredUsers.map((user) => (
-                   <TableRow key={user.id}>
-                     <TableCell className="min-w-0">
-                       <div className="flex items-center space-x-3">
-                         <Avatar className="h-8 w-8 flex-shrink-0">
-                           <AvatarImage src="" />
-                           <AvatarFallback className="text-xs bg-gradient-primary text-white">
-                             {user.first_name[0]}{user.last_name[0]}
-                           </AvatarFallback>
-                         </Avatar>
-                         <div className="min-w-0 flex-1">
-                           <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
-                           <div className="text-sm text-muted-foreground truncate">{user.email}</div>
-                           <div className="sm:hidden mt-1">
-                             {getRoleBadge(user.role)}
-                           </div>
-                         </div>
-                       </div>
-                     </TableCell>
-                     <TableCell className="hidden sm:table-cell">
-                       {getRoleBadge(user.role)}
-                     </TableCell>
-                     <TableCell className="hidden md:table-cell">
-                       <div className="text-sm truncate max-w-[150px]">{getSchoolName(user.school_id)}</div>
-                     </TableCell>
-                     <TableCell className="hidden lg:table-cell">
-                       <Badge variant={user.is_active ? "default" : "secondary"}>
-                         {user.is_active ? "Actif" : "Inactif"}
-                       </Badge>
-                     </TableCell>
-                     <TableCell>
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="ghost" size="sm">
-                             <MoreVertical className="h-4 w-4" />
-                           </Button>
-                         </DropdownMenuTrigger>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                          <AvatarImage src="" />
+                          <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                            {user.first_name[0]}{user.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
+                          <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                          <div className="sm:hidden mt-1">
+                            {getRoleBadge(user.app_user_roles)}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {getRoleBadge(user.app_user_roles)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="text-sm truncate max-w-[150px]">{getSchoolName(user.school_id)}</div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Badge variant={user.is_active ? "default" : "secondary"}>
+                        {user.is_active ? "Actif" : "Inactif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
-                             <Key className="h-4 w-4 mr-2" />
-                             Réinitialiser mot de passe
-                           </DropdownMenuItem>
-                           <DropdownMenuItem>
-                             <Mail className="h-4 w-4 mr-2" />
-                             Envoyer un email
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             className="text-destructive"
-                             onClick={() => deleteUser(user.id)}
-                           >
+                          <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
+                            <Key className="h-4 w-4 mr-2" />
+                            Réinitialiser mot de passe
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Envoyer un email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => deleteUser(user.id)}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer
                           </DropdownMenuItem>
