@@ -1,15 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+
 interface ResetPasswordRequest {
   userId: string;
   requestedBy: string; // ID of the admin requesting the reset
+}
+
+// Hash password using SHA-256 (Deno compatible)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function generatePassword(length: number = 12): string {
@@ -103,7 +112,7 @@ serve(async (req) => {
 
     // Generate new password
     const newPassword = generatePassword();
-    const passwordHash = await bcrypt.hash(newPassword);
+    const passwordHash = await hashPassword(newPassword);
 
     // Update user password and invalidate sessions
     const { error: updateError } = await supabase

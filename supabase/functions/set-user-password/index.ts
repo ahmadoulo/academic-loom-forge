@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +9,15 @@ const corsHeaders = {
 interface SetPasswordRequest {
   token: string;
   password: string;
+}
+
+// Hash password using SHA-256 (Deno compatible)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {
@@ -74,8 +82,8 @@ serve(async (req) => {
       );
     }
 
-    // Hash password with bcrypt
-    const passwordHash = await bcrypt.hash(password);
+    // Hash password (SHA-256)
+    const passwordHash = await hashPassword(password);
 
     // Update user
     const { error: updateError } = await supabase

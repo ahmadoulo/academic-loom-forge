@@ -72,7 +72,8 @@ export default function StudentRegistration() {
       const { error: inviteError } = await supabase.functions.invoke('send-student-invitation', {
         body: { 
           accountId: account.id,
-          email: account.email
+          email: account.email,
+          appUrl: window.location.origin,
         }
       });
 
