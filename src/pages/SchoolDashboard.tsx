@@ -593,7 +593,6 @@ const SchoolDashboard = () => {
                     academicYear={selectedYear?.name || currentYear?.name}
                     totalStudents={stats.totalStudents}
                     totalClasses={stats.totalClasses}
-                    avgGrade={Number(stats.avgGrade)}
                   />
 
                   {/* Metrics Grid */}

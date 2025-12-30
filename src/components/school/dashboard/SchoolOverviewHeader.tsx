@@ -1,31 +1,19 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarDays, Building2, TrendingUp } from "lucide-react";
+import { CalendarDays, Building2 } from "lucide-react";
 
 interface SchoolOverviewHeaderProps {
   schoolName: string;
   academicYear?: string;
   totalStudents: number;
   totalClasses: number;
-  avgGrade: number;
 }
 
 export function SchoolOverviewHeader({
   schoolName,
   academicYear,
   totalStudents,
-  totalClasses,
-  avgGrade
+  totalClasses
 }: SchoolOverviewHeaderProps) {
-  const getPerformanceStatus = (avg: number) => {
-    if (avg >= 14) return { label: "Excellent", variant: "default" as const, color: "bg-green-500" };
-    if (avg >= 12) return { label: "Bon", variant: "secondary" as const, color: "bg-blue-500" };
-    if (avg >= 10) return { label: "Correct", variant: "outline" as const, color: "bg-amber-500" };
-    return { label: "À améliorer", variant: "destructive" as const, color: "bg-red-500" };
-  };
-
-  const status = getPerformanceStatus(avgGrade);
-
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6 mb-6">
       {/* Background decorative elements */}
@@ -55,26 +43,18 @@ export function SchoolOverviewHeader({
                 {academicYear}
               </Badge>
             )}
-            <Badge variant={status.variant} className="gap-2 py-1.5 px-3">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Performance: {status.label}
-            </Badge>
           </div>
         </div>
 
         {/* Quick stats row */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border/50">
+        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border/50">
           <div className="text-center">
             <p className="text-3xl font-bold text-foreground">{totalStudents}</p>
             <p className="text-xs text-muted-foreground mt-1">Étudiants inscrits</p>
           </div>
-          <div className="text-center border-x border-border/50">
+          <div className="text-center border-l border-border/50">
             <p className="text-3xl font-bold text-foreground">{totalClasses}</p>
             <p className="text-xs text-muted-foreground mt-1">Classes actives</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-foreground">{avgGrade.toFixed(1)}/20</p>
-            <p className="text-xs text-muted-foreground mt-1">Moyenne générale</p>
           </div>
         </div>
       </div>
