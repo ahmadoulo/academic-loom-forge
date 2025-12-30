@@ -128,6 +128,143 @@ export type Database = {
           },
         ]
       }
+      app_user_roles: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          school_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_user_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          email_verified: boolean
+          first_name: string
+          id: string
+          invitation_expires_at: string | null
+          invitation_token: string | null
+          is_active: boolean
+          last_login: string | null
+          last_name: string
+          password_hash: string | null
+          phone: string | null
+          school_id: string | null
+          session_expires_at: string | null
+          session_token: string | null
+          student_id: string | null
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          email_verified?: boolean
+          first_name: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token?: string | null
+          is_active?: boolean
+          last_login?: string | null
+          last_name: string
+          password_hash?: string | null
+          phone?: string | null
+          school_id?: string | null
+          session_expires_at?: string | null
+          session_token?: string | null
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          email_verified?: boolean
+          first_name?: string
+          id?: string
+          invitation_expires_at?: string | null
+          invitation_token?: string | null
+          is_active?: boolean
+          last_login?: string | null
+          last_name?: string
+          password_hash?: string | null
+          phone?: string | null
+          school_id?: string | null
+          session_expires_at?: string | null
+          session_token?: string | null
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_users_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           absence_notification_sent: boolean | null
@@ -3209,6 +3346,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _school_id?: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       create_next_school_year: {
         Args: { current_year_id: string }
         Returns: string
@@ -3222,6 +3367,13 @@ export type Database = {
           id: string
           is_active: boolean
           last_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id: string
+        }[]
+      }
+      get_user_roles: {
+        Args: { _user_id: string }
+        Returns: {
           role: Database["public"]["Enums"]["app_role"]
           school_id: string
         }[]
