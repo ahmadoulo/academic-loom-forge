@@ -49,75 +49,6 @@ export const AnalyticsDashboard = ({
 }: AnalyticsDashboardProps) => {
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Moyenne Générale</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{overallStats.averageGrade}/20</div>
-            <p className="text-xs text-muted-foreground">
-              {overallStats.averageGrade >= 12 ? (
-                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              ) : (
-                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
-              )}
-              Performance globale
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taux de Réussite</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{overallStats.successRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              {overallStats.successRate >= 80 ? (
-                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              ) : (
-                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
-              )}
-              Étudiants avec moyenne ≥ 10
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assiduité</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{overallStats.attendanceRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              {overallStats.attendanceRate >= 90 ? (
-                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              ) : (
-                <TrendingDown className="inline h-3 w-3 mr-1 text-red-500" />
-              )}
-              Taux de présence
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertes</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{overallStats.studentsInDifficulty}</div>
-            <p className="text-xs text-muted-foreground">
-              Étudiants avec moyenne &lt; 10
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Charts and Analytics */}
       <Tabs defaultValue="performance" className="space-y-4">
@@ -210,18 +141,51 @@ export const AnalyticsDashboard = ({
           <Card>
             <CardHeader>
               <CardTitle>Évolution de l'Assiduité</CardTitle>
-              <CardDescription>Taux de présence mensuel</CardDescription>
+              <CardDescription>Taux de présence mensuel basé sur les données réelles</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={attendanceByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis domain={[80, 100]} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+              {attendanceByMonth.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={attendanceByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value}%`, 'Taux de présence']}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="rate" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <BookOpen className="h-12 w-12 mb-3 opacity-50" />
+                  <p className="font-medium">Aucune donnée d'assiduité</p>
+                  <p className="text-sm">Les données apparaîtront après l'enregistrement des présences</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
