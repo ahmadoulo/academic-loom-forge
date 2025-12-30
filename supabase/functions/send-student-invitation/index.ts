@@ -26,7 +26,7 @@ serve(async (req) => {
     // Récupérer le compte étudiant (nouveau système: app_users)
     let query = supabaseClient
       .from('app_users')
-      .select('id, email, school_id, student_id, first_name, last_name, schools(name), students(firstname, lastname)');
+      .select('id, email, school_id, student_id, first_name, last_name, schools!app_users_school_id_fkey(name), students(firstname, lastname)');
 
     if (accountId) {
       query = query.eq('id', accountId);
