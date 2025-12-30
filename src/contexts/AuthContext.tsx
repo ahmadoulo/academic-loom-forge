@@ -7,6 +7,7 @@ interface AuthContextValue {
   roles: UserRole[];
   primaryRole: AppRole | null;
   primarySchoolId: string | null;
+  primarySchoolIdentifier: string | null;
   loading: boolean;
   initialized: boolean;
   isAuthenticated: boolean;

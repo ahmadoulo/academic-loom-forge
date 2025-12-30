@@ -125,7 +125,12 @@ export function ProtectedRoute({
     if (user.role === 'global_admin' || user.role === 'admin') {
       return <Navigate to="/admin" replace />;
     } else if (user.role === 'school_admin') {
-      return <Navigate to={`/school/${user.school_id}`} replace />;
+      // Use school identifier from localStorage or fetch it
+      const schoolIdentifier = localStorage.getItem('app_school_identifier');
+      if (schoolIdentifier) {
+        return <Navigate to={`/school/${schoolIdentifier}`} replace />;
+      }
+      return <Navigate to="/auth" replace />;
     } else if (user.role === 'teacher' && user.teacher_id) {
       return <Navigate to={`/teacher/${user.teacher_id}`} replace />;
     } else {

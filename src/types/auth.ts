@@ -23,6 +23,7 @@ export interface AuthSession {
   roles: UserRole[];
   primaryRole: AppRole;
   primarySchoolId: string | null;
+  primarySchoolIdentifier: string | null;
   sessionToken: string;
   sessionExpiresAt: string;
 }
@@ -32,6 +33,7 @@ export interface AuthState {
   roles: UserRole[];
   primaryRole: AppRole | null;
   primarySchoolId: string | null;
+  primarySchoolIdentifier: string | null;
   loading: boolean;
   initialized: boolean;
 }

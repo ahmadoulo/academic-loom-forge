@@ -20,6 +20,7 @@ export function useAppAuth() {
     roles: [],
     primaryRole: null,
     primarySchoolId: null,
+    primarySchoolIdentifier: null,
     loading: true,
     initialized: false,
   });
@@ -46,15 +47,19 @@ export function useAppAuth() {
           roles: [], 
           primaryRole: null, 
           primarySchoolId: null,
+          primarySchoolIdentifier: null,
           loading: false, 
           initialized: true 
         }));
         return;
       }
 
-      // Update session token if refreshed
+      // Update session token and school identifier if refreshed
       if (data.sessionToken !== sessionToken) {
         localStorage.setItem(SESSION_KEY, data.sessionToken);
+      }
+      if (data.primarySchoolIdentifier) {
+        localStorage.setItem('app_school_identifier', data.primarySchoolIdentifier);
       }
 
       setState({
@@ -62,6 +67,7 @@ export function useAppAuth() {
         roles: data.roles,
         primaryRole: data.primaryRole,
         primarySchoolId: data.primarySchoolId,
+        primarySchoolIdentifier: data.primarySchoolIdentifier,
         loading: false,
         initialized: true,
       });
@@ -74,6 +80,7 @@ export function useAppAuth() {
         roles: [], 
         primaryRole: null, 
         primarySchoolId: null,
+        primarySchoolIdentifier: null,
         loading: false, 
         initialized: true 
       }));
@@ -102,14 +109,18 @@ export function useAppAuth() {
         return false;
       }
 
-      // Save session token
+      // Save session token and school identifier
       localStorage.setItem(SESSION_KEY, data.sessionToken);
+      if (data.primarySchoolIdentifier) {
+        localStorage.setItem('app_school_identifier', data.primarySchoolIdentifier);
+      }
 
       setState({
         user: data.user,
         roles: data.roles,
         primaryRole: data.primaryRole,
         primarySchoolId: data.primarySchoolId,
+        primarySchoolIdentifier: data.primarySchoolIdentifier,
         loading: false,
         initialized: true,
       });
@@ -126,11 +137,13 @@ export function useAppAuth() {
   // Logout
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('app_school_identifier');
     setState({
       user: null,
       roles: [],
       primaryRole: null,
       primarySchoolId: null,
+      primarySchoolIdentifier: null,
       loading: false,
       initialized: true,
     });
@@ -242,7 +255,7 @@ export function useAppAuth() {
     });
   }, [state.roles]);
 
-  // Get redirect path based on role
+  // Get redirect path based on role - uses school identifier for school routes
   const getRedirectPath = useCallback((): string => {
     if (!state.user || !state.primaryRole) return '/auth';
 
@@ -251,7 +264,8 @@ export function useAppAuth() {
       case 'admin':
         return '/admin';
       case 'school_admin':
-        return state.primarySchoolId ? `/school/${state.primarySchoolId}` : '/auth';
+        // Use school identifier instead of school_id for URL
+        return state.primarySchoolIdentifier ? `/school/${state.primarySchoolIdentifier}` : '/auth';
       case 'teacher':
         return state.user.teacher_id ? `/teacher/${state.user.teacher_id}` : '/auth';
       case 'student':
@@ -259,13 +273,14 @@ export function useAppAuth() {
       default:
         return '/auth';
     }
-  }, [state.user, state.primaryRole, state.primarySchoolId]);
+  }, [state.user, state.primaryRole, state.primarySchoolIdentifier]);
 
   return {
     user: state.user,
     roles: state.roles,
     primaryRole: state.primaryRole,
     primarySchoolId: state.primarySchoolId,
+    primarySchoolIdentifier: state.primarySchoolIdentifier,
     loading: state.loading,
     initialized: state.initialized,
     isAuthenticated: !!state.user,
