@@ -68,25 +68,24 @@ export const useSchoolAnalytics = (schoolId?: string) => {
       try {
         setLoading(true);
 
-        // Fetch attendance
-        const { data: attendanceData } = await supabase
-          .from('attendance')
-          .select(`
-            *,
-            students!inner(school_id, class_id),
-            classes!inner(school_id)
-          `)
-          .eq('students.school_id', schoolId);
+        // Fetch classes first for the school
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('school_id', schoolId)
+          .eq('archived', false);
 
-        // Fetch grades with relations (no filter needed here)
-        const { data: gradesData } = await supabase
-          .from('grades')
-          .select(`
-            *,
-            students!inner(id, firstname, lastname),
-            subjects(id, name),
-            teachers(id, firstname, lastname)
-          `);
+        const classIds = classesData?.map(c => c.id) || [];
+
+        // Fetch attendance filtered by classes of the school
+        let attendanceData: any[] = [];
+        if (classIds.length > 0) {
+          const { data } = await supabase
+            .from('attendance')
+            .select('*')
+            .in('class_id', classIds);
+          attendanceData = data || [];
+        }
 
         // Fetch students via student_school
         const { data: enrollments } = await supabase
@@ -105,13 +104,24 @@ export const useSchoolAnalytics = (schoolId?: string) => {
           ...e.students,
           class_id: e.class_id,
           classes: e.classes
-        }));
+        })) || [];
 
-        // Fetch classes
-        const { data: classesData } = await supabase
-          .from('classes')
-          .select('*')
-          .eq('school_id', schoolId);
+        const studentIds = studentsData.map((s: any) => s.id);
+
+        // Fetch grades filtered by students of the school
+        let gradesData: any[] = [];
+        if (studentIds.length > 0) {
+          const { data } = await supabase
+            .from('grades')
+            .select(`
+              *,
+              students!inner(id, firstname, lastname),
+              subjects(id, name),
+              teachers(id, firstname, lastname)
+            `)
+            .in('student_id', studentIds);
+          gradesData = data || [];
+        }
 
         // Fetch subjects
         const { data: subjectsData } = await supabase
@@ -119,9 +129,9 @@ export const useSchoolAnalytics = (schoolId?: string) => {
           .select('*')
           .eq('school_id', schoolId);
 
-        setAttendance(attendanceData || []);
-        setGrades(gradesData || []);
-        setStudents(studentsData || []);
+        setAttendance(attendanceData);
+        setGrades(gradesData);
+        setStudents(studentsData);
         setClasses(classesData || []);
         setSubjects(subjectsData || []);
       } catch (error) {
