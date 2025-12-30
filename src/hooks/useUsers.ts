@@ -5,7 +5,6 @@ import { UserRole } from './useAuth';
 
 export interface User {
   id: string;
-  user_id: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -34,8 +33,8 @@ export const useUsers = (schoolId?: string) => {
     try {
       setLoading(true);
       let query = supabase
-        .from('profiles')
-        .select('*');
+        .from('app_users')
+        .select('id, email, first_name, last_name, school_id, is_active, created_at, updated_at, app_user_roles(role)');
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
@@ -44,7 +43,21 @@ export const useUsers = (schoolId?: string) => {
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Transformer les données pour correspondre au format User
+      const transformedUsers: User[] = (data || []).map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.app_user_roles?.[0]?.role || 'school_admin',
+        school_id: user.school_id,
+        is_active: user.is_active,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      }));
+      
+      setUsers(transformedUsers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs');
       toast.error('Erreur lors du chargement des utilisateurs');
@@ -66,25 +79,22 @@ export const useUsers = (schoolId?: string) => {
     try {
       const generatedPassword = generatePassword();
       
-      // Créer directement le profil utilisateur avec un user_id temporaire
-      const tempUserId = crypto.randomUUID();
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          user_id: tempUserId,
+      // Utiliser l'Edge Function pour créer le compte
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
           email: userData.email,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
+          password: generatedPassword,
+          firstName: userData.first_name,
+          lastName: userData.last_name,
           role: userData.role,
-          school_id: userData.school_id,
-          is_active: true
-        }])
-        .select()
-        .single();
+          schoolId: userData.school_id
+        }
+      });
 
-      if (profileError) throw profileError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      setUsers(prev => [profileData, ...prev]);
+      await fetchUsers();
       
       // Copier le mot de passe dans le presse-papiers
       if (navigator.clipboard) {
@@ -94,7 +104,7 @@ export const useUsers = (schoolId?: string) => {
         toast.success(`Utilisateur créé avec succès. Mot de passe: ${generatedPassword}`);
       }
       
-      return { user: profileData, password: generatedPassword };
+      return { user: data.user, password: generatedPassword };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de l\'utilisateur';
       setError(message);
@@ -106,6 +116,13 @@ export const useUsers = (schoolId?: string) => {
   const updateUserPassword = async (userId: string) => {
     try {
       const newPassword = generatePassword();
+      
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId, newPassword }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       // Copier le mot de passe dans le presse-papiers
       if (navigator.clipboard) {
@@ -131,17 +148,19 @@ export const useUsers = (schoolId?: string) => {
   const updateUser = async (userId: string, updates: Partial<CreateUserData>) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', userId)
+        .from('app_users')
+        .update({
+          email: updates.email,
+          first_name: updates.first_name,
+          last_name: updates.last_name
+        })
+        .eq('id', userId)
         .select()
         .single();
 
       if (error) throw error;
 
-      setUsers(prev => prev.map(user => 
-        user.user_id === userId ? { ...user, ...data } : user
-      ));
+      await fetchUsers();
       
       toast.success('Utilisateur mis à jour avec succès');
       return data;
@@ -155,15 +174,23 @@ export const useUsers = (schoolId?: string) => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Supprimer le profil
-      const { error: profileError } = await supabase
-        .from('profiles')
+      // Supprimer les rôles d'abord
+      const { error: rolesError } = await supabase
+        .from('app_user_roles')
         .delete()
         .eq('user_id', userId);
 
-      if (profileError) throw profileError;
+      if (rolesError) throw rolesError;
 
-      setUsers(prev => prev.filter(user => user.user_id !== userId));
+      // Supprimer l'utilisateur
+      const { error: userError } = await supabase
+        .from('app_users')
+        .delete()
+        .eq('id', userId);
+
+      if (userError) throw userError;
+
+      setUsers(prev => prev.filter(user => user.id !== userId));
       toast.success('Utilisateur supprimé avec succès');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'utilisateur';

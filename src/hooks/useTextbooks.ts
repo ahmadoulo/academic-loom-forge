@@ -295,7 +295,7 @@ export const useTextbookNotes = (textbookId?: string, teacherId?: string) => {
         .from('school_textbook_notes')
         .select(`
           *,
-          user_credentials (first_name, last_name),
+          app_users:created_by (first_name, last_name),
           teachers (firstname, lastname)
         `)
         .eq('textbook_id', textbookId)
@@ -308,7 +308,12 @@ export const useTextbookNotes = (textbookId?: string, teacherId?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as TextbookNote[];
+      
+      // Transform to match TextbookNote interface
+      return (data || []).map((note: any) => ({
+        ...note,
+        user_credentials: note.app_users // Map to old interface name for compatibility
+      })) as TextbookNote[];
     },
     enabled: !!textbookId,
   });

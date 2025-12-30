@@ -1505,6 +1505,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "grades_bonus_given_by_fkey"
+            columns: ["bonus_given_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "grades_school_semester_id_fkey"
             columns: ["school_semester_id"]
             isOneToOne: false
@@ -2292,6 +2299,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "school_textbook_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "school_textbook_notes_target_teacher_id_fkey"
             columns: ["target_teacher_id"]
             isOneToOne: false
@@ -2450,7 +2464,15 @@ export type Database = {
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_exam_attempts: {
         Row: {

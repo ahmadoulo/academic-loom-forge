@@ -22,7 +22,7 @@ export interface School {
     first_name: string;
     last_name: string;
     email: string;
-  };
+  } | null;
 }
 
 export interface CreateSchoolData {
@@ -54,14 +54,14 @@ export const useSchools = () => {
         .from('schools')
         .select(`
           *,
-          owner:user_credentials!schools_owner_id_fkey(first_name, last_name, email)
+          owner:app_users!schools_owner_id_fkey(first_name, last_name, email)
         `)
         .order('created_at', { ascending: false });
 
       console.log('DEBUG: Réponse chargement écoles - data:', data, 'error:', error);
 
       if (error) throw error;
-      setSchools(data || []);
+      setSchools((data || []) as School[]);
     } catch (err) {
       console.error('DEBUG: Erreur lors du chargement des écoles:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des écoles');
@@ -88,7 +88,7 @@ export const useSchools = () => {
         throw error;
       }
       
-      setSchools(prev => [data, ...prev]);
+      setSchools(prev => [data as School, ...prev]);
       toast.success('École créée avec succès');
       return data;
     } catch (err) {

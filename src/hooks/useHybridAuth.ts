@@ -19,22 +19,25 @@ export const useHybridAuth = () => {
       if (session?.user) {
         console.log('DEBUG: Utilisateur Supabase trouvé:', session.user.email);
         
-        // Récupérer le profil Supabase
+        // Récupérer le profil depuis app_users
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
+          .from('app_users')
+          .select('*, app_user_roles(role)')
+          .eq('email', session.user.email)
           .single();
           
         if (profile) {
-          console.log('DEBUG: Profil Supabase trouvé:', profile);
+          console.log('DEBUG: Profil app_users trouvé:', profile);
+          
+          const roles = profile.app_user_roles as { role: string }[] | null;
+          const primaryRole = roles && roles.length > 0 ? roles[0].role : 'school_admin';
           
           const supabaseUser = {
             id: profile.id,
             email: profile.email,
             first_name: profile.first_name,
             last_name: profile.last_name,
-            role: profile.role,
+            role: primaryRole,
             school_id: profile.school_id,
             is_active: profile.is_active,
             auth_type: 'supabase'
@@ -86,20 +89,23 @@ export const useHybridAuth = () => {
       if (data.user && !error) {
         console.log('DEBUG: Connexion Supabase réussie');
         
-        // Récupérer le profil
+        // Récupérer le profil depuis app_users
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', data.user.id)
+          .from('app_users')
+          .select('*, app_user_roles(role)')
+          .eq('email', data.user.email)
           .single();
           
         if (profile) {
+          const roles = profile.app_user_roles as { role: string }[] | null;
+          const primaryRole = roles && roles.length > 0 ? roles[0].role : 'school_admin';
+          
           const supabaseUser = {
             id: profile.id,
             email: profile.email,
             first_name: profile.first_name,
             last_name: profile.last_name,
-            role: profile.role,
+            role: primaryRole,
             school_id: profile.school_id,
             is_active: profile.is_active,
             auth_type: 'supabase'
