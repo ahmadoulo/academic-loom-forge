@@ -34,7 +34,6 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   }
   
   // Fallback: check if stored hash is bcrypt format (starts with $2)
-  // For bcrypt hashes, we need to update the user's password to SHA-256
   if (storedHash.startsWith('$2')) {
     console.log('Detected bcrypt hash, needs migration');
     return false;
@@ -176,7 +175,21 @@ serve(async (req) => {
       }
     }
 
-    console.log(`User ${email} authenticated successfully with role: ${primaryRole}`);
+    // Fetch school identifier if there's a school_id
+    let primarySchoolIdentifier: string | null = null;
+    if (primarySchoolId) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('identifier')
+        .eq('id', primarySchoolId)
+        .single();
+      
+      if (school) {
+        primarySchoolIdentifier = school.identifier;
+      }
+    }
+
+    console.log(`User ${email} authenticated successfully with role: ${primaryRole}, school identifier: ${primarySchoolIdentifier}`);
 
     // Return user data (without sensitive fields)
     return new Response(
@@ -196,6 +209,7 @@ serve(async (req) => {
         roles: userRoles,
         primaryRole,
         primarySchoolId,
+        primarySchoolIdentifier,
         sessionToken,
         sessionExpiresAt: sessionExpiresAt.toISOString()
       }),

@@ -108,6 +108,20 @@ serve(async (req) => {
       }
     }
 
+    // Fetch school identifier if there's a school_id
+    let primarySchoolIdentifier: string | null = null;
+    if (primarySchoolId) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('identifier')
+        .eq('id', primarySchoolId)
+        .single();
+      
+      if (school) {
+        primarySchoolIdentifier = school.identifier;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         valid: true,
@@ -126,6 +140,7 @@ serve(async (req) => {
         roles: userRoles,
         primaryRole,
         primarySchoolId,
+        primarySchoolIdentifier,
         sessionToken: newSessionToken,
         sessionExpiresAt: newSessionExpiresAt
       }),
