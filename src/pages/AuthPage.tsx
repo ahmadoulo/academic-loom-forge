@@ -1,59 +1,36 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Loader2 } from "lucide-react";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AuthPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
   
-  const { user, loading, loginWithCredentials } = useCustomAuth();
+  const { user, loading, initialized, isAuthenticated, login, getRedirectPath } = useAuth();
 
-  // Rediriger si l'utilisateur est déjà connecté (hooks must be before any early returns)
+  // Rediriger si l'utilisateur est déjà connecté
   useEffect(() => {
-    if (user && user.is_active && !redirecting) {
-      setRedirecting(true);
-      
-      setTimeout(() => {
-        if (user.role === 'global_admin' || user.role === 'admin') {
-          window.location.replace('/admin');
-        } else if (user.role === 'school_admin' && user.school_id) {
-          window.location.replace(`/school/${user.school_id}`);
-        } else if (user.role === 'teacher' && user.teacher_id) {
-          window.location.replace(`/teacher/${user.teacher_id}`);
-        } else if (user.role === 'student' && user.student_id) {
-          window.location.replace(`/student/${user.student_id}`);
-        } else {
-          window.location.replace('/dashboard');
-        }
-      }, 100);
+    if (initialized && isAuthenticated && user) {
+      const redirectPath = getRedirectPath();
+      navigate(redirectPath, { replace: true });
     }
-  }, [user, redirecting]);
+  }, [initialized, isAuthenticated, user, navigate, getRedirectPath]);
 
-  if (loading) {
+  if (loading || !initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center space-x-2">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span>Vérification de l'authentification...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (redirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Redirection en cours...</span>
         </div>
       </div>
     );
@@ -65,12 +42,15 @@ const AuthPage = () => {
     
     setIsSubmitting(true);
     try {
-      await loginWithCredentials({
+      const success = await login({
         email: formData.email,
         password: formData.password,
       });
-    } catch (error) {
-      // L'erreur est déjà gérée dans le hook
+      
+      if (success) {
+        const redirectPath = getRedirectPath();
+        navigate(redirectPath, { replace: true });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -146,12 +126,12 @@ const AuthPage = () => {
             
             <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
-                Authentification avec base de données interne
+                Système d'authentification sécurisé
               </p>
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.location.href = '/student-registration'}
+                onClick={() => navigate('/student-registration')}
               >
                 Première connexion ? Créer mon compte étudiant
               </Button>

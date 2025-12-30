@@ -2,3 +2,18 @@ project_id = "nqsvluszgpqnoqybzpvk"
 
 [functions.auto-send-absence-notifications]
 verify_jwt = false
+
+[functions.authenticate-user]
+verify_jwt = false
+
+[functions.validate-session]
+verify_jwt = false
+
+[functions.create-user-account]
+verify_jwt = false
+
+[functions.reset-user-password]
+verify_jwt = false
+
+[functions.set-user-password]
+verify_jwt = false

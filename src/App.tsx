@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -29,29 +30,31 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/school" element={<SchoolDashboard />} />
-            <Route path="/school/:schoolId" element={<SchoolDashboard />} />
-            <Route path="/school/:identifier/admission" element={<PublicAdmissionForm />} />
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/:studentId" element={<StudentDashboard />} />
-            <Route path="/student-dashboard" element={<StudentDashboard />} />
-            <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
-            <Route path="/student-registration" element={<StudentRegistration />} />
-            <Route path="/set-password" element={<SetPassword />} />
-            <Route path="/events" element={<EventsPage />} />
-            <Route path="/announcements" element={<AnnouncementsPage />} />
-            <Route path="/exam/:examId" element={<TakeExam />} />
-            <Route path="/event-attendance/:sessionCode" element={<EventAttendanceScan />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<AdminDashboard />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/dashboard" element={<Index />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/school" element={<SchoolDashboard />} />
+              <Route path="/school/:schoolId" element={<SchoolDashboard />} />
+              <Route path="/school/:identifier/admission" element={<PublicAdmissionForm />} />
+              <Route path="/teacher" element={<TeacherDashboard />} />
+              <Route path="/teacher/:teacherId" element={<TeacherDashboard />} />
+              <Route path="/student" element={<StudentDashboard />} />
+              <Route path="/student/:studentId" element={<StudentDashboard />} />
+              <Route path="/student-dashboard" element={<StudentDashboard />} />
+              <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
+              <Route path="/student-registration" element={<StudentRegistration />} />
+              <Route path="/set-password" element={<SetPassword />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/announcements" element={<AnnouncementsPage />} />
+              <Route path="/exam/:examId" element={<TakeExam />} />
+              <Route path="/event-attendance/:sessionCode" element={<EventAttendanceScan />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
