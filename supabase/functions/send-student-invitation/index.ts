@@ -64,7 +64,25 @@ serve(async (req) => {
     }
 
     // Construire l'URL d'invitation
-    const baseUrl = appUrl || Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || 'http://localhost:5173';
+    let baseUrl = (appUrl && String(appUrl).trim()) || '';
+
+    if (!baseUrl) {
+      const origin = req.headers.get('origin');
+      const referer = req.headers.get('referer');
+      if (origin) baseUrl = origin;
+      else if (referer) {
+        try {
+          baseUrl = new URL(referer).origin;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (!baseUrl) {
+      baseUrl = 'http://localhost:5173';
+    }
+
     const invitationUrl = `${baseUrl}/set-password?token=${invitationToken}`;
 
     const firstName = account.students?.firstname || account.first_name || '';
