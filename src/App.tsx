@@ -15,6 +15,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import AttendanceScan from "./pages/AttendanceScan";
 import StudentRegistration from "./pages/StudentRegistration";
+import AccountActivation from "./pages/AccountActivation";
 import SetPassword from "./pages/SetPassword";
 import EventsPage from "./pages/EventsPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
@@ -136,6 +137,7 @@ const App = () => (
 
               <Route path="/attendance/:sessionCode" element={<AttendanceScan />} />
               <Route path="/student-registration" element={<StudentRegistration />} />
+              <Route path="/activate-account" element={<AccountActivation />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/announcements" element={<AnnouncementsPage />} />

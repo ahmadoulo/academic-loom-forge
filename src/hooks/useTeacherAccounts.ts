@@ -80,97 +80,26 @@ export const useTeacherAccounts = (schoolId?: string) => {
     }
   };
 
-  const createTeacherAccount = async (teacherId: string, email: string): Promise<string | null> => {
-    try {
-      // Vérifier si un compte existe déjà dans app_users pour ce professeur
-      const { data: existingAccount } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('teacher_id', teacherId)
-        .eq('school_id', schoolId)
-        .maybeSingle();
-
-      if (existingAccount) {
-        toast.info('Un compte existe déjà pour ce professeur');
-        return existingAccount.id;
-      }
-
-      // Récupérer les infos du professeur
-      const { data: teacher, error: teacherError } = await supabase
-        .from('teachers')
-        .select('firstname, lastname')
-        .eq('id', teacherId)
-        .single();
-
-      if (teacherError) throw teacherError;
-
-      // Créer le compte via l'Edge Function
-      const { data, error } = await supabase.functions.invoke('create-user-account', {
-        body: {
-          email,
-          firstName: teacher.firstname,
-          lastName: teacher.lastname,
-          role: 'teacher',
-          schoolId: schoolId,
-          teacherId: teacherId,
-          sendInvitation: true
-        }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error('Erreur lors de la création du compte');
-      }
-      
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      toast.success('Compte créé avec succès');
-      await fetchAccounts();
-      return data?.user?.id || null;
-    } catch (err: any) {
-      console.error('Erreur création compte:', err);
-      toast.error(err.message || 'Erreur lors de la création du compte');
-      throw err;
-    }
-  };
-
   const sendInvitation = async (teacherId: string, email: string) => {
     try {
-      // D'abord créer ou récupérer le compte
-      let accountId: string | null = null;
-      
-      const { data: existingAccount } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('teacher_id', teacherId)
-        .eq('school_id', schoolId)
-        .maybeSingle();
+      // Récupérer l'identifiant de l'école
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('identifier')
+        .eq('id', schoolId)
+        .single();
 
-      if (!existingAccount) {
-        accountId = await createTeacherAccount(teacherId, email);
-        if (!accountId) {
-          const { data: newAccount } = await supabase
-            .from('app_users')
-            .select('id')
-            .eq('teacher_id', teacherId)
-            .eq('school_id', schoolId)
-            .maybeSingle();
-          
-          if (!newAccount) {
-            throw new Error('Impossible de créer le compte');
-          }
-          accountId = newAccount.id;
-        }
-      } else {
-        accountId = existingAccount.id;
+      if (schoolError || !school) {
+        throw new Error('École non trouvée');
       }
 
-      // Envoyer l'invitation
-      const appUrl = window.location.origin;
-      const { data, error } = await supabase.functions.invoke('send-teacher-invitation', {
-        body: { accountId, email, appUrl }
+      // Utiliser verify-teacher-account qui va créer le compte et envoyer l'invitation
+      const { data, error } = await supabase.functions.invoke('verify-teacher-account', {
+        body: { 
+          email: email.trim().toLowerCase(),
+          schoolIdentifier: school.identifier,
+          appUrl: window.location.origin,
+        }
       });
 
       if (error) {
@@ -178,8 +107,8 @@ export const useTeacherAccounts = (schoolId?: string) => {
         throw new Error('Erreur lors de l\'envoi de l\'invitation');
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (!data?.success) {
+        throw new Error(data?.message || 'Erreur lors de la vérification');
       }
 
       toast.success(data?.warning ? 'Compte créé (vérifiez la configuration email)' : 'Invitation envoyée avec succès');
@@ -202,7 +131,6 @@ export const useTeacherAccounts = (schoolId?: string) => {
     loading,
     error,
     sendInvitation,
-    createTeacherAccount,
     refetch: fetchAccounts
   };
 };
