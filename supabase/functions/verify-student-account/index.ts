@@ -187,6 +187,45 @@ serve(async (req) => {
       }
 
       account = newAccount;
+
+      // Assign student role in app_user_roles
+      const { error: roleError } = await supabase
+        .from("app_user_roles")
+        .insert({
+          user_id: newAccount.id,
+          role: "student",
+          school_id: school.id,
+        });
+
+      if (roleError) {
+        console.error("verify-student-account:roleAssignError", roleError);
+        // Don't fail the whole process, but log it
+      } else {
+        console.log("verify-student-account:roleAssigned", { userId: newAccount.id, role: "student" });
+      }
+    } else {
+      // Check if existing account has a role, if not assign one
+      const { data: existingRole } = await supabase
+        .from("app_user_roles")
+        .select("id")
+        .eq("user_id", account.id)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from("app_user_roles")
+          .insert({
+            user_id: account.id,
+            role: "student",
+            school_id: school.id,
+          });
+
+        if (roleError) {
+          console.error("verify-student-account:existingAccountRoleAssignError", roleError);
+        } else {
+          console.log("verify-student-account:existingAccountRoleAssigned", { userId: account.id, role: "student" });
+        }
+      }
     }
 
     // 4) Already active
