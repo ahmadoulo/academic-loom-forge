@@ -16,7 +16,7 @@ import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { Copy, Edit, Eye, EyeOff, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
 
-type UserRole = "global_admin" | "school_admin" | "teacher" | "student";
+type UserRole = "global_admin" | "school_admin";
 
 interface AppUserRow {
   id: string;
@@ -29,7 +29,7 @@ interface AppUserRow {
 }
 
 export function UserManagement() {
-  const { user, primaryRole } = useAuth();
+  const { user, primaryRole, primarySchoolId } = useAuth();
   const { schools } = useSchools();
   const { createUserCredential, loading: creating } = useCustomAuth();
 
@@ -43,9 +43,10 @@ export function UserManagement() {
     email: "",
     first_name: "",
     last_name: "",
-    role: "student" as UserRole,
+    role: "school_admin" as UserRole,
     school_id: "",
   });
+
 
   const canManageUsers = primaryRole === "global_admin" || primaryRole === "school_admin";
 
@@ -64,8 +65,13 @@ export function UserManagement() {
   };
 
   useEffect(() => {
+    // Preselect school for school_admins
+    if (primaryRole === "school_admin" && primarySchoolId) {
+      setNewUser((prev) => ({ ...prev, role: "school_admin", school_id: primarySchoolId }));
+    }
     fetchUsers();
-  }, []);
+  }, [primaryRole, primarySchoolId]);
+
 
   const filteredUsers = useMemo(() => {
     const q = searchTerm.toLowerCase().trim();
@@ -96,10 +102,11 @@ export function UserManagement() {
       return;
     }
 
-    if (newUser.role !== "global_admin" && !newUser.school_id) {
+    if (newUser.role === "school_admin" && !newUser.school_id) {
       toast.error("Veuillez sélectionner une école");
       return;
     }
+
 
     try {
       const result = await createUserCredential({
@@ -107,9 +114,10 @@ export function UserManagement() {
         first_name: newUser.first_name,
         last_name: newUser.last_name,
         role: newUser.role,
-        school_id: newUser.role === "global_admin" ? undefined : newUser.school_id,
+        school_id: newUser.role === "school_admin" ? newUser.school_id : undefined,
         password: generatedPassword,
       });
+
 
       if (!result) return;
 
@@ -121,10 +129,11 @@ export function UserManagement() {
       }
 
       setIsCreateDialogOpen(false);
-      setNewUser({ email: "", first_name: "", last_name: "", role: "student", school_id: "" });
+      setNewUser({ email: "", first_name: "", last_name: "", role: "school_admin", school_id: "" });
       setGeneratedPassword("");
       setShowPassword(false);
       fetchUsers();
+
     } catch {
       // handled in hook
     }
@@ -172,10 +181,8 @@ export function UserManagement() {
     const roleConfig: Record<string, { label: string; className: string }> = {
       global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
       school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      parent: { label: "Parent", className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
     };
+
 
     const cfg = roleConfig[role] || { label: role, className: "" };
     return (
@@ -255,27 +262,39 @@ export function UserManagement() {
 
               <div className="space-y-2">
                 <Label htmlFor="new-role">Rôle</Label>
-                <Select value={newUser.role} onValueChange={(value: UserRole) => setNewUser({ ...newUser, role: value })}>
+                <Select
+                  value={newUser.role}
+                  onValueChange={(value: UserRole) =>
+                    setNewUser({
+                      ...newUser,
+                      role: value,
+                      school_id: value === "global_admin" ? "" : newUser.school_id,
+                    })
+                  }
+                  disabled={primaryRole === "school_admin"}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">Étudiant</SelectItem>
-                    <SelectItem value="teacher">Professeur</SelectItem>
-                    {primaryRole === "global_admin" && (
-                      <>
-                        <SelectItem value="school_admin">Admin École</SelectItem>
-                        <SelectItem value="global_admin">Admin Global</SelectItem>
-                      </>
-                    )}
+                    <SelectItem value="school_admin">Admin École</SelectItem>
+                    {primaryRole === "global_admin" && <SelectItem value="global_admin">Admin Global</SelectItem>}
                   </SelectContent>
                 </Select>
+                {primaryRole === "school_admin" && (
+                  <p className="text-xs text-muted-foreground">Vous ne pouvez créer que des Admin École.</p>
+                )}
               </div>
 
-              {newUser.role !== "global_admin" && (
+
+              {newUser.role === "school_admin" && (
                 <div className="space-y-2">
                   <Label htmlFor="new-school">École</Label>
-                  <Select value={newUser.school_id} onValueChange={(value) => setNewUser({ ...newUser, school_id: value })}>
+                  <Select
+                    value={newUser.school_id}
+                    onValueChange={(value) => setNewUser({ ...newUser, school_id: value })}
+                    disabled={primaryRole === "school_admin"}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionnez une école" />
                     </SelectTrigger>
@@ -287,8 +306,12 @@ export function UserManagement() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {primaryRole === "school_admin" && primarySchoolId && (
+                    <p className="text-xs text-muted-foreground">Votre école est sélectionnée automatiquement.</p>
+                  )}
                 </div>
               )}
+
 
               <div className="space-y-2">
                 <Label>Mot de passe</Label>
