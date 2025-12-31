@@ -34,7 +34,8 @@ export const useUsers = (schoolId?: string) => {
       setLoading(true);
       let query = supabase
         .from('app_users')
-        .select('id, email, first_name, last_name, school_id, is_active, created_at, updated_at, app_user_roles(role)');
+        // Explicit FK needed because app_user_roles has multiple relations to app_users
+        .select('id, email, first_name, last_name, school_id, is_active, created_at, updated_at, app_user_roles!app_user_roles_user_id_fkey(role)');
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
