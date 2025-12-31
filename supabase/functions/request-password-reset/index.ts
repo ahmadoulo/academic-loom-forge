@@ -9,6 +9,7 @@ const corsHeaders = {
 
 interface RequestBody {
   email: string;
+  appUrl?: string;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -18,7 +19,7 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email }: RequestBody = await req.json();
+    const { email, appUrl }: RequestBody = await req.json();
 
     if (!email) {
       return new Response(
@@ -38,7 +39,9 @@ serve(async (req: Request): Promise<Response> => {
     // Check if user exists in app_users
     const { data: user, error: userError } = await supabase
       .from("app_users")
-      .select("id, email, first_name, last_name, school_id, is_active, schools(name, identifier)")
+      .select(
+        "id, email, first_name, last_name, school_id, is_active, schools!app_users_school_id_fkey(name, identifier)"
+      )
       .eq("email", normalizedEmail)
       .maybeSingle();
 
@@ -108,7 +111,12 @@ serve(async (req: Request): Promise<Response> => {
     const resend = new Resend(resendApiKey);
 
     // Build reset URL
-    const baseUrl = Deno.env.get("SITE_URL") || "https://eduvate.lovable.app";
+    const baseUrl =
+      (appUrl && appUrl.startsWith("http") ? appUrl : undefined) ??
+      req.headers.get("origin") ??
+      Deno.env.get("SITE_URL") ??
+      "https://eduvate.lovable.app";
+
     const resetUrl = `${baseUrl}/set-password?token=${resetToken}`;
 
     const schoolName = (user.schools as any)?.name || "votre établissement";

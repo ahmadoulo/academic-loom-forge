@@ -64,39 +64,40 @@ export default function StudentRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <div className="container mx-auto px-4 py-14 sm:py-16">
         <div className="max-w-md mx-auto">
           <Button
             variant="ghost"
             onClick={() => navigate('/auth')}
-            className="mb-4"
+            className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour à la connexion
           </Button>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Activer mon compte étudiant</CardTitle>
-              <CardDescription>
-                Entrez votre email et l'identifiant de votre école pour recevoir un lien d'activation
+          <Card className="border-0 shadow-large bg-card/80 backdrop-blur-sm">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-2xl font-bold text-foreground">Activer mon compte étudiant</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Entrez votre email et l'identifiant de votre école pour recevoir un lien d'activation.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {status === 'success' ? (
-                <div className="space-y-4">
-                  <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700 dark:text-green-300">
-                      {message}
-                    </AlertDescription>
+                <div className="space-y-5">
+                  <Alert className="border-success/30 bg-success/10">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    <AlertDescription className="text-success">{message}</AlertDescription>
                   </Alert>
+
                   <p className="text-sm text-muted-foreground text-center">
                     Consultez votre boîte email (pensez à vérifier les spams)
                   </p>
-                  <Button 
-                    variant="outline" 
+
+                  <Button
+                    type="button"
+                    variant="outline"
                     className="w-full"
                     onClick={() => {
                       setStatus('idle');
@@ -108,7 +109,7 @@ export default function StudentRegistration() {
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   {status === 'error' && message && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
@@ -117,18 +118,19 @@ export default function StudentRegistration() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Adresse email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
                         placeholder="votre.email@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11"
                         required
                         disabled={loading}
+                        autoComplete="email"
                       />
                     </div>
                   </div>
@@ -136,34 +138,42 @@ export default function StudentRegistration() {
                   <div className="space-y-2">
                     <Label htmlFor="schoolIdentifier">Identifiant de l'école</Label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="schoolIdentifier"
                         type="text"
                         placeholder="ex: lycee-victor-hugo"
                         value={schoolIdentifier}
                         onChange={(e) => setSchoolIdentifier(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11"
                         required
                         disabled={loading}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Contactez votre école si vous ne connaissez pas cet identifiant
+                      Cet identifiant est indiqué dans l'email d'invitation/activation. Sinon, contactez votre école.
                     </p>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Vérification en cours...' : 'Recevoir le lien d\'activation'}
+                  <Button
+                    type="submit"
+                    className="w-full h-11 bg-gradient-primary text-primary-foreground hover:opacity-95 font-semibold rounded-lg transition-all duration-200 shadow-medium hover:shadow-large"
+                    disabled={loading}
+                  >
+                    {loading ? 'Vérification en cours...' : "Recevoir le lien d'activation"}
                   </Button>
 
                   <p className="text-sm text-muted-foreground text-center">
-                    Vous recevrez un email pour définir votre mot de passe
+                    Vous recevrez un email pour définir votre mot de passe.
                   </p>
                 </form>
               )}
             </CardContent>
           </Card>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            © {new Date().getFullYear()} EduVate. Tous droits réservés.
+          </p>
         </div>
       </div>
     </div>
