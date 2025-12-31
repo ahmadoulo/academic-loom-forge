@@ -55,7 +55,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       setUsersLoading(true);
       const { data, error } = await supabase
         .from('app_users')
-        .select('id, email, first_name, last_name, is_active, app_user_roles(role)')
+        // Explicit FK needed because app_user_roles has multiple relations to app_users
+        .select('id, email, first_name, last_name, is_active, app_user_roles!app_user_roles_user_id_fkey(role)')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       
