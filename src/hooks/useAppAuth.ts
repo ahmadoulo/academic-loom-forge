@@ -100,12 +100,16 @@ export function useAppAuth() {
 
       if (error) {
         console.error('Login error:', error);
-        toast.error('Erreur de connexion');
+        toast.error('Email ou mot de passe incorrect');
         return false;
       }
 
       if (data.error) {
-        toast.error(data.error);
+        // Use friendly message for common auth errors
+        const errorMessage = data.error === 'Email ou mot de passe incorrect' 
+          ? data.error 
+          : data.error;
+        toast.error(errorMessage);
         return false;
       }
 
@@ -129,7 +133,7 @@ export function useAppAuth() {
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Erreur de connexion');
+      toast.error('Email ou mot de passe incorrect');
       return false;
     }
   }, []);
