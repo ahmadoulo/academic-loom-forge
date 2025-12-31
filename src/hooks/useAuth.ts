@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-export type UserRole = 'global_admin' | 'school_admin' | 'teacher' | 'student' | 'admin';
+export type UserRole = 'global_admin' | 'school_admin' | 'teacher' | 'student' | 'parent';
 
 export interface UserProfile {
   id: string;
@@ -69,7 +69,7 @@ export const useAuth = () => {
     loading,
     signOut,
     isAuthenticated: !!profile,
-    isGlobalAdmin: profile?.role === 'global_admin' || profile?.role === 'admin',
+    isGlobalAdmin: profile?.role === 'global_admin',
     isSchoolAdmin: profile?.role === 'school_admin',
     isTeacher: profile?.role === 'teacher',
     isStudent: profile?.role === 'student',

@@ -14,9 +14,9 @@ import { toast } from "sonner";
 import { useSchools } from "@/hooks/useSchools";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import { Edit, Key, Mail, MoreVertical, Search, Trash2, UserPlus } from "lucide-react";
+import { Copy, Edit, Eye, EyeOff, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
 
-type UserRole = "global_admin" | "admin" | "school_admin" | "teacher" | "student";
+type UserRole = "global_admin" | "school_admin" | "teacher" | "student";
 
 interface AppUserRow {
   id: string;
@@ -37,6 +37,8 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
     first_name: "",
@@ -45,7 +47,7 @@ export function UserManagement() {
     school_id: "",
   });
 
-  const canManageUsers = primaryRole === "global_admin" || primaryRole === "admin" || primaryRole === "school_admin";
+  const canManageUsers = primaryRole === "global_admin" || primaryRole === "school_admin";
 
   const fetchUsers = async () => {
     try {
@@ -76,17 +78,28 @@ export function UserManagement() {
     );
   }, [rows, searchTerm]);
 
-  const generatePassword = () => {
+  const generateNewPassword = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let result = "";
     for (let i = 0; i < 12; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+    setGeneratedPassword(result);
     return result;
   };
 
-  const handleCreateUser = async () => {
-    try {
-      const generatedPassword = generatePassword();
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      toast.success("Mot de passe copié dans le presse-papier");
+    }
+  };
 
+  const handleCreateUser = async () => {
+    if (!generatedPassword) {
+      toast.error("Veuillez générer un mot de passe");
+      return;
+    }
+
+    try {
       const result = await createUserCredential({
         email: newUser.email,
         first_name: newUser.first_name,
@@ -107,6 +120,8 @@ export function UserManagement() {
 
       setIsCreateDialogOpen(false);
       setNewUser({ email: "", first_name: "", last_name: "", role: "student", school_id: "" });
+      setGeneratedPassword("");
+      setShowPassword(false);
       fetchUsers();
     } catch {
       // handled in hook
@@ -154,10 +169,10 @@ export function UserManagement() {
     const role = roles[0]?.role || "unknown";
     const roleConfig: Record<string, { label: string; className: string }> = {
       global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-      admin: { label: "Admin", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
       school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
       teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
       student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+      parent: { label: "Parent", className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
     };
 
     const cfg = roleConfig[role] || { label: role, className: "" };
@@ -245,11 +260,10 @@ export function UserManagement() {
                   <SelectContent>
                     <SelectItem value="student">Étudiant</SelectItem>
                     <SelectItem value="teacher">Professeur</SelectItem>
-                    {(primaryRole === "global_admin" || primaryRole === "admin") && (
+                    {primaryRole === "global_admin" && (
                       <>
                         <SelectItem value="school_admin">Admin École</SelectItem>
                         <SelectItem value="global_admin">Admin Global</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -273,6 +287,55 @@ export function UserManagement() {
                   </Select>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>Mot de passe</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={generatedPassword}
+                      onChange={(e) => setGeneratedPassword(e.target.value)}
+                      placeholder="Cliquez sur Générer"
+                      className="pr-10"
+                    />
+                    {generatedPassword && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => generateNewPassword()}
+                    title="Générer un mot de passe"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  {generatedPassword && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(generatedPassword)}
+                      title="Copier le mot de passe"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {!generatedPassword && (
+                  <p className="text-xs text-muted-foreground">
+                    Cliquez sur le bouton pour générer un mot de passe sécurisé
+                  </p>
+                )}
+              </div>
 
               <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">

@@ -58,7 +58,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute requiredRoles={['global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['global_admin']}>
                     <AdminDashboard />
                   </ProtectedRoute>
                 }
@@ -76,7 +76,7 @@ const App = () => (
               <Route
                 path="/school"
                 element={
-                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin']}>
                     <SchoolDashboard />
                   </ProtectedRoute>
                 }
@@ -84,7 +84,7 @@ const App = () => (
               <Route
                 path="/school/:schoolId"
                 element={
-                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin']}>
                     <SchoolDashboard />
                   </ProtectedRoute>
                 }
@@ -95,7 +95,7 @@ const App = () => (
               <Route
                 path="/teacher"
                 element={
-                  <ProtectedRoute requiredRoles={['teacher', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['teacher', 'global_admin']}>
                     <TeacherDashboard />
                   </ProtectedRoute>
                 }
@@ -103,7 +103,7 @@ const App = () => (
               <Route
                 path="/teacher/:teacherId"
                 element={
-                  <ProtectedRoute requiredRoles={['teacher', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['teacher', 'global_admin']}>
                     <TeacherDashboard />
                   </ProtectedRoute>
                 }
@@ -112,7 +112,7 @@ const App = () => (
               <Route
                 path="/student"
                 element={
-                  <ProtectedRoute requiredRoles={['student', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['student', 'global_admin']}>
                     <StudentDashboard />
                   </ProtectedRoute>
                 }
@@ -120,7 +120,7 @@ const App = () => (
               <Route
                 path="/student/:studentId"
                 element={
-                  <ProtectedRoute requiredRoles={['student', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['student', 'global_admin']}>
                     <StudentDashboard />
                   </ProtectedRoute>
                 }
@@ -128,7 +128,7 @@ const App = () => (
               <Route
                 path="/student-dashboard"
                 element={
-                  <ProtectedRoute requiredRoles={['student', 'global_admin', 'admin']}>
+                  <ProtectedRoute requiredRoles={['student', 'global_admin']}>
                     <StudentDashboard />
                   </ProtectedRoute>
                 }

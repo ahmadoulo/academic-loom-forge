@@ -1,4 +1,4 @@
-export type AppRole = 'global_admin' | 'admin' | 'school_admin' | 'teacher' | 'student';
+export type AppRole = 'global_admin' | 'school_admin' | 'teacher' | 'student' | 'parent';
 
 export interface AppUser {
   id: string;

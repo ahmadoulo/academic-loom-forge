@@ -252,7 +252,17 @@ const AuthPage = () => {
                   </Button>
                 </form>
                 
-                <div className="mt-8 pt-6 border-t border-border">
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("forgot-password")}
+                    className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
+                
+                <div className="mt-6 pt-6 border-t border-border">
                   <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4">
                     <Shield className="h-3.5 w-3.5" />
                     <span>Connexion sécurisée</span>
