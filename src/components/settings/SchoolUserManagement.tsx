@@ -6,13 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useCustomAuth } from "@/hooks/useCustomAuth";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Mail, Key } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Key, Copy, Check, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SchoolUserManagementProps {
   schoolId: string;
@@ -28,20 +27,26 @@ interface AppUser {
 }
 
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
-  const { createUserCredential, loading } = useCustomAuth();
-  
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
+  
+  // Password reset dialog states
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AppUser | null>(null);
+  const [newPasswordGenerated, setNewPasswordGenerated] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordCopied, setResetPasswordCopied] = useState(false);
+  
   const [newUser, setNewUser] = useState({
     email: "",
     first_name: "",
     last_name: "",
-    role: "student",
-    password: "",
   });
 
   // Fetch users for this school from app_users
@@ -85,6 +90,18 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     const password = generatePassword();
     setGeneratedPassword(password);
     setShowPassword(true);
+    setPasswordCopied(false);
+  };
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      setPasswordCopied(true);
+      toast.success("Mot de passe copié!");
+      setTimeout(() => setPasswordCopied(false), 2000);
+    } catch {
+      toast.error("Impossible de copier");
+    }
   };
 
   const handleCreateUser = async () => {
@@ -93,52 +110,76 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       return;
     }
 
+    if (!newUser.email || !newUser.first_name || !newUser.last_name) {
+      toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+
+    setIsCreating(true);
     try {
-      const result = await createUserCredential({
-        email: newUser.email,
-        first_name: newUser.first_name,
-        last_name: newUser.last_name,
-        role: newUser.role,
-        school_id: schoolId,
-        password: generatedPassword,
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
+          email: newUser.email,
+          firstName: newUser.first_name,
+          lastName: newUser.last_name,
+          role: "school_admin",
+          schoolId: schoolId,
+          password: generatedPassword,
+        }
       });
 
-      if (result) {
-        toast.success('Utilisateur créé avec succès!');
-        setIsCreateDialogOpen(false);
-        setNewUser({
-          email: "",
-          first_name: "",
-          last_name: "",
-          role: "student",
-          password: "",
-        });
-        setGeneratedPassword("");
-        setShowPassword(false);
-        fetchUsers();
-      }
-    } catch (error) {
-      // Error already handled in useCustomAuth hook
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast.success('Administrateur créé avec succès!');
+      setIsCreateDialogOpen(false);
+      setNewUser({ email: "", first_name: "", last_name: "" });
+      setGeneratedPassword("");
+      setShowPassword(false);
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la création');
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const openResetPasswordDialog = (user: AppUser) => {
+    setResetPasswordUser(user);
+    setNewPasswordGenerated("");
+    setResetPasswordCopied(false);
+    setResetPasswordDialogOpen(true);
+  };
+
+  const executePasswordReset = async () => {
+    if (!resetPasswordUser) return;
+    
+    setIsResettingPassword(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId, requestedBy: 'school_admin' }
+        body: { userId: resetPasswordUser.id, requestedBy: 'school_admin' }
       });
       
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       
-      if (navigator.clipboard && data.newPassword) {
-        await navigator.clipboard.writeText(data.newPassword);
-        toast.success(`Nouveau mot de passe copié: ${data.newPassword}`, { duration: 10000 });
-      } else {
-        toast.success(`Nouveau mot de passe: ${data.newPassword}`, { duration: 10000 });
-      }
+      setNewPasswordGenerated(data.newPassword);
+      toast.success('Mot de passe réinitialisé!');
     } catch (error) {
       toast.error('Erreur lors de la réinitialisation du mot de passe');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const copyNewPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(newPasswordGenerated);
+      setResetPasswordCopied(true);
+      toast.success("Mot de passe copié!");
+      setTimeout(() => setResetPasswordCopied(false), 2000);
+    } catch {
+      toast.error("Impossible de copier");
     }
   };
 
@@ -161,19 +202,19 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const getRoleBadge = (roles: { role: string }[]) => {
     const role = roles[0]?.role || 'unknown';
     const roleConfig: Record<string, { label: string; className: string }> = {
-      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      student: { label: "Étudiant", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-      school_admin: { label: "Admin", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+      student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+      school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
     };
     
-    const config = roleConfig[role] || { label: role, className: "" };
+    const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
     return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
   };
 
-  if (usersLoading || loading) {
+  if (usersLoading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
         <p className="mt-4 text-muted-foreground">Chargement des utilisateurs...</p>
       </div>
     );
@@ -189,63 +230,58 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) {
+            setNewUser({ email: "", first_name: "", last_name: "" });
+            setGeneratedPassword("");
+            setShowPassword(false);
+            setPasswordCopied(false);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
               <UserPlus className="h-4 w-4" />
-              Nouvel utilisateur
+              Nouvel administrateur
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md mx-4">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
+              <DialogTitle>Créer un administrateur</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel utilisateur à votre école
+                Ajoutez un nouvel administrateur pour gérer votre école
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-first-name">Prénom</Label>
+                  <Label htmlFor="new-first-name">Prénom *</Label>
                   <Input
                     id="new-first-name"
+                    placeholder="Jean"
                     value={newUser.first_name}
                     onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-last-name">Nom</Label>
+                  <Label htmlFor="new-last-name">Nom *</Label>
                   <Input
                     id="new-last-name"
+                    placeholder="Dupont"
                     value={newUser.last_name}
                     onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-email">Email</Label>
+                <Label htmlFor="new-email">Email *</Label>
                 <Input
                   id="new-email"
                   type="email"
+                  placeholder="jean.dupont@ecole.com"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-role">Rôle</Label>
-                <Select
-                  value={newUser.role}
-                  onValueChange={(value) => setNewUser({ ...newUser, role: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Étudiant</SelectItem>
-                    <SelectItem value="teacher">Professeur</SelectItem>
-                    <SelectItem value="school_admin">Administrateur</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-3">
@@ -257,40 +293,43 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                      <code className="flex-1 text-sm font-mono">{generatedPassword}</code>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(generatedPassword)}>
-                        Copier
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
+                      <code className="flex-1 text-sm font-mono select-all">{generatedPassword}</code>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={copyPassword}
+                        className="shrink-0"
+                      >
+                        {passwordCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      ⚠️ Copiez ce mot de passe maintenant, il ne sera plus affiché après la création.
-                    </p>
+                    <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                        Copiez ce mot de passe maintenant. Il ne sera plus affiché après la création.
+                      </AlertDescription>
+                    </Alert>
                   </div>
                 )}
               </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    setGeneratedPassword("");
-                    setShowPassword(false);
-                  }} 
-                  className="w-full sm:w-auto"
-                >
-                  Annuler
-                </Button>
-                <Button 
-                  onClick={handleCreateUser} 
-                  disabled={loading || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword}
-                  className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
-                >
-                  {loading ? "Création..." : "Créer l'utilisateur"}
-                </Button>
-              </div>
             </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleCreateUser} 
+                disabled={isCreating || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword}
+                className="bg-gradient-primary hover:opacity-90"
+              >
+                {isCreating ? "Création..." : "Créer l'administrateur"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -365,13 +404,9 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
+                          <DropdownMenuItem onClick={() => openResetPasswordDialog(user)}>
                             <Key className="h-4 w-4 mr-2" />
                             Réinitialiser mot de passe
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Envoyer un email
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive"
@@ -390,6 +425,80 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) {
+          setResetPasswordUser(null);
+          setNewPasswordGenerated("");
+          setResetPasswordCopied(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+            <DialogDescription>
+              {resetPasswordUser && `Pour ${resetPasswordUser.first_name} ${resetPasswordUser.last_name}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!newPasswordGenerated ? (
+            <div className="space-y-4">
+              <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  Cette action va générer un nouveau mot de passe pour cet utilisateur. L'ancien mot de passe ne fonctionnera plus.
+                </AlertDescription>
+              </Alert>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setResetPasswordDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={executePasswordReset}
+                  disabled={isResettingPassword}
+                  className="bg-gradient-primary hover:opacity-90"
+                >
+                  {isResettingPassword ? "Génération..." : "Générer nouveau mot de passe"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nouveau mot de passe</Label>
+                <div className="flex items-center gap-2 p-4 bg-muted rounded-lg border">
+                  <code className="flex-1 text-lg font-mono font-semibold select-all">{newPasswordGenerated}</code>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copyNewPassword}
+                    className="shrink-0"
+                  >
+                    {resetPasswordCopied ? (
+                      <><Check className="h-4 w-4 mr-2 text-green-600" /> Copié</>
+                    ) : (
+                      <><Copy className="h-4 w-4 mr-2" /> Copier</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Ce mot de passe ne sera plus affiché après fermeture. Assurez-vous de l'avoir copié!
+                </AlertDescription>
+              </Alert>
+              <DialogFooter>
+                <Button onClick={() => setResetPasswordDialogOpen(false)} className="w-full">
+                  Fermer
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
