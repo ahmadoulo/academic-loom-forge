@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SettingsLayout } from "./SettingsLayout";
 import { SchoolSettings } from "./SchoolSettings";
 import { StudentAccountsSection } from "../school/StudentAccountsSection";
+import { TeacherAccountsSection } from "../school/TeacherAccountsSection";
 import { SchoolUserManagement } from "./SchoolUserManagement";
 import { SchoolYearManagement } from "./SchoolYearManagement";
 import { SemesterManagement } from "./SemesterManagement";
@@ -21,6 +22,7 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
     "cycles",
     "options",
     "student-accounts",
+    "teacher-accounts",
     "users"
   ];
 
@@ -36,6 +38,8 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
         return <OptionsManagement schoolId={schoolId} />;
       case "student-accounts":
         return <StudentAccountsSection schoolId={schoolId} />;
+      case "teacher-accounts":
+        return <TeacherAccountsSection schoolId={schoolId} />;
       case "users":
         return <SchoolUserManagement schoolId={schoolId} />;
       default:
