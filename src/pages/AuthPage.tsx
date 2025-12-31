@@ -79,7 +79,10 @@ const AuthPage = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("request-password-reset", {
-        body: { email: resetEmail.trim().toLowerCase() }
+        body: { 
+          email: resetEmail.trim().toLowerCase(),
+          appUrl: window.location.origin,
+        }
       });
 
       if (error) {
@@ -212,18 +215,9 @@ const AuthPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                        Mot de passe
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={() => setViewMode("forgot-password")}
-                        className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
-                      >
-                        Mot de passe oublié ?
-                      </button>
-                    </div>
+                    <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                      Mot de passe
+                    </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -241,7 +235,7 @@ const AuthPage = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full h-11 bg-gradient-primary hover:opacity-90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="w-full h-11 bg-gradient-primary text-primary-foreground hover:opacity-95 font-semibold rounded-lg transition-all duration-200 shadow-medium hover:shadow-large"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
