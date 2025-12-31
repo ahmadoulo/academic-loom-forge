@@ -26,7 +26,7 @@ serve(async (req) => {
     // Récupérer le compte étudiant (nouveau système: app_users)
     let query = supabaseClient
       .from('app_users')
-      .select('id, email, school_id, student_id, first_name, last_name, schools!app_users_school_id_fkey(name), students(firstname, lastname)');
+      .select('id, email, school_id, student_id, first_name, last_name, schools!app_users_school_id_fkey(name, identifier), students(firstname, lastname)');
 
     if (accountId) {
       query = query.eq('id', accountId);
@@ -88,10 +88,12 @@ serve(async (req) => {
     const firstName = account.students?.firstname || account.first_name || '';
     const lastName = account.students?.lastname || account.last_name || '';
     const schoolName = account.schools?.name || 'votre école';
+    const schoolIdentifier = account.schools?.identifier || '';
 
     const emailHtml = `
       <h1>Bienvenue ${firstName} ${lastName} !</h1>
       <p>Votre compte étudiant a été créé pour l'école <strong>${schoolName}</strong>.</p>
+      ${schoolIdentifier ? `<p><strong>Identifiant de l'école :</strong> ${schoolIdentifier}</p>` : ''}
       <p>Pour activer votre compte et définir votre mot de passe, cliquez sur le lien ci-dessous :</p>
       <p><a href="${invitationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px;">Définir mon mot de passe</a></p>
       <p>Ce lien est valable pendant 7 jours.</p>

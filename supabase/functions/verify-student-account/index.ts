@@ -80,7 +80,9 @@ serve(async (req) => {
     }
 
     // 2) Student lookup: students are linked to schools via student_school
-    const { data: enrollment, error: enrollmentError } = await supabase
+    // IMPORTANT: we must NOT use maybeSingle() here because duplicates can exist
+    // (e.g., multiple active enrollments). We take the newest/first row and log a warning.
+    const { data: enrollments, error: enrollmentError } = await supabase
       .from("student_school")
       .select(
         "student_id, is_active, students!inner(id, firstname, lastname, email)",
@@ -88,7 +90,7 @@ serve(async (req) => {
       .eq("school_id", school.id)
       .eq("is_active", true)
       .eq("students.email", normalizedEmail)
-      .maybeSingle();
+      .limit(2);
 
     if (enrollmentError) {
       console.error("verify-student-account:enrollmentError", enrollmentError);
@@ -105,7 +107,16 @@ serve(async (req) => {
       );
     }
 
-    const student = enrollment?.students ?? null;
+    if ((enrollments?.length ?? 0) > 1) {
+      console.warn("verify-student-account:duplicateEnrollments", {
+        email: normalizedEmail,
+        schoolId: school.id,
+        count: enrollments?.length,
+      });
+    }
+
+    const enrollment = enrollments?.[0] ?? null;
+    const student = (enrollment as any)?.students ?? null;
 
     if (!student) {
       return new Response(
@@ -254,6 +265,7 @@ serve(async (req) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1 style="color: #333;">Bienvenue ${student.firstname} ${student.lastname} !</h1>
         <p>Votre compte étudiant est prêt pour l'établissement <strong>${school.name}</strong>.</p>
+        <p><strong>Identifiant de l'école :</strong> ${school.identifier}</p>
         <p>Pour activer votre compte et définir votre mot de passe, cliquez sur le bouton ci-dessous :</p>
         <p style="text-align: center; margin: 30px 0;">
           <a href="${invitationUrl}" style="display: inline-block; padding: 14px 28px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
@@ -304,10 +316,17 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("verify-student-account:unhandled", error);
+    // IMPORTANT: Always return 200 for this public verification flow,
+    // so the frontend can display a clean message instead of a generic invoke error.
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     return new Response(
-      JSON.stringify({ success: false, error: "server_error", message: errorMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
+      JSON.stringify({
+        success: false,
+        error: "server_error",
+        message: "Une erreur est survenue. Veuillez réessayer.",
+        debug: errorMessage,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     );
   }
 });
