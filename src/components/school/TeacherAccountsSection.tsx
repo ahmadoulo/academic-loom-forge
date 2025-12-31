@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, GraduationCap, Loader2 } from "lucide-react";
+import { Mail, Users, Loader2, CheckCircle2, Clock } from "lucide-react";
 import { useTeacherAccounts } from "@/hooks/useTeacherAccounts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
   const [sendingInvitation, setSendingInvitation] = useState<string | null>(null);
 
   const handleSendInvitation = async (teacherId: string, email: string) => {
+    if (!email) return;
     setSendingInvitation(teacherId);
     try {
       await sendInvitation(teacherId, email);
@@ -27,11 +28,11 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <GraduationCap className="h-5 w-5" />
+          <Users className="h-5 w-5" />
           Comptes Professeurs
         </CardTitle>
         <CardDescription>
-          Gérez les invitations des professeurs de votre école (1 professeur = 1 compte unique)
+          Gérez les comptes des professeurs de votre école (1 professeur = 1 compte unique)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -69,12 +70,20 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
                     <TableCell className="font-medium">
                       {account.teacher?.firstname} {account.teacher?.lastname}
                     </TableCell>
-                    <TableCell>{account.email || 'Email non renseigné'}</TableCell>
-                    <TableCell>{account.teacher?.qualification || 'N/A'}</TableCell>
+                    <TableCell>{account.email || <span className="text-muted-foreground italic">Non renseigné</span>}</TableCell>
+                    <TableCell>{account.teacher?.qualification || <span className="text-muted-foreground">N/A</span>}</TableCell>
                     <TableCell>
-                      <Badge variant={account.is_active ? "default" : "secondary"}>
-                        {account.is_active ? 'Actif' : 'En attente'}
-                      </Badge>
+                      {account.is_active ? (
+                        <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Actif
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                          <Clock className="h-3 w-3 mr-1" />
+                          En attente
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={account.invitation_sent ? "outline" : "secondary"}>
@@ -82,20 +91,22 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {account.email && (
+                      {account.email ? (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleSendInvitation(account.teacher_id, account.email)}
-                          disabled={sendingInvitation === account.teacher_id}
+                          disabled={sendingInvitation === account.teacher_id || account.is_active}
                         >
                           {sendingInvitation === account.teacher_id ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
                             <Mail className="h-4 w-4 mr-2" />
                           )}
-                          {account.is_active ? 'Renvoyer' : 'Envoyer'} invitation
+                          {account.is_active ? 'Compte actif' : account.invitation_sent ? 'Renvoyer' : 'Envoyer invitation'}
                         </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Email requis</span>
                       )}
                     </TableCell>
                   </TableRow>

@@ -271,9 +271,9 @@ const AuthPage = () => {
                   <Button
                     variant="outline"
                     className="w-full h-10 border-input hover:bg-muted/50 transition-colors"
-                    onClick={() => navigate('/student-registration')}
+                    onClick={() => navigate('/activate-account')}
                   >
-                    Première connexion ? Activer mon compte étudiant
+                    Première connexion ? Activer mon compte
                   </Button>
                 </div>
               </CardContent>
