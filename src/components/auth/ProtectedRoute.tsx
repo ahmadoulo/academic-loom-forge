@@ -26,7 +26,7 @@ export function ProtectedRoute({
   } | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(true);
 
-  const isAdminLike = primaryRole === 'global_admin' || primaryRole === 'admin';
+  const isAdminLike = primaryRole === 'global_admin';
   const isAuthed = !!user;
 
   const isAllowedByRole = useMemo(() => {

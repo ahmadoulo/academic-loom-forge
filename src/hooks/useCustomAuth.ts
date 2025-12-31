@@ -110,7 +110,7 @@ export const useCustomAuth = () => {
       
       // Redirect based on role
       setTimeout(() => {
-        if (data.primaryRole === 'global_admin' || data.primaryRole === 'admin') {
+        if (data.primaryRole === 'global_admin') {
           window.location.href = '/admin';
         } else if (data.primaryRole === 'school_admin' && data.primarySchoolId) {
           window.location.href = `/school/${data.primarySchoolId}`;

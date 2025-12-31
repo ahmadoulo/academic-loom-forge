@@ -265,7 +265,6 @@ export function useAppAuth() {
 
     switch (state.primaryRole) {
       case 'global_admin':
-      case 'admin':
         return '/admin';
       case 'school_admin':
         // Use school identifier instead of school_id for URL
