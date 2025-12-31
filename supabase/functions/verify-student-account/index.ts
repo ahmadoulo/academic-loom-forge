@@ -79,25 +79,33 @@ serve(async (req) => {
       );
     }
 
-    // 2) Student lookup in students table (source of truth for eligibility)
-    const { data: student, error: studentError } = await supabase
-      .from("students")
-      .select("id, firstname, lastname, email, school_id")
-      .eq("email", normalizedEmail)
+    // 2) Student lookup: students are linked to schools via student_school
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("student_school")
+      .select(
+        "student_id, is_active, students!inner(id, firstname, lastname, email)",
+      )
       .eq("school_id", school.id)
+      .eq("is_active", true)
+      .eq("students.email", normalizedEmail)
       .maybeSingle();
 
-    if (studentError) {
-      console.error("verify-student-account:studentError", studentError);
+    if (enrollmentError) {
+      console.error("verify-student-account:enrollmentError", enrollmentError);
       return new Response(
         JSON.stringify({
           success: false,
           error: "student_lookup_error",
           message: "Erreur lors de la vérification de l'étudiant",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
       );
     }
+
+    const student = enrollment?.students ?? null;
 
     if (!student) {
       return new Response(
@@ -107,9 +115,17 @@ serve(async (req) => {
           message:
             "Aucun étudiant trouvé avec cet email pour cette école. Contactez votre établissement.",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
       );
     }
+
+    console.log("verify-student-account:studentFound", {
+      studentId: student.id,
+      schoolId: school.id,
+    });
 
     // 3) Ensure app_users exists for this student
     const { data: existingAccount, error: accountError } = await supabase
