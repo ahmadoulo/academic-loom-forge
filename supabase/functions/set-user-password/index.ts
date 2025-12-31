@@ -59,33 +59,25 @@ serve(async (req) => {
       .single();
 
     if (userError || !user) {
-      console.error('Invalid invitation token');
+      console.error('Invalid token', userError);
       return new Response(
-        JSON.stringify({ error: 'Token d\'invitation invalide' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Token invalide ou expiré" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Check if token is expired
     if (new Date(user.invitation_expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: 'Le token d\'invitation a expiré. Contactez votre administrateur.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if account is already active
-    if (user.is_active) {
-      return new Response(
-        JSON.stringify({ error: 'Ce compte est déjà activé. Utilisez la page de connexion.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Token invalide ou expiré" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Hash password (SHA-256)
     const passwordHash = await hashPassword(password);
 
-    // Update user
+    // Update user: works for BOTH activation (inactive account) and reset (active account)
     const { error: updateError } = await supabase
       .from('app_users')
       .update({
@@ -93,7 +85,9 @@ serve(async (req) => {
         is_active: true,
         email_verified: true,
         invitation_token: null,
-        invitation_expires_at: null
+        invitation_expires_at: null,
+        session_token: null,
+        session_expires_at: null,
       })
       .eq('id', user.id);
 
@@ -101,7 +95,7 @@ serve(async (req) => {
       console.error('Failed to set password:', updateError);
       return new Response(
         JSON.stringify({ error: 'Erreur lors de la définition du mot de passe' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -110,8 +104,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Mot de passe défini avec succès. Vous pouvez maintenant vous connecter.',
-        email: user.email
+        message: 'Mot de passe mis à jour avec succès. Vous pouvez maintenant vous connecter.',
+        email: user.email,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

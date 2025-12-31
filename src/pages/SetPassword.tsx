@@ -14,96 +14,57 @@ export default function SetPassword() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(true);
+  const [mode, setMode] = useState<'activation' | 'reset'>('activation');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const token = searchParams.get('token');
 
   useEffect(() => {
     validateToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const validateToken = async () => {
     if (!token) {
-      console.error('❌ Aucun token fourni');
-      toast.error('Token d\'invitation invalide');
+      toast.error("Lien invalide");
       navigate('/auth');
       return;
     }
 
     try {
-      console.log('🔍 Validation du token:', token);
-      console.log('🔍 Longueur du token:', token.length);
-      
-      // Nettoyer le token des espaces blancs
       const cleanToken = token.trim();
-      
-      // Chercher dans app_users (nouveau système unifié)
+
+      // Token stored on app_users for both invitation + password reset
       const { data: account, error } = await supabase
         .from('app_users')
-        .select('id, email, invitation_token, invitation_expires_at, is_active, password_hash')
+        .select('id, invitation_expires_at, password_hash')
         .eq('invitation_token', cleanToken)
         .maybeSingle();
 
-      console.log('📥 Résultat de la requête:', { 
-        accountFound: !!account, 
-        accountId: account?.id,
-        hasToken: !!account?.invitation_token,
-        hasExpiration: !!account?.invitation_expires_at,
-        error 
-      });
-
-      if (error) {
-        console.error('❌ Erreur Supabase:', error);
-        toast.error('Erreur lors de la validation du token');
+      if (error || !account) {
+        toast.error("Lien invalide ou expiré");
         navigate('/auth');
         return;
       }
 
-      if (!account) {
-        console.error('❌ Aucun compte trouvé avec ce token');
-        toast.error('Token d\'invitation invalide');
-        navigate('/auth');
-        return;
-      }
-
-      // Vérifier si le compte est déjà actif
-      if (account.is_active && account.password_hash) {
-        console.log('✅ Compte déjà actif');
-        toast.info('Votre compte est déjà actif');
-        navigate('/auth');
-        return;
-      }
-
-      // Vérifier l'expiration du token
       if (!account.invitation_expires_at) {
-        console.error('❌ Pas de date d\'expiration');
-        toast.error('Token invalide');
+        toast.error("Lien invalide ou expiré");
         navigate('/auth');
         return;
       }
 
       const expiresAt = new Date(account.invitation_expires_at);
-      const now = new Date();
-      
-      console.log('📅 Vérification expiration:', { 
-        expiresAt: expiresAt.toISOString(), 
-        now: now.toISOString(), 
-        isExpired: now > expiresAt
-      });
-      
-      // Vérifier si le token a expiré (la date actuelle est APRÈS la date d'expiration)
-      if (now > expiresAt) {
-        console.error('❌ Token expiré');
-        toast.error('Le lien d\'invitation a expiré. Demandez un nouveau lien.');
+      if (new Date() > expiresAt) {
+        toast.error("Lien expiré. Demandez un nouveau lien.");
         navigate('/auth');
         return;
       }
 
-      console.log('✅ Token valide, affichage du formulaire');
+      setMode(account.password_hash ? 'reset' : 'activation');
       setValidating(false);
     } catch (err) {
-      console.error('❌ Erreur de validation:', err);
-      toast.error('Erreur lors de la validation du token');
+      console.error('Token validation error:', err);
+      toast.error('Erreur lors de la validation du lien');
       navigate('/auth');
     }
   };
@@ -197,9 +158,11 @@ export default function SetPassword() {
         <div className="max-w-md mx-auto">
           <Card>
             <CardHeader>
-              <CardTitle>Définir votre mot de passe</CardTitle>
+              <CardTitle>{mode === 'reset' ? 'Réinitialiser votre mot de passe' : 'Définir votre mot de passe'}</CardTitle>
               <CardDescription>
-                Choisissez un mot de passe sécurisé pour votre compte
+                {mode === 'reset'
+                  ? 'Choisissez un nouveau mot de passe sécurisé pour votre compte'
+                  : 'Choisissez un mot de passe sécurisé pour votre compte'}
               </CardDescription>
             </CardHeader>
             <CardContent>
