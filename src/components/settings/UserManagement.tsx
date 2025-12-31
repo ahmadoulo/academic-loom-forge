@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { useSchools } from "@/hooks/useSchools";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import { Copy, Edit, Eye, EyeOff, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
+import { Check, Copy, Edit, Eye, EyeOff, Filter, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
 
 type UserRole = "global_admin" | "school_admin";
 
@@ -36,9 +36,19 @@ export function UserManagement() {
   const [rows, setRows] = useState<AppUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [schoolFilter, setSchoolFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Password reset dialog state
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AppUserRow | null>(null);
+  const [newPasswordGenerated, setNewPasswordGenerated] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
+  
   const [newUser, setNewUser] = useState({
     email: "",
     first_name: "",
@@ -73,13 +83,44 @@ export function UserManagement() {
   }, [primaryRole, primarySchoolId]);
 
 
+  // Get unique roles from data for filter
+  const availableRoles = useMemo(() => {
+    const roles = new Set<string>();
+    rows.forEach(u => {
+      u.app_user_roles.forEach(r => roles.add(r.role));
+    });
+    return Array.from(roles);
+  }, [rows]);
+
   const filteredUsers = useMemo(() => {
+    let filtered = rows;
+    
+    // Filter by role
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(u => 
+        u.app_user_roles.some(r => r.role === roleFilter)
+      );
+    }
+    
+    // Filter by school
+    if (schoolFilter !== "all") {
+      if (schoolFilter === "global") {
+        filtered = filtered.filter(u => !u.school_id);
+      } else {
+        filtered = filtered.filter(u => u.school_id === schoolFilter);
+      }
+    }
+    
+    // Filter by search term
     const q = searchTerm.toLowerCase().trim();
-    if (!q) return rows;
-    return rows.filter((u) =>
-      u.email.toLowerCase().includes(q) || `${u.first_name} ${u.last_name}`.toLowerCase().includes(q)
-    );
-  }, [rows, searchTerm]);
+    if (q) {
+      filtered = filtered.filter((u) =>
+        u.email.toLowerCase().includes(q) || `${u.first_name} ${u.last_name}`.toLowerCase().includes(q)
+      );
+    }
+    
+    return filtered;
+  }, [rows, searchTerm, roleFilter, schoolFilter]);
 
   const generateNewPassword = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -139,23 +180,40 @@ export function UserManagement() {
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const handleResetPassword = async (userRow: AppUserRow) => {
+    setResetPasswordUser(userRow);
+    setNewPasswordGenerated("");
+    setPasswordCopied(false);
+    setResetPasswordDialogOpen(true);
+  };
+
+  const executePasswordReset = async () => {
+    if (!resetPasswordUser) return;
+    
     try {
+      setIsResettingPassword(true);
       const { data, error } = await supabase.functions.invoke("reset-user-password", {
-        body: { userId, requestedBy: user?.id || "admin" },
+        body: { userId: resetPasswordUser.id, requestedBy: user?.id || "admin" },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      if (navigator.clipboard && data?.newPassword) {
-        await navigator.clipboard.writeText(data.newPassword);
-        toast.success(`Nouveau mot de passe copié: ${data.newPassword}`, { duration: 10000 });
-      } else {
-        toast.success(`Nouveau mot de passe: ${data?.newPassword}`, { duration: 10000 });
-      }
+      setNewPasswordGenerated(data?.newPassword || "");
+      toast.success("Mot de passe réinitialisé avec succès");
     } catch {
       toast.error("Erreur lors de la réinitialisation");
+      setResetPasswordDialogOpen(false);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const copyNewPassword = async () => {
+    if (newPasswordGenerated && navigator.clipboard) {
+      await navigator.clipboard.writeText(newPasswordGenerated);
+      setPasswordCopied(true);
+      toast.success("Mot de passe copié dans le presse-papier");
     }
   };
 
@@ -181,15 +239,26 @@ export function UserManagement() {
     const roleConfig: Record<string, { label: string; className: string }> = {
       global_admin: { label: "Admin Global", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
       school_admin: { label: "Admin École", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      teacher: { label: "Professeur", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+      student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
     };
 
-
-    const cfg = roleConfig[role] || { label: role, className: "" };
+    const cfg = roleConfig[role] || { label: role, className: "bg-gray-100 text-gray-800" };
     return (
       <Badge variant="secondary" className={cfg.className}>
         {cfg.label}
       </Badge>
     );
+  };
+
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      global_admin: "Admin Global",
+      school_admin: "Admin École",
+      teacher: "Professeur",
+      student: "Étudiant",
+    };
+    return labels[role] || role;
   };
 
   if (loading || creating) {
@@ -383,7 +452,8 @@ export function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 mb-4">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            {/* Search */}
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -393,6 +463,35 @@ export function UserManagement() {
                 className="pl-10"
               />
             </div>
+            
+            {/* Role filter */}
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filtrer par rôle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les rôles</SelectItem>
+                {availableRoles.map(role => (
+                  <SelectItem key={role} value={role}>{getRoleLabel(role)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* School filter */}
+            <Select value={schoolFilter} onValueChange={setSchoolFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filtrer par école" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les écoles</SelectItem>
+                <SelectItem value="global">Global (sans école)</SelectItem>
+                {schools.map(school => (
+                  <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -443,7 +542,7 @@ export function UserManagement() {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleResetPassword(u.id)}>
+                          <DropdownMenuItem onClick={() => handleResetPassword(u)}>
                             <Key className="h-4 w-4 mr-2" />
                             Réinitialiser mot de passe
                           </DropdownMenuItem>
@@ -465,6 +564,96 @@ export function UserManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) {
+          setResetPasswordUser(null);
+          setNewPasswordGenerated("");
+          setPasswordCopied(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+            <DialogDescription>
+              {resetPasswordUser && (
+                <span>
+                  Réinitialisation pour <strong>{resetPasswordUser.first_name} {resetPasswordUser.last_name}</strong> ({resetPasswordUser.email})
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!newPasswordGenerated ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Un nouveau mot de passe sera généré automatiquement. Vous pourrez le copier et le communiquer à l'utilisateur.
+              </p>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setResetPasswordDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={executePasswordReset} 
+                  disabled={isResettingPassword}
+                  className="bg-gradient-primary hover:opacity-90"
+                >
+                  {isResettingPassword ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Génération...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4 mr-2" />
+                      Réinitialiser
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <Label className="text-sm font-medium">Nouveau mot de passe</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <code className="flex-1 p-3 bg-background rounded border font-mono text-lg select-all">
+                    {newPasswordGenerated}
+                  </code>
+                  <Button
+                    variant={passwordCopied ? "default" : "outline"}
+                    size="icon"
+                    onClick={copyNewPassword}
+                    className={passwordCopied ? "bg-green-600 hover:bg-green-700" : ""}
+                  >
+                    {passwordCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {passwordCopied ? "✓ Mot de passe copié !" : "Cliquez sur le bouton pour copier le mot de passe"}
+                </p>
+              </div>
+              
+              <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  ⚠️ Notez ce mot de passe et transmettez-le à l'utilisateur de façon sécurisée. Il ne sera plus affiché après la fermeture de cette fenêtre.
+                </p>
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  onClick={() => setResetPasswordDialogOpen(false)}
+                  className="w-full bg-gradient-primary hover:opacity-90"
+                >
+                  Fermer
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
