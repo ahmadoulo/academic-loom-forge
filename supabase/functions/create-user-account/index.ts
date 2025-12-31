@@ -11,14 +11,12 @@ interface CreateUserRequest {
   firstName: string;
   lastName: string;
   phone?: string;
-  role: 'global_admin' | 'admin' | 'school_admin' | 'teacher' | 'student';
+  role: "global_admin" | "school_admin";
   schoolId?: string;
-  teacherId?: string;
-  studentId?: string;
   password?: string;
-  sendInvitation?: boolean;
   createdBy?: string;
 }
+
 
 // Hash password using SHA-256 (Deno compatible)
 async function hashPassword(password: string): Promise<string> {
@@ -54,12 +52,10 @@ serve(async (req) => {
       phone,
       role,
       schoolId,
-      teacherId,
-      studentId,
       password,
-      sendInvitation,
-      createdBy
+      createdBy,
     } = body;
+
 
     // Validation
     if (!email || !firstName || !lastName || !role) {
@@ -70,12 +66,13 @@ serve(async (req) => {
     }
 
     // Validate role requirements
-    if (['school_admin', 'teacher', 'student'].includes(role) && !schoolId) {
+    if (role === "school_admin" && !schoolId) {
       return new Response(
-        JSON.stringify({ error: 'school_id est requis pour ce rôle' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "school_id est requis pour ce rôle" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
 
     console.log(`Creating user account for: ${email} with role: ${role}`);
 
@@ -83,18 +80,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if email already exists in this school (for school-scoped roles)
-    let existingUserQuery = supabase
-      .from('app_users')
-      .select('id')
-      .eq('email', email.toLowerCase().trim());
-    
-    // For student accounts, check within the same school
-    if (role === 'student' && schoolId) {
-      existingUserQuery = existingUserQuery.eq('school_id', schoolId);
-    }
+    // Check if email already exists
+    const { data: existingUser } = await supabase
+      .from("app_users")
+      .select("id")
+      .eq("email", email.toLowerCase().trim())
+      .maybeSingle();
 
-    const { data: existingUser } = await existingUserQuery.maybeSingle();
 
     if (existingUser) {
       return new Response(
@@ -105,25 +97,19 @@ serve(async (req) => {
 
     // Prepare user data
     let passwordHash: string | null = null;
-    let invitationToken: string | null = null;
-    let invitationExpiresAt: string | null = null;
-    let generatedPassword: string | null = null;
     let isActive = false;
 
-    if (password) {
-      // Direct password set
-      passwordHash = await hashPassword(password);
-      isActive = true;
-    } else if (sendInvitation) {
-      // Generate invitation token
-      invitationToken = crypto.randomUUID();
-      invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    } else {
-      // Generate random password for later invitation
-      generatedPassword = generatePassword();
-      passwordHash = await hashPassword(generatedPassword);
-      isActive = false; // Will be activated when invitation is sent
+    // In SaaS admin, password is set at creation time
+    if (!password) {
+      return new Response(
+        JSON.stringify({ error: "Mot de passe requis pour créer un compte" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
+
+    passwordHash = await hashPassword(password);
+    isActive = true;
+
 
     // Create user
     const { data: newUser, error: createError } = await supabase
@@ -133,14 +119,15 @@ serve(async (req) => {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone?.trim() || null,
-        school_id: schoolId || null,
-        teacher_id: teacherId || null,
-        student_id: studentId || null,
+        school_id: role === "school_admin" ? (schoolId || null) : null,
+        teacher_id: null,
+        student_id: null,
         password_hash: passwordHash,
-        invitation_token: invitationToken,
-        invitation_expires_at: invitationExpiresAt,
-        is_active: isActive
+        invitation_token: null,
+        invitation_expires_at: null,
+        is_active: isActive,
       })
+
       .select()
       .single();
 
@@ -154,13 +141,14 @@ serve(async (req) => {
 
     // Assign role
     const { error: roleError } = await supabase
-      .from('app_user_roles')
+      .from("app_user_roles")
       .insert({
         user_id: newUser.id,
-        role: role,
-        school_id: ['school_admin', 'teacher', 'student'].includes(role) ? schoolId : null,
-        granted_by: createdBy || null
+        role,
+        school_id: role === "school_admin" ? (schoolId || null) : null,
+        granted_by: createdBy || null,
       });
+
 
     if (roleError) {
       console.error('Failed to assign role:', roleError);
@@ -182,15 +170,13 @@ serve(async (req) => {
           email: newUser.email,
           first_name: newUser.first_name,
           last_name: newUser.last_name,
-          is_active: newUser.is_active
+          is_active: newUser.is_active,
         },
         role,
-        generatedPassword,
-        invitationToken,
-        invitationExpiresAt
       }),
-      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
 
   } catch (error) {
     console.error('Create user error:', error);
