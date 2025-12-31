@@ -52,13 +52,10 @@ export function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("app_users")
-        .select("id, email, first_name, last_name, school_id, is_active, app_user_roles(role, school_id)")
-        .order("created_at", { ascending: false });
-
+      const { data, error } = await supabase.functions.invoke("list-app-users", { body: {} });
       if (error) throw error;
-      setRows((data || []) as AppUserRow[]);
+      if (!data?.success) throw new Error(data?.error || "Erreur lors du chargement");
+      setRows((data.users || []) as AppUserRow[]);
     } catch {
       toast.error("Erreur lors du chargement des utilisateurs");
     } finally {
@@ -99,13 +96,18 @@ export function UserManagement() {
       return;
     }
 
+    if (newUser.role !== "global_admin" && !newUser.school_id) {
+      toast.error("Veuillez sélectionner une école");
+      return;
+    }
+
     try {
       const result = await createUserCredential({
         email: newUser.email,
         first_name: newUser.first_name,
         last_name: newUser.last_name,
         role: newUser.role,
-        school_id: newUser.role === "global_admin" ? undefined : (newUser.school_id || undefined),
+        school_id: newUser.role === "global_admin" ? undefined : newUser.school_id,
         password: generatedPassword,
       });
 
