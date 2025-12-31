@@ -27,6 +27,12 @@ verify_jwt = false
 [functions.send-student-invitation]
 verify_jwt = false
 
+[functions.verify-teacher-account]
+verify_jwt = false
+
+[functions.send-teacher-invitation]
+verify_jwt = false
+
 [functions.request-password-reset]
 verify_jwt = false
 

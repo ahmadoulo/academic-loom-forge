@@ -27,6 +27,11 @@ const sectionConfig = {
     icon: GraduationCap,
     tabs: ["student-accounts"]
   },
+  teachers: {
+    title: "Comptes Professeurs",
+    icon: GraduationCap,
+    tabs: ["teacher-accounts"]
+  },
   users: {
     title: "Utilisateurs & Rôles",
     icon: UserCog,
@@ -40,6 +45,7 @@ const tabLabels: Record<string, string> = {
   "cycles": "Cycles",
   "options": "Options",
   "student-accounts": "Comptes étudiants",
+  "teacher-accounts": "Comptes professeurs",
   "users": "Gestion des utilisateurs",
   "roles": "Rôles & Permissions"
 };
