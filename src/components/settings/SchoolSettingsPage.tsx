@@ -8,6 +8,9 @@ import { SchoolYearManagement } from "./SchoolYearManagement";
 import { SemesterManagement } from "./SemesterManagement";
 import { CyclesManagement } from "../school/CyclesManagement";
 import { OptionsManagement } from "../school/OptionsManagement";
+import { SchoolRoleManagement } from "../school/SchoolRoleManagement";
+import { UserRoleAssignment } from "../school/UserRoleAssignment";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SchoolSettingsPageProps {
   schoolId: string;
@@ -23,7 +26,8 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
     "options",
     "student-accounts",
     "teacher-accounts",
-    "users"
+    "users",
+    "roles"
   ];
 
   const renderContent = () => {
@@ -42,6 +46,21 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
         return <TeacherAccountsSection schoolId={schoolId} />;
       case "users":
         return <SchoolUserManagement schoolId={schoolId} />;
+      case "roles":
+        return (
+          <Tabs defaultValue="manage" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="manage">Gestion des rôles</TabsTrigger>
+              <TabsTrigger value="assign">Attribution</TabsTrigger>
+            </TabsList>
+            <TabsContent value="manage">
+              <SchoolRoleManagement schoolId={schoolId} />
+            </TabsContent>
+            <TabsContent value="assign">
+              <UserRoleAssignment schoolId={schoolId} />
+            </TabsContent>
+          </Tabs>
+        );
       default:
         return <SchoolSettings schoolId={schoolId} />;
     }
