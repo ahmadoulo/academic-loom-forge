@@ -8,10 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Key, Copy, Check, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserPlus, Search, MoreVertical, Edit, Trash2, Key, Copy, Check, AlertTriangle, Filter } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useHybridAuth } from "@/hooks/useHybridAuth";
 
 interface SchoolUserManagementProps {
   schoolId: string;
@@ -26,10 +28,21 @@ interface AppUser {
   app_user_roles: { role: string }[];
 }
 
+type SchoolRole = 'school_admin' | 'admission' | 'accountant' | 'secretary';
+
+const SCHOOL_ROLES: { value: SchoolRole; label: string }[] = [
+  { value: 'school_admin', label: 'Administrateur' },
+  { value: 'admission', label: 'Admission' },
+  { value: 'accountant', label: 'Comptabilité / Finance' },
+  { value: 'secretary', label: 'Secrétariat' },
+];
+
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
+  const { user: currentUser } = useHybridAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState("");
@@ -47,6 +60,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     email: "",
     first_name: "",
     last_name: "",
+    role: "school_admin" as SchoolRole,
   });
 
   // Fetch users for this school from app_users
@@ -73,10 +87,17 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     fetchUsers();
   }, [schoolId]);
 
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter by role and search term - exclude teacher/student roles
+  const filteredUsers = users.filter(user => {
+    const userRole = user.app_user_roles[0]?.role || '';
+    // Exclude teacher and student roles - they are managed in their own sections
+    if (userRole === 'teacher' || userRole === 'student') return false;
+    
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || userRole === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -123,7 +144,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           email: newUser.email,
           firstName: newUser.first_name,
           lastName: newUser.last_name,
-          role: "school_admin",
+          role: newUser.role,
           schoolId: schoolId,
           password: generatedPassword,
         }
@@ -132,9 +153,10 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast.success('Administrateur créé avec succès!');
+      const roleLabel = SCHOOL_ROLES.find(r => r.value === newUser.role)?.label || 'Utilisateur';
+      toast.success(`${roleLabel} créé avec succès!`);
       setIsCreateDialogOpen(false);
-      setNewUser({ email: "", first_name: "", last_name: "" });
+      setNewUser({ email: "", first_name: "", last_name: "", role: "school_admin" });
       setGeneratedPassword("");
       setShowPassword(false);
       fetchUsers();
@@ -153,12 +175,12 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   };
 
   const executePasswordReset = async () => {
-    if (!resetPasswordUser) return;
+    if (!resetPasswordUser || !currentUser) return;
     
     setIsResettingPassword(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: resetPasswordUser.id, requestedBy: 'school_admin' }
+        body: { userId: resetPasswordUser.id, requestedBy: currentUser.id }
       });
       
       if (error) throw error;
@@ -166,8 +188,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       
       setNewPasswordGenerated(data.newPassword);
       toast.success('Mot de passe réinitialisé!');
-    } catch (error) {
-      toast.error('Erreur lors de la réinitialisation du mot de passe');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la réinitialisation du mot de passe');
     } finally {
       setIsResettingPassword(false);
     }
@@ -206,6 +228,9 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
       student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
       school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      admission: { label: "Admission", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+      accountant: { label: "Comptabilité", className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
+      secretary: { label: "Secrétariat", className: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200" },
     };
     
     const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
@@ -234,7 +259,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
           if (!open) {
-            setNewUser({ email: "", first_name: "", last_name: "" });
+            setNewUser({ email: "", first_name: "", last_name: "", role: "school_admin" });
             setGeneratedPassword("");
             setShowPassword(false);
             setPasswordCopied(false);
@@ -243,17 +268,35 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
               <UserPlus className="h-4 w-4" />
-              Nouvel administrateur
+              Nouvel utilisateur
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Créer un administrateur</DialogTitle>
+              <DialogTitle>Créer un utilisateur</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel administrateur pour gérer votre école
+                Ajoutez un nouvel utilisateur pour gérer votre école
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-role">Profil *</Label>
+                <Select
+                  value={newUser.role}
+                  onValueChange={(value: SchoolRole) => setNewUser({ ...newUser, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un profil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCHOOL_ROLES.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-first-name">Prénom *</Label>
@@ -328,7 +371,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                 disabled={isCreating || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword}
                 className="bg-gradient-primary hover:opacity-90"
               >
-                {isCreating ? "Création..." : "Créer l'administrateur"}
+                {isCreating ? "Création..." : "Créer l'utilisateur"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -343,7 +386,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -352,6 +395,22 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrer par profil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les profils</SelectItem>
+                  {SCHOOL_ROLES.map(role => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

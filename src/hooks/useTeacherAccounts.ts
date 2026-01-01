@@ -41,7 +41,7 @@ export const useTeacherAccounts = (schoolId?: string) => {
       // Récupérer les comptes professeurs existants depuis app_users
       const { data: teacherAccounts, error: accountsError } = await supabase
         .from('app_users')
-        .select('id, teacher_id, school_id, email, is_active, invitation_token, created_at')
+        .select('id, teacher_id, school_id, email, is_active, invitation_token, invitation_expires_at, created_at')
         .eq('school_id', schoolId)
         .not('teacher_id', 'is', null);
 
@@ -53,13 +53,18 @@ export const useTeacherAccounts = (schoolId?: string) => {
       // Combiner les données
       const combinedData: TeacherAccount[] = (teachers || []).map((teacher) => {
         const account = accountsMap.get(teacher.id);
+        // Une invitation est considérée "envoyée" si le token existe et n'est pas expiré
+        const hasValidInvitation = account?.invitation_token && 
+          account?.invitation_expires_at && 
+          new Date(account.invitation_expires_at) > new Date();
+        
         return {
           id: account?.id || teacher.id,
           teacher_id: teacher.id,
           school_id: schoolId,
           email: teacher.email || '',
           is_active: account?.is_active || false,
-          invitation_sent: !!account?.invitation_token,
+          invitation_sent: !!hasValidInvitation || account?.is_active || false,
           created_at: account?.created_at || new Date().toISOString(),
           teacher: {
             firstname: teacher.firstname,
