@@ -9,12 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Search, MoreVertical, Trash2, Key, Copy, Check, AlertTriangle, Filter, Loader2 } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Trash2, Key, Copy, Check, AlertTriangle, Filter, Loader2, Users, GraduationCap, Shield } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useHybridAuth } from "@/hooks/useHybridAuth";
 import { useSchoolRoles, SchoolRole } from "@/hooks/useSchoolRoles";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SchoolUserManagementProps {
   schoolId: string;
@@ -30,9 +31,18 @@ interface AppUser {
   user_school_roles?: { school_role_id: string; role?: { name: string; color: string } }[];
 }
 
+// User types for creation
+type UserType = 'staff' | 'teacher' | 'student';
+
+const USER_TYPE_CONFIG = {
+  staff: { label: 'Personnel administratif', icon: Shield, color: 'blue' },
+  teacher: { label: 'Professeur', icon: GraduationCap, color: 'emerald' },
+  student: { label: 'Étudiant', icon: Users, color: 'amber' },
+};
+
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const { user: currentUser } = useHybridAuth();
-  const { roles: schoolRoles, loading: rolesLoading, assignRoleToUser } = useSchoolRoles(schoolId);
+  const { roles: schoolRoles, loading: rolesLoading } = useSchoolRoles(schoolId);
   
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -55,7 +65,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     email: "",
     first_name: "",
     last_name: "",
-    school_role_id: "", // Now using custom school role
+    user_type: "staff" as UserType,
+    school_role_id: "", // For staff with custom permissions
   });
 
   // Fetch users for this school from app_users
@@ -75,6 +86,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       if (error) throw error;
       setUsers((data || []) as AppUser[]);
     } catch (err) {
+      console.error('Error fetching users:', err);
       toast.error('Erreur lors du chargement des utilisateurs');
     } finally {
       setUsersLoading(false);
@@ -92,9 +104,15 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     
     if (roleFilter === 'all') return matchesSearch;
     
-    // Check if user has the selected school role
-    const hasRole = user.user_school_roles?.some(usr => usr.school_role_id === roleFilter);
-    return matchesSearch && hasRole;
+    // Check app_user_role
+    const appRole = user.app_user_roles[0]?.role;
+    if (roleFilter === 'teacher' || roleFilter === 'student' || roleFilter === 'school_staff') {
+      return matchesSearch && appRole === roleFilter;
+    }
+    
+    // Check custom school role
+    const hasSchoolRole = user.user_school_roles?.some(usr => usr.school_role_id === roleFilter);
+    return matchesSearch && hasSchoolRole;
   });
 
   const generatePassword = () => {
@@ -130,38 +148,72 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       return;
     }
 
-    if (!newUser.email || !newUser.first_name || !newUser.last_name || !newUser.school_role_id) {
+    if (!newUser.email || !newUser.first_name || !newUser.last_name) {
       toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+
+    // For staff, require a school role
+    if (newUser.user_type === 'staff' && !newUser.school_role_id) {
+      toast.error('Veuillez sélectionner un rôle pour le personnel');
       return;
     }
 
     setIsCreating(true);
     try {
-      // Create user with edge function
+      // Determine the app role based on user type
+      let appRole: string;
+      switch (newUser.user_type) {
+        case 'teacher':
+          appRole = 'teacher';
+          break;
+        case 'student':
+          appRole = 'student';
+          break;
+        default:
+          appRole = 'school_staff';
+      }
+
+      const requestBody: any = {
+        email: newUser.email,
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
+        role: appRole,
+        schoolId: schoolId,
+        password: generatedPassword,
+        createdBy: currentUser?.id,
+      };
+
+      // Add school role ID only for staff
+      if (newUser.user_type === 'staff' && newUser.school_role_id) {
+        requestBody.schoolRoleId = newUser.school_role_id;
+      }
+
+      console.log('Creating user with:', requestBody);
+
       const { data, error } = await supabase.functions.invoke('create-user-account', {
-        body: {
-          email: newUser.email,
-          firstName: newUser.first_name,
-          lastName: newUser.last_name,
-          role: 'school_staff', // Generic role for staff with custom permissions
-          schoolId: schoolId,
-          password: generatedPassword,
-          schoolRoleId: newUser.school_role_id, // Pass the custom school role
-          createdBy: currentUser?.id,
-        }
+        body: requestBody
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Erreur lors de la création');
+      }
+      
+      if (data?.error) {
+        console.error('API error:', data.error);
+        throw new Error(data.error);
+      }
 
-      const selectedRole = schoolRoles.find(r => r.id === newUser.school_role_id);
-      toast.success(`Utilisateur créé avec le rôle "${selectedRole?.name || 'Personnalisé'}"`);
+      const typeLabel = USER_TYPE_CONFIG[newUser.user_type].label;
+      toast.success(`${typeLabel} créé avec succès!`);
       setIsCreateDialogOpen(false);
-      setNewUser({ email: "", first_name: "", last_name: "", school_role_id: "" });
+      setNewUser({ email: "", first_name: "", last_name: "", user_type: "staff", school_role_id: "" });
       setGeneratedPassword("");
       setShowPassword(false);
       fetchUsers();
     } catch (error: any) {
+      console.error('Create user error:', error);
       toast.error(error.message || 'Erreur lors de la création');
     } finally {
       setIsCreating(false);
@@ -226,8 +278,25 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
 
   const getRoleBadges = (user: AppUser) => {
     const badges: React.ReactNode[] = [];
+    const appRole = user.app_user_roles[0]?.role;
     
-    // Display custom school roles
+    // App role badge
+    const roleConfig: Record<string, { label: string; className: string }> = {
+      teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+      student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+      school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      school_staff: { label: "Personnel", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
+    };
+    
+    if (appRole && roleConfig[appRole]) {
+      badges.push(
+        <Badge key="app-role" variant="secondary" className={roleConfig[appRole].className}>
+          {roleConfig[appRole].label}
+        </Badge>
+      );
+    }
+    
+    // Custom school roles
     if (user.user_school_roles && user.user_school_roles.length > 0) {
       user.user_school_roles.forEach((usr, idx) => {
         if (usr.role) {
@@ -253,23 +322,6 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       });
     }
     
-    // Fallback to app_user_roles if no school roles
-    if (badges.length === 0 && user.app_user_roles?.length > 0) {
-      const role = user.app_user_roles[0]?.role;
-      const roleConfig: Record<string, { label: string; className: string }> = {
-        teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
-        student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-        school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-        school_staff: { label: "Personnel", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
-      };
-      const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
-      badges.push(
-        <Badge key="app-role" variant="secondary" className={config.className}>
-          {config.label}
-        </Badge>
-      );
-    }
-    
     return badges.length > 0 ? badges : <Badge variant="secondary" className="bg-muted text-muted-foreground">Aucun rôle</Badge>;
   };
 
@@ -288,85 +340,110 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
         <div className="w-full">
           <h2 className="text-xl lg:text-2xl font-bold">Gestion des utilisateurs</h2>
           <p className="text-muted-foreground text-sm lg:text-base">
-            Créez des comptes et attribuez des rôles personnalisés
+            Gérez tous les comptes utilisateurs de votre école
           </p>
         </div>
-        
-        {schoolRoles.length === 0 && (
-          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
-              Aucun rôle personnalisé n'a été créé. Créez d'abord des rôles dans l'onglet "Rôles & Permissions".
-            </AlertDescription>
-          </Alert>
-        )}
         
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
           if (!open) {
-            setNewUser({ email: "", first_name: "", last_name: "", school_role_id: "" });
+            setNewUser({ email: "", first_name: "", last_name: "", user_type: "staff", school_role_id: "" });
             setGeneratedPassword("");
             setShowPassword(false);
             setPasswordCopied(false);
           }
         }}>
           <DialogTrigger asChild>
-            <Button 
-              className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
-              disabled={schoolRoles.length === 0}
-            >
+            <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
               <UserPlus className="h-4 w-4" />
               Nouvel utilisateur
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Créer un utilisateur</DialogTitle>
               <DialogDescription>
-                Attribuez un rôle personnalisé à ce nouvel utilisateur
+                Créez un compte pour un membre de votre établissement
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* User Type Selection */}
               <div className="space-y-2">
-                <Label htmlFor="new-role">Rôle *</Label>
-                <Select
-                  value={newUser.school_role_id}
-                  onValueChange={(value) => setNewUser({ ...newUser, school_role_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un rôle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {schoolRoles.map(role => (
-                      <SelectItem key={role.id} value={role.id}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className={`w-3 h-3 rounded-full`}
-                            style={{ 
-                              backgroundColor: role.color === 'blue' ? '#3b82f6' : 
-                                role.color === 'green' ? '#22c55e' : 
-                                role.color === 'purple' ? '#a855f7' : 
-                                role.color === 'orange' ? '#f97316' : 
-                                role.color === 'red' ? '#ef4444' : 
-                                role.color === 'teal' ? '#14b8a6' : 
-                                role.color === 'pink' ? '#ec4899' : '#6b7280'
-                            }}
-                          />
-                          <span>{role.name}</span>
-                          {role.users_count !== undefined && (
-                            <span className="text-xs text-muted-foreground">({role.users_count} utilisateur{role.users_count !== 1 ? 's' : ''})</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {newUser.school_role_id && (
-                  <p className="text-xs text-muted-foreground">
-                    {schoolRoles.find(r => r.id === newUser.school_role_id)?.description}
-                  </p>
-                )}
+                <Label>Type d'utilisateur *</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.entries(USER_TYPE_CONFIG) as [UserType, typeof USER_TYPE_CONFIG.staff][]).map(([type, config]) => {
+                    const Icon = config.icon;
+                    const isSelected = newUser.user_type === type;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setNewUser({ ...newUser, user_type: type, school_role_id: "" })}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                          isSelected 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {config.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              
+              {/* School Role for Staff */}
+              {newUser.user_type === 'staff' && (
+                <div className="space-y-2">
+                  <Label>Rôle personnalisé *</Label>
+                  {schoolRoles.length === 0 ? (
+                    <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                        Créez d'abord des rôles dans l'onglet "Rôles & Permissions"
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Select
+                      value={newUser.school_role_id}
+                      onValueChange={(value) => setNewUser({ ...newUser, school_role_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un rôle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {schoolRoles.map(role => (
+                          <SelectItem key={role.id} value={role.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ 
+                                  backgroundColor: role.color === 'blue' ? '#3b82f6' : 
+                                    role.color === 'green' ? '#22c55e' : 
+                                    role.color === 'purple' ? '#a855f7' : 
+                                    role.color === 'orange' ? '#f97316' : 
+                                    role.color === 'red' ? '#ef4444' : 
+                                    role.color === 'teal' ? '#14b8a6' : 
+                                    role.color === 'pink' ? '#ec4899' : '#6b7280'
+                                }}
+                              />
+                              <span>{role.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {newUser.school_role_id && (
+                    <p className="text-xs text-muted-foreground">
+                      {schoolRoles.find(r => r.id === newUser.school_role_id)?.description}
+                    </p>
+                  )}
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -431,15 +508,19 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsCreateDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Annuler
               </Button>
               <Button 
                 onClick={handleCreateUser} 
-                disabled={isCreating || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword || !newUser.school_role_id}
+                disabled={
+                  isCreating || 
+                  !newUser.email || 
+                  !newUser.first_name || 
+                  !newUser.last_name || 
+                  !generatedPassword ||
+                  (newUser.user_type === 'staff' && !newUser.school_role_id)
+                }
                 className="bg-gradient-primary hover:opacity-90"
               >
                 {isCreating ? "Création..." : "Créer l'utilisateur"}
@@ -474,12 +555,20 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   <SelectValue placeholder="Filtrer par rôle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les rôles</SelectItem>
-                  {schoolRoles.map(role => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">Tous les utilisateurs</SelectItem>
+                  <SelectItem value="teacher">Professeurs</SelectItem>
+                  <SelectItem value="student">Étudiants</SelectItem>
+                  <SelectItem value="school_staff">Personnel administratif</SelectItem>
+                  {schoolRoles.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Rôles personnalisés</div>
+                      {schoolRoles.map(role => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -490,7 +579,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px]">Utilisateur</TableHead>
-                  <TableHead className="hidden sm:table-cell">Rôle</TableHead>
+                  <TableHead className="hidden sm:table-cell">Rôle(s)</TableHead>
                   <TableHead className="hidden lg:table-cell">Statut</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
