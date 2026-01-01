@@ -29,12 +29,23 @@ interface AppUser {
 }
 
 type SchoolRole = 'school_admin' | 'admission' | 'accountant' | 'secretary';
+type AllRoles = SchoolRole | 'teacher' | 'student';
 
 const SCHOOL_ROLES: { value: SchoolRole; label: string }[] = [
   { value: 'school_admin', label: 'Administrateur' },
   { value: 'admission', label: 'Admission' },
   { value: 'accountant', label: 'Comptabilité / Finance' },
   { value: 'secretary', label: 'Secrétariat' },
+];
+
+const ALL_ROLES_FILTER: { value: AllRoles | 'all'; label: string }[] = [
+  { value: 'all', label: 'Tous les profils' },
+  { value: 'school_admin', label: 'Administrateur' },
+  { value: 'admission', label: 'Admission' },
+  { value: 'accountant', label: 'Comptabilité / Finance' },
+  { value: 'secretary', label: 'Secrétariat' },
+  { value: 'teacher', label: 'Professeur' },
+  { value: 'student', label: 'Étudiant' },
 ];
 
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
@@ -87,11 +98,9 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     fetchUsers();
   }, [schoolId]);
 
-  // Filter by role and search term - exclude teacher/student roles
+  // Filter by role and search term - include all roles for password reset support
   const filteredUsers = users.filter(user => {
     const userRole = user.app_user_roles[0]?.role || '';
-    // Exclude teacher and student roles - they are managed in their own sections
-    if (userRole === 'teacher' || userRole === 'student') return false;
     
     const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
@@ -403,8 +412,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   <SelectValue placeholder="Filtrer par profil" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les profils</SelectItem>
-                  {SCHOOL_ROLES.map(role => (
+                  {ALL_ROLES_FILTER.map(role => (
                     <SelectItem key={role.value} value={role.value}>
                       {role.label}
                     </SelectItem>
@@ -516,9 +524,18 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                   Annuler
                 </Button>
                 <Button 
-                  onClick={executePasswordReset}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    executePasswordReset();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    executePasswordReset();
+                  }}
                   disabled={isResettingPassword}
-                  className="bg-gradient-primary hover:opacity-90"
+                  className="bg-gradient-primary hover:opacity-90 touch-manipulation"
                 >
                   {isResettingPassword ? "Génération..." : "Générer nouveau mot de passe"}
                 </Button>
