@@ -3316,6 +3316,7 @@ export type Database = {
         | "admission"
         | "accountant"
         | "secretary"
+        | "school_staff"
       payment_method_type: "cash" | "bank_transfer" | "check" | "card" | "other"
       subscription_duration_type:
         | "1_month"
@@ -3461,6 +3462,7 @@ export const Constants = {
         "admission",
         "accountant",
         "secretary",
+        "school_staff",
       ],
       payment_method_type: ["cash", "bank_transfer", "check", "card", "other"],
       subscription_duration_type: [

@@ -11,15 +11,15 @@ interface CreateUserRequest {
   firstName: string;
   lastName: string;
   phone?: string;
-  role: "global_admin" | "school_admin" | "admission" | "accountant" | "secretary";
+  role: "global_admin" | "school_admin" | "school_staff" | "teacher" | "student";
   schoolId?: string;
   password?: string;
   createdBy?: string;
+  schoolRoleId?: string; // Custom school role ID
 }
 
 // Roles that require a school_id
-const SCHOOL_BOUND_ROLES = ["school_admin", "admission", "accountant", "secretary"];
-
+const SCHOOL_BOUND_ROLES = ["school_admin", "school_staff", "teacher", "student"];
 
 // Hash password using SHA-256 (Deno compatible)
 async function hashPassword(password: string): Promise<string> {
@@ -28,17 +28,6 @@ async function hashPassword(password: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function generatePassword(length: number = 12): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  let password = '';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    password += chars[array[i] % chars.length];
-  }
-  return password;
 }
 
 serve(async (req) => {
@@ -57,8 +46,8 @@ serve(async (req) => {
       schoolId,
       password,
       createdBy,
+      schoolRoleId,
     } = body;
-
 
     // Validation
     if (!email || !firstName || !lastName || !role) {
@@ -76,7 +65,6 @@ serve(async (req) => {
       );
     }
 
-
     console.log(`Creating user account for: ${email} with role: ${role}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -90,7 +78,6 @@ serve(async (req) => {
       .eq("email", email.toLowerCase().trim())
       .maybeSingle();
 
-
     if (existingUser) {
       return new Response(
         JSON.stringify({ error: 'Un compte existe déjà avec cet email' }),
@@ -102,7 +89,7 @@ serve(async (req) => {
     let passwordHash: string | null = null;
     let isActive = false;
 
-    // In SaaS admin, password is set at creation time
+    // Password is set at creation time
     if (!password) {
       return new Response(
         JSON.stringify({ error: "Mot de passe requis pour créer un compte" }),
@@ -112,7 +99,6 @@ serve(async (req) => {
 
     passwordHash = await hashPassword(password);
     isActive = true;
-
 
     // Determine school_id for school-bound roles
     const userSchoolId = SCHOOL_BOUND_ROLES.includes(role) ? (schoolId || null) : null;
@@ -144,7 +130,9 @@ serve(async (req) => {
       );
     }
 
-    // Assign role
+    console.log(`User created with ID: ${newUser.id}`);
+
+    // Assign app_user_role
     const { error: roleError } = await supabase
       .from("app_user_roles")
       .insert({
@@ -154,15 +142,34 @@ serve(async (req) => {
         granted_by: createdBy || null,
       });
 
-
     if (roleError) {
-      console.error('Failed to assign role:', roleError);
+      console.error('Failed to assign app role:', roleError);
       // Rollback user creation
       await supabase.from('app_users').delete().eq('id', newUser.id);
       return new Response(
         JSON.stringify({ error: 'Erreur lors de l\'attribution du rôle', details: roleError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // If schoolRoleId is provided, also assign the custom school role
+    if (schoolRoleId && userSchoolId) {
+      const { error: schoolRoleError } = await supabase
+        .from("user_school_roles")
+        .insert({
+          user_id: newUser.id,
+          school_role_id: schoolRoleId,
+          school_id: userSchoolId,
+          granted_by: createdBy || null,
+        });
+
+      if (schoolRoleError) {
+        console.error('Failed to assign school role:', schoolRoleError);
+        // We don't rollback here since the user was created successfully
+        // Just log the error
+      } else {
+        console.log(`Custom school role ${schoolRoleId} assigned to user ${newUser.id}`);
+      }
     }
 
     console.log(`User ${email} created successfully with ID: ${newUser.id}`);
@@ -178,10 +185,10 @@ serve(async (req) => {
           is_active: newUser.is_active,
         },
         role,
+        schoolRoleId,
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-
 
   } catch (error) {
     console.error('Create user error:', error);

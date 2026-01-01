@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   BarChart3, 
   Users, 
@@ -22,7 +22,6 @@ import {
   Pin,
   PinOff,
   CreditCard,
-  UserPlus,
   FileCheck,
   Camera
 } from "lucide-react";
@@ -30,19 +29,10 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
+import { useUserPermissions, SECTION_PERMISSIONS } from "@/hooks/useUserPermissions";
 
 interface SchoolSidebarProps {
   schoolId: string;
@@ -239,6 +229,9 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
     "Documents": false,
   });
 
+  // Get user permissions
+  const { canAccessSection, loading: permissionsLoading } = useUserPermissions(schoolId);
+
   const toggleCategory = (category: string) => {
     setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
@@ -259,15 +252,34 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
     setIsPinned(!isPinned);
   };
 
-  const filteredMenuStructure = menuStructure.filter(item => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    if ('value' in item) {
-      return item.title.toLowerCase().includes(query);
-    }
-    return item.category.toLowerCase().includes(query) || 
-           item.items.some(subItem => subItem.title.toLowerCase().includes(query));
-  });
+  // Filter menu based on permissions and search
+  const filteredMenuStructure = useMemo(() => {
+    return menuStructure.map(item => {
+      // Single item - check permission
+      if ('value' in item) {
+        if (!canAccessSection(item.value)) return null;
+        if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) return null;
+        return item;
+      }
+      
+      // Category with items - filter items by permission
+      const filteredItems = item.items.filter(subItem => {
+        if (!canAccessSection(subItem.value)) return false;
+        if (searchQuery && !subItem.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
+      });
+      
+      // Don't show category if no items are accessible
+      if (filteredItems.length === 0) return null;
+      
+      // Check if category matches search
+      if (searchQuery && !item.category.toLowerCase().includes(searchQuery.toLowerCase()) && filteredItems.length === 0) {
+        return null;
+      }
+      
+      return { ...item, items: filteredItems };
+    }).filter(Boolean);
+  }, [searchQuery, canAccessSection]);
 
   // Sur mobile, toujours afficher en mode ouvert
   const isOpen = isMobile ? true : open;
@@ -301,7 +313,9 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
-            {filteredMenuStructure.map((item) => {
+            {filteredMenuStructure.map((item: any) => {
+              if (!item) return null;
+              
               // Item simple sans catégorie
               if ('value' in item) {
                 return (
@@ -347,7 +361,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
                   </button>
                   {isOpenCat && (
                     <div className="space-y-1 pl-2 animate-accordion-down">
-                      {item.items.map(subItem => (
+                      {item.items.map((subItem: any) => (
                         <button
                           type="button"
                           key={subItem.value}
@@ -450,7 +464,9 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
 
       <SidebarContent className={`overflow-y-auto transition-all duration-200 ${!isOpen ? "p-2" : "p-4"}`}>
         <div className="space-y-4">
-          {filteredMenuStructure.map((item, index) => {
+          {filteredMenuStructure.map((item: any) => {
+            if (!item) return null;
+            
             // Item simple sans catégorie
             if ('value' in item) {
               return (
@@ -482,7 +498,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
                 {!isOpen ? (
                   // Mode réduit : afficher les items directement
                   <>
-                    {item.items.map(subItem => (
+                    {item.items.map((subItem: any) => (
                       <button
                         key={subItem.value}
                         onClick={() => onTabChange(subItem.value)}
@@ -512,7 +528,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
                     </button>
                     {isOpenCat && (
                       <div className="space-y-1 pl-2 animate-accordion-down">
-                        {item.items.map(subItem => (
+                        {item.items.map((subItem: any) => (
                           <button
                             key={subItem.value}
                             onClick={() => onTabChange(subItem.value)}
