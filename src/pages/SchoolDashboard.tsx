@@ -84,8 +84,6 @@ import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
 import { TextbooksSection } from "@/components/school/TextbooksSection";
 import { AbsenceJustificationsManagement } from "@/components/school/AbsenceJustificationsManagement";
 import { CamerasSection } from "@/components/school/CamerasSection";
-import { SchoolRoleManagement } from "@/components/school/SchoolRoleManagement";
-import { UserRoleAssignment } from "@/components/school/UserRoleAssignment";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -987,20 +985,6 @@ const SchoolDashboard = () => {
                 <CamerasSection schoolId={school.id} />
               )}
 
-              {activeTab === "roles" && school?.id && (
-                <Tabs defaultValue="manage" className="space-y-6">
-                  <TabsList>
-                    <TabsTrigger value="manage">Gestion des rôles</TabsTrigger>
-                    <TabsTrigger value="assign">Attribution</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="manage">
-                    <SchoolRoleManagement schoolId={school.id} />
-                  </TabsContent>
-                  <TabsContent value="assign">
-                    <UserRoleAssignment schoolId={school.id} />
-                  </TabsContent>
-                </Tabs>
-              )}
             </main>
           </div>
         </div>

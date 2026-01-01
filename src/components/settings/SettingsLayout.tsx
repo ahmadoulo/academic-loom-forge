@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Building, Users, UserCog, Calendar, GraduationCap } from "lucide-react";
+import { Building, Users, UserCog, Calendar, GraduationCap, Shield } from "lucide-react";
 
 interface SettingsLayoutProps {
   children: ReactNode;
