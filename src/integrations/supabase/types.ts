@@ -2127,6 +2127,76 @@ export type Database = {
           },
         ]
       }
+      school_role_permissions: {
+        Row: {
+          created_at: string | null
+          id: string
+          permission_key: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          permission_key: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          permission_key?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "school_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_roles: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          school_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          school_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          school_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_semester: {
         Row: {
           archived: boolean | null
@@ -3051,6 +3121,62 @@ export type Database = {
           },
         ]
       }
+      user_school_roles: {
+        Row: {
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          school_id: string
+          school_role_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          school_id: string
+          school_role_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          school_id?: string
+          school_role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_school_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_school_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_school_roles_school_role_id_fkey"
+            columns: ["school_role_id"]
+            isOneToOne: false
+            referencedRelation: "school_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_school_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       year_preparations: {
         Row: {
           classes_created_at: string | null
@@ -3158,6 +3284,10 @@ export type Database = {
           school_id: string
         }[]
       }
+      get_user_school_permissions: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3171,6 +3301,10 @@ export type Database = {
         Returns: undefined
       }
       set_next_school_year: { Args: { year_id: string }; Returns: undefined }
+      user_has_school_permission: {
+        Args: { _permission_key: string; _school_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
