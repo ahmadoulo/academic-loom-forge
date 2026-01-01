@@ -3,6 +3,34 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SCHOOL_PERMISSIONS, PermissionKey } from './useSchoolRoles';
 
+// Map sidebar sections to required permissions
+export const SECTION_PERMISSIONS: Record<string, string[]> = {
+  'analytics': ['dashboard.view'],
+  'calendar': ['dashboard.view'],
+  'students': ['students.view'],
+  'admissions': ['admissions.view'],
+  'classes': ['classes.view'],
+  'teachers': ['teachers.view'],
+  'subjects': ['subjects.view'],
+  'attendance': ['attendance.view'],
+  'justifications': ['justifications.view'],
+  'grades': ['grades.view'],
+  'bulletin': ['bulletin.view'],
+  'textbooks': ['dashboard.view'],
+  'exams': ['grades.view'],
+  'timetable': ['timetable.view'],
+  'classrooms': ['classrooms.view'],
+  'cameras': ['dashboard.view'],
+  'notifications': ['notifications.view'],
+  'announcements': ['announcements.view'],
+  'events': ['events.view'],
+  'document-requests': ['documents.view'],
+  'documents': ['templates.view'],
+  'year-transition': ['settings.manage'],
+  'subscription': ['settings.view'],
+  'settings': ['settings.view'],
+};
+
 export function useUserPermissions(schoolId?: string) {
   const { user, primaryRole, primarySchoolId } = useAuth();
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -24,7 +52,7 @@ export function useUserPermissions(schoolId?: string) {
     }
 
     try {
-      // Fetch user's school roles
+      // Fetch user's school roles with their permissions
       const { data: userRoles, error } = await supabase
         .from('user_school_roles')
         .select(`
@@ -91,35 +119,7 @@ export function useUserPermissions(schoolId?: string) {
       return true;
     }
 
-    // Map sections to required permissions
-    const sectionPermissions: Record<string, string[]> = {
-      'analytics': ['dashboard.view'],
-      'calendar': ['dashboard.view'],
-      'students': ['students.view'],
-      'admissions': ['admissions.view'],
-      'classes': ['classes.view'],
-      'teachers': ['teachers.view'],
-      'subjects': ['subjects.view'],
-      'attendance': ['attendance.view'],
-      'justifications': ['justifications.view'],
-      'grades': ['grades.view'],
-      'bulletin': ['bulletin.view'],
-      'textbooks': ['dashboard.view'],
-      'exams': ['grades.view'],
-      'timetable': ['timetable.view'],
-      'classrooms': ['classrooms.view'],
-      'cameras': ['dashboard.view'],
-      'notifications': ['notifications.view'],
-      'announcements': ['announcements.view'],
-      'events': ['events.view'],
-      'document-requests': ['documents.view'],
-      'documents': ['templates.view'],
-      'year-transition': ['settings.manage'],
-      'subscription': ['settings.view'],
-      'settings': ['settings.view'],
-    };
-
-    const requiredPerms = sectionPermissions[section];
+    const requiredPerms = SECTION_PERMISSIONS[section];
     if (!requiredPerms) return false;
 
     return requiredPerms.some(p => permissions.includes(p));

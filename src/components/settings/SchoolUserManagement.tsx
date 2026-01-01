@@ -9,11 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Search, MoreVertical, Edit, Trash2, Key, Copy, Check, AlertTriangle, Filter } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Trash2, Key, Copy, Check, AlertTriangle, Filter, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useHybridAuth } from "@/hooks/useHybridAuth";
+import { useSchoolRoles, SchoolRole } from "@/hooks/useSchoolRoles";
 
 interface SchoolUserManagementProps {
   schoolId: string;
@@ -26,30 +27,13 @@ interface AppUser {
   last_name: string;
   is_active: boolean;
   app_user_roles: { role: string }[];
+  user_school_roles?: { school_role_id: string; role?: { name: string; color: string } }[];
 }
-
-type SchoolRole = 'school_admin' | 'admission' | 'accountant' | 'secretary';
-type AllRoles = SchoolRole | 'teacher' | 'student';
-
-const SCHOOL_ROLES: { value: SchoolRole; label: string }[] = [
-  { value: 'school_admin', label: 'Administrateur' },
-  { value: 'admission', label: 'Admission' },
-  { value: 'accountant', label: 'Comptabilité / Finance' },
-  { value: 'secretary', label: 'Secrétariat' },
-];
-
-const ALL_ROLES_FILTER: { value: AllRoles | 'all'; label: string }[] = [
-  { value: 'all', label: 'Tous les profils' },
-  { value: 'school_admin', label: 'Administrateur' },
-  { value: 'admission', label: 'Admission' },
-  { value: 'accountant', label: 'Comptabilité / Finance' },
-  { value: 'secretary', label: 'Secrétariat' },
-  { value: 'teacher', label: 'Professeur' },
-  { value: 'student', label: 'Étudiant' },
-];
 
 export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const { user: currentUser } = useHybridAuth();
+  const { roles: schoolRoles, loading: rolesLoading, assignRoleToUser } = useSchoolRoles(schoolId);
+  
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +55,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     email: "",
     first_name: "",
     last_name: "",
-    role: "school_admin" as SchoolRole,
+    school_role_id: "", // Now using custom school role
   });
 
   // Fetch users for this school from app_users
@@ -80,8 +64,11 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       setUsersLoading(true);
       const { data, error } = await supabase
         .from('app_users')
-        // Explicit FK needed because app_user_roles has multiple relations to app_users
-        .select('id, email, first_name, last_name, is_active, app_user_roles!app_user_roles_user_id_fkey(role)')
+        .select(`
+          id, email, first_name, last_name, is_active, 
+          app_user_roles!app_user_roles_user_id_fkey(role),
+          user_school_roles(school_role_id, role:school_roles(name, color))
+        `)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       
@@ -98,14 +85,16 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     fetchUsers();
   }, [schoolId]);
 
-  // Filter by role and search term - include all roles for password reset support
+  // Filter by role and search term
   const filteredUsers = users.filter(user => {
-    const userRole = user.app_user_roles[0]?.role || '';
-    
     const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || userRole === roleFilter;
-    return matchesSearch && matchesRole;
+    
+    if (roleFilter === 'all') return matchesSearch;
+    
+    // Check if user has the selected school role
+    const hasRole = user.user_school_roles?.some(usr => usr.school_role_id === roleFilter);
+    return matchesSearch && hasRole;
   });
 
   const generatePassword = () => {
@@ -141,31 +130,34 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       return;
     }
 
-    if (!newUser.email || !newUser.first_name || !newUser.last_name) {
+    if (!newUser.email || !newUser.first_name || !newUser.last_name || !newUser.school_role_id) {
       toast.error('Veuillez remplir tous les champs');
       return;
     }
 
     setIsCreating(true);
     try {
+      // Create user with edge function
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
           email: newUser.email,
           firstName: newUser.first_name,
           lastName: newUser.last_name,
-          role: newUser.role,
+          role: 'school_staff', // Generic role for staff with custom permissions
           schoolId: schoolId,
           password: generatedPassword,
+          schoolRoleId: newUser.school_role_id, // Pass the custom school role
+          createdBy: currentUser?.id,
         }
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      const roleLabel = SCHOOL_ROLES.find(r => r.value === newUser.role)?.label || 'Utilisateur';
-      toast.success(`${roleLabel} créé avec succès!`);
+      const selectedRole = schoolRoles.find(r => r.id === newUser.school_role_id);
+      toast.success(`Utilisateur créé avec le rôle "${selectedRole?.name || 'Personnalisé'}"`);
       setIsCreateDialogOpen(false);
-      setNewUser({ email: "", first_name: "", last_name: "", role: "school_admin" });
+      setNewUser({ email: "", first_name: "", last_name: "", school_role_id: "" });
       setGeneratedPassword("");
       setShowPassword(false);
       fetchUsers();
@@ -217,9 +209,10 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Delete roles first
+      // Delete user_school_roles first
+      await supabase.from('user_school_roles').delete().eq('user_id', userId);
+      // Delete app_user_roles
       await supabase.from('app_user_roles').delete().eq('user_id', userId);
-      
       // Then delete user
       const { error } = await supabase.from('app_users').delete().eq('id', userId);
       if (error) throw error;
@@ -231,26 +224,60 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
     }
   };
 
-  const getRoleBadge = (roles: { role: string }[]) => {
-    const role = roles[0]?.role || 'unknown';
-    const roleConfig: Record<string, { label: string; className: string }> = {
-      teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
-      student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
-      school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      admission: { label: "Admission", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-      accountant: { label: "Comptabilité", className: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
-      secretary: { label: "Secrétariat", className: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200" },
-    };
+  const getRoleBadges = (user: AppUser) => {
+    const badges: React.ReactNode[] = [];
     
-    const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
-    return <Badge variant="secondary" className={config.className}>{config.label}</Badge>;
+    // Display custom school roles
+    if (user.user_school_roles && user.user_school_roles.length > 0) {
+      user.user_school_roles.forEach((usr, idx) => {
+        if (usr.role) {
+          const colorClasses: Record<string, string> = {
+            blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            green: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            purple: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+            orange: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+            red: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            teal: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+            pink: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+          };
+          badges.push(
+            <Badge 
+              key={`school-role-${idx}`} 
+              variant="secondary" 
+              className={colorClasses[usr.role.color] || 'bg-muted text-muted-foreground'}
+            >
+              {usr.role.name}
+            </Badge>
+          );
+        }
+      });
+    }
+    
+    // Fallback to app_user_roles if no school roles
+    if (badges.length === 0 && user.app_user_roles?.length > 0) {
+      const role = user.app_user_roles[0]?.role;
+      const roleConfig: Record<string, { label: string; className: string }> = {
+        teacher: { label: "Professeur", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+        student: { label: "Étudiant", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+        school_admin: { label: "Administrateur", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+        school_staff: { label: "Personnel", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
+      };
+      const config = roleConfig[role] || { label: role, className: "bg-muted text-muted-foreground" };
+      badges.push(
+        <Badge key="app-role" variant="secondary" className={config.className}>
+          {config.label}
+        </Badge>
+      );
+    }
+    
+    return badges.length > 0 ? badges : <Badge variant="secondary" className="bg-muted text-muted-foreground">Aucun rôle</Badge>;
   };
 
-  if (usersLoading) {
+  if (usersLoading || rolesLoading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Chargement des utilisateurs...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+        <p className="mt-4 text-muted-foreground">Chargement...</p>
       </div>
     );
   }
@@ -261,21 +288,33 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
         <div className="w-full">
           <h2 className="text-xl lg:text-2xl font-bold">Gestion des utilisateurs</h2>
           <p className="text-muted-foreground text-sm lg:text-base">
-            Gérez les comptes utilisateurs de votre école
+            Créez des comptes et attribuez des rôles personnalisés
           </p>
         </div>
+        
+        {schoolRoles.length === 0 && (
+          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              Aucun rôle personnalisé n'a été créé. Créez d'abord des rôles dans l'onglet "Rôles & Permissions".
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
           if (!open) {
-            setNewUser({ email: "", first_name: "", last_name: "", role: "school_admin" });
+            setNewUser({ email: "", first_name: "", last_name: "", school_role_id: "" });
             setGeneratedPassword("");
             setShowPassword(false);
             setPasswordCopied(false);
           }
         }}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
+            <Button 
+              className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
+              disabled={schoolRoles.length === 0}
+            >
               <UserPlus className="h-4 w-4" />
               Nouvel utilisateur
             </Button>
@@ -284,28 +323,51 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
             <DialogHeader>
               <DialogTitle>Créer un utilisateur</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel utilisateur pour gérer votre école
+                Attribuez un rôle personnalisé à ce nouvel utilisateur
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new-role">Profil *</Label>
+                <Label htmlFor="new-role">Rôle *</Label>
                 <Select
-                  value={newUser.role}
-                  onValueChange={(value: SchoolRole) => setNewUser({ ...newUser, role: value })}
+                  value={newUser.school_role_id}
+                  onValueChange={(value) => setNewUser({ ...newUser, school_role_id: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un profil" />
+                    <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SCHOOL_ROLES.map(role => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
+                    {schoolRoles.map(role => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className={`w-3 h-3 rounded-full`}
+                            style={{ 
+                              backgroundColor: role.color === 'blue' ? '#3b82f6' : 
+                                role.color === 'green' ? '#22c55e' : 
+                                role.color === 'purple' ? '#a855f7' : 
+                                role.color === 'orange' ? '#f97316' : 
+                                role.color === 'red' ? '#ef4444' : 
+                                role.color === 'teal' ? '#14b8a6' : 
+                                role.color === 'pink' ? '#ec4899' : '#6b7280'
+                            }}
+                          />
+                          <span>{role.name}</span>
+                          {role.users_count !== undefined && (
+                            <span className="text-xs text-muted-foreground">({role.users_count} utilisateur{role.users_count !== 1 ? 's' : ''})</span>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {newUser.school_role_id && (
+                  <p className="text-xs text-muted-foreground">
+                    {schoolRoles.find(r => r.id === newUser.school_role_id)?.description}
+                  </p>
+                )}
               </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-first-name">Prénom *</Label>
@@ -377,7 +439,7 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               </Button>
               <Button 
                 onClick={handleCreateUser} 
-                disabled={isCreating || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword}
+                disabled={isCreating || !newUser.email || !newUser.first_name || !newUser.last_name || !generatedPassword || !newUser.school_role_id}
                 className="bg-gradient-primary hover:opacity-90"
               >
                 {isCreating ? "Création..." : "Créer l'utilisateur"}
@@ -408,13 +470,14 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrer par profil" />
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filtrer par rôle" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_ROLES_FILTER.map(role => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
+                  <SelectItem value="all">Tous les rôles</SelectItem>
+                  {schoolRoles.map(role => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -435,52 +498,46 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               <TableBody>
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="min-w-0">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarImage src="" />
-                          <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src="" alt={`${user.first_name} ${user.last_name}`} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                             {user.first_name[0]}{user.last_name[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{user.first_name} {user.last_name}</div>
-                          <div className="text-sm text-muted-foreground truncate">{user.email}</div>
-                          <div className="sm:hidden mt-1">
-                            {getRoleBadge(user.app_user_roles)}
-                          </div>
+                        <div>
+                          <div className="font-medium">{user.first_name} {user.last_name}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="sm:hidden mt-1 flex flex-wrap gap-1">{getRoleBadges(user)}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {getRoleBadge(user.app_user_roles)}
+                      <div className="flex flex-wrap gap-1">{getRoleBadges(user)}</div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <Badge variant={user.is_active ? "default" : "secondary"}>
+                      <Badge variant={user.is_active ? "default" : "secondary"} className={user.is_active ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : ""}>
                         {user.is_active ? "Actif" : "Inactif"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Modifier
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openResetPasswordDialog(user)}>
-                            <Key className="h-4 w-4 mr-2" />
-                            Réinitialiser mot de passe
+                            <Key className="mr-2 h-4 w-4" />
+                            Réinitialiser le mot de passe
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            className="text-destructive"
+                            className="text-destructive focus:text-destructive"
                             onClick={() => deleteUser(user.id)}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
+                            <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -488,6 +545,13 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredUsers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -495,19 +559,14 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
       </Card>
 
       {/* Password Reset Dialog */}
-      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
-        setResetPasswordDialogOpen(open);
-        if (!open) {
-          setResetPasswordUser(null);
-          setNewPasswordGenerated("");
-          setResetPasswordCopied(false);
-        }
-      }}>
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
             <DialogDescription>
-              {resetPasswordUser && `Pour ${resetPasswordUser.first_name} ${resetPasswordUser.last_name}`}
+              {resetPasswordUser && (
+                <>Réinitialiser le mot de passe de <strong>{resetPasswordUser.first_name} {resetPasswordUser.last_name}</strong></>
+              )}
             </DialogDescription>
           </DialogHeader>
           
@@ -516,28 +575,26 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800 dark:text-amber-200">
-                  Cette action va générer un nouveau mot de passe pour cet utilisateur. L'ancien mot de passe ne fonctionnera plus.
+                  Cette action générera un nouveau mot de passe temporaire.
                 </AlertDescription>
               </Alert>
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setResetPasswordDialogOpen(false)}>
                   Annuler
                 </Button>
                 <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    executePasswordReset();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    executePasswordReset();
-                  }}
+                  onClick={executePasswordReset}
                   disabled={isResettingPassword}
-                  className="bg-gradient-primary hover:opacity-90 touch-manipulation"
+                  className="bg-gradient-primary hover:opacity-90"
                 >
-                  {isResettingPassword ? "Génération..." : "Générer nouveau mot de passe"}
+                  {isResettingPassword ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Génération...
+                    </>
+                  ) : (
+                    "Réinitialiser"
+                  )}
                 </Button>
               </DialogFooter>
             </div>
@@ -545,30 +602,31 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Nouveau mot de passe</Label>
-                <div className="flex items-center gap-2 p-4 bg-muted rounded-lg border">
-                  <code className="flex-1 text-lg font-mono font-semibold select-all">{newPasswordGenerated}</code>
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
+                  <code className="flex-1 text-sm font-mono select-all">{newPasswordGenerated}</code>
                   <Button 
-                    variant="outline" 
+                    type="button" 
+                    variant="ghost" 
                     size="sm" 
                     onClick={copyNewPassword}
                     className="shrink-0"
                   >
-                    {resetPasswordCopied ? (
-                      <><Check className="h-4 w-4 mr-2 text-green-600" /> Copié</>
-                    ) : (
-                      <><Copy className="h-4 w-4 mr-2" /> Copier</>
-                    )}
+                    {resetPasswordCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Ce mot de passe ne sera plus affiché après fermeture. Assurez-vous de l'avoir copié!
+              <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                  Copiez ce mot de passe maintenant et transmettez-le à l'utilisateur.
                 </AlertDescription>
               </Alert>
               <DialogFooter>
-                <Button onClick={() => setResetPasswordDialogOpen(false)} className="w-full">
+                <Button onClick={() => {
+                  setResetPasswordDialogOpen(false);
+                  setNewPasswordGenerated("");
+                  setResetPasswordUser(null);
+                }}>
                   Fermer
                 </Button>
               </DialogFooter>
