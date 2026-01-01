@@ -24,7 +24,8 @@ import {
   CreditCard,
   UserPlus,
   FileCheck,
-  Camera
+  Camera,
+  Shield
 } from "lucide-react";
 
 import {
@@ -211,6 +212,12 @@ const menuStructure = [
     title: "Nouvelle Année", 
     value: "year-transition",
     icon: CalendarDays,
+    href: "/school"
+  },
+  { 
+    title: "Rôles & Permissions", 
+    value: "roles",
+    icon: Shield,
     href: "/school"
   },
   { 
