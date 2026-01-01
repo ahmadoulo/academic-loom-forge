@@ -11,11 +11,14 @@ interface CreateUserRequest {
   firstName: string;
   lastName: string;
   phone?: string;
-  role: "global_admin" | "school_admin";
+  role: "global_admin" | "school_admin" | "admission" | "accountant" | "secretary";
   schoolId?: string;
   password?: string;
   createdBy?: string;
 }
+
+// Roles that require a school_id
+const SCHOOL_BOUND_ROLES = ["school_admin", "admission", "accountant", "secretary"];
 
 
 // Hash password using SHA-256 (Deno compatible)
@@ -65,8 +68,8 @@ serve(async (req) => {
       );
     }
 
-    // Validate role requirements
-    if (role === "school_admin" && !schoolId) {
+    // Validate role requirements - school-bound roles require schoolId
+    if (SCHOOL_BOUND_ROLES.includes(role) && !schoolId) {
       return new Response(
         JSON.stringify({ error: "school_id est requis pour ce rôle" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -111,6 +114,9 @@ serve(async (req) => {
     isActive = true;
 
 
+    // Determine school_id for school-bound roles
+    const userSchoolId = SCHOOL_BOUND_ROLES.includes(role) ? (schoolId || null) : null;
+
     // Create user
     const { data: newUser, error: createError } = await supabase
       .from('app_users')
@@ -119,7 +125,7 @@ serve(async (req) => {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone?.trim() || null,
-        school_id: role === "school_admin" ? (schoolId || null) : null,
+        school_id: userSchoolId,
         teacher_id: null,
         student_id: null,
         password_hash: passwordHash,
@@ -127,7 +133,6 @@ serve(async (req) => {
         invitation_expires_at: null,
         is_active: isActive,
       })
-
       .select()
       .single();
 
@@ -145,7 +150,7 @@ serve(async (req) => {
       .insert({
         user_id: newUser.id,
         role,
-        school_id: role === "school_admin" ? (schoolId || null) : null,
+        school_id: userSchoolId,
         granted_by: createdBy || null,
       });
 
