@@ -39,45 +39,75 @@ export function useUserPermissions(schoolId?: string) {
   const effectiveSchoolId = schoolId || primarySchoolId;
 
   const fetchPermissions = useCallback(async () => {
-    if (!user?.id || !effectiveSchoolId) {
+    if (!user?.id) {
+      console.log('[Permissions] No user ID, skipping fetch');
+      setLoading(false);
+      return;
+    }
+
+    if (!effectiveSchoolId) {
+      console.log('[Permissions] No school ID, skipping fetch');
       setLoading(false);
       return;
     }
 
     // School admins and global admins have all permissions
     if (primaryRole === 'global_admin' || primaryRole === 'school_admin') {
+      console.log('[Permissions] Admin role detected, granting all permissions');
       setPermissions(Object.keys(SCHOOL_PERMISSIONS));
       setLoading(false);
       return;
     }
 
     try {
-      // Fetch user's school roles with their permissions
-      const { data: userRoles, error } = await supabase
+      console.log('[Permissions] Fetching permissions for user:', user.id, 'school:', effectiveSchoolId);
+      
+      // First get the user's school roles
+      const { data: userRoles, error: userRolesError } = await supabase
         .from('user_school_roles')
-        .select(`
-          school_role_id,
-          role:school_roles(
-            id,
-            permissions:school_role_permissions(permission_key)
-          )
-        `)
+        .select('school_role_id')
         .eq('user_id', user.id)
         .eq('school_id', effectiveSchoolId);
 
-      if (error) throw error;
+      if (userRolesError) {
+        console.error('[Permissions] Error fetching user roles:', userRolesError);
+        throw userRolesError;
+      }
 
-      // Collect all permissions from all roles
-      const allPermissions = new Set<string>();
-      userRoles?.forEach((ur: any) => {
-        ur.role?.permissions?.forEach((p: any) => {
-          allPermissions.add(p.permission_key);
-        });
-      });
+      console.log('[Permissions] User roles found:', userRoles);
 
-      setPermissions(Array.from(allPermissions));
+      if (!userRoles || userRoles.length === 0) {
+        console.log('[Permissions] No roles assigned to user');
+        setPermissions([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get the role IDs
+      const roleIds = userRoles.map(ur => ur.school_role_id);
+      console.log('[Permissions] Role IDs:', roleIds);
+
+      // Fetch permissions for these roles
+      const { data: rolePermissions, error: permError } = await supabase
+        .from('school_role_permissions')
+        .select('permission_key')
+        .in('role_id', roleIds);
+
+      if (permError) {
+        console.error('[Permissions] Error fetching role permissions:', permError);
+        throw permError;
+      }
+
+      console.log('[Permissions] Role permissions found:', rolePermissions);
+
+      // Collect all permissions
+      const allPermissions = rolePermissions?.map(p => p.permission_key) || [];
+      const uniquePermissions = [...new Set(allPermissions)];
+      
+      console.log('[Permissions] Final permissions:', uniquePermissions);
+      setPermissions(uniquePermissions);
     } catch (err) {
-      console.error('Error fetching permissions:', err);
+      console.error('[Permissions] Error:', err);
       setPermissions([]);
     } finally {
       setLoading(false);
@@ -115,14 +145,20 @@ export function useUserPermissions(schoolId?: string) {
 
   // Check if user can access a specific section
   const canAccessSection = useCallback((section: string): boolean => {
+    // Admins have access to all sections
     if (primaryRole === 'global_admin' || primaryRole === 'school_admin') {
       return true;
     }
 
     const requiredPerms = SECTION_PERMISSIONS[section];
-    if (!requiredPerms) return false;
+    if (!requiredPerms) {
+      console.log('[Permissions] No permissions defined for section:', section);
+      return false;
+    }
 
-    return requiredPerms.some(p => permissions.includes(p));
+    const hasAccess = requiredPerms.some(p => permissions.includes(p));
+    console.log('[Permissions] Section:', section, 'Required:', requiredPerms, 'Has access:', hasAccess);
+    return hasAccess;
   }, [permissions, primaryRole]);
 
   return {

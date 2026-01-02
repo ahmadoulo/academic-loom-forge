@@ -254,17 +254,29 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
 
   // Filter menu based on permissions and search
   const filteredMenuStructure = useMemo(() => {
+    // While loading permissions, don't filter anything (return empty to avoid flicker)
+    if (permissionsLoading) {
+      console.log('[Sidebar] Permissions still loading...');
+      return [];
+    }
+
+    console.log('[Sidebar] Filtering menu structure');
+    
     return menuStructure.map(item => {
       // Single item - check permission
       if ('value' in item) {
-        if (!canAccessSection(item.value)) return null;
+        const hasAccess = canAccessSection(item.value);
+        console.log('[Sidebar] Item:', item.value, 'Access:', hasAccess);
+        if (!hasAccess) return null;
         if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) return null;
         return item;
       }
       
       // Category with items - filter items by permission
       const filteredItems = item.items.filter(subItem => {
-        if (!canAccessSection(subItem.value)) return false;
+        const hasAccess = canAccessSection(subItem.value);
+        console.log('[Sidebar] SubItem:', subItem.value, 'Access:', hasAccess);
+        if (!hasAccess) return false;
         if (searchQuery && !subItem.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         return true;
       });
@@ -279,7 +291,7 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
       
       return { ...item, items: filteredItems };
     }).filter(Boolean);
-  }, [searchQuery, canAccessSection]);
+  }, [searchQuery, canAccessSection, permissionsLoading]);
 
   // Sur mobile, toujours afficher en mode ouvert
   const isOpen = isMobile ? true : open;
@@ -312,85 +324,98 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">
-            {filteredMenuStructure.map((item: any) => {
-              if (!item) return null;
-              
-              // Item simple sans catégorie
-              if ('value' in item) {
-                return (
-                  <div key={item.value}>
-                    <button
-                      onClick={() => {
-                        onTabChange(item.value);
-                        if (isMobile && onClose) onClose();
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        activeTab === item.value
-                          ? 'bg-primary text-primary-foreground shadow-soft'
-                          : 'hover:bg-secondary text-foreground'
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </button>
-                  </div>
-                );
-              }
-
-              // Catégorie avec sous-menu
-              const isOpenCat = openCategories[item.category] ?? false;
-              const CategoryIcon = item.icon;
-
-              return (
-                <div key={item.category} className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleCategory(item.category);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
-                  >
-                    <CategoryIcon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 text-left truncate">{item.category}</span>
-                    <ChevronDown 
-                      className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpenCat ? 'rotate-180' : ''}`} 
-                    />
-                  </button>
-                  {isOpenCat && (
-                    <div className="space-y-1 pl-2 animate-accordion-down">
-                      {item.items.map((subItem: any) => (
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span className="ml-2 text-sm text-muted-foreground">Chargement...</span>
+            </div>
+          ) : filteredMenuStructure.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Aucune section accessible
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {filteredMenuStructure.map((item: any) => {
+                  if (!item) return null;
+                  
+                  // Item simple sans catégorie
+                  if ('value' in item) {
+                    return (
+                      <div key={item.value}>
                         <button
-                          type="button"
-                          key={subItem.value}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onTabChange(subItem.value);
+                          onClick={() => {
+                            onTabChange(item.value);
                             if (isMobile && onClose) onClose();
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                            activeTab === subItem.value
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                            activeTab === item.value
                               ? 'bg-primary text-primary-foreground shadow-soft'
-                              : 'hover:bg-secondary text-foreground hover:translate-x-0.5'
+                              : 'hover:bg-secondary text-foreground'
                           }`}
                         >
-                          <subItem.icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{subItem.title}</span>
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="truncate">{item.title}</span>
                         </button>
-                      ))}
+                      </div>
+                    );
+                  }
+
+                  // Catégorie avec sous-menu
+                  const isOpenCat = openCategories[item.category] ?? false;
+                  const CategoryIcon = item.icon;
+
+                  return (
+                    <div key={item.category} className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleCategory(item.category);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
+                      >
+                        <CategoryIcon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left truncate">{item.category}</span>
+                        <ChevronDown 
+                          className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpenCat ? 'rotate-180' : ''}`} 
+                        />
+                      </button>
+                      {isOpenCat && (
+                        <div className="space-y-1 pl-2 animate-accordion-down">
+                          {item.items.map((subItem: any) => (
+                            <button
+                              type="button"
+                              key={subItem.value}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onTabChange(subItem.value);
+                                if (isMobile && onClose) onClose();
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                activeTab === subItem.value
+                                  ? 'bg-primary text-primary-foreground shadow-soft'
+                                  : 'hover:bg-secondary text-foreground hover:translate-x-0.5'
+                              }`}
+                            >
+                              <subItem.icon className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{subItem.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          
-          <div className="mt-8 pt-6 border-t border-border/50">
-            <AcademicYearSidebarSection context="school" />
-          </div>
+                  );
+                })}
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-border/50">
+                <AcademicYearSidebarSection context="school" />
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -463,98 +488,111 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
       </div>
 
       <SidebarContent className={`overflow-y-auto transition-all duration-200 ${!isOpen ? "p-2" : "p-4"}`}>
-        <div className="space-y-4">
-          {filteredMenuStructure.map((item: any) => {
-            if (!item) return null;
-            
-            // Item simple sans catégorie
-            if ('value' in item) {
-              return (
-                <div key={item.value}>
-                  <button
-                    onClick={() => onTabChange(item.value)}
-                    className={`w-full flex items-center justify-center lg:justify-start gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      !isOpen ? "p-3" : "px-4 py-3"
-                    } ${
-                      activeTab === item.value
-                        ? 'bg-primary text-primary-foreground shadow-soft'
-                        : 'hover:bg-secondary text-foreground'
-                    }`}
-                    title={!isOpen ? item.title : undefined}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    {isOpen && <span className="truncate">{item.title}</span>}
-                  </button>
-                </div>
-              );
-            }
-
-            // Catégorie avec sous-menu
-            const isOpenCat = openCategories[item.category] ?? false;
-            const CategoryIcon = item.icon;
-
-            return (
-              <div key={item.category} className="space-y-2">
-                {!isOpen ? (
-                  // Mode réduit : afficher les items directement
-                  <>
-                    {item.items.map((subItem: any) => (
+        {permissionsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            {isOpen && <span className="ml-2 text-sm text-muted-foreground">Chargement...</span>}
+          </div>
+        ) : filteredMenuStructure.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            {isOpen ? "Aucune section accessible" : "—"}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {filteredMenuStructure.map((item: any) => {
+                if (!item) return null;
+                
+                // Item simple sans catégorie
+                if ('value' in item) {
+                  return (
+                    <div key={item.value}>
                       <button
-                        key={subItem.value}
-                        onClick={() => onTabChange(subItem.value)}
-                        className={`w-full flex items-center justify-center p-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          activeTab === subItem.value
+                        onClick={() => onTabChange(item.value)}
+                        className={`w-full flex items-center justify-center lg:justify-start gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          !isOpen ? "p-3" : "px-4 py-3"
+                        } ${
+                          activeTab === item.value
                             ? 'bg-primary text-primary-foreground shadow-soft'
                             : 'hover:bg-secondary text-foreground'
                         }`}
-                        title={subItem.title}
+                        title={!isOpen ? item.title : undefined}
                       >
-                        <subItem.icon className="h-5 w-5 shrink-0" />
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        {isOpen && <span className="truncate">{item.title}</span>}
                       </button>
-                    ))}
-                  </>
-                ) : (
-                  // Mode développé : afficher avec catégorie
-                  <>
-                    <button
-                      onClick={() => toggleCategory(item.category)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
-                    >
-                      <CategoryIcon className="h-4 w-4 shrink-0" />
-                      <span className="flex-1 text-left truncate">{item.category}</span>
-                      <ChevronDown 
-                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpenCat ? 'rotate-180' : ''}`} 
-                      />
-                    </button>
-                    {isOpenCat && (
-                      <div className="space-y-1 pl-2 animate-accordion-down">
+                    </div>
+                  );
+                }
+
+                // Catégorie avec sous-menu
+                const isOpenCat = openCategories[item.category] ?? false;
+                const CategoryIcon = item.icon;
+
+                return (
+                  <div key={item.category} className="space-y-2">
+                    {!isOpen ? (
+                      // Mode réduit : afficher les items directement
+                      <>
                         {item.items.map((subItem: any) => (
                           <button
                             key={subItem.value}
                             onClick={() => onTabChange(subItem.value)}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            className={`w-full flex items-center justify-center p-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                               activeTab === subItem.value
                                 ? 'bg-primary text-primary-foreground shadow-soft'
-                                : 'hover:bg-secondary text-foreground hover:translate-x-0.5'
+                                : 'hover:bg-secondary text-foreground'
                             }`}
+                            title={subItem.title}
                           >
-                            <subItem.icon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{subItem.title}</span>
+                            <subItem.icon className="h-5 w-5 shrink-0" />
                           </button>
                         ))}
-                      </div>
+                      </>
+                    ) : (
+                      // Mode développé : afficher avec catégorie
+                      <>
+                        <button
+                          onClick={() => toggleCategory(item.category)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground/90 hover:text-foreground transition-colors rounded-lg hover:bg-secondary/50"
+                        >
+                          <CategoryIcon className="h-4 w-4 shrink-0" />
+                          <span className="flex-1 text-left truncate">{item.category}</span>
+                          <ChevronDown 
+                            className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isOpenCat ? 'rotate-180' : ''}`} 
+                          />
+                        </button>
+                        {isOpenCat && (
+                          <div className="space-y-1 pl-2 animate-accordion-down">
+                            {item.items.map((subItem: any) => (
+                              <button
+                                key={subItem.value}
+                                onClick={() => onTabChange(subItem.value)}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                  activeTab === subItem.value
+                                    ? 'bg-primary text-primary-foreground shadow-soft'
+                                    : 'hover:bg-secondary text-foreground hover:translate-x-0.5'
+                                }`}
+                              >
+                                <subItem.icon className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{subItem.title}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {!isMobile && (
+              <div className="mt-8 pt-6 border-t border-border/50">
+                <AcademicYearSidebarSection context="school" />
               </div>
-            );
-          })}
-        </div>
-        
-        {!isMobile && (
-          <div className="mt-8 pt-6 border-t border-border/50">
-            <AcademicYearSidebarSection context="school" />
-          </div>
+            )}
+          </>
         )}
       </SidebarContent>
     </Sidebar>
