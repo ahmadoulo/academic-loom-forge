@@ -73,18 +73,55 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
-      const { data, error } = await supabase
+      
+      // First, get users for this school
+      const { data: usersData, error: usersError } = await supabase
         .from('app_users')
-        .select(`
-          id, email, first_name, last_name, is_active, 
-          app_user_roles!app_user_roles_user_id_fkey(role),
-          user_school_roles(school_role_id, role:school_roles(name, color))
-        `)
+        .select('id, email, first_name, last_name, is_active')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      setUsers((data || []) as AppUser[]);
+      if (usersError) throw usersError;
+      
+      if (!usersData || usersData.length === 0) {
+        setUsers([]);
+        return;
+      }
+      
+      const userIds = usersData.map(u => u.id);
+      
+      // Fetch roles for these users
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('app_user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds);
+      
+      if (rolesError) console.warn('Error fetching roles:', rolesError);
+      
+      // Fetch school-specific roles
+      const { data: schoolRolesData, error: schoolRolesError } = await supabase
+        .from('user_school_roles')
+        .select('user_id, school_role_id, school_roles(name, color)')
+        .eq('school_id', schoolId)
+        .in('user_id', userIds);
+      
+      if (schoolRolesError) console.warn('Error fetching school roles:', schoolRolesError);
+      
+      // Combine the data
+      const combinedUsers: AppUser[] = usersData.map(user => ({
+        ...user,
+        app_user_roles: (rolesData || [])
+          .filter(r => r.user_id === user.id)
+          .map(r => ({ role: r.role })),
+        user_school_roles: (schoolRolesData || [])
+          .filter(sr => sr.user_id === user.id)
+          .map(sr => ({
+            school_role_id: sr.school_role_id,
+            role: sr.school_roles as unknown as { name: string; color: string }
+          }))
+      }));
+      
+      setUsers(combinedUsers);
     } catch (err) {
       console.error('Error fetching users:', err);
       toast.error('Erreur lors du chargement des utilisateurs');

@@ -77,7 +77,7 @@ const App = () => (
               <Route
                 path="/school"
                 element={
-                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin']}>
+                  <ProtectedRoute requiredRoles={['school_admin', 'school_staff', 'global_admin']}>
                     <SchoolDashboard />
                   </ProtectedRoute>
                 }
@@ -85,7 +85,7 @@ const App = () => (
               <Route
                 path="/school/:schoolId"
                 element={
-                  <ProtectedRoute requiredRoles={['school_admin', 'global_admin']}>
+                  <ProtectedRoute requiredRoles={['school_admin', 'school_staff', 'global_admin']}>
                     <SchoolDashboard />
                   </ProtectedRoute>
                 }

@@ -267,13 +267,18 @@ export function useAppAuth() {
       case 'global_admin':
         return '/admin';
       case 'school_admin':
-        // Use school identifier instead of school_id for URL
+      case 'school_staff':
+        // Use school identifier for school-based roles
         return state.primarySchoolIdentifier ? `/school/${state.primarySchoolIdentifier}` : '/auth';
       case 'teacher':
         return state.user.teacher_id ? `/teacher/${state.user.teacher_id}` : '/auth';
       case 'student':
         return state.user.student_id ? `/student/${state.user.student_id}` : '/auth';
       default:
+        // Fallback for any school-related role with school identifier
+        if (state.primarySchoolIdentifier) {
+          return `/school/${state.primarySchoolIdentifier}`;
+        }
         return '/auth';
     }
   }, [state.user, state.primaryRole, state.primarySchoolIdentifier]);
