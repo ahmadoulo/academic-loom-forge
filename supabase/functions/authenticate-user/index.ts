@@ -162,8 +162,8 @@ serve(async (req) => {
     let primaryRole = 'student';
     let primarySchoolId = user.school_id;
 
-    // Priority: global_admin > admin > school_admin > teacher > student
-    const rolePriority = ['global_admin', 'admin', 'school_admin', 'teacher', 'student'];
+    // Priority: global_admin > admin > school_admin > school_staff > teacher > student
+    const rolePriority = ['global_admin', 'admin', 'school_admin', 'school_staff', 'teacher', 'student'];
     for (const role of rolePriority) {
       const foundRole = userRoles.find(r => r.role === role);
       if (foundRole) {
