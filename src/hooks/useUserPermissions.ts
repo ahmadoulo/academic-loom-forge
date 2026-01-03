@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SCHOOL_PERMISSIONS, PermissionKey } from './useSchoolRoles';
 
+const SESSION_KEY = 'app_session_token';
+
 // Map sidebar sections to required permissions
 export const SECTION_PERMISSIONS: Record<string, string[]> = {
   'analytics': ['dashboard.view'],
@@ -40,71 +42,44 @@ export function useUserPermissions(schoolId?: string) {
 
   const fetchPermissions = useCallback(async () => {
     if (!user?.id) {
-      console.log('[Permissions] No user ID, skipping fetch');
       setLoading(false);
       return;
     }
 
     if (!effectiveSchoolId) {
-      console.log('[Permissions] No school ID, skipping fetch');
       setLoading(false);
       return;
     }
 
     // School admins and global admins have all permissions
     if (primaryRole === 'global_admin' || primaryRole === 'school_admin') {
-      console.log('[Permissions] Admin role detected, granting all permissions');
       setPermissions(Object.keys(SCHOOL_PERMISSIONS));
       setLoading(false);
       return;
     }
 
+    const sessionToken = localStorage.getItem(SESSION_KEY);
+    if (!sessionToken) {
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('[Permissions] Fetching permissions for user:', user.id, 'school:', effectiveSchoolId);
-      
-      // First get the user's school roles
-      const { data: userRoles, error: userRolesError } = await supabase
-        .from('user_school_roles')
-        .select('school_role_id')
-        .eq('user_id', user.id)
-        .eq('school_id', effectiveSchoolId);
+      const { data, error } = await supabase.functions.invoke('get-user-permissions', {
+        body: {
+          sessionToken,
+          schoolId: effectiveSchoolId,
+        },
+      });
 
-      if (userRolesError) {
-        console.error('[Permissions] Error fetching user roles:', userRolesError);
-        throw userRolesError;
-      }
-
-      console.log('[Permissions] User roles found:', userRoles);
-
-      if (!userRoles || userRoles.length === 0) {
-        console.log('[Permissions] No roles assigned to user');
+      if (error) throw error;
+      if (!data?.success) {
         setPermissions([]);
-        setLoading(false);
         return;
       }
 
-      // Get the role IDs
-      const roleIds = userRoles.map(ur => ur.school_role_id);
-      console.log('[Permissions] Role IDs:', roleIds);
-
-      // Fetch permissions for these roles
-      const { data: rolePermissions, error: permError } = await supabase
-        .from('school_role_permissions')
-        .select('permission_key')
-        .in('role_id', roleIds);
-
-      if (permError) {
-        console.error('[Permissions] Error fetching role permissions:', permError);
-        throw permError;
-      }
-
-      console.log('[Permissions] Role permissions found:', rolePermissions);
-
-      // Collect all permissions
-      const allPermissions = rolePermissions?.map(p => p.permission_key) || [];
-      const uniquePermissions = [...new Set(allPermissions)];
-      
-      console.log('[Permissions] Final permissions:', uniquePermissions);
+      const uniquePermissions = [...new Set((data.permissions as string[]) || [])];
       setPermissions(uniquePermissions);
     } catch (err) {
       console.error('[Permissions] Error:', err);
@@ -152,13 +127,10 @@ export function useUserPermissions(schoolId?: string) {
 
     const requiredPerms = SECTION_PERMISSIONS[section];
     if (!requiredPerms) {
-      console.log('[Permissions] No permissions defined for section:', section);
       return false;
     }
 
-    const hasAccess = requiredPerms.some(p => permissions.includes(p));
-    console.log('[Permissions] Section:', section, 'Required:', requiredPerms, 'Has access:', hasAccess);
-    return hasAccess;
+    return requiredPerms.some(p => permissions.includes(p));
   }, [permissions, primaryRole]);
 
   return {
@@ -171,3 +143,4 @@ export function useUserPermissions(schoolId?: string) {
     refetch: fetchPermissions,
   };
 }
+
