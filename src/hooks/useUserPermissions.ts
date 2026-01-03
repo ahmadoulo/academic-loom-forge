@@ -38,7 +38,12 @@ export function useUserPermissions(schoolId?: string) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const effectiveSchoolId = schoolId || primarySchoolId;
+  // The app routes use the school's "identifier" (ex: ESTEM01) while the DB uses a UUID.
+  // When callers accidentally pass an identifier here, permissions will always be empty.
+  const isUuid = (value?: string | null) =>
+    !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+  const effectiveSchoolId = isUuid(schoolId) ? schoolId : primarySchoolId;
 
   const fetchPermissions = useCallback(async () => {
     if (!user?.id) {

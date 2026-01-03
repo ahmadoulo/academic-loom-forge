@@ -542,7 +542,12 @@ export function UserManagement() {
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleResetPassword(u)}>
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              handleResetPassword(u);
+                            }}
+                          >
                             <Key className="h-4 w-4 mr-2" />
                             Réinitialiser mot de passe
                           </DropdownMenuItem>
@@ -550,7 +555,13 @@ export function UserManagement() {
                             <Mail className="h-4 w-4 mr-2" />
                             Envoyer un email
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteUser(u.id)}>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              deleteUser(u.id);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer
                           </DropdownMenuItem>

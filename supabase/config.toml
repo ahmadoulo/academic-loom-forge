@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.list-app-users]
 verify_jwt = false
+
+[functions.get-user-permissions]
+verify_jwt = false

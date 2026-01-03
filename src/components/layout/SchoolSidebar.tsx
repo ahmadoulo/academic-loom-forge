@@ -32,7 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { AcademicYearSidebarSection } from "./AcademicYearSidebarSection";
-import { useUserPermissions, SECTION_PERMISSIONS } from "@/hooks/useUserPermissions";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 interface SchoolSidebarProps {
   schoolId: string;
@@ -217,7 +217,7 @@ const menuStructure = [
   },
 ];
 
-export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = false, onClose }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean; onClose?: () => void }) {
+export function SchoolSidebar({ schoolId: _schoolId, activeTab, onTabChange, isMobile = false, onClose }: SchoolSidebarProps & { activeTab: string; onTabChange: (tab: string) => void; isMobile?: boolean; onClose?: () => void }) {
   const { open, setOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const [isPinned, setIsPinned] = useState(true);
@@ -229,8 +229,8 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
     "Documents": false,
   });
 
-  // Get user permissions
-  const { canAccessSection, loading: permissionsLoading } = useUserPermissions(schoolId);
+  // Get user permissions (from authenticated user's school UUID)
+  const { canAccessSection, loading: permissionsLoading } = useUserPermissions();
 
   const toggleCategory = (category: string) => {
     setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
@@ -254,43 +254,31 @@ export function SchoolSidebar({ schoolId, activeTab, onTabChange, isMobile = fal
 
   // Filter menu based on permissions and search
   const filteredMenuStructure = useMemo(() => {
-    // While loading permissions, don't filter anything (return empty to avoid flicker)
-    if (permissionsLoading) {
-      console.log('[Sidebar] Permissions still loading...');
-      return [];
-    }
+    // While loading permissions, return empty to avoid UI flicker.
+    if (permissionsLoading) return [];
 
-    console.log('[Sidebar] Filtering menu structure');
-    
-    return menuStructure.map(item => {
-      // Single item - check permission
-      if ('value' in item) {
-        const hasAccess = canAccessSection(item.value);
-        console.log('[Sidebar] Item:', item.value, 'Access:', hasAccess);
-        if (!hasAccess) return null;
-        if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) return null;
-        return item;
-      }
-      
-      // Category with items - filter items by permission
-      const filteredItems = item.items.filter(subItem => {
-        const hasAccess = canAccessSection(subItem.value);
-        console.log('[Sidebar] SubItem:', subItem.value, 'Access:', hasAccess);
-        if (!hasAccess) return false;
-        if (searchQuery && !subItem.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-        return true;
-      });
-      
-      // Don't show category if no items are accessible
-      if (filteredItems.length === 0) return null;
-      
-      // Check if category matches search
-      if (searchQuery && !item.category.toLowerCase().includes(searchQuery.toLowerCase()) && filteredItems.length === 0) {
-        return null;
-      }
-      
-      return { ...item, items: filteredItems };
-    }).filter(Boolean);
+    return menuStructure
+      .map((item) => {
+        // Single item - check permission
+        if ('value' in item) {
+          if (!canAccessSection(item.value)) return null;
+          if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) return null;
+          return item;
+        }
+
+        // Category with items - filter items by permission
+        const filteredItems = item.items.filter((subItem) => {
+          if (!canAccessSection(subItem.value)) return false;
+          if (searchQuery && !subItem.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+          return true;
+        });
+
+        // Don't show category if no items are accessible
+        if (filteredItems.length === 0) return null;
+
+        return { ...item, items: filteredItems };
+      })
+      .filter(Boolean);
   }, [searchQuery, canAccessSection, permissionsLoading]);
 
   // Sur mobile, toujours afficher en mode ouvert

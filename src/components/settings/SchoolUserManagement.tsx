@@ -655,13 +655,21 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openResetPasswordDialog(user)}>
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              openResetPasswordDialog(user);
+                            }}
+                          >
                             <Key className="mr-2 h-4 w-4" />
                             Réinitialiser le mot de passe
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
-                            onClick={() => deleteUser(user.id)}
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              deleteUser(user.id);
+                            }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
