@@ -31,7 +31,7 @@ interface StudentsListSectionProps {
   students: StudentWithClass[];
   classes: Class[];
   loading: boolean;
-  onArchiveStudent: (id: string, name: string) => void;
+  onArchiveStudent?: (id: string, name: string) => void;
   onEditStudent?: (student: StudentWithClass) => void;
   onViewStudent?: (student: StudentWithClass) => void;
 }
@@ -163,24 +163,30 @@ export function StudentsListSection({
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onViewStudent && onViewStudent(student)}
-                              className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
-                              title="Voir les détails"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onEditStudent && onEditStudent(student)}
-                              className="hover:bg-primary hover:text-primary-foreground"
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              Modifier
-                            </Button>
+                            {onViewStudent && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onViewStudent(student)}
+                                className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
+                                title="Voir les détails"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {onEditStudent && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onEditStudent(student)}
+                                className="hover:bg-primary hover:text-primary-foreground"
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Modifier
+                              </Button>
+                            )}
+
                             <Button
                               variant="outline"
                               size="sm"
@@ -188,14 +194,17 @@ export function StudentsListSection({
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
-                              onClick={() => onArchiveStudent(student.id, `${student.firstname} ${student.lastname}`)}
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+
+                            {onArchiveStudent && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
+                                onClick={() => onArchiveStudent(student.id, `${student.firstname} ${student.lastname}`)}
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

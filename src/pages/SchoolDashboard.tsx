@@ -84,6 +84,7 @@ import { AdvancedSearchDialog } from "@/components/school/AdvancedSearchDialog";
 import { TextbooksSection } from "@/components/school/TextbooksSection";
 import { AbsenceJustificationsManagement } from "@/components/school/AbsenceJustificationsManagement";
 import { CamerasSection } from "@/components/school/CamerasSection";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -189,17 +190,60 @@ const SchoolDashboard = () => {
   const { grades } = useGrades(undefined, undefined, undefined, displayYearId);
   const { assignments } = useAssignments({ schoolId: school?.id });
   const { attendance, loading: attendanceLoading } = useAttendance();
-  const { 
-    absencesByClass, 
-    topStudentsByClass, 
+  const {
+    absencesByClass,
+    topStudentsByClass,
     performanceBySubject,
     gradeDistribution,
     attendanceByMonth,
     overallStats,
-    loading: analyticsLoading 
+    loading: analyticsLoading
   } = useSchoolAnalytics(school?.id);
   const { requests: documentRequests, loading: documentRequestsLoading } = useDocumentRequests(school?.id);
   const { admissions } = useAdmissions(school?.id);
+
+  const { canAccessSection, hasPermission, loading: permissionsLoading } = useUserPermissions(school?.id);
+
+  const TAB_ORDER = [
+    'analytics',
+    'calendar',
+    'students',
+    'admissions',
+    'classes',
+    'teachers',
+    'subjects',
+    'attendance',
+    'justifications',
+    'grades',
+    'bulletin',
+    'textbooks',
+    'exams',
+    'timetable',
+    'classrooms',
+    'cameras',
+    'notifications',
+    'announcements',
+    'events',
+    'document-requests',
+    'documents',
+    'year-transition',
+    'subscription',
+    'settings',
+  ] as const;
+
+  React.useEffect(() => {
+    if (permissionsLoading) return;
+
+    const firstAllowed = TAB_ORDER.find((t) => canAccessSection(t));
+    if (!firstAllowed) {
+      setActiveTab('');
+      return;
+    }
+
+    if (!activeTab || !canAccessSection(activeTab)) {
+      setActiveTab(firstAllowed);
+    }
+  }, [permissionsLoading, canAccessSection, activeTab]);
 
   // Calculate enhanced stats
   const stats = useMemo(() => {
@@ -536,6 +580,28 @@ const SchoolDashboard = () => {
     );
   }
 
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Chargement des autorisations...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeTab) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Accès limité</h1>
+          <p className="text-muted-foreground">Aucune section n'est autorisée pour votre rôle.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SemesterProvider schoolId={school?.id}>
       <SidebarProvider defaultOpen={true}>
@@ -585,7 +651,7 @@ const SchoolDashboard = () => {
                 />
               </div>
               {/* Analytics Dashboard - Reorganized SaaS Style */}
-              {activeTab === "analytics" && (
+              {activeTab === "analytics" && canAccessSection('analytics') && (
                 <div className="space-y-6">
                   {/* Overview Header */}
                   <SchoolOverviewHeader
@@ -641,7 +707,7 @@ const SchoolDashboard = () => {
                 </div>
               )}
 
-              {activeTab === "calendar" && (
+              {activeTab === "calendar" && canAccessSection('calendar') && (
                 <SchoolCalendarSection 
                   schoolId={school.id}
                   classes={currentYearClasses}
@@ -649,7 +715,7 @@ const SchoolDashboard = () => {
                 />
               )}
               
-              {activeTab === "grades" && (
+              {activeTab === "grades" && canAccessSection('grades') && (
                 <div className="space-y-6">
                   <SchoolGradesView
                     schoolId={school.id}
@@ -662,29 +728,31 @@ const SchoolDashboard = () => {
                 </div>
               )}
               
-              {activeTab === "attendance" && school?.id && (
+              {activeTab === "attendance" && school?.id && canAccessSection('attendance') && (
                 <div className="space-y-6">
                   <SchoolAttendanceView schoolId={school.id} />
                 </div>
               )}
 
-              {activeTab === "justifications" && school?.id && (
+              {activeTab === "justifications" && school?.id && canAccessSection('justifications') && (
                 <div className="space-y-6">
                   <AbsenceJustificationsManagement schoolId={school.id} />
                 </div>
               )}
               
-              {activeTab === "students" && (
+              {activeTab === "students" && canAccessSection('students') && (
                 <div className="space-y-4 lg:space-y-6">
                   <div className="flex flex-col gap-4 items-start">
                     <div className="w-full">
                       <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gestion des Étudiants</h2>
                       <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les inscriptions et informations des étudiants</p>
                     </div>
-                    <Button onClick={openStudentDialogWithLimit} size="lg" className="gap-2 w-full sm:w-auto">
-                      <UserPlus className="h-5 w-5" />
-                      Ajouter un Étudiant
-                    </Button>
+                    {hasPermission('students.create') && (
+                      <Button onClick={openStudentDialogWithLimit} size="lg" className="gap-2 w-full sm:w-auto">
+                        <UserPlus className="h-5 w-5" />
+                        Ajouter un Étudiant
+                      </Button>
+                    )}
                   </div>
                   
                   <div className="space-y-6">
@@ -693,26 +761,26 @@ const SchoolDashboard = () => {
                       students={students}
                       classes={currentYearClasses}
                       loading={studentsLoading}
-                      onArchiveStudent={(id, name) => setArchiveDialog({
+                      onArchiveStudent={hasPermission('students.delete') ? ((id, name) => setArchiveDialog({
                         open: true,
                         type: 'student',
                         id,
                         name
-                      })}
-                      onUpdateStudent={async (id, data) => {
+                      })) : undefined}
+                      onUpdateStudent={hasPermission('students.update') ? (async (id, data) => {
                         try {
                           await updateStudent(id, data);
                         } catch (error) {
                           console.error('Error updating student:', error);
                         }
-                      }}
-                      onCreateStudent={async (data) => {
+                      }) : undefined}
+                      onCreateStudent={hasPermission('students.create') ? (async (data) => {
                         try {
                           await createStudent(data);
                         } catch (error) {
                           console.error('Error creating student:', error);
                         }
-                      }}
+                      }) : undefined}
                     />
                   </div>
                 </div>
