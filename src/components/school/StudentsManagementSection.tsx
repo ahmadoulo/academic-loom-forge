@@ -29,9 +29,9 @@ interface StudentsManagementSectionProps {
   students: StudentWithClass[];
   classes: { id: string; name: string }[];
   loading: boolean;
-  onArchiveStudent: (id: string, name: string) => void;
-  onUpdateStudent: (studentId: string, data: any) => Promise<void>;
-  onCreateStudent: (data: any) => Promise<void>;
+  onArchiveStudent?: (id: string, name: string) => void;
+  onUpdateStudent?: (studentId: string, data: any) => Promise<void>;
+  onCreateStudent?: (data: any) => Promise<void>;
 }
 
 export function StudentsManagementSection({
@@ -61,11 +61,18 @@ export function StudentsManagementSection({
   };
 
   const handleImportComplete = async (importedStudents: any[]) => {
-    // Check if we can add students before importing
+    if (!onCreateStudent) {
+      toast.error("Accès refusé", {
+        description: "Vous n'avez pas la permission de créer/importer des étudiants.",
+      });
+      return;
+    }
+
+    // Check subscription limits
     if (!checkCanAddStudent(limits)) {
       return;
     }
-    
+
     // Check if importing would exceed limit
     if (limits.studentLimit !== null) {
       const wouldExceed = limits.currentStudents + importedStudents.length > limits.studentLimit;
@@ -77,7 +84,7 @@ export function StudentsManagementSection({
         return;
       }
     }
-    
+
     let successCount = 0;
     let errorCount = 0;
 
@@ -99,20 +106,24 @@ export function StudentsManagementSection({
     }
   };
 
+  const canImport = !!onCreateStudent;
+
   return (
     <>
       <Card className="shadow-lg">
         <CardContent className="pt-6">
           <Tabs defaultValue="list" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className={`grid w-full ${canImport ? 'grid-cols-3' : 'grid-cols-2'} mb-6`}>
               <TabsTrigger value="list" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Étudiants
               </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Import
-              </TabsTrigger>
+              {canImport && (
+                <TabsTrigger value="import" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </TabsTrigger>
+              )}
               <TabsTrigger value="archived" className="flex items-center gap-2">
                 <Archive className="h-4 w-4" />
                 Archivés
@@ -126,17 +137,16 @@ export function StudentsManagementSection({
                 classes={classes}
                 loading={loading}
                 onArchiveStudent={onArchiveStudent}
-                onEditStudent={handleEditStudent}
+                onEditStudent={onUpdateStudent ? handleEditStudent : undefined}
                 onViewStudent={handleViewStudent}
               />
             </TabsContent>
 
-            <TabsContent value="import" className="space-y-4">
-              <StudentImport 
-                onImportComplete={handleImportComplete}
-                classes={classes}
-              />
-            </TabsContent>
+            {canImport && (
+              <TabsContent value="import" className="space-y-4">
+                <StudentImport onImportComplete={handleImportComplete} classes={classes} />
+              </TabsContent>
+            )}
 
             <TabsContent value="archived" className="space-y-4">
               <ArchivedStudentsSection schoolId={schoolId} />
@@ -155,7 +165,7 @@ export function StudentsManagementSection({
         student={selectedStudent}
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onSave={onUpdateStudent}
+        onSave={onUpdateStudent || (async () => {})}
         classes={classes}
       />
     </>

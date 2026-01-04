@@ -7,30 +7,43 @@ const SESSION_KEY = 'app_session_token';
 
 // Map sidebar sections to required permissions
 export const SECTION_PERMISSIONS: Record<string, string[]> = {
-  'analytics': ['dashboard.view'],
-  'calendar': ['dashboard.view'],
-  'students': ['students.view'],
-  'admissions': ['admissions.view'],
-  'classes': ['classes.view'],
-  'teachers': ['teachers.view'],
-  'subjects': ['subjects.view'],
-  'attendance': ['attendance.view'],
-  'justifications': ['justifications.view'],
-  'grades': ['grades.view'],
-  'bulletin': ['bulletin.view'],
-  'textbooks': ['dashboard.view'],
-  'exams': ['grades.view'],
-  'timetable': ['timetable.view'],
-  'classrooms': ['classrooms.view'],
-  'cameras': ['dashboard.view'],
-  'notifications': ['notifications.view'],
-  'announcements': ['announcements.view'],
-  'events': ['events.view'],
+  // Dashboard / home
+  analytics: ['dashboard.view'],
+  calendar: ['dashboard.view'],
+
+  // Gestion académique
+  students: ['students.view'],
+  admissions: ['admissions.view'],
+  classes: ['classes.view'],
+  teachers: ['teachers.view'],
+  subjects: ['subjects.view'],
+
+  // Suivi pédagogique
+  attendance: ['attendance.view'],
+  justifications: ['justifications.view'],
+  grades: ['grades.view'],
+  bulletin: ['bulletin.view'],
+  textbooks: ['dashboard.view'],
+  exams: ['grades.view'],
+
+  // Planning & salles
+  timetable: ['timetable.view'],
+  classrooms: ['classrooms.view'],
+  cameras: ['dashboard.view'],
+
+  // Communication
+  notifications: ['notifications.view'],
+  announcements: ['announcements.view'],
+  events: ['events.view'],
+
+  // Documents
   'document-requests': ['documents.view'],
-  'documents': ['templates.view'],
+  documents: ['templates.view', 'documents.view'],
+
+  // Administration
   'year-transition': ['settings.manage'],
-  'subscription': ['settings.view'],
-  'settings': ['settings.view'],
+  subscription: ['settings.view'],
+  settings: ['settings.view'],
 };
 
 export function useUserPermissions(schoolId?: string) {
