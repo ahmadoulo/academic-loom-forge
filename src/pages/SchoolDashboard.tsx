@@ -786,28 +786,28 @@ const SchoolDashboard = () => {
                 </div>
               )}
               
-              {activeTab === "admissions" && school?.id && (
+              {activeTab === "admissions" && school?.id && canAccessSection('admissions') && (
                 <AdmissionsManagement 
                   schoolId={school.id}
                   schoolIdentifier={schoolId || ''}
                 />
               )}
               
-              {activeTab === "classes" && !showClassDetails && (
+              {activeTab === "classes" && !showClassDetails && canAccessSection('classes') && (
                 <div className="space-y-6">
                   <ClassesListSection
                     classes={classes}
                     students={students}
                     loading={classesLoading}
-                    onArchiveClass={(id, name) => setDeleteDialog({
+                    onArchiveClass={hasPermission('classes.delete') ? ((id, name) => setDeleteDialog({
                       open: true,
                       type: 'class',
                       id,
                       name
-                    })}
+                    })) : undefined}
                     onViewClassDetails={handleViewClassDetails}
-                    onCreateClass={() => setIsClassDialogOpen(true)}
-                    onEditClass={(classItem) => setEditingClass(classItem)}
+                    onCreateClass={hasPermission('classes.create') ? (() => setIsClassDialogOpen(true)) : undefined}
+                    onEditClass={hasPermission('classes.update') ? ((classItem) => setEditingClass(classItem)) : undefined}
                   />
                   
                   <ArchivedClassesSection schoolId={school.id} />
@@ -823,29 +823,29 @@ const SchoolDashboard = () => {
                 />
               )}
               
-              {activeTab === "subjects" && (
+              {activeTab === "subjects" && canAccessSection('subjects') && (
                 <div className="space-y-6">
                   <SubjectsManagementSection
                     subjects={subjects}
                     classes={classes}
                     teachers={teachers}
                     loading={subjectsLoading}
-                    onCreateSubject={() => {
+                    onCreateSubject={hasPermission('subjects.create') ? (() => {
                       setEditingSubject(null);
                       setIsSubjectDialogOpen(true);
-                    }}
-                    onEditSubject={(subject) => {
+                    }) : undefined}
+                    onEditSubject={hasPermission('subjects.update') ? ((subject) => {
                       setEditingSubject(subject);
                       setIsSubjectDialogOpen(true);
-                    }}
-                    onArchiveSubject={(id, name) =>
+                    }) : undefined}
+                    onArchiveSubject={hasPermission('subjects.delete') ? ((id, name) =>
                       setDeleteDialog({
                         open: true,
                         type: "subject",
                         id,
                         name,
                       })
-                    }
+                    ) : undefined}
                   />
                   
                   <ArchivedSubjectsSection schoolId={school.id} />
@@ -930,7 +930,7 @@ const SchoolDashboard = () => {
                 </div>
               )}
               
-              {activeTab === "teachers" && (
+              {activeTab === "teachers" && canAccessSection('teachers') && (
                 <div className="space-y-6">
                   {isReadOnly && (
                     <div className="p-4 bg-muted rounded-lg border">
@@ -946,92 +946,97 @@ const SchoolDashboard = () => {
                       <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gestion des Professeurs</h2>
                       <p className="text-gray-600 mt-1 text-sm lg:text-base">Gérez les professeurs, assignations et archives</p>
                     </div>
-                    <Button 
-                      onClick={openTeacherDialogWithLimit} 
-                      size="lg" 
-                      className="gap-2 w-full sm:w-auto"
-                      disabled={isReadOnly}
-                    >
-                      <Plus className="h-5 w-5" />
-                      Ajouter un Professeur
-                    </Button>
+                    {hasPermission('teachers.create') && (
+                      <Button 
+                        onClick={openTeacherDialogWithLimit} 
+                        size="lg" 
+                        className="gap-2 w-full sm:w-auto"
+                        disabled={isReadOnly}
+                      >
+                        <Plus className="h-5 w-5" />
+                        Ajouter un Professeur
+                      </Button>
+                    )}
                   </div>
 
                   <TeachersManagementSection
                     schoolId={school.id}
                     teachers={teachers}
                     loading={teachersLoading}
-                    onArchiveTeacher={(id, name) => setDeleteDialog({
+                    onArchiveTeacher={hasPermission('teachers.delete') ? ((id, name) => setDeleteDialog({
                       open: true,
                       type: 'teacher',
                       id,
                       name
-                    })}
-                    onUpdateTeacher={async (teacherId, data) => {
+                    })) : undefined}
+                    onUpdateTeacher={hasPermission('teachers.update') ? (async (teacherId, data) => {
                       try {
                         await updateTeacher(teacherId, data);
                       } catch (error) {
                         console.error('Error updating teacher:', error);
                       }
-                    }}
-                    onCreateTeacher={async (data) => {
+                    }) : undefined}
+                    onCreateTeacher={hasPermission('teachers.create') ? (async (data) => {
                       try {
                         await createTeacher(data);
                       } catch (error) {
                         console.error('Error creating teacher:', error);
                       }
-                    }}
+                    }) : undefined}
+                    canCreate={hasPermission('teachers.create')}
+                    canEdit={hasPermission('teachers.update')}
+                    canArchive={hasPermission('teachers.delete')}
                   />
                 </div>
               )}
               
-              {activeTab === "settings" && (
+              {activeTab === "settings" && canAccessSection('settings') && (
                 <SchoolSettingsPage schoolId={school.id} />
               )}
               
-              {activeTab === "subscription" && school?.id && (
+              {activeTab === "subscription" && school?.id && canAccessSection('subscription') && (
                 <SchoolSubscriptionSection schoolId={school.id} />
               )}
               
-              {activeTab === "document-requests" && school?.id && (
+              {activeTab === "document-requests" && school?.id && canAccessSection('document-requests') && (
                 <DocumentRequestsManagement schoolId={school.id} />
               )}
               
-              {activeTab === "documents" && school?.id && (
+              {activeTab === "documents" && school?.id && canAccessSection('documents') && (
                 <DocumentsManagementSection schoolId={school.id} />
               )}
               
-              {activeTab === "classrooms" && school?.id && (
+              {activeTab === "classrooms" && school?.id && canAccessSection('classrooms') && (
                 <ClassroomManagement schoolId={school.id} />
               )}
               
-              {activeTab === "timetable" && school?.id && (
+              {activeTab === "timetable" && school?.id && canAccessSection('timetable') && (
                 <TimetableSection schoolId={school.id} schoolName={school.name} />
               )}
               
-              {activeTab === "year-transition" && school?.id && (
+              {activeTab === "year-transition" && school?.id && canAccessSection('year-transition') && (
                 <YearPreparationWizard schoolId={school.id} />
               )}
               
-              {activeTab === "semesters" && school?.id && (
+              {activeTab === "semesters" && school?.id && canAccessSection('settings') && (
                 <SemesterManagement schoolId={school.id} />
               )}
               
-              {activeTab === "events" && (
+              {activeTab === "events" && canAccessSection('events') && (
                 <EventsSection schoolId={school.id} isAdmin={true} />
               )}
 
-              {activeTab === "announcements" && (
+              {activeTab === "announcements" && canAccessSection('announcements') && (
                 <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
               )}
               
-              {activeTab === "exams" && <SchoolExamDocumentsPage />}
+              {activeTab === "exams" && canAccessSection('exams') && <SchoolExamDocumentsPage />}
               
-              {activeTab === "notifications" && school?.id && (
+              {activeTab === "notifications" && school?.id && canAccessSection('notifications') && (
                 <NotificationsSection schoolId={school.id} />
               )}
               
-              {activeTab === "bulletin" && (
+              {activeTab === "bulletin" && canAccessSection('bulletin') && (
                 <BulletinSection
                   schoolId={school.id}
                   schoolName={school.name}
@@ -1045,11 +1050,11 @@ const SchoolDashboard = () => {
                 />
               )}
               
-              {activeTab === "textbooks" && school?.id && (
+              {activeTab === "textbooks" && school?.id && canAccessSection('textbooks') && (
                 <TextbooksSection schoolId={school.id} />
               )}
 
-              {activeTab === "cameras" && school?.id && (
+              {activeTab === "cameras" && school?.id && canAccessSection('cameras') && (
                 <CamerasSection schoolId={school.id} />
               )}
 

@@ -23,13 +23,13 @@ export const SECTION_PERMISSIONS: Record<string, string[]> = {
   justifications: ['justifications.view'],
   grades: ['grades.view'],
   bulletin: ['bulletin.view'],
-  textbooks: ['dashboard.view'],
-  exams: ['grades.view'],
+  textbooks: ['textbooks.view'],
+  exams: ['exams.view'],
 
   // Planning & salles
   timetable: ['timetable.view'],
   classrooms: ['classrooms.view'],
-  cameras: ['dashboard.view'],
+  cameras: ['cameras.view'],
 
   // Communication
   notifications: ['notifications.view'],
@@ -38,7 +38,7 @@ export const SECTION_PERMISSIONS: Record<string, string[]> = {
 
   // Documents
   'document-requests': ['documents.view'],
-  documents: ['templates.view', 'documents.view'],
+  documents: ['templates.view'],
 
   // Administration
   'year-transition': ['settings.manage'],

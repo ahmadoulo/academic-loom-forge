@@ -25,10 +25,10 @@ interface ClassesListSectionProps {
   classes: Class[];
   students: StudentWithClass[];
   loading: boolean;
-  onArchiveClass: (id: string, name: string) => void;
+  onArchiveClass?: (id: string, name: string) => void;
   onViewClassDetails: (classItem: Class) => void;
-  onCreateClass: () => void;
-  onEditClass: (classItem: Class) => void;
+  onCreateClass?: () => void;
+  onEditClass?: (classItem: Class) => void;
 }
 
 export function ClassesListSection({ 
@@ -60,10 +60,12 @@ export function ClassesListSection({
           <h2 className="text-2xl font-bold text-gray-900">Gestion des Classes</h2>
           <p className="text-gray-600 mt-1">Organisez vos classes et consultez les listes d'étudiants</p>
         </div>
-        <Button onClick={onCreateClass} size="lg" className="gap-2">
-          <Plus className="h-5 w-5" />
-          Nouvelle Classe
-        </Button>
+        {onCreateClass && (
+          <Button onClick={onCreateClass} size="lg" className="gap-2">
+            <Plus className="h-5 w-5" />
+            Nouvelle Classe
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-lg">
@@ -124,29 +126,33 @@ export function ClassesListSection({
                           </CardTitle>
                           
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditClass(classItem);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            {onEditClass && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEditClass(classItem);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
                             
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onArchiveClass(classItem.id, classItem.name);
-                              }}
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+                            {onArchiveClass && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onArchiveClass(classItem.id, classItem.name);
+                                }}
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardHeader>

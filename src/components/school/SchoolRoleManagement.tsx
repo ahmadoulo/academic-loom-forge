@@ -70,6 +70,7 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<SchoolRole | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; role?: SchoolRole }>({ open: false });
+  const [activeView, setActiveView] = useState<'cards' | 'matrix'>('cards');
   const [newRole, setNewRole] = useState({
     name: '',
     description: '',
@@ -351,7 +352,7 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="cards" className="space-y-4">
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'cards' | 'matrix')} className="space-y-4">
           <TabsList>
             <TabsTrigger value="cards">Vue cartes</TabsTrigger>
             <TabsTrigger value="matrix">Matrice des permissions</TabsTrigger>
