@@ -14,8 +14,8 @@ interface TeachersListSectionProps {
   schoolId: string;
   teachers: Teacher[];
   loading: boolean;
-  onArchiveTeacher: (id: string, name: string) => void;
-  onEditTeacher: (teacher: Teacher) => void;
+  onArchiveTeacher?: (id: string, name: string) => void;
+  onEditTeacher?: (teacher: Teacher) => void;
   onViewTeacher: (teacher: Teacher) => void;
 }
 
@@ -191,15 +191,17 @@ export function TeachersListSection({
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onEditTeacher(teacher)}
-                              className="hover:bg-primary hover:text-primary-foreground"
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              Modifier
-                            </Button>
+                            {onEditTeacher && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onEditTeacher(teacher)}
+                                className="hover:bg-primary hover:text-primary-foreground"
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Modifier
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -216,14 +218,16 @@ export function TeachersListSection({
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
-                              onClick={() => onArchiveTeacher(teacher.id, `${teacher.firstname} ${teacher.lastname}`)}
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+                            {onArchiveTeacher && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
+                                onClick={() => onArchiveTeacher(teacher.id, `${teacher.firstname} ${teacher.lastname}`)}
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

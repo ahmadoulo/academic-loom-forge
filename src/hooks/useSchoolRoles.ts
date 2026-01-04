@@ -44,17 +44,27 @@ export const SCHOOL_PERMISSIONS = {
   'justifications.view': { name: 'Voir les justificatifs', description: 'Consulter les justificatifs', category: 'Présences' },
   'justifications.manage': { name: 'Gérer les justificatifs', description: 'Approuver/refuser les justificatifs', category: 'Présences' },
   
-  // Grades
+  // Grades & Bulletin
   'grades.view': { name: 'Voir les notes', description: 'Consulter les notes', category: 'Notes' },
   'grades.manage': { name: 'Gérer les notes', description: 'Modifier les notes', category: 'Notes' },
   'bulletin.view': { name: 'Voir les bulletins', description: 'Consulter les bulletins', category: 'Notes' },
   'bulletin.generate': { name: 'Générer les bulletins', description: 'Générer des bulletins', category: 'Notes' },
+  
+  // Textbooks
+  'textbooks.view': { name: 'Voir les cahiers de texte', description: 'Consulter les cahiers de texte', category: 'Suivi pédagogique' },
+  'textbooks.manage': { name: 'Gérer les cahiers de texte', description: 'Modifier les cahiers de texte', category: 'Suivi pédagogique' },
+  
+  // Exams
+  'exams.view': { name: 'Voir les documents examens', description: 'Consulter les documents d\'examens', category: 'Suivi pédagogique' },
+  'exams.manage': { name: 'Gérer les documents examens', description: 'Approuver/rejeter les documents', category: 'Suivi pédagogique' },
   
   // Planning
   'timetable.view': { name: 'Voir l\'emploi du temps', description: 'Consulter l\'emploi du temps', category: 'Planning' },
   'timetable.manage': { name: 'Gérer l\'emploi du temps', description: 'Modifier l\'emploi du temps', category: 'Planning' },
   'classrooms.view': { name: 'Voir les salles', description: 'Consulter les salles', category: 'Planning' },
   'classrooms.manage': { name: 'Gérer les salles', description: 'Modifier les salles', category: 'Planning' },
+  'cameras.view': { name: 'Voir les caméras', description: 'Consulter les caméras', category: 'Planning' },
+  'cameras.manage': { name: 'Gérer les caméras', description: 'Ajouter/modifier des caméras', category: 'Planning' },
   
   // Communication
   'notifications.view': { name: 'Voir les notifications', description: 'Consulter les notifications', category: 'Communication' },
@@ -65,8 +75,8 @@ export const SCHOOL_PERMISSIONS = {
   'events.manage': { name: 'Gérer les événements', description: 'Créer/modifier des événements', category: 'Communication' },
   
   // Documents
-  'documents.view': { name: 'Voir les documents', description: 'Consulter les demandes de documents', category: 'Documents' },
-  'documents.manage': { name: 'Gérer les documents', description: 'Traiter les demandes de documents', category: 'Documents' },
+  'documents.view': { name: 'Voir les demandes documents', description: 'Consulter les demandes de documents', category: 'Documents' },
+  'documents.manage': { name: 'Gérer les demandes documents', description: 'Traiter les demandes de documents', category: 'Documents' },
   'templates.view': { name: 'Voir les modèles', description: 'Consulter les modèles de documents', category: 'Documents' },
   'templates.manage': { name: 'Gérer les modèles', description: 'Créer/modifier des modèles', category: 'Documents' },
   

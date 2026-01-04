@@ -17,9 +17,12 @@ interface TeachersManagementSectionProps {
   schoolId: string;
   teachers: Teacher[];
   loading: boolean;
-  onArchiveTeacher: (id: string, name: string) => void;
-  onUpdateTeacher: (teacherId: string, data: Partial<Teacher>) => Promise<void>;
-  onCreateTeacher: (data: CreateTeacherData) => Promise<void>;
+  onArchiveTeacher?: (id: string, name: string) => void;
+  onUpdateTeacher?: (teacherId: string, data: Partial<Teacher>) => Promise<void>;
+  onCreateTeacher?: (data: CreateTeacherData) => Promise<void>;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canArchive?: boolean;
 }
 
 export function TeachersManagementSection({
@@ -28,7 +31,10 @@ export function TeachersManagementSection({
   loading,
   onArchiveTeacher,
   onUpdateTeacher,
-  onCreateTeacher
+  onCreateTeacher,
+  canCreate = true,
+  canEdit = true,
+  canArchive = true
 }: TeachersManagementSectionProps) {
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -99,10 +105,12 @@ export function TeachersManagementSection({
                 <UserCog className="h-4 w-4" />
                 Professeurs
               </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Import
-              </TabsTrigger>
+              {canCreate && (
+                <TabsTrigger value="import" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </TabsTrigger>
+              )}
               <TabsTrigger value="assignments" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Assignations
@@ -118,15 +126,17 @@ export function TeachersManagementSection({
                 schoolId={schoolId}
                 teachers={teachers}
                 loading={loading}
-                onArchiveTeacher={onArchiveTeacher}
-                onEditTeacher={handleEditTeacher}
+                onArchiveTeacher={canArchive ? onArchiveTeacher : undefined}
+                onEditTeacher={canEdit ? handleEditTeacher : undefined}
                 onViewTeacher={handleViewTeacher}
               />
             </TabsContent>
 
-            <TabsContent value="import" className="space-y-4">
-              <TeacherImport onImportComplete={handleImportComplete} />
-            </TabsContent>
+            {canCreate && (
+              <TabsContent value="import" className="space-y-4">
+                <TeacherImport onImportComplete={handleImportComplete} />
+              </TabsContent>
+            )}
 
             <TabsContent value="assignments" className="space-y-4">
               <TeacherClassAssignment schoolId={schoolId} />

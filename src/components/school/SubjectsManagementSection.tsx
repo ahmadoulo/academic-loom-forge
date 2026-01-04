@@ -31,9 +31,9 @@ interface SubjectsManagementSectionProps {
   classes: Class[];
   teachers: Teacher[];
   loading: boolean;
-  onCreateSubject: () => void;
-  onEditSubject: (subject: Subject) => void;
-  onArchiveSubject: (id: string, name: string) => void;
+  onCreateSubject?: () => void;
+  onEditSubject?: (subject: Subject) => void;
+  onArchiveSubject?: (id: string, name: string) => void;
 }
 
 export function SubjectsManagementSection({
@@ -94,10 +94,12 @@ export function SubjectsManagementSection({
                 Gérez les matières par classe avec leurs coefficients
               </CardDescription>
             </div>
-            <Button onClick={onCreateSubject} size="lg" className="gap-2 w-full sm:w-auto">
-              <Plus className="h-5 w-5" />
-              Nouvelle Matière
-            </Button>
+            {onCreateSubject && (
+              <Button onClick={onCreateSubject} size="lg" className="gap-2 w-full sm:w-auto">
+                <Plus className="h-5 w-5" />
+                Nouvelle Matière
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -166,23 +168,27 @@ export function SubjectsManagementSection({
                             <p className="text-sm">{getTeacherName(subject.teacher_id)}</p>
                           </div>
                           <div className="flex gap-2 pt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-                              onClick={() => onEditSubject(subject)}
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              Modifier
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="hover:bg-destructive hover:text-destructive-foreground"
-                              onClick={() => onArchiveSubject(subject.id, subject.name)}
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
+                            {onEditSubject && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
+                                onClick={() => onEditSubject(subject)}
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Modifier
+                              </Button>
+                            )}
+                            {onArchiveSubject && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={() => onArchiveSubject(subject.id, subject.name)}
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -233,23 +239,27 @@ export function SubjectsManagementSection({
                               <p className="text-sm">{getTeacherName(subject.teacher_id)}</p>
                             </div>
                             <div className="flex gap-2 pt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-                                onClick={() => onEditSubject(subject)}
-                              >
-                                <Pencil className="h-4 w-4 mr-1" />
-                                Modifier
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-destructive hover:text-destructive-foreground"
-                                onClick={() => onArchiveSubject(subject.id, subject.name)}
-                              >
-                                <Archive className="h-4 w-4" />
-                              </Button>
+                              {onEditSubject && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
+                                  onClick={() => onEditSubject(subject)}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  Modifier
+                                </Button>
+                              )}
+                              {onArchiveSubject && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="hover:bg-destructive hover:text-destructive-foreground"
+                                  onClick={() => onArchiveSubject(subject.id, subject.name)}
+                                >
+                                  <Archive className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
