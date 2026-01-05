@@ -14,9 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SchoolSettingsPageProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
-export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
+export function SchoolSettingsPage({ schoolId, canEdit = true }: SchoolSettingsPageProps) {
   const [activeTab, setActiveTab] = useState("school-info");
 
   const availableTabs = [
@@ -33,7 +34,7 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
   const renderContent = () => {
     switch (activeTab) {
       case "school-info":
-        return <SchoolSettings schoolId={schoolId} />;
+        return <SchoolSettings schoolId={schoolId} canEdit={canEdit} />;
       case "semesters":
         return <SemesterManagement schoolId={schoolId} />;
       case "cycles":
@@ -62,7 +63,7 @@ export function SchoolSettingsPage({ schoolId }: SchoolSettingsPageProps) {
           </Tabs>
         );
       default:
-        return <SchoolSettings schoolId={schoolId} />;
+        return <SchoolSettings schoolId={schoolId} canEdit={canEdit} />;
     }
   };
 

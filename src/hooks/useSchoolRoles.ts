@@ -74,15 +74,27 @@ export const SCHOOL_PERMISSIONS = {
   'notifications.view': { name: 'Voir les notifications', description: 'Consulter les notifications', category: 'Communication' },
   'notifications.send': { name: 'Envoyer des notifications', description: 'Envoyer des notifications', category: 'Communication' },
   'announcements.view': { name: 'Voir les annonces', description: 'Consulter les annonces', category: 'Communication' },
-  'announcements.manage': { name: 'Gérer les annonces', description: 'Créer/modifier des annonces', category: 'Communication' },
+  'announcements.create': { name: 'Créer des annonces', description: 'Créer de nouvelles annonces', category: 'Communication' },
+  'announcements.update': { name: 'Modifier les annonces', description: 'Modifier des annonces existantes', category: 'Communication' },
+  'announcements.delete': { name: 'Supprimer les annonces', description: 'Supprimer des annonces', category: 'Communication' },
   'events.view': { name: 'Voir les événements', description: 'Consulter les événements', category: 'Communication' },
-  'events.manage': { name: 'Gérer les événements', description: 'Créer/modifier des événements', category: 'Communication' },
+  'events.create': { name: 'Créer des événements', description: 'Créer de nouveaux événements', category: 'Communication' },
+  'events.update': { name: 'Modifier les événements', description: 'Modifier des événements existants', category: 'Communication' },
+  'events.delete': { name: 'Supprimer les événements', description: 'Supprimer des événements', category: 'Communication' },
   
   // Documents
   'documents.view': { name: 'Voir les demandes documents', description: 'Consulter les demandes de documents', category: 'Documents' },
   'documents.manage': { name: 'Gérer les demandes documents', description: 'Traiter les demandes de documents', category: 'Documents' },
   'templates.view': { name: 'Voir les modèles', description: 'Consulter les modèles de documents', category: 'Documents' },
-  'templates.manage': { name: 'Gérer les modèles', description: 'Créer/modifier des modèles', category: 'Documents' },
+  'templates.create': { name: 'Créer des modèles', description: 'Créer de nouveaux modèles', category: 'Documents' },
+  'templates.update': { name: 'Modifier les modèles', description: 'Modifier des modèles existants', category: 'Documents' },
+  'templates.delete': { name: 'Supprimer les modèles', description: 'Supprimer des modèles', category: 'Documents' },
+  
+  // Calendar / Sessions
+  'calendar.view': { name: 'Voir le calendrier', description: 'Consulter le calendrier des séances', category: 'Planning' },
+  'calendar.create': { name: 'Créer des séances', description: 'Créer de nouvelles séances', category: 'Planning' },
+  'calendar.update': { name: 'Modifier les séances', description: 'Modifier/déplacer des séances', category: 'Planning' },
+  'calendar.delete': { name: 'Supprimer les séances', description: 'Supprimer des séances', category: 'Planning' },
   
   // Finance (if applicable)
   'fees.view': { name: 'Voir les frais', description: 'Consulter les frais scolaires', category: 'Finance' },

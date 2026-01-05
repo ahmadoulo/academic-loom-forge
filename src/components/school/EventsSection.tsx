@@ -27,6 +27,9 @@ import { AttachmentDisplay } from "./AttachmentDisplay";
 interface EventsSectionProps {
   schoolId: string;
   isAdmin?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 interface ActiveSession {
@@ -64,7 +67,13 @@ const toISOStringWithoutTimezone = (dateTimeLocal: string): string => {
   return date.toISOString();
 };
 
-export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps) {
+export function EventsSection({ 
+  schoolId, 
+  isAdmin = false,
+  canCreate = isAdmin,
+  canEdit = isAdmin,
+  canDelete = isAdmin
+}: EventsSectionProps) {
   const { events, loading, createEvent, updateEvent, deleteEvent } = useEvents(schoolId);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
@@ -249,12 +258,12 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
             )}
           </div>
 
-          {isAdmin && (
+          {(canEdit || canDelete || event.attendance_enabled) && (
             <div className="space-y-2 pt-4 border-t">
               {/* Attendance buttons for events with attendance enabled */}
               {event.attendance_enabled && (
                 <div className="flex gap-2">
-                  {canGenerateQR && (
+                  {canGenerateQR && canEdit && (
                     <EventQRButton 
                       event={event} 
                       schoolId={schoolId}
@@ -273,24 +282,30 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                 </div>
               )}
               
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(event)}
-                  className="flex-1 group-hover:border-primary/50"
-                >
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Modifier
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(event.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              {(canEdit || canDelete) && (
+                <div className="flex gap-2">
+                  {canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(event)}
+                      className="flex-1 group-hover:border-primary/50"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Modifier
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(event.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -338,7 +353,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
           </p>
         </div>
         
-        {isAdmin && (
+        {canCreate && (
           <Button onClick={() => setIsModalOpen(true)} size="lg" className="gap-2 shadow-md">
             <Plus className="w-4 h-4" />
             Nouvel événement
@@ -373,7 +388,7 @@ export function EventsSection({ schoolId, isAdmin = false }: EventsSectionProps)
                   <CalendarDays className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold">Aucun événement à venir</h3>
                   <p className="text-muted-foreground text-sm mt-1">
-                    {isAdmin ? "Créez un nouvel événement pour commencer." : "Revenez plus tard !"}
+                    {canCreate ? "Créez un nouvel événement pour commencer." : "Revenez plus tard !"}
                   </p>
                 </CardContent>
               </Card>

@@ -31,9 +31,19 @@ interface AnnouncementsSectionProps {
   schoolId: string;
   isAdmin?: boolean;
   userRole?: string;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: AnnouncementsSectionProps) {
+export function AnnouncementsSection({ 
+  schoolId, 
+  isAdmin = false, 
+  userRole,
+  canCreate = isAdmin,
+  canEdit = isAdmin,
+  canDelete = isAdmin
+}: AnnouncementsSectionProps) {
   const { announcements, loading, createAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(schoolId, userRole);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
@@ -141,7 +151,7 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
           </p>
         </div>
         
-        {isAdmin && (
+        {canCreate && (
           <Button onClick={() => setIsModalOpen(true)} size="lg" className="gap-2 shadow-md">
             <Plus className="w-4 h-4" />
             Nouvelle annonce
@@ -164,19 +174,19 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
                 <Megaphone className="w-10 h-10 text-muted-foreground" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold">Aucune annonce</h3>
-                <p className="text-muted-foreground max-w-md">
-                  {isAdmin 
-                    ? "Commencez par créer votre première annonce pour informer votre communauté."
-                    : "Aucune annonce n'a été publiée pour le moment. Revenez plus tard !"}
-                </p>
-              </div>
-              {isAdmin && (
-                <Button onClick={() => setIsModalOpen(true)} className="mt-4">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Créer une annonce
-                </Button>
-              )}
+              <h3 className="text-xl font-semibold">Aucune annonce</h3>
+              <p className="text-muted-foreground max-w-md">
+                {canCreate 
+                  ? "Commencez par créer votre première annonce pour informer votre communauté."
+                  : "Aucune annonce n'a été publiée pour le moment. Revenez plus tard !"}
+              </p>
+            </div>
+            {canCreate && (
+              <Button onClick={() => setIsModalOpen(true)} className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Créer une annonce
+              </Button>
+            )}
             </div>
           </CardContent>
         </Card>
@@ -249,25 +259,29 @@ export function AnnouncementsSection({ schoolId, isAdmin = false, userRole }: An
                     </div>
                   )}
 
-                  {isAdmin && (
+                  {(canEdit || canDelete) && (
                     <div className="flex gap-2 pt-4 mt-4 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(announcement)}
-                        className="flex-1"
-                      >
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Modifier
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => handleDelete(announcement.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(announcement)}
+                          className="flex-1"
+                        >
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Modifier
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => handleDelete(announcement.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>

@@ -5,8 +5,8 @@ import { DocumentTemplate } from "@/hooks/useDocumentTemplates";
 
 interface DocumentTemplateCardProps {
   template: DocumentTemplate;
-  onEdit: (template: DocumentTemplate) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (template: DocumentTemplate) => void;
+  onDelete?: (id: string) => void;
   onGenerate: (template: DocumentTemplate) => void;
 }
 
@@ -86,24 +86,30 @@ export const DocumentTemplateCard = ({
               {template.is_active ? "Actif" : "Inactif"}
             </p>
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onEdit(template)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onDelete(template.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          {(onEdit || onDelete) && (
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onEdit(template)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onDelete(template.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </CardHeader>
       

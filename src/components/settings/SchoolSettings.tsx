@@ -15,9 +15,10 @@ import { fr } from 'date-fns/locale';
 
 interface SchoolSettingsProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
-export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
+export function SchoolSettings({ schoolId, canEdit = true }: SchoolSettingsProps) {
   const { getSchoolById, updateSchool } = useSchools();
   const { subscriptions } = useSubscriptions();
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,10 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit) {
+      toast.error("Vous n'avez pas la permission de modifier les paramètres");
+      return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -115,6 +120,10 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
   };
 
   const handleSaveSettings = async () => {
+    if (!canEdit) {
+      toast.error("Vous n'avez pas la permission de modifier les paramètres");
+      return;
+    }
     try {
       setLoading(true);
       await updateSchool(schoolId, schoolData);
@@ -174,33 +183,35 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleLogoUpload}
-                disabled={uploading}
+                disabled={uploading || !canEdit}
                 className="hidden"
               />
-              <Label htmlFor="logo-upload">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={uploading}
-                  onClick={() => document.getElementById('logo-upload')?.click()}
-                  className="w-full sm:w-auto"
-                  asChild
-                >
-                  <span>
-                    {uploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Upload en cours...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Changer le logo
-                      </>
-                    )}
-                  </span>
-                </Button>
-              </Label>
+              {canEdit && (
+                <Label htmlFor="logo-upload">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => document.getElementById('logo-upload')?.click()}
+                    className="w-full sm:w-auto"
+                    asChild
+                  >
+                    <span>
+                      {uploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Changer le logo
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </Label>
+              )}
             </div>
           </div>
         </div>
@@ -221,6 +232,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nom de l'établissement"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -232,6 +244,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="+212 XXX XXXXXX"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -243,6 +256,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, address: e.target.value }))}
                 placeholder="Adresse complète"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -254,6 +268,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, city: e.target.value }))}
                 placeholder="Ville"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -265,6 +280,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, country: e.target.value }))}
                 placeholder="Pays"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -276,6 +292,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, website: e.target.value }))}
                 placeholder="https://www.example.com"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
 
@@ -287,6 +304,7 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
                 onChange={(e) => setSchoolData(prev => ({ ...prev, academic_year: e.target.value }))}
                 placeholder="2024-2025"
                 className="h-11"
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -294,29 +312,31 @@ export function SchoolSettings({ schoolId }: SchoolSettingsProps) {
 
         <Separator className="my-8" />
 
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={loadSchoolData}
-            disabled={loading}
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={handleSaveSettings}
-            disabled={loading || !schoolData.name}
-            className="px-8"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              'Enregistrer les modifications'
-            )}
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={loadSchoolData}
+              disabled={loading}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSaveSettings}
+              disabled={loading || !schoolData.name}
+              className="px-8"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer les modifications'
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

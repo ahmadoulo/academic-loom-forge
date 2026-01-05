@@ -16,9 +16,11 @@ interface SchoolCalendarSectionProps {
   schoolId: string;
   classes: Array<{ id: string; name: string }>;
   teachers: Array<{ id: string; firstname: string; lastname: string }>;
+  canCreate?: boolean;
+  canModify?: boolean;
 }
 
-export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCalendarSectionProps) {
+export function SchoolCalendarSection({ schoolId, classes, teachers, canCreate = true, canModify = true }: SchoolCalendarSectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
@@ -48,6 +50,10 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
   }));
 
   const handleCreateSession = async (data: SessionFormData) => {
+    if (!canCreate) {
+      toast.error("Vous n'avez pas la permission de créer des séances");
+      return;
+    }
     try {
       const assignmentData: any = {
         school_id: schoolId,
@@ -150,6 +156,10 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
   };
 
   const handleMoveSession = async (sessionId: string, newDate: Date) => {
+    if (!canModify) {
+      toast.error("Vous n'avez pas la permission de modifier les séances");
+      throw new Error("Permission denied");
+    }
     try {
       await rescheduleAssignment(
         sessionId, 
@@ -168,10 +178,12 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle séance
-        </Button>
+        {canCreate && (
+          <Button size="lg" onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle séance
+          </Button>
+        )}
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl">
@@ -194,11 +206,11 @@ export function SchoolCalendarSection({ schoolId, classes, teachers }: SchoolCal
         events={calendarEvents}
         onDateSelect={setSelectedDate}
         selectedDate={selectedDate}
-        canManage={true}
+        canManage={canModify}
         isTeacher={false}
-        onReschedule={handleReschedule}
-        onApproveReschedule={handleApproveReschedule}
-        onMoveSession={handleMoveSession}
+        onReschedule={canModify ? handleReschedule : undefined}
+        onApproveReschedule={canModify ? handleApproveReschedule : undefined}
+        onMoveSession={canModify ? handleMoveSession : undefined}
         showFilters={true}
       />
 
