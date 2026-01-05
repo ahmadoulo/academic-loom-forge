@@ -9,7 +9,7 @@ const SESSION_KEY = 'app_session_token';
 export const SECTION_PERMISSIONS: Record<string, string[]> = {
   // Dashboard / home
   analytics: ['dashboard.view'],
-  calendar: ['dashboard.view'],
+  calendar: ['calendar.view'],
 
   // Gestion académique
   students: ['students.view'],
@@ -38,7 +38,7 @@ export const SECTION_PERMISSIONS: Record<string, string[]> = {
 
   // Documents
   'document-requests': ['documents.view'],
-  documents: ['documents.view', 'templates.view'],
+  documents: ['templates.view'],
 
   // Administration
   'year-transition': ['settings.manage'],

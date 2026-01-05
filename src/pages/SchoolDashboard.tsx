@@ -712,6 +712,8 @@ const SchoolDashboard = () => {
                   schoolId={school.id}
                   classes={currentYearClasses}
                   teachers={teachers}
+                  canCreate={hasPermission('calendar.create')}
+                  canModify={hasPermission('calendar.update')}
                 />
               )}
               
@@ -994,7 +996,7 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "settings" && canAccessSection('settings') && (
-                <SchoolSettingsPage schoolId={school.id} />
+                <SchoolSettingsPage schoolId={school.id} canEdit={hasPermission('settings.manage')} />
               )}
               
               {activeTab === "subscription" && school?.id && canAccessSection('subscription') && (
@@ -1006,7 +1008,12 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "documents" && school?.id && canAccessSection('documents') && (
-                <DocumentsManagementSection schoolId={school.id} />
+                <DocumentsManagementSection 
+                  schoolId={school.id}
+                  canCreate={hasPermission('templates.create')}
+                  canEdit={hasPermission('templates.update')}
+                  canDelete={hasPermission('templates.delete')}
+                />
               )}
               
               {activeTab === "classrooms" && school?.id && canAccessSection('classrooms') && (
@@ -1031,17 +1038,33 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "events" && canAccessSection('events') && (
-                <EventsSection schoolId={school.id} isAdmin={true} />
+                <EventsSection 
+                  schoolId={school.id} 
+                  isAdmin={true}
+                  canCreate={hasPermission('events.create')}
+                  canEdit={hasPermission('events.update')}
+                  canDelete={hasPermission('events.delete')}
+                />
               )}
 
               {activeTab === "announcements" && canAccessSection('announcements') && (
-                <AnnouncementsSection schoolId={school.id} isAdmin={true} userRole="admin" />
+                <AnnouncementsSection 
+                  schoolId={school.id} 
+                  isAdmin={true} 
+                  userRole="admin"
+                  canCreate={hasPermission('announcements.create')}
+                  canEdit={hasPermission('announcements.update')}
+                  canDelete={hasPermission('announcements.delete')}
+                />
               )}
               
               {activeTab === "exams" && canAccessSection('exams') && <SchoolExamDocumentsPage />}
               
               {activeTab === "notifications" && school?.id && canAccessSection('notifications') && (
-                <NotificationsSection schoolId={school.id} />
+                <NotificationsSection 
+                  schoolId={school.id}
+                  canSend={hasPermission('notifications.send')}
+                />
               )}
               
               {activeTab === "bulletin" && canAccessSection('bulletin') && (
@@ -1059,7 +1082,11 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "textbooks" && school?.id && canAccessSection('textbooks') && (
-                <TextbooksSection schoolId={school.id} />
+                <TextbooksSection 
+                  schoolId={school.id}
+                  canCreate={hasPermission('textbooks.manage')}
+                  canDelete={hasPermission('textbooks.manage')}
+                />
               )}
 
               {activeTab === "cameras" && school?.id && canAccessSection('cameras') && (

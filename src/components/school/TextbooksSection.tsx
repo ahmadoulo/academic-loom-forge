@@ -24,9 +24,11 @@ import { toast } from 'sonner';
 
 interface TextbooksSectionProps {
   schoolId: string;
+  canCreate?: boolean;
+  canDelete?: boolean;
 }
 
-export const TextbooksSection = ({ schoolId }: TextbooksSectionProps) => {
+export const TextbooksSection = ({ schoolId, canCreate = true, canDelete = true }: TextbooksSectionProps) => {
   const { currentYear } = useAcademicYear();
   const { textbooks, isLoading, createTextbook, deleteTextbook } = useTextbooks(schoolId, currentYear?.id);
   const { classes } = useClasses(schoolId);
@@ -82,13 +84,14 @@ export const TextbooksSection = ({ schoolId }: TextbooksSectionProps) => {
           <p className="text-muted-foreground">Gérez les cahiers de texte de vos classes</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau Cahier
-            </Button>
-          </DialogTrigger>
+        {canCreate && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau Cahier
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Créer un Cahier de Texte</DialogTitle>
@@ -133,6 +136,7 @@ export const TextbooksSection = ({ schoolId }: TextbooksSectionProps) => {
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {isLoading ? (
@@ -149,10 +153,12 @@ export const TextbooksSection = ({ schoolId }: TextbooksSectionProps) => {
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="font-semibold text-lg">Aucun cahier de texte</h3>
             <p className="text-muted-foreground mb-4">Créez un cahier de texte pour commencer</p>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Créer un cahier
-            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer un cahier
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -184,13 +190,15 @@ export const TextbooksSection = ({ schoolId }: TextbooksSectionProps) => {
                     <Eye className="h-4 w-4 mr-1" />
                     Consulter
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setDeleteId(textbook.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setDeleteId(textbook.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

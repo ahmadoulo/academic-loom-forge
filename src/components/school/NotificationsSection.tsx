@@ -10,14 +10,15 @@ import { cn } from "@/lib/utils";
 
 interface NotificationsSectionProps {
   schoolId: string;
+  canSend?: boolean;
 }
 
 type SectionType = "students" | "teachers" | "parents";
 type ViewType = "send" | "history";
 
-export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
+export function NotificationsSection({ schoolId, canSend = true }: NotificationsSectionProps) {
   const [activeSection, setActiveSection] = useState<SectionType>("students");
-  const [activeView, setActiveView] = useState<ViewType>("send");
+  const [activeView, setActiveView] = useState<ViewType>(canSend ? "send" : "history");
 
   const renderContent = () => {
     if (activeView === "history") {
@@ -53,17 +54,19 @@ export function NotificationsSection({ schoolId }: NotificationsSectionProps) {
         <Card className="w-64 p-4 space-y-2 h-fit">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground px-3 mb-2">ACTION</p>
-            <Button
-              variant="ghost"
-              className={cn(
-                "w-full justify-start gap-3",
-                activeView === "send" && "bg-primary/10 text-primary hover:bg-primary/20"
-              )}
-              onClick={() => setActiveView("send")}
-            >
-              <Bell className="h-4 w-4 text-primary" />
-              Envoyer
-            </Button>
+            {canSend && (
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3",
+                  activeView === "send" && "bg-primary/10 text-primary hover:bg-primary/20"
+                )}
+                onClick={() => setActiveView("send")}
+              >
+                <Bell className="h-4 w-4 text-primary" />
+                Envoyer
+              </Button>
+            )}
             <Button
               variant="ghost"
               className={cn(

@@ -20,6 +20,9 @@ import {
 
 interface DocumentsManagementSectionProps {
   schoolId: string;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 const TEMPLATE_TYPE_LABELS: Record<string, string> = {
@@ -31,7 +34,12 @@ const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   custom: "Document personnalisé",
 };
 
-export const DocumentsManagementSection = ({ schoolId }: DocumentsManagementSectionProps) => {
+export const DocumentsManagementSection = ({ 
+  schoolId, 
+  canCreate = true, 
+  canEdit = true, 
+  canDelete = true 
+}: DocumentsManagementSectionProps) => {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } =
     useDocumentTemplates(schoolId);
   
@@ -83,10 +91,12 @@ export const DocumentsManagementSection = ({ schoolId }: DocumentsManagementSect
             Créez et gérez vos modèles de documents officiels
           </p>
         </div>
-        <Button onClick={handleCreateTemplate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau modèle
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreateTemplate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau modèle
+          </Button>
+        )}
       </div>
 
       {templates.length === 0 ? (
@@ -97,10 +107,12 @@ export const DocumentsManagementSection = ({ schoolId }: DocumentsManagementSect
             <p className="text-muted-foreground mb-4">
               Commencez par créer votre premier modèle de document
             </p>
-            <Button onClick={handleCreateTemplate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Créer un modèle
-            </Button>
+            {canCreate && (
+              <Button onClick={handleCreateTemplate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer un modèle
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -109,8 +121,8 @@ export const DocumentsManagementSection = ({ schoolId }: DocumentsManagementSect
             <DocumentTemplateCard
               key={template.id}
               template={template}
-              onEdit={handleEditTemplate}
-              onDelete={setTemplateToDelete}
+              onEdit={canEdit ? handleEditTemplate : undefined}
+              onDelete={canDelete ? setTemplateToDelete : undefined}
               onGenerate={handleGenerateDocument}
             />
           ))}
