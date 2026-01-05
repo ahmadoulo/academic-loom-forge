@@ -39,9 +39,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface CamerasSectionProps {
   schoolId: string;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-export function CamerasSection({ schoolId }: CamerasSectionProps) {
+export function CamerasSection({ schoolId, canCreate = true, canEdit = true, canDelete = true }: CamerasSectionProps) {
   const { cameras, isLoading, createCamera, updateCamera, deleteCamera } = useSchoolCameras(schoolId);
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,6 +61,7 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
   const activeCameras = cameras.filter((c) => c.is_active).length;
 
   const handleCreateCamera = (data: CameraFormData) => {
+    if (!canCreate) return;
     createCamera.mutate(
       { school_id: schoolId, ...data },
       { onSuccess: () => setShowAddDialog(false) }
@@ -65,7 +69,7 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
   };
 
   const handleUpdateCamera = (data: CameraFormData) => {
-    if (!editingCamera) return;
+    if (!editingCamera || !canEdit) return;
     updateCamera.mutate(
       { id: editingCamera.id, ...data },
       { onSuccess: () => setEditingCamera(null) }
@@ -73,7 +77,7 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
   };
 
   const handleDeleteCamera = () => {
-    if (!deletingCamera) return;
+    if (!deletingCamera || !canDelete) return;
     deleteCamera.mutate(deletingCamera.id, {
       onSuccess: () => setDeletingCamera(null),
     });
@@ -109,10 +113,12 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
             {activeCameras > 0 && ` • ${activeCameras} active${activeCameras > 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter une caméra
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter une caméra
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -197,24 +203,30 @@ export function CamerasSection({ schoolId }: CamerasSectionProps) {
                         <Eye className="h-4 w-4 mr-2" />
                         Voir le flux
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCamera(camera);
-                      }}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive"
-                        onClick={(e) => {
+                      {canEdit && (
+                        <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          setDeletingCamera(camera);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
+                          setEditingCamera(camera);
+                        }}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Modifier
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingCamera(camera);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

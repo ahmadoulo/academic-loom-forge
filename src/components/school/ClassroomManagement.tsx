@@ -28,6 +28,9 @@ import { toast } from "sonner";
 
 interface ClassroomManagementProps {
   schoolId: string;
+  canCreate?: boolean;
+  canManage?: boolean;
+  canDelete?: boolean;
 }
 
 interface AutoAssignmentResult {
@@ -62,7 +65,7 @@ interface OccupancySlot {
   session: any;
 }
 
-export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
+export function ClassroomManagement({ schoolId, canCreate = true, canManage = true, canDelete = true }: ClassroomManagementProps) {
   const { classrooms, assignments: classroomAssignments, createClassroom, deleteClassroom, assignClassroom, unassignClassroom } = useClassrooms(schoolId);
   const { assignments } = useAssignments({ schoolId });
   const { classes } = useClasses(schoolId);
@@ -628,7 +631,7 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {totalProblems > 0 && (
+          {totalProblems > 0 && canManage && (
             <Button 
               variant="destructive"
               size="sm"
@@ -649,165 +652,171 @@ export function ClassroomManagement({ schoolId }: ClassroomManagementProps) {
             Vue Architecte
           </Button>
 
-          <Button 
-            variant="default" 
-            onClick={openAutoAssignDialog}
-            disabled={classrooms.length === 0}
-            className="gap-2"
-          >
-            <Wand2 className="h-4 w-4" />
-            Assignation Auto
-            {totalAssignable > 0 && (
-              <Badge variant="secondary" className="ml-1 bg-background/20">
-                {totalAssignable}
-              </Badge>
-            )}
-          </Button>
+          {canManage && (
+            <Button 
+              variant="default" 
+              onClick={openAutoAssignDialog}
+              disabled={classrooms.length === 0}
+              className="gap-2"
+            >
+              <Wand2 className="h-4 w-4" />
+              Assignation Auto
+              {totalAssignable > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-background/20">
+                  {totalAssignable}
+                </Badge>
+              )}
+            </Button>
+          )}
 
-          <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Assigner
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Assigner une Salle</DialogTitle>
-                <DialogDescription>
-                  Sélectionnez une salle et une séance pour l'assignation manuelle
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Salle de cours</Label>
-                  <Select
-                    value={assignmentForm.classroom_id}
-                    onValueChange={(value) => setAssignmentForm({ ...assignmentForm, classroom_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une salle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classrooms.filter(c => c.is_active).map((classroom) => (
-                        <SelectItem key={classroom.id} value={classroom.id}>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-3 w-3 text-muted-foreground" />
-                            {classroom.name}
-                            <span className="text-muted-foreground text-xs">
-                              ({classroom.capacity} places)
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Séance</Label>
-                  <Select
-                    value={assignmentForm.assignment_id}
-                    onValueChange={(value) => setAssignmentForm({ ...assignmentForm, assignment_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une séance" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSessions.map((session) => {
-                        const studentCount = studentCountByClass[session.class_id] || 0;
-                        return (
-                          <SelectItem key={session.id} value={session.id}>
-                            <div className="flex flex-col">
-                              <span>{session.title} - {session.classes?.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {format(parseISO(session.session_date!), "dd/MM/yyyy", { locale: fr })} • {session.start_time}-{session.end_time} • {studentCount} étudiants
+          {canManage && (
+            <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Assigner
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assigner une Salle</DialogTitle>
+                  <DialogDescription>
+                    Sélectionnez une salle et une séance pour l'assignation manuelle
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Salle de cours</Label>
+                    <Select
+                      value={assignmentForm.classroom_id}
+                      onValueChange={(value) => setAssignmentForm({ ...assignmentForm, classroom_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une salle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classrooms.filter(c => c.is_active).map((classroom) => (
+                          <SelectItem key={classroom.id} value={classroom.id}>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-3 w-3 text-muted-foreground" />
+                              {classroom.name}
+                              <span className="text-muted-foreground text-xs">
+                                ({classroom.capacity} places)
                               </span>
                             </div>
                           </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Séance</Label>
+                    <Select
+                      value={assignmentForm.assignment_id}
+                      onValueChange={(value) => setAssignmentForm({ ...assignmentForm, assignment_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une séance" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSessions.map((session) => {
+                          const studentCount = studentCountByClass[session.class_id] || 0;
+                          return (
+                            <SelectItem key={session.id} value={session.id}>
+                              <div className="flex flex-col">
+                                <span>{session.title} - {session.classes?.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(parseISO(session.session_date!), "dd/MM/yyyy", { locale: fr })} • {session.start_time}-{session.end_time} • {studentCount} étudiants
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
-                  Annuler
-                </Button>
-                <Button onClick={handleAssignClassroom} disabled={!assignmentForm.classroom_id || !assignmentForm.assignment_id}>
-                  Assigner
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleAssignClassroom} disabled={!assignmentForm.classroom_id || !assignmentForm.assignment_id}>
+                    Assigner
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nouvelle Salle
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Créer une Salle</DialogTitle>
-                <DialogDescription>
-                  Ajoutez une nouvelle salle de cours à votre établissement
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nom *</Label>
-                    <Input
-                      id="name"
-                      placeholder="Ex: A101"
-                      value={newClassroom.name}
-                      onChange={(e) => setNewClassroom({ ...newClassroom, name: e.target.value })}
-                    />
+          {canCreate && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nouvelle Salle
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Créer une Salle</DialogTitle>
+                  <DialogDescription>
+                    Ajoutez une nouvelle salle de cours à votre établissement
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nom *</Label>
+                      <Input
+                        id="name"
+                        placeholder="Ex: A101"
+                        value={newClassroom.name}
+                        onChange={(e) => setNewClassroom({ ...newClassroom, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="capacity">Capacité *</Label>
+                      <Input
+                        id="capacity"
+                        type="number"
+                        min="1"
+                        value={newClassroom.capacity}
+                        onChange={(e) => setNewClassroom({ ...newClassroom, capacity: parseInt(e.target.value) })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacité *</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      min="1"
-                      value={newClassroom.capacity}
-                      onChange={(e) => setNewClassroom({ ...newClassroom, capacity: parseInt(e.target.value) })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="building">Bâtiment</Label>
+                      <Input
+                        id="building"
+                        placeholder="Ex: Bâtiment A"
+                        value={newClassroom.building}
+                        onChange={(e) => setNewClassroom({ ...newClassroom, building: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="floor">Étage</Label>
+                      <Input
+                        id="floor"
+                        placeholder="Ex: 1er"
+                        value={newClassroom.floor}
+                        onChange={(e) => setNewClassroom({ ...newClassroom, floor: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="building">Bâtiment</Label>
-                    <Input
-                      id="building"
-                      placeholder="Ex: Bâtiment A"
-                      value={newClassroom.building}
-                      onChange={(e) => setNewClassroom({ ...newClassroom, building: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="floor">Étage</Label>
-                    <Input
-                      id="floor"
-                      placeholder="Ex: 1er"
-                      value={newClassroom.floor}
-                      onChange={(e) => setNewClassroom({ ...newClassroom, floor: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Annuler
-                </Button>
-                <Button onClick={handleCreateClassroom} disabled={!newClassroom.name}>
-                  Créer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleCreateClassroom} disabled={!newClassroom.name}>
+                    Créer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
           <div className="flex border rounded-md">
             <Button

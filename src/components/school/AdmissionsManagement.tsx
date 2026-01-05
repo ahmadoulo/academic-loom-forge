@@ -26,9 +26,18 @@ import { Label } from '@/components/ui/label';
 interface AdmissionsManagementProps {
   schoolId: string;
   schoolIdentifier: string;
+  canManage?: boolean;
+  canConvert?: boolean;
+  canDelete?: boolean;
 }
 
-export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsManagementProps) {
+export function AdmissionsManagement({ 
+  schoolId, 
+  schoolIdentifier, 
+  canManage = true, 
+  canConvert = true, 
+  canDelete = true 
+}: AdmissionsManagementProps) {
   const { admissions, loading, updateAdmissionStatus, deleteAdmission } = useAdmissions(schoolId);
   const [selectedAdmission, setSelectedAdmission] = useState<any>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -151,7 +160,7 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             Détails
           </Button>
 
-          {admission.status === 'nouveau' && (
+          {admission.status === 'nouveau' && canManage && (
             <Button
               variant="outline"
               size="sm"
@@ -162,7 +171,7 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </Button>
           )}
 
-          {admission.status === 'en_cours' && (
+          {admission.status === 'en_cours' && canManage && (
             <>
               <Button
                 variant="outline"
@@ -183,7 +192,7 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </>
           )}
 
-          {admission.status === 'traite' && !admission.converted_to_student_id && (
+          {admission.status === 'traite' && !admission.converted_to_student_id && canConvert && (
             <Button
               variant="default"
               size="sm"
@@ -194,7 +203,7 @@ export function AdmissionsManagement({ schoolId, schoolIdentifier }: AdmissionsM
             </Button>
           )}
 
-          {(admission.status === 'nouveau' && !admission.converted_to_student_id) && (
+          {(admission.status === 'nouveau' && !admission.converted_to_student_id && canDelete) && (
             <Button
               variant="destructive"
               size="sm"
