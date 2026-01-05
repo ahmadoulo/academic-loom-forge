@@ -62,9 +62,13 @@ export const SCHOOL_PERMISSIONS = {
   'timetable.view': { name: 'Voir l\'emploi du temps', description: 'Consulter l\'emploi du temps', category: 'Planning' },
   'timetable.manage': { name: 'Gérer l\'emploi du temps', description: 'Modifier l\'emploi du temps', category: 'Planning' },
   'classrooms.view': { name: 'Voir les salles', description: 'Consulter les salles', category: 'Planning' },
-  'classrooms.manage': { name: 'Gérer les salles', description: 'Modifier les salles', category: 'Planning' },
-  'cameras.view': { name: 'Voir les caméras', description: 'Consulter les caméras', category: 'Planning' },
-  'cameras.manage': { name: 'Gérer les caméras', description: 'Ajouter/modifier des caméras', category: 'Planning' },
+  'classrooms.create': { name: 'Créer des salles', description: 'Ajouter de nouvelles salles', category: 'Planning' },
+  'classrooms.update': { name: 'Modifier les salles', description: 'Modifier les salles existantes', category: 'Planning' },
+  'classrooms.delete': { name: 'Supprimer les salles', description: 'Supprimer des salles', category: 'Planning' },
+  'cameras.view': { name: 'Voir les caméras', description: 'Consulter les caméras', category: 'Caméras' },
+  'cameras.create': { name: 'Ajouter des caméras', description: 'Ajouter de nouvelles caméras', category: 'Caméras' },
+  'cameras.update': { name: 'Modifier des caméras', description: 'Modifier les caméras existantes', category: 'Caméras' },
+  'cameras.delete': { name: 'Supprimer des caméras', description: 'Supprimer des caméras', category: 'Caméras' },
   
   // Communication
   'notifications.view': { name: 'Voir les notifications', description: 'Consulter les notifications', category: 'Communication' },

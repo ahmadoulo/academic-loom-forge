@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +32,35 @@ export function CameraFormDialog({
   camera 
 }: CameraFormDialogProps) {
   const [formData, setFormData] = useState<CameraFormData>({
-    name: camera?.name || "",
-    rtsp_url: camera?.rtsp_url || "",
-    description: camera?.description || "",
-    location: camera?.location || "",
-    is_active: camera?.is_active ?? true,
+    name: "",
+    rtsp_url: "",
+    description: "",
+    location: "",
+    is_active: true,
   });
+
+  // Reset form when dialog opens with a camera or without
+  useEffect(() => {
+    if (open) {
+      if (camera) {
+        setFormData({
+          name: camera.name || "",
+          rtsp_url: camera.rtsp_url || "",
+          description: camera.description || "",
+          location: camera.location || "",
+          is_active: camera.is_active ?? true,
+        });
+      } else {
+        setFormData({
+          name: "",
+          rtsp_url: "",
+          description: "",
+          location: "",
+          is_active: true,
+        });
+      }
+    }
+  }, [open, camera]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

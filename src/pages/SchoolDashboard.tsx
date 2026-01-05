@@ -790,6 +790,9 @@ const SchoolDashboard = () => {
                 <AdmissionsManagement 
                   schoolId={school.id}
                   schoolIdentifier={schoolId || ''}
+                  canManage={hasPermission('admissions.update')}
+                  canConvert={hasPermission('admissions.update')}
+                  canDelete={hasPermission('admissions.delete')}
                 />
               )}
               
@@ -1007,7 +1010,12 @@ const SchoolDashboard = () => {
               )}
               
               {activeTab === "classrooms" && school?.id && canAccessSection('classrooms') && (
-                <ClassroomManagement schoolId={school.id} />
+                <ClassroomManagement 
+                  schoolId={school.id}
+                  canCreate={hasPermission('classrooms.create')}
+                  canManage={hasPermission('classrooms.update')}
+                  canDelete={hasPermission('classrooms.delete')}
+                />
               )}
               
               {activeTab === "timetable" && school?.id && canAccessSection('timetable') && (
@@ -1055,7 +1063,12 @@ const SchoolDashboard = () => {
               )}
 
               {activeTab === "cameras" && school?.id && canAccessSection('cameras') && (
-                <CamerasSection schoolId={school.id} />
+                <CamerasSection 
+                  schoolId={school.id}
+                  canCreate={hasPermission('cameras.create')}
+                  canEdit={hasPermission('cameras.update')}
+                  canDelete={hasPermission('cameras.delete')}
+                />
               )}
 
             </main>
