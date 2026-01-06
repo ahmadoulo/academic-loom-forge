@@ -11,9 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface OptionsManagementProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
-export const OptionsManagement = ({ schoolId }: OptionsManagementProps) => {
+export const OptionsManagement = ({ schoolId, canEdit = true }: OptionsManagementProps) => {
   const { options, loading, createOption, updateOption, deleteOption } = useOptions(schoolId);
   const { cycles } = useCycles(schoolId);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -67,24 +68,26 @@ export const OptionsManagement = ({ schoolId }: OptionsManagementProps) => {
             Créez et gérez les options pour chaque cycle
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle option
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Créer une nouvelle option</DialogTitle>
-            </DialogHeader>
-            <OptionForm
-              cycles={cycles}
-              onSubmit={handleCreate}
-              onCancel={() => setIsCreateOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        {canEdit && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle option
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Créer une nouvelle option</DialogTitle>
+              </DialogHeader>
+              <OptionForm
+                cycles={cycles}
+                onSubmit={handleCreate}
+                onCancel={() => setIsCreateOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -96,37 +99,39 @@ export const OptionsManagement = ({ schoolId }: OptionsManagementProps) => {
                   <Layers className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg">{option.name}</CardTitle>
                 </div>
-                <div className="flex gap-2">
-                  <Dialog open={editingOption?.id === option.id} onOpenChange={(open) => !open && setEditingOption(null)}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingOption(option)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Modifier l'option</DialogTitle>
-                      </DialogHeader>
-                      <OptionForm
-                        option={option}
-                        cycles={cycles}
-                        onSubmit={handleUpdate}
-                        onCancel={() => setEditingOption(null)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(option.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex gap-2">
+                    <Dialog open={editingOption?.id === option.id} onOpenChange={(open) => !open && setEditingOption(null)}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingOption(option)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Modifier l'option</DialogTitle>
+                        </DialogHeader>
+                        <OptionForm
+                          option={option}
+                          cycles={cycles}
+                          onSubmit={handleUpdate}
+                          onCancel={() => setEditingOption(null)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(option.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -153,10 +158,12 @@ export const OptionsManagement = ({ schoolId }: OptionsManagementProps) => {
             <p className="text-muted-foreground text-center">
               Aucune option créée pour le moment
             </p>
-            <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Créer votre première option
-            </Button>
+            {canEdit && (
+              <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer votre première option
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

@@ -38,12 +38,19 @@ export const SECTION_PERMISSIONS: Record<string, string[]> = {
 
   // Documents
   'document-requests': ['documents.view'],
-  documents: ['templates.view'],
+  documents: ['templates.view', 'templates.create', 'templates.update', 'templates.delete'],
 
-  // Administration
+  // Administration / Settings sub-sections
   'year-transition': ['settings.manage'],
   subscription: ['settings.view'],
-  settings: ['settings.view'],
+  settings: ['settings.view', 'settings.manage'],
+  semesters: ['semesters.view', 'semesters.manage'],
+  cycles: ['cycles.view', 'cycles.manage'],
+  options: ['options.view', 'options.manage'],
+  'student-accounts': ['student-accounts.view', 'student-accounts.manage'],
+  'teacher-accounts': ['teacher-accounts.view', 'teacher-accounts.manage'],
+  users: ['users.view', 'users.manage'],
+  roles: ['roles.view', 'roles.manage'],
 };
 
 export function useUserPermissions(schoolId?: string) {
