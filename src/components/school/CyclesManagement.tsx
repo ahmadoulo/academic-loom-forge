@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 
 interface CyclesManagementProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
-export const CyclesManagement = ({ schoolId }: CyclesManagementProps) => {
+export const CyclesManagement = ({ schoolId, canEdit = true }: CyclesManagementProps) => {
   const { cycles, loading, createCycle, updateCycle, deleteCycle } = useCycles(schoolId);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<any>(null);
@@ -47,20 +48,22 @@ export const CyclesManagement = ({ schoolId }: CyclesManagementProps) => {
             Créez et gérez les cycles académiques de votre établissement
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau cycle
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Créer un nouveau cycle</DialogTitle>
-            </DialogHeader>
-            <CycleForm onSubmit={handleCreate} onCancel={() => setIsCreateOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        {canEdit && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau cycle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau cycle</DialogTitle>
+              </DialogHeader>
+              <CycleForm onSubmit={handleCreate} onCancel={() => setIsCreateOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -72,36 +75,38 @@ export const CyclesManagement = ({ schoolId }: CyclesManagementProps) => {
                   <BookOpen className="h-5 w-5 text-primary" />
                   <CardTitle className="text-lg">{cycle.name}</CardTitle>
                 </div>
-                <div className="flex gap-2">
-                  <Dialog open={editingCycle?.id === cycle.id} onOpenChange={(open) => !open && setEditingCycle(null)}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingCycle(cycle)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Modifier le cycle</DialogTitle>
-                      </DialogHeader>
-                      <CycleForm
-                        cycle={cycle}
-                        onSubmit={handleUpdate}
-                        onCancel={() => setEditingCycle(null)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(cycle.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex gap-2">
+                    <Dialog open={editingCycle?.id === cycle.id} onOpenChange={(open) => !open && setEditingCycle(null)}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingCycle(cycle)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Modifier le cycle</DialogTitle>
+                        </DialogHeader>
+                        <CycleForm
+                          cycle={cycle}
+                          onSubmit={handleUpdate}
+                          onCancel={() => setEditingCycle(null)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(cycle.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -130,10 +135,12 @@ export const CyclesManagement = ({ schoolId }: CyclesManagementProps) => {
             <p className="text-muted-foreground text-center">
               Aucun cycle créé pour le moment
             </p>
-            <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Créer votre premier cycle
-            </Button>
+            {canEdit && (
+              <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer votre premier cycle
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

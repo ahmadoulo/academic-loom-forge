@@ -28,9 +28,10 @@ import {
 
 interface SemesterManagementProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
-export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
+export const SemesterManagement = ({ schoolId, canEdit = true }: SemesterManagementProps) => {
   const { selectedYear } = useAcademicYear();
   // Ne plus filtrer par année - afficher TOUS les semestres de l'école
   const { semesters, loading, createSemester, setCurrentSemester, updateSemester, archiveSemester, restoreSemester } = useSchoolSemesters(schoolId, undefined);
@@ -162,25 +163,26 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                 Créez et gérez les semestres scolaires avec automatisation des transitions
               </CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
-                setIsEditMode(false);
-                setEditingSemesterId(null);
-                setFormData({
-                  name: "",
-                  school_year_id: "",
-                  start_date: "",
-                  end_date: "",
-                });
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Semestre
-                </Button>
-              </DialogTrigger>
+            {canEdit && (
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                  setIsEditMode(false);
+                  setEditingSemesterId(null);
+                  setFormData({
+                    name: "",
+                    school_year_id: "",
+                    start_date: "",
+                    end_date: "",
+                  });
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Semestre
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{isEditMode ? 'Modifier le Semestre' : 'Créer un Semestre'}</DialogTitle>
@@ -255,7 +257,8 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                   </div>
                 </form>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -304,7 +307,7 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {!semester.is_actual && (
+                        {canEdit && !semester.is_actual && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -314,21 +317,25 @@ export const SemesterManagement = ({ schoolId }: SemesterManagementProps) => {
                             Définir comme Actuel
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(semester)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setArchiveConfirmId(semester.id)}
-                          disabled={semester.is_actual}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(semester)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setArchiveConfirmId(semester.id)}
+                              disabled={semester.is_actual}
+                            >
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </CardContent>

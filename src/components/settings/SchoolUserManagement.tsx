@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SchoolUserManagementProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
 interface AppUser {
@@ -40,7 +41,7 @@ const USER_TYPE_CONFIG = {
   student: { label: 'Étudiant', icon: Users, color: 'amber' },
 };
 
-export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
+export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserManagementProps) {
   const { user: currentUser } = useHybridAuth();
   const { roles: schoolRoles, loading: rolesLoading } = useSchoolRoles(schoolId);
   
@@ -381,21 +382,22 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
           </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-          setIsCreateDialogOpen(open);
-          if (!open) {
-            setNewUser({ email: "", first_name: "", last_name: "", user_type: "staff", school_role_id: "" });
-            setGeneratedPassword("");
-            setShowPassword(false);
-            setPasswordCopied(false);
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
-              <UserPlus className="h-4 w-4" />
-              Nouvel utilisateur
-            </Button>
-          </DialogTrigger>
+        {canEdit && (
+          <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+            setIsCreateDialogOpen(open);
+            if (!open) {
+              setNewUser({ email: "", first_name: "", last_name: "", user_type: "staff", school_role_id: "" });
+              setGeneratedPassword("");
+              setShowPassword(false);
+              setPasswordCopied(false);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
+                <UserPlus className="h-4 w-4" />
+                Nouvel utilisateur
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Créer un utilisateur</DialogTitle>
@@ -564,7 +566,8 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
 
       <Card>
@@ -648,34 +651,38 @@ export function SchoolUserManagement({ schoolId }: SchoolUserManagementProps) {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              openResetPasswordDialog(user);
-                            }}
-                          >
-                            <Key className="mr-2 h-4 w-4" />
-                            Réinitialiser le mot de passe
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              deleteUser(user.id);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {canEdit ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openResetPasswordDialog(user);
+                              }}
+                            >
+                              <Key className="mr-2 h-4 w-4" />
+                              Réinitialiser le mot de passe
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                deleteUser(user.id);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

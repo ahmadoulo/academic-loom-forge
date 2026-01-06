@@ -12,11 +12,12 @@ import { toast } from "sonner";
 
 interface StudentAccountsSectionProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
 type StatusFilter = 'all' | 'active' | 'pending';
 
-export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps) => {
+export const StudentAccountsSection = ({ schoolId, canEdit = true }: StudentAccountsSectionProps) => {
   const { accounts, loading, sendInvitation, fetchAccountsByYear } = useStudentAccounts(schoolId);
   const { currentYear, availableYears } = useAcademicYear();
   const [activeTab, setActiveTab] = useState<"current" | "previous">("current");
@@ -126,7 +127,7 @@ export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps
             </Select>
           </div>
 
-          {showBulkActions && pendingCount > 0 && (
+          {canEdit && showBulkActions && pendingCount > 0 && (
             <Button
               onClick={() => handleBulkSendInvitations(accountsList)}
               disabled={sendingBulk}
@@ -201,7 +202,7 @@ export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {!account.is_active && account.email ? (
+                      {canEdit && !account.is_active && account.email ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -219,6 +220,8 @@ export const StudentAccountsSection = ({ schoolId }: StudentAccountsSectionProps
                         </Button>
                       ) : account.is_active ? (
                         <span className="text-xs text-muted-foreground">Compte actif</span>
+                      ) : !canEdit ? (
+                        <span className="text-xs text-muted-foreground">-</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">Email requis</span>
                       )}

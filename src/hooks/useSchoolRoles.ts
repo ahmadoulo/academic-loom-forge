@@ -103,12 +103,28 @@ export const SCHOOL_PERMISSIONS = {
   'payments.manage': { name: 'Gérer les paiements', description: 'Enregistrer des paiements', category: 'Finance' },
   
   // Settings
-  'settings.view': { name: 'Voir les paramètres', description: 'Accéder aux paramètres', category: 'Administration' },
-  'settings.manage': { name: 'Gérer les paramètres', description: 'Modifier les paramètres', category: 'Administration' },
-  'users.view': { name: 'Voir les utilisateurs', description: 'Consulter les comptes utilisateurs', category: 'Administration' },
-  'users.manage': { name: 'Gérer les utilisateurs', description: 'Gérer les comptes utilisateurs', category: 'Administration' },
-  'roles.view': { name: 'Voir les rôles', description: 'Consulter les rôles', category: 'Administration' },
-  'roles.manage': { name: 'Gérer les rôles', description: 'Créer/modifier des rôles', category: 'Administration' },
+  'settings.view': { name: 'Voir les informations école', description: 'Consulter les infos de l\'école', category: 'Paramètres' },
+  'settings.manage': { name: 'Modifier les informations école', description: 'Modifier les infos de l\'école', category: 'Paramètres' },
+  
+  // Settings - Academic
+  'semesters.view': { name: 'Voir les semestres', description: 'Consulter les semestres', category: 'Paramètres' },
+  'semesters.manage': { name: 'Gérer les semestres', description: 'Créer/modifier les semestres', category: 'Paramètres' },
+  'cycles.view': { name: 'Voir les cycles', description: 'Consulter les cycles', category: 'Paramètres' },
+  'cycles.manage': { name: 'Gérer les cycles', description: 'Créer/modifier les cycles', category: 'Paramètres' },
+  'options.view': { name: 'Voir les options', description: 'Consulter les options', category: 'Paramètres' },
+  'options.manage': { name: 'Gérer les options', description: 'Créer/modifier les options', category: 'Paramètres' },
+  
+  // Settings - Accounts
+  'student-accounts.view': { name: 'Voir comptes étudiants', description: 'Consulter les comptes étudiants', category: 'Paramètres' },
+  'student-accounts.manage': { name: 'Gérer comptes étudiants', description: 'Gérer les comptes étudiants', category: 'Paramètres' },
+  'teacher-accounts.view': { name: 'Voir comptes professeurs', description: 'Consulter les comptes professeurs', category: 'Paramètres' },
+  'teacher-accounts.manage': { name: 'Gérer comptes professeurs', description: 'Gérer les comptes professeurs', category: 'Paramètres' },
+  
+  // Settings - Users & Roles
+  'users.view': { name: 'Voir les utilisateurs', description: 'Consulter les comptes utilisateurs', category: 'Paramètres' },
+  'users.manage': { name: 'Gérer les utilisateurs', description: 'Gérer les comptes utilisateurs', category: 'Paramètres' },
+  'roles.view': { name: 'Voir les rôles', description: 'Consulter les rôles', category: 'Paramètres' },
+  'roles.manage': { name: 'Gérer les rôles', description: 'Créer/modifier des rôles', category: 'Paramètres' },
 } as const;
 
 export type PermissionKey = keyof typeof SCHOOL_PERMISSIONS;

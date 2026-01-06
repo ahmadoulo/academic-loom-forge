@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 interface UserRoleAssignmentProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
 interface SchoolUser {
@@ -39,7 +40,7 @@ const ROLE_COLORS: Record<string, string> = {
   teal: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
 };
 
-export function UserRoleAssignment({ schoolId }: UserRoleAssignmentProps) {
+export function UserRoleAssignment({ schoolId, canEdit = true }: UserRoleAssignmentProps) {
   const { user } = useAuth();
   const { roles, userRoles, assignRoleToUser, removeRoleFromUser, loading: rolesLoading } = useSchoolRoles(schoolId);
   const [users, setUsers] = useState<SchoolUser[]>([]);
@@ -232,7 +233,7 @@ export function UserRoleAssignment({ schoolId }: UserRoleAssignmentProps) {
                         <div className="flex flex-wrap gap-1">
                           {u.roles.length === 0 ? (
                             <span className="text-sm text-muted-foreground">Aucun rôle</span>
-                          ) : (
+                          ) : canEdit ? (
                             u.roles.map(r => (
                               <Badge 
                                 key={r.role_id} 
@@ -247,11 +248,20 @@ export function UserRoleAssignment({ schoolId }: UserRoleAssignmentProps) {
                                 </button>
                               </Badge>
                             ))
+                          ) : (
+                            u.roles.map(r => (
+                              <Badge 
+                                key={r.role_id} 
+                                className={getRoleColorClass(r.role_name)}
+                              >
+                                {r.role_name}
+                              </Badge>
+                            ))
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {availableRoles.length > 0 && (
+                        {canEdit && availableRoles.length > 0 && (
                           <Dialog 
                             open={isAssignDialogOpen && selectedUser?.id === u.id}
                             onOpenChange={(open) => {

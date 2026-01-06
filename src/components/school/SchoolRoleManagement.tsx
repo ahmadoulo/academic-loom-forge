@@ -26,6 +26,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 interface SchoolRoleManagementProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -55,7 +56,7 @@ const ROLE_COLORS = [
   { value: 'teal', label: 'Turquoise', class: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200' },
 ];
 
-export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
+export function SchoolRoleManagement({ schoolId, canEdit = true }: SchoolRoleManagementProps) {
   const {
     roles,
     loading,
@@ -157,66 +158,68 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
           <p className="text-muted-foreground">Créez et gérez les rôles pour votre établissement</p>
         </div>
         <div className="flex gap-2">
-          {/* Template Dialog */}
-          <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Modèles</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Créer à partir d'un modèle</DialogTitle>
-                <DialogDescription>
-                  Choisissez un modèle pré-configuré pour démarrer rapidement
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4 sm:grid-cols-2">
-                {Object.entries(DEFAULT_ROLE_TEMPLATES).map(([key, template]) => (
-                  <Card 
-                    key={key} 
-                    className="cursor-pointer hover:border-primary transition-colors"
-                    onClick={() => handleCreateFromTemplate(key as keyof typeof DEFAULT_ROLE_TEMPLATES)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">{template.name}</CardTitle>
-                        <Badge className={getRoleColorClass(template.color)}>
-                          {template.permissions.length} perms
-                        </Badge>
-                      </div>
-                      <CardDescription className="text-xs">
-                        {template.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex flex-wrap gap-1">
-                        {template.permissions.slice(0, 4).map(p => (
-                          <Badge key={p} variant="outline" className="text-xs">
-                            {SCHOOL_PERMISSIONS[p as keyof typeof SCHOOL_PERMISSIONS]?.name || p}
-                          </Badge>
-                        ))}
-                        {template.permissions.length > 4 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{template.permissions.length - 4}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
+          {canEdit && (
+            <>
+              {/* Template Dialog */}
+              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Wand2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Modèles</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Créer à partir d'un modèle</DialogTitle>
+                    <DialogDescription>
+                      Choisissez un modèle pré-configuré pour démarrer rapidement
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4 sm:grid-cols-2">
+                    {Object.entries(DEFAULT_ROLE_TEMPLATES).map(([key, template]) => (
+                      <Card 
+                        key={key} 
+                        className="cursor-pointer hover:border-primary transition-colors"
+                        onClick={() => handleCreateFromTemplate(key as keyof typeof DEFAULT_ROLE_TEMPLATES)}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">{template.name}</CardTitle>
+                            <Badge className={getRoleColorClass(template.color)}>
+                              {template.permissions.length} perms
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-xs">
+                            {template.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="flex flex-wrap gap-1">
+                            {template.permissions.slice(0, 4).map(p => (
+                              <Badge key={p} variant="outline" className="text-xs">
+                                {SCHOOL_PERMISSIONS[p as keyof typeof SCHOOL_PERMISSIONS]?.name || p}
+                              </Badge>
+                            ))}
+                            {template.permissions.length > 4 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{template.permissions.length - 4}
+                              </Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
 
-          {/* Create Dialog */}
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2 bg-gradient-primary">
-                <Plus className="h-4 w-4" />
-                Nouveau rôle
-              </Button>
+              {/* Create Dialog */}
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-gradient-primary">
+                    <Plus className="h-4 w-4" />
+                    Nouveau rôle
+                  </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl max-h-[90vh]">
               <DialogHeader>
@@ -327,6 +330,8 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
               </div>
             </DialogContent>
           </Dialog>
+            </>
+          )}
         </div>
       </div>
 
@@ -339,16 +344,18 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
             <p className="text-muted-foreground mb-4">
               Créez des rôles pour gérer les accès de votre équipe
             </p>
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" onClick={() => setIsTemplateDialogOpen(true)}>
-                <Wand2 className="h-4 w-4 mr-2" />
-                Utiliser un modèle
-              </Button>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Créer un rôle
-              </Button>
-            </div>
+            {canEdit && (
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={() => setIsTemplateDialogOpen(true)}>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Utiliser un modèle
+                </Button>
+                <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un rôle
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -374,24 +381,26 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
                           {role.description || 'Aucune description'}
                         </CardDescription>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => setEditingRole(role)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => setDeleteConfirm({ open: true, role })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {canEdit && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setEditingRole(role)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => setDeleteConfirm({ open: true, role })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="pt-2">
@@ -470,6 +479,7 @@ export function SchoolRoleManagement({ schoolId }: SchoolRoleManagementProps) {
                                   <Switch
                                     checked={role.permissions?.includes(perm.key) || false}
                                     onCheckedChange={() => toggleRolePermission(role.id, perm.key)}
+                                    disabled={!canEdit}
                                   />
                                 </TableCell>
                               ))}

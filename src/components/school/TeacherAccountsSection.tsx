@@ -10,11 +10,12 @@ import { toast } from "sonner";
 
 interface TeacherAccountsSectionProps {
   schoolId: string;
+  canEdit?: boolean;
 }
 
 type StatusFilter = 'all' | 'active' | 'pending';
 
-export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps) => {
+export const TeacherAccountsSection = ({ schoolId, canEdit = true }: TeacherAccountsSectionProps) => {
   const { accounts, loading, sendInvitation } = useTeacherAccounts(schoolId);
   const [sendingInvitation, setSendingInvitation] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -100,7 +101,7 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
             </Select>
           </div>
 
-          {pendingCount > 0 && (
+          {canEdit && pendingCount > 0 && (
             <Button
               onClick={handleBulkSendInvitations}
               disabled={sendingBulk}
@@ -175,7 +176,7 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {!account.is_active && account.email ? (
+                      {canEdit && !account.is_active && account.email ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -193,6 +194,8 @@ export const TeacherAccountsSection = ({ schoolId }: TeacherAccountsSectionProps
                         </Button>
                       ) : account.is_active ? (
                         <span className="text-xs text-muted-foreground">Compte actif</span>
+                      ) : !canEdit ? (
+                        <span className="text-xs text-muted-foreground">-</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">Email requis</span>
                       )}
