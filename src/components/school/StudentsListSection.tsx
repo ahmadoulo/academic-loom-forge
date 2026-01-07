@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Search, Archive, Loader2, Filter, Pencil, ExternalLink, Eye } from "lucide-react";
 import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 interface StudentWithClass {
   id: string;
@@ -47,19 +48,46 @@ export function StudentsListSection({
 }: StudentsListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
-  const filteredStudents = students.filter(student => {
-    const fullName = `${student.firstname} ${student.lastname}`.toLowerCase();
-    const className = student.classes?.name?.toLowerCase() || "";
-    const email = student.email?.toLowerCase() || "";
-    const cin = student.cin_number?.toLowerCase() || "";
-    const term = searchTerm.toLowerCase();
-    
-    const matchesSearch = fullName.includes(term) || className.includes(term) || email.includes(term) || cin.includes(term);
-    const matchesClass = selectedClass === "all" || student.classes?.name === selectedClass;
-    
-    return matchesSearch && matchesClass;
-  });
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      const fullName = `${student.firstname} ${student.lastname}`.toLowerCase();
+      const className = student.classes?.name?.toLowerCase() || "";
+      const email = student.email?.toLowerCase() || "";
+      const cin = student.cin_number?.toLowerCase() || "";
+      const term = searchTerm.toLowerCase();
+      
+      const matchesSearch = fullName.includes(term) || className.includes(term) || email.includes(term) || cin.includes(term);
+      const matchesClass = selectedClass === "all" || student.classes?.name === selectedClass;
+      
+      return matchesSearch && matchesClass;
+    });
+  }, [students, searchTerm, selectedClass]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredStudents.length / pageSize);
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, currentPage, pageSize]);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleClassChange = (value: string) => {
+    setSelectedClass(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   return (
     <Card className="shadow-lg">
@@ -78,12 +106,12 @@ export function StudentsListSection({
             <Input
               placeholder="Rechercher par nom, email, CIN..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10"
             />
           </div>
           
-          <Select value={selectedClass} onValueChange={setSelectedClass}>
+          <Select value={selectedClass} onValueChange={handleClassChange}>
             <SelectTrigger className="w-[200px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filtrer par classe" />
@@ -125,93 +153,105 @@ export function StudentsListSection({
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[180px]">Nom Complet</TableHead>
-                      <TableHead className="min-w-[140px]">Classe</TableHead>
-                      <TableHead className="min-w-[120px]">CIN</TableHead>
-                      <TableHead className="min-w-[200px]">Email</TableHead>
-                      <TableHead className="min-w-[140px]">Téléphone</TableHead>
-                      <TableHead className="min-w-[140px]">Tél. Parent</TableHead>
-                      <TableHead className="text-right min-w-[200px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student) => (
-                      <TableRow key={student.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {student.firstname} {student.lastname}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <Badge variant="outline" className="font-medium">
-                            {student.classes?.name || "Non assignée"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm whitespace-nowrap">
-                          {student.cin_number || "-"}
-                        </TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {student.email || "-"}
-                        </TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {student.student_phone || "-"}
-                        </TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {student.parent_phone || "-"}
-                        </TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
-                          <div className="flex justify-end gap-2">
-                            {onViewStudent && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onViewStudent(student)}
-                                className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
-                                title="Voir les détails"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {onEditStudent && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onEditStudent(student)}
-                                className="hover:bg-primary hover:text-primary-foreground"
-                              >
-                                <Pencil className="h-4 w-4 mr-1" />
-                                Modifier
-                              </Button>
-                            )}
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(`/student-dashboard?studentId=${student.id}`, '_blank')}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-
-                            {onArchiveStudent && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
-                                onClick={() => onArchiveStudent(student.id, `${student.firstname} ${student.lastname}`)}
-                              >
-                                <Archive className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[180px]">Nom Complet</TableHead>
+                        <TableHead className="min-w-[140px]">Classe</TableHead>
+                        <TableHead className="min-w-[120px]">CIN</TableHead>
+                        <TableHead className="min-w-[200px]">Email</TableHead>
+                        <TableHead className="min-w-[140px]">Téléphone</TableHead>
+                        <TableHead className="min-w-[140px]">Tél. Parent</TableHead>
+                        <TableHead className="text-right min-w-[200px]">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedStudents.map((student) => (
+                        <TableRow key={student.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {student.firstname} {student.lastname}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge variant="outline" className="font-medium">
+                              {student.classes?.name || "Non assignée"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm whitespace-nowrap">
+                            {student.cin_number || "-"}
+                          </TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {student.email || "-"}
+                          </TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {student.student_phone || "-"}
+                          </TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {student.parent_phone || "-"}
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <div className="flex justify-end gap-2">
+                              {onViewStudent && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => onViewStudent(student)}
+                                  className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/20"
+                                  title="Voir les détails"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+
+                              {onEditStudent && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => onEditStudent(student)}
+                                  className="hover:bg-primary hover:text-primary-foreground"
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  Modifier
+                                </Button>
+                              )}
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/student-dashboard?studentId=${student.id}`, '_blank')}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+
+                              {onArchiveStudent && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="hover:bg-orange-100 hover:text-orange-700 dark:hover:bg-orange-900/20"
+                                  onClick={() => onArchiveStudent(student.id, `${student.firstname} ${student.lastname}`)}
+                                >
+                                  <Archive className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Pagination */}
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={filteredStudents.length}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              </>
             )}
           </div>
         )}

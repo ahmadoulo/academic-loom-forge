@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Teacher } from "@/hooks/useTeachers";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SubscriptionLimitBadge } from "./SubscriptionLimitBadge";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 interface TeachersListSectionProps {
   schoolId: string;
@@ -29,6 +30,8 @@ export function TeachersListSection({
 }: TeachersListSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [teacherClassCounts, setTeacherClassCounts] = useState<Record<string, number>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Fetch real class counts for all teachers
   useEffect(() => {
@@ -53,14 +56,34 @@ export function TeachersListSection({
     fetchClassCounts();
   }, [teachers]);
 
-  const filteredTeachers = teachers.filter(teacher => {
-    const fullName = `${teacher.firstname} ${teacher.lastname}`.toLowerCase();
-    const email = teacher.email?.toLowerCase() || "";
-    const mobile = teacher.mobile?.toLowerCase() || "";
-    const term = searchTerm.toLowerCase();
-    
-    return fullName.includes(term) || email.includes(term) || mobile.includes(term);
-  });
+  const filteredTeachers = useMemo(() => {
+    return teachers.filter(teacher => {
+      const fullName = `${teacher.firstname} ${teacher.lastname}`.toLowerCase();
+      const email = teacher.email?.toLowerCase() || "";
+      const mobile = teacher.mobile?.toLowerCase() || "";
+      const term = searchTerm.toLowerCase();
+      
+      return fullName.includes(term) || email.includes(term) || mobile.includes(term);
+    });
+  }, [teachers, searchTerm]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTeachers.length / pageSize);
+  const paginatedTeachers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTeachers.slice(start, start + pageSize);
+  }, [filteredTeachers, currentPage, pageSize]);
+
+  // Reset to page 1 when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   return (
     <Card className="shadow-lg">
@@ -79,7 +102,7 @@ export function TeachersListSection({
             <Input
               placeholder="Rechercher par nom, email, téléphone..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -111,8 +134,9 @@ export function TeachersListSection({
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[180px]">Nom Complet</TableHead>
@@ -126,7 +150,7 @@ export function TeachersListSection({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTeachers.map((teacher) => (
+                    {paginatedTeachers.map((teacher) => (
                       <TableRow key={teacher.id} className="hover:bg-muted/50">
                         <TableCell className="font-medium whitespace-nowrap">
                           {teacher.firstname} {teacher.lastname}
@@ -235,6 +259,17 @@ export function TeachersListSection({
                   </TableBody>
                 </Table>
               </div>
+              
+              {/* Pagination */}
+              <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={filteredTeachers.length}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </>
             )}
           </div>
         )}
