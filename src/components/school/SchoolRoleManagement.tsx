@@ -430,7 +430,7 @@ export function SchoolRoleManagement({ schoolId, canEdit = true }: SchoolRoleMan
               <CardHeader>
                 <CardTitle>Matrice des permissions</CardTitle>
                 <CardDescription>
-                  Gérez les permissions de chaque rôle en un clic
+                  Gérez les permissions de chaque rôle en un clic. Utilisez "Tout cocher" pour activer toutes les permissions d'une section.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -451,42 +451,83 @@ export function SchoolRoleManagement({ schoolId, canEdit = true }: SchoolRoleMan
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Object.entries(groupedPermissions).map(([category, perms]) => (
-                        <React.Fragment key={category}>
-                          <TableRow>
-                            <TableCell 
-                              colSpan={roles.length + 1} 
-                              className="bg-muted/50 font-semibold sticky left-0"
-                            >
-                              <div className="flex items-center gap-2">
-                                {React.createElement(CATEGORY_ICONS[category] || Shield, { 
-                                  className: "h-4 w-4" 
-                                })}
-                                {category}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {perms.map(perm => (
-                            <TableRow key={perm.key}>
-                              <TableCell className="sticky left-0 bg-background">
-                                <div>
-                                  <div className="font-medium text-sm">{perm.name}</div>
-                                  <div className="text-xs text-muted-foreground">{perm.description}</div>
+                      {Object.entries(groupedPermissions).map(([category, perms]) => {
+                        // Check if all permissions in category are enabled for each role
+                        const getCategoryStatus = (roleId: string) => {
+                          const role = roles.find(r => r.id === roleId);
+                          if (!role?.permissions) return { all: false, some: false };
+                          const enabledCount = perms.filter(p => role.permissions?.includes(p.key)).length;
+                          return { 
+                            all: enabledCount === perms.length, 
+                            some: enabledCount > 0 && enabledCount < perms.length 
+                          };
+                        };
+
+                        // Toggle all permissions in category for a role
+                        const toggleCategoryPermissions = async (roleId: string) => {
+                          const status = getCategoryStatus(roleId);
+                          const shouldEnable = !status.all;
+                          
+                          for (const perm of perms) {
+                            const role = roles.find(r => r.id === roleId);
+                            const isEnabled = role?.permissions?.includes(perm.key) || false;
+                            if (shouldEnable !== isEnabled) {
+                              await toggleRolePermission(roleId, perm.key);
+                            }
+                          }
+                        };
+
+                        return (
+                          <React.Fragment key={category}>
+                            <TableRow className="bg-muted/50 hover:bg-muted/70">
+                              <TableCell className="font-semibold sticky left-0 bg-muted/50">
+                                <div className="flex items-center gap-2">
+                                  {React.createElement(CATEGORY_ICONS[category] || Shield, { 
+                                    className: "h-4 w-4" 
+                                  })}
+                                  {category}
                                 </div>
                               </TableCell>
-                              {roles.map(role => (
-                                <TableCell key={role.id} className="text-center">
-                                  <Switch
-                                    checked={role.permissions?.includes(perm.key) || false}
-                                    onCheckedChange={() => toggleRolePermission(role.id, perm.key)}
-                                    disabled={!canEdit}
-                                  />
-                                </TableCell>
-                              ))}
+                              {roles.map(role => {
+                                const status = getCategoryStatus(role.id);
+                                return (
+                                  <TableCell key={role.id} className="text-center bg-muted/50">
+                                    {canEdit && (
+                                      <Button
+                                        variant={status.all ? "default" : status.some ? "secondary" : "outline"}
+                                        size="sm"
+                                        className="h-7 text-xs px-2"
+                                        onClick={() => toggleCategoryPermissions(role.id)}
+                                      >
+                                        {status.all ? "Tout décocher" : "Tout cocher"}
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                );
+                              })}
                             </TableRow>
-                          ))}
-                        </React.Fragment>
-                      ))}
+                            {perms.map(perm => (
+                              <TableRow key={perm.key}>
+                                <TableCell className="sticky left-0 bg-background">
+                                  <div>
+                                    <div className="font-medium text-sm">{perm.name}</div>
+                                    <div className="text-xs text-muted-foreground">{perm.description}</div>
+                                  </div>
+                                </TableCell>
+                                {roles.map(role => (
+                                  <TableCell key={role.id} className="text-center">
+                                    <Switch
+                                      checked={role.permissions?.includes(perm.key) || false}
+                                      onCheckedChange={() => toggleRolePermission(role.id, perm.key)}
+                                      disabled={!canEdit}
+                                    />
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
