@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useSchools } from "@/hooks/useSchools";
 import { imageUrlToBase64 } from "@/utils/imageToBase64";
 import { supabase } from "@/integrations/supabase/client";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 interface SchoolAttendanceViewProps {
   schoolId: string;
@@ -29,6 +30,8 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [notifying, setNotifying] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   const { selectedYear } = useAcademicYear();
   const { classes, loading: classesLoading } = useClassesByYear(schoolId, selectedYear?.id);
@@ -66,6 +69,15 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
   const filteredStudents = selectedClass === "all" 
     ? students 
     : students.filter(s => s.class_id === selectedClass);
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedClass, selectedSubject, selectedDate]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredStudents.length / pageSize);
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Créer un mapping des présences
   const attendanceMap = new Map(
@@ -321,56 +333,71 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
             <p>Aucun étudiant trouvé</p>
           </div>
         ) : (
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Prénom</TableHead>
-                  <TableHead>Classe</TableHead>
-                  <TableHead>Matière</TableHead>
-                  <TableHead>Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => {
-                  const status = getAttendanceStatus(student.id);
-                  const subjectName = getSubjectName(student.id);
-                  const studentClass = classes.find(c => c.id === student.class_id);
+          <div className="space-y-4">
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Prénom</TableHead>
+                    <TableHead>Classe</TableHead>
+                    <TableHead>Matière</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedStudents.map((student) => {
+                    const status = getAttendanceStatus(student.id);
+                    const subjectName = getSubjectName(student.id);
+                    const studentClass = classes.find(c => c.id === student.class_id);
 
-                  return (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.lastname}</TableCell>
-                      <TableCell>{student.firstname}</TableCell>
-                      <TableCell>{studentClass?.name || "-"}</TableCell>
-                      <TableCell>{subjectName}</TableCell>
-                      <TableCell>
-                        {status === 'present' && (
-                          <Badge variant="default" className="bg-success">
-                            Présent
-                          </Badge>
-                        )}
-                        {status === 'absent' && (
-                          <Badge variant="destructive">
-                            Absent
-                          </Badge>
-                        )}
-                        {status === 'justified' && (
-                          <Badge className="bg-amber-500 text-white">
-                            Justifié
-                          </Badge>
-                        )}
-                        {!status && (
-                          <Badge variant="outline">
-                            Non marqué
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                    return (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">{student.lastname}</TableCell>
+                        <TableCell>{student.firstname}</TableCell>
+                        <TableCell>{studentClass?.name || "-"}</TableCell>
+                        <TableCell>{subjectName}</TableCell>
+                        <TableCell>
+                          {status === 'present' && (
+                            <Badge variant="default" className="bg-success">
+                              Présent
+                            </Badge>
+                          )}
+                          {status === 'absent' && (
+                            <Badge variant="destructive">
+                              Absent
+                            </Badge>
+                          )}
+                          {status === 'justified' && (
+                            <Badge className="bg-amber-500 text-white">
+                              Justifié
+                            </Badge>
+                          )}
+                          {!status && (
+                            <Badge variant="outline">
+                              Non marqué
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Pagination */}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredStudents.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           </div>
         )}
           </TabsContent>

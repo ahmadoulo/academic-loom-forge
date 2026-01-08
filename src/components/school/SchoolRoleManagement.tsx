@@ -65,6 +65,7 @@ export function SchoolRoleManagement({ schoolId, canEdit = true }: SchoolRoleMan
     updateRole,
     deleteRole,
     toggleRolePermission,
+    updateRolePermissions,
   } = useSchoolRoles(schoolId);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -463,18 +464,25 @@ export function SchoolRoleManagement({ schoolId, canEdit = true }: SchoolRoleMan
                           };
                         };
 
-                        // Toggle all permissions in category for a role
+                        // Toggle all permissions in category for a role - properly batched
                         const toggleCategoryPermissions = async (roleId: string) => {
+                          const role = roles.find(r => r.id === roleId);
+                          if (!role) return;
+                          
                           const status = getCategoryStatus(roleId);
                           const shouldEnable = !status.all;
                           
-                          for (const perm of perms) {
-                            const role = roles.find(r => r.id === roleId);
-                            const isEnabled = role?.permissions?.includes(perm.key) || false;
-                            if (shouldEnable !== isEnabled) {
-                              await toggleRolePermission(roleId, perm.key);
-                            }
-                          }
+                          // Get current permissions excluding this category
+                          const currentPermissions = role.permissions || [];
+                          const categoryPermKeys = perms.map(p => p.key);
+                          const otherPermissions = currentPermissions.filter(p => !categoryPermKeys.includes(p));
+                          
+                          // Build new permissions list
+                          const newPermissions = shouldEnable
+                            ? [...otherPermissions, ...categoryPermKeys]
+                            : otherPermissions;
+                          
+                          await updateRolePermissions(roleId, newPermissions);
                         };
 
                         return (
