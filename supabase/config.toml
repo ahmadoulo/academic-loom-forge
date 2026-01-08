@@ -3,6 +3,9 @@ project_id = "nqsvluszgpqnoqybzpvk"
 [functions.auto-send-absence-notifications]
 verify_jwt = false
 
+[functions.auto-transition-semesters]
+verify_jwt = false
+
 [functions.authenticate-user]
 verify_jwt = false
 
@@ -40,4 +43,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-user-permissions]
+verify_jwt = false
+
+[functions.send-absence-notification]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.change-password]
 verify_jwt = false

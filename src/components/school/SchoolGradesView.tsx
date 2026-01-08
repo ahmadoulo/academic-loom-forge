@@ -17,6 +17,7 @@ import { useSchoolSemesters } from "@/hooks/useSchoolSemesters";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useGrades } from "@/hooks/useGrades";
 import { GradeDetailDialog } from "@/components/teacher/GradeDetailDialog";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 interface Student {
   id: string;
@@ -78,6 +79,8 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
   const [generating, setGenerating] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedGradeForDetail, setSelectedGradeForDetail] = useState<Grade | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
   const { getSchoolById } = useSchools();
   const [school, setSchool] = useState<any>(null);
@@ -131,6 +134,15 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
         s.lastname.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesClass && matchesSearch;
     });
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedClass, searchQuery, selectedSemester]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredStudents.length / pageSize);
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getStudentGrades = (studentId: string) => {
     return displayGrades.filter(g => g.student_id === studentId);
@@ -519,11 +531,12 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
           <div className="space-y-6">
             {semesterData.map((semesterInfo) => {
               const semesterGrades = semesterInfo.grades;
-              const semesterStudents = filteredStudents.filter(student => 
-                semesterGrades.some(g => g.student_id === student.id)
+              // Use paginated students instead of all filtered students
+              const semesterStudents = paginatedStudents.filter(student => 
+                semesterGrades.some(g => g.student_id === student.id) || 
+                // Include students even if they have no grades to show the full list
+                selectedSemester === "all" || !selectedSemester
               );
-
-              if (semesterStudents.length === 0) return null;
 
               return (
                 <Card key={semesterInfo.semester?.id || 'unknown'} className="border-primary/10 shadow-md">
@@ -643,6 +656,19 @@ export function SchoolGradesView({ schoolId, classes, students, grades, subjects
                 </Card>
               );
             })}
+            
+            {/* Pagination */}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredStudents.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           </div>
         )}
       </CardContent>
