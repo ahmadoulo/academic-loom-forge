@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Search, MoreVertical, Trash2, Key, Copy, Check, AlertTriangle, Filter, Loader2, Users, GraduationCap, Shield } from "lucide-react";
+import { UserPlus, Search, MoreVertical, Trash2, Key, Copy, Check, AlertTriangle, Filter, Loader2, Shield } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,16 +67,18 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
     school_role_id: "", // For staff with custom permissions
   });
 
-  // Fetch users for this school from app_users
+  // Fetch ONLY staff users for this school (not teachers or students)
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
       
-      // First, get users for this school
+      // Get users for this school - filter only staff (no teacher_id, no student_id)
       const { data: usersData, error: usersError } = await supabase
         .from('app_users')
-        .select('id, email, first_name, last_name, is_active')
+        .select('id, email, first_name, last_name, is_active, teacher_id, student_id')
         .eq('school_id', schoolId)
+        .is('teacher_id', null)
+        .is('student_id', null)
         .order('created_at', { ascending: false });
       
       if (usersError) throw usersError;
@@ -107,7 +109,11 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
       
       // Combine the data
       const combinedUsers: AppUser[] = usersData.map(user => ({
-        ...user,
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        is_active: user.is_active,
         app_user_roles: (rolesData || [])
           .filter(r => r.user_id === user.id)
           .map(r => ({ role: r.role })),
@@ -141,7 +147,7 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
     
     // Check app_user_role
     const appRole = user.app_user_roles[0]?.role;
-    if (roleFilter === 'teacher' || roleFilter === 'student' || roleFilter === 'school_staff') {
+    if (roleFilter === 'school_staff') {
       return matchesSearch && appRole === roleFilter;
     }
     
@@ -392,34 +398,16 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {/* User Type Selection */}
-              <div className="space-y-2">
-                <Label>Type d'utilisateur *</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.entries(USER_TYPE_CONFIG) as [UserType, typeof USER_TYPE_CONFIG.staff][]).map(([type, config]) => {
-                    const Icon = config.icon;
-                    const isSelected = newUser.user_type === type;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setNewUser({ ...newUser, user_type: type, school_role_id: "" })}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                          isSelected 
-                            ? 'border-primary bg-primary/5' 
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                        <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {config.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+              {/* Staff Info */}
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span className="font-medium text-primary">{STAFF_LABEL}</span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Les comptes professeurs et étudiants sont gérés dans leurs sections respectives.
+                </p>
               </div>
-              
               {/* School Role for Staff */}
               {newUser.user_type === 'staff' && (
                 <div className="space-y-2">
@@ -582,8 +570,6 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les utilisateurs</SelectItem>
-                  <SelectItem value="teacher">Professeurs</SelectItem>
-                  <SelectItem value="student">Étudiants</SelectItem>
                   <SelectItem value="school_staff">Personnel administratif</SelectItem>
                   {schoolRoles.length > 0 && (
                     <>

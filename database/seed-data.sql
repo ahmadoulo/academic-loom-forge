@@ -77,24 +77,24 @@ INSERT INTO teachers (id, firstname, lastname, email, mobile, school_id, status,
   ('af408790-32f5-47b5-97a9-564ef5958315', 'Khadija', 'Alami', 'khadija.alami@test.com', '0612345604', '42f93ce5-9562-4825-a249-b780018834da', 'active', 'Licence en Français', NULL, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
--- 8. Étudiants (aucune FK vers d'autres tables créées)
-INSERT INTO students (id, firstname, lastname, email, cin_number, birth_date, student_phone, parent_phone, tutor_name, tutor_email, archived) VALUES
-  ('3b182537-3cf6-42c3-859a-7349b7feaa26', 'Chaimaa', 'BAHI', 'it.ahmadou@gmail.com', 'A02668718', '2025-10-17', NULL, NULL, 'Chakib BAHI', 'it.ahmadou@eduvate.io', false),
-  ('dd15c0fd-9d00-40da-bca7-96ff5293b183', 'Ahmadou Sakhir', 'LO', 'cheikhlo1999@gmail.com', '3330304CC', '2025-09-10', '+212705143625', NULL, 'Mohamed DIALLO', 'cheikhlo1999@gmail.com', false),
-  ('f70de8fa-a35d-43ff-9b2f-2305b672672c', 'Mohamed', 'KHOULI', 'elkhoulimohameddev@gmail.com', 'A02668710', '2025-10-04', '+212705143625', NULL, 'Chakib EL KHOULI', 'elkhoulimohameddev@gmail.com', false),
-  ('3b6eccba-9832-493c-b69e-dbec97ff6e8c', 'Test', 'test', 'it.ahmadou@gmail.com', '3330304C', '2025-11-11', '+212705143625', '+212705143625', 'Ahmadou Sakhir LO', 'it.ahmadou@gmail.com', false),
-  ('de936c07-e45a-43db-8243-d8f58744cb6a', 'Nadia', 'Driss', 'nadia.driss@test.com', 'TEST004', '2005-02-25', NULL, '0661234504', NULL, NULL, false),
-  ('833a4a27-bdb2-4815-95bb-5faa6ce83a13', 'Karim', 'El Amrani', 'karim.amrani@test.com', 'TEST005', '2005-09-12', NULL, '0661234505', NULL, NULL, false),
-  ('e63f82eb-8a88-4820-a50b-8b57bf6bd8b2', 'Laila', 'Fassi', 'laila.fassi@test.com', 'TEST006', '2005-11-08', NULL, '0661234506', NULL, NULL, false),
-  ('55868d8b-c9f6-4f33-b988-4485fbabdb6d', 'Mehdi', 'Ghali', 'mehdi.ghali@test.com', 'TEST007', '2005-01-30', NULL, '0661234507', NULL, NULL, false),
-  ('3df1b674-72b7-4048-b624-ce401a7c4ee5', 'Imane', 'Hamza', 'imane.hamza@test.com', 'TEST008', '2005-04-18', NULL, '0661234508', NULL, NULL, false),
-  ('6bd82460-62a3-4c20-97db-a525d2470d55', 'Rachid', 'Idrissi', 'rachid.idrissi@test.com', 'TEST009', '2005-06-22', NULL, '0661234509', NULL, NULL, false),
-  ('b422a288-fc27-40a1-bc25-87bfa602b888', 'Zineb', 'Jamal', 'zineb.jamal@test.com', 'TEST010', '2005-08-14', NULL, '0661234510', NULL, NULL, false),
-  ('8174f3af-e2a5-4bb3-a71f-23d79fc9fe17', 'Hassan', 'Kadiri', 'hassan.kadiri@test.com', 'TEST011', '2004-03-10', NULL, '0661234511', NULL, NULL, false),
-  ('0a9c804c-c27a-43f6-9bc9-8fbcfe2f566b', 'Samira', 'Lamrani', 'samira.lamrani@test.com', 'TEST012', '2004-05-15', NULL, '0661234512', NULL, NULL, false),
-  ('095f7f9d-e1ce-462c-b46a-f8f84c680a0c', 'Yassine', 'Moussa', 'yassine.moussa@test.com', 'TEST013', '2004-07-20', NULL, '0661234513', NULL, NULL, false),
-  ('7a15a49b-fc7e-4bea-b078-1a180eb9b405', 'Adil', 'Abou', 'keurndiambour@gmail.com', 'TEST001', '2005-03-15', NULL, '0661234501', NULL, NULL, false),
-  ('ac8e9017-2e5a-452b-b46e-b777c7177179', 'Ahmadou Sakhir', 'LO', 'a.lo@mundiapolis.ma', 'TEST002', '2005-06-20', NULL, '0661234502', NULL, NULL, false)
+-- 8. Étudiants (dépend de schools - school_id est NOT NULL)
+INSERT INTO students (id, firstname, lastname, email, cin_number, birth_date, student_phone, parent_phone, tutor_name, tutor_email, archived, school_id) VALUES
+  ('3b182537-3cf6-42c3-859a-7349b7feaa26', 'Chaimaa', 'BAHI', 'it.ahmadou@gmail.com', 'A02668718', '2025-10-17', NULL, NULL, 'Chakib BAHI', 'it.ahmadou@eduvate.io', false, 'e2d29849-8ae0-4cb5-b0bb-1c6706760951'),
+  ('dd15c0fd-9d00-40da-bca7-96ff5293b183', 'Ahmadou Sakhir', 'LO', 'cheikhlo1999@gmail.com', '3330304CC', '2025-09-10', '+212705143625', NULL, 'Mohamed DIALLO', 'cheikhlo1999@gmail.com', false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('f70de8fa-a35d-43ff-9b2f-2305b672672c', 'Mohamed', 'KHOULI', 'elkhoulimohameddev@gmail.com', 'A02668710', '2025-10-04', '+212705143625', NULL, 'Chakib EL KHOULI', 'elkhoulimohameddev@gmail.com', false, 'e2d29849-8ae0-4cb5-b0bb-1c6706760951'),
+  ('3b6eccba-9832-493c-b69e-dbec97ff6e8c', 'Test', 'test', 'it.ahmadou@gmail.com', '3330304C', '2025-11-11', '+212705143625', '+212705143625', 'Ahmadou Sakhir LO', 'it.ahmadou@gmail.com', false, 'e2d29849-8ae0-4cb5-b0bb-1c6706760951'),
+  ('de936c07-e45a-43db-8243-d8f58744cb6a', 'Nadia', 'Driss', 'nadia.driss@test.com', 'TEST004', '2005-02-25', NULL, '0661234504', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('833a4a27-bdb2-4815-95bb-5faa6ce83a13', 'Karim', 'El Amrani', 'karim.amrani@test.com', 'TEST005', '2005-09-12', NULL, '0661234505', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('e63f82eb-8a88-4820-a50b-8b57bf6bd8b2', 'Laila', 'Fassi', 'laila.fassi@test.com', 'TEST006', '2005-11-08', NULL, '0661234506', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('55868d8b-c9f6-4f33-b988-4485fbabdb6d', 'Mehdi', 'Ghali', 'mehdi.ghali@test.com', 'TEST007', '2005-01-30', NULL, '0661234507', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('3df1b674-72b7-4048-b624-ce401a7c4ee5', 'Imane', 'Hamza', 'imane.hamza@test.com', 'TEST008', '2005-04-18', NULL, '0661234508', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('6bd82460-62a3-4c20-97db-a525d2470d55', 'Rachid', 'Idrissi', 'rachid.idrissi@test.com', 'TEST009', '2005-06-22', NULL, '0661234509', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('b422a288-fc27-40a1-bc25-87bfa602b888', 'Zineb', 'Jamal', 'zineb.jamal@test.com', 'TEST010', '2005-08-14', NULL, '0661234510', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('8174f3af-e2a5-4bb3-a71f-23d79fc9fe17', 'Hassan', 'Kadiri', 'hassan.kadiri@test.com', 'TEST011', '2004-03-10', NULL, '0661234511', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('0a9c804c-c27a-43f6-9bc9-8fbcfe2f566b', 'Samira', 'Lamrani', 'samira.lamrani@test.com', 'TEST012', '2004-05-15', NULL, '0661234512', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('095f7f9d-e1ce-462c-b46a-f8f84c680a0c', 'Yassine', 'Moussa', 'yassine.moussa@test.com', 'TEST013', '2004-07-20', NULL, '0661234513', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('7a15a49b-fc7e-4bea-b078-1a180eb9b405', 'Adil', 'Abou', 'keurndiambour@gmail.com', 'TEST001', '2005-03-15', NULL, '0661234501', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da'),
+  ('ac8e9017-2e5a-452b-b46e-b777c7177179', 'Ahmadou Sakhir', 'LO', 'a.lo@mundiapolis.ma', 'TEST002', '2005-06-20', NULL, '0661234502', NULL, NULL, false, '42f93ce5-9562-4825-a249-b780018834da')
 ON CONFLICT (id) DO NOTHING;
 
 -- 9. Matières (dépend de classes, teachers, schools)
