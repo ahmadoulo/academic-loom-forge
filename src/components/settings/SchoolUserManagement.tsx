@@ -33,13 +33,10 @@ interface AppUser {
 }
 
 // User types for creation
-type UserType = 'staff' | 'teacher' | 'student';
+// Only staff type for this form - teachers/students are managed elsewhere
+type UserType = 'staff';
 
-const USER_TYPE_CONFIG = {
-  staff: { label: 'Personnel administratif', icon: Shield, color: 'blue' },
-  teacher: { label: 'Professeur', icon: GraduationCap, color: 'emerald' },
-  student: { label: 'Étudiant', icon: Users, color: 'amber' },
-};
+const STAFF_LABEL = 'Personnel administratif';
 
 export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserManagementProps) {
   const { user: currentUser } = useHybridAuth();
@@ -199,18 +196,8 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
 
     setIsCreating(true);
     try {
-      // Determine the app role based on user type
-      let appRole: string;
-      switch (newUser.user_type) {
-        case 'teacher':
-          appRole = 'teacher';
-          break;
-        case 'student':
-          appRole = 'student';
-          break;
-        default:
-          appRole = 'school_staff';
-      }
+      // Staff users always get school_staff role
+      const appRole = 'school_staff';
 
       const requestBody: any = {
         email: newUser.email,
@@ -243,8 +230,7 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
         throw new Error(data.error);
       }
 
-      const typeLabel = USER_TYPE_CONFIG[newUser.user_type].label;
-      toast.success(`${typeLabel} créé avec succès!`);
+      toast.success(`${STAFF_LABEL} créé avec succès!`);
       setIsCreateDialogOpen(false);
       setNewUser({ email: "", first_name: "", last_name: "", user_type: "staff", school_role_id: "" });
       setGeneratedPassword("");

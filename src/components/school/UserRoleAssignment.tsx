@@ -50,24 +50,29 @@ export function UserRoleAssignment({ schoolId, canEdit = true }: UserRoleAssignm
   const [selectedUser, setSelectedUser] = useState<SchoolUser | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
-  // Fetch users for this school
+  // Fetch ONLY staff users for this school (not teachers or students)
   React.useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
         
-        // Get users for this school (excluding students and teachers with accounts)
+        // Get users for this school
         const { data: appUsers, error } = await supabase
           .from('app_users')
-          .select('id, email, first_name, last_name, is_active')
+          .select('id, email, first_name, last_name, is_active, teacher_id, student_id')
           .eq('school_id', schoolId)
           .order('last_name');
 
         if (error) throw error;
 
-        // Get user roles for each user
+        // Filter to only include staff users (no teacher_id and no student_id)
+        const staffUsers = (appUsers || []).filter(
+          user => !user.teacher_id && !user.student_id
+        );
+
+        // Get user roles for each staff user
         const usersWithRoles: SchoolUser[] = await Promise.all(
-          (appUsers || []).map(async (appUser) => {
+          staffUsers.map(async (appUser) => {
             const { data: roleData } = await supabase
               .from('user_school_roles')
               .select(`
@@ -78,7 +83,11 @@ export function UserRoleAssignment({ schoolId, canEdit = true }: UserRoleAssignm
               .eq('school_id', schoolId);
 
             return {
-              ...appUser,
+              id: appUser.id,
+              email: appUser.email,
+              first_name: appUser.first_name,
+              last_name: appUser.last_name,
+              is_active: appUser.is_active,
               roles: (roleData || []).map((r: any) => ({
                 role_id: r.school_role_id,
                 role_name: r.role?.name || 'Unknown',
