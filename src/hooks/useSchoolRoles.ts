@@ -88,6 +88,8 @@ export const SCHOOL_PERMISSIONS = {
   'templates.view': { name: 'Voir les modèles', description: 'Consulter les modèles de documents', category: 'Documents' },
   'templates.create': { name: 'Créer des modèles', description: 'Créer de nouveaux modèles', category: 'Documents' },
   'templates.update': { name: 'Modifier les modèles', description: 'Modifier des modèles existants', category: 'Documents' },
+  'admin-documents.view': { name: 'Voir suivi documents administratifs', description: 'Consulter le suivi des documents administratifs', category: 'Documents' },
+  'admin-documents.manage': { name: 'Gérer suivi documents administratifs', description: 'Gérer les documents administratifs des étudiants', category: 'Documents' },
   'templates.delete': { name: 'Supprimer les modèles', description: 'Supprimer des modèles', category: 'Documents' },
   
   // Calendar / Sessions
