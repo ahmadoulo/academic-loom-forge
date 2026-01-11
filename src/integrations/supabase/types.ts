@@ -62,6 +62,60 @@ export type Database = {
           },
         ]
       }
+      administrative_document_types: {
+        Row: {
+          created_at: string
+          cycle_id: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          name: string
+          school_id: string
+          updated_at: string
+          year_level: number | null
+        }
+        Insert: {
+          created_at?: string
+          cycle_id: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+          year_level?: number | null
+        }
+        Update: {
+          created_at?: string
+          cycle_id?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+          year_level?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "administrative_document_types_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "administrative_document_types_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           attachments: string[] | null
@@ -2538,6 +2592,77 @@ export type Database = {
           {
             foreignKeyName: "schools_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_administrative_documents: {
+        Row: {
+          acquired_at: string | null
+          created_at: string
+          document_type_id: string
+          file_path: string | null
+          id: string
+          notes: string | null
+          school_id: string
+          status: string
+          student_id: string
+          updated_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          acquired_at?: string | null
+          created_at?: string
+          document_type_id: string
+          file_path?: string | null
+          id?: string
+          notes?: string | null
+          school_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          acquired_at?: string | null
+          created_at?: string
+          document_type_id?: string
+          file_path?: string | null
+          id?: string
+          notes?: string | null
+          school_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_administrative_documents_document_type_id_fkey"
+            columns: ["document_type_id"]
+            isOneToOne: false
+            referencedRelation: "administrative_document_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_administrative_documents_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_administrative_documents_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_administrative_documents_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "app_users"
             referencedColumns: ["id"]

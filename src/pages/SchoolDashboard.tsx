@@ -85,6 +85,7 @@ import { TextbooksSection } from "@/components/school/TextbooksSection";
 import { AbsenceJustificationsManagement } from "@/components/school/AbsenceJustificationsManagement";
 import { CamerasSection } from "@/components/school/CamerasSection";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { AdministrativeDocumentsSection } from "@/components/school/AdministrativeDocumentsSection";
 
 const SchoolDashboard = () => {
   const { schoolId } = useParams();
@@ -1013,6 +1014,15 @@ const SchoolDashboard = () => {
                   canCreate={hasPermission('templates.create')}
                   canEdit={hasPermission('templates.update')}
                   canDelete={hasPermission('templates.delete')}
+                />
+              )}
+
+              {activeTab === "administrative-documents" && school?.id && canAccessSection('administrative-documents') && (
+                <AdministrativeDocumentsSection
+                  schoolId={school.id}
+                  canCreate={hasPermission('admin-documents.manage')}
+                  canEdit={hasPermission('admin-documents.manage')}
+                  canDelete={hasPermission('admin-documents.manage')}
                 />
               )}
               

@@ -190,6 +190,12 @@ const menuStructure = [
         href: "/school"
       },
       { 
+        title: "Suivi Administratif", 
+        value: "administrative-documents",
+        icon: FileCheck,
+        href: "/school"
+      },
+      { 
         title: "Générateur", 
         value: "documents",
         icon: FileText,

@@ -39,6 +39,7 @@ export const SECTION_PERMISSIONS: Record<string, string[]> = {
   // Documents
   'document-requests': ['documents.view'],
   documents: ['templates.view', 'templates.create', 'templates.update', 'templates.delete'],
+  'administrative-documents': ['admin-documents.view', 'admin-documents.manage'],
 
   // Administration / Settings sub-sections
   'year-transition': ['settings.manage'],
