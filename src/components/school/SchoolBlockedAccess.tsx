@@ -228,8 +228,7 @@ export function SchoolBlockedAccess({ type, schoolName, schoolId }: SchoolBlocke
                           )}
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-primary">{plan.price} {plan.currency}</span>
-                          <p className="text-xs text-muted-foreground">/mois</p>
+                          <Badge variant="outline" className="capitalize">{plan.type}</Badge>
                         </div>
                       </div>
                     </div>
