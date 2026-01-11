@@ -46,8 +46,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   return false;
 }
 
-// Handler function for both standalone and router modes
-export async function handler(req: Request): Promise<Response> {
+Deno.serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -223,7 +222,4 @@ export async function handler(req: Request): Promise<Response> {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-}
-
-// Standalone mode - works in both Supabase Cloud and self-hosted
-Deno.serve(handler);
+});
