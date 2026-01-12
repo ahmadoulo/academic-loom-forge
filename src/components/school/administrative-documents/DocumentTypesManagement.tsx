@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
@@ -42,13 +41,15 @@ import {
   Trash2, 
   FileText,
   Loader2,
-  GraduationCap
+  GraduationCap,
+  AlertCircle,
+  Info
 } from "lucide-react";
 import { 
   useAdministrativeDocuments, 
   AdministrativeDocumentType 
 } from "@/hooks/useAdministrativeDocuments";
-import { useCycles } from "@/hooks/useCycles";
+import { useCycles, Cycle } from "@/hooks/useCycles";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 interface DocumentTypesManagementProps {
@@ -79,6 +80,17 @@ export function DocumentTypesManagement({
     year_level: "",
     is_required: true,
   });
+
+  // Get selected cycle for year level options
+  const selectedCycle = useMemo(() => {
+    return cycles.find(c => c.id === formData.cycle_id);
+  }, [cycles, formData.cycle_id]);
+
+  // Generate year level options based on cycle duration
+  const yearLevelOptions = useMemo(() => {
+    if (!selectedCycle?.duration_years) return [];
+    return Array.from({ length: selectedCycle.duration_years }, (_, i) => i + 1);
+  }, [selectedCycle]);
 
   const resetForm = () => {
     setFormData({
@@ -132,12 +144,25 @@ export function DocumentTypesManagement({
   };
 
   // Group by cycle
-  const groupedByCycle = documentTypes.reduce((acc, dt) => {
-    const cycleName = dt.cycles?.name || "Sans cycle";
-    if (!acc[cycleName]) acc[cycleName] = [];
-    acc[cycleName].push(dt);
-    return acc;
-  }, {} as Record<string, AdministrativeDocumentType[]>);
+  const groupedByCycle = useMemo(() => {
+    const grouped = documentTypes.reduce((acc, dt) => {
+      const cycleName = dt.cycles?.name || "Sans cycle";
+      const cycleId = dt.cycle_id;
+      const key = `${cycleId}|${cycleName}`;
+      if (!acc[key]) {
+        acc[key] = {
+          cycleName,
+          cycleId,
+          duration: dt.cycles?.duration_years,
+          docs: []
+        };
+      }
+      acc[key].docs.push(dt);
+      return acc;
+    }, {} as Record<string, { cycleName: string; cycleId: string; duration?: number; docs: AdministrativeDocumentType[] }>);
+
+    return Object.values(grouped);
+  }, [documentTypes]);
 
   if (loadingTypes || loadingCycles) {
     return (
@@ -153,7 +178,7 @@ export function DocumentTypesManagement({
         <div>
           <h3 className="text-lg font-semibold">Types de Documents</h3>
           <p className="text-sm text-muted-foreground">
-            Définissez les documents requis par cycle et niveau
+            Définissez les documents requis par cycle et niveau d'année
           </p>
         </div>
         {canCreate && (
@@ -195,53 +220,74 @@ export function DocumentTypesManagement({
                     value={formData.description}
                     onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
                     placeholder="Description optionnelle..."
+                    rows={2}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cycle">Cycle *</Label>
                   <Select
                     value={formData.cycle_id}
-                    onValueChange={(v) => setFormData(p => ({ ...p, cycle_id: v }))}
+                    onValueChange={(v) => setFormData(p => ({ ...p, cycle_id: v, year_level: "" }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un cycle" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cycles.map((cycle) => (
-                        <SelectItem key={cycle.id} value={cycle.id}>
-                          {cycle.name}
-                        </SelectItem>
-                      ))}
+                      {cycles.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          Aucun cycle configuré
+                        </div>
+                      ) : (
+                        cycles.map((cycle) => (
+                          <SelectItem key={cycle.id} value={cycle.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{cycle.name}</span>
+                              {cycle.duration_years && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({cycle.duration_years} ans)
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="year_level">Niveau d'année (optionnel)</Label>
-                  <Select
-                    value={formData.year_level || "all"}
-                    onValueChange={(v) => setFormData(p => ({ ...p, year_level: v === "all" ? "" : v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tous les niveaux" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les niveaux</SelectItem>
-                      <SelectItem value="1">1ère année</SelectItem>
-                      <SelectItem value="2">2ème année</SelectItem>
-                      <SelectItem value="3">3ème année</SelectItem>
-                      <SelectItem value="4">4ème année</SelectItem>
-                      <SelectItem value="5">5ème année</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Si spécifié, seuls les étudiants de ce niveau ou supérieur seront concernés
-                  </p>
-                </div>
-                <div className="flex items-center justify-between">
+                
+                {formData.cycle_id && (
+                  <div className="space-y-2">
+                    <Label htmlFor="year_level">Niveau d'année minimum</Label>
+                    <Select
+                      value={formData.year_level || "all"}
+                      onValueChange={(v) => setFormData(p => ({ ...p, year_level: v === "all" ? "" : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les niveaux" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les niveaux du cycle</SelectItem>
+                        {yearLevelOptions.map((level) => (
+                          <SelectItem key={level} value={level.toString()}>
+                            {level === 1 ? "1ère" : `${level}ème`} année et +
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-start gap-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                      <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                      <p>
+                        Si vous sélectionnez "2ème année", seuls les étudiants en 2ème année ou plus seront concernés par ce document.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="space-y-0.5">
                     <Label>Document requis</Label>
                     <p className="text-xs text-muted-foreground">
-                      Marquer comme obligatoire pour la complétion
+                      Obligatoire pour la complétion du dossier
                     </p>
                   </div>
                   <Switch
@@ -269,24 +315,51 @@ export function DocumentTypesManagement({
         )}
       </div>
 
-      {documentTypes.length === 0 ? (
+      {/* Info about cycles */}
+      {cycles.length === 0 && (
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Aucun cycle configuré
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Vous devez d'abord créer des cycles dans les paramètres de l'école avant de pouvoir définir des types de documents.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {documentTypes.length === 0 && cycles.length > 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="font-semibold text-lg">Aucun type de document</h3>
-            <p className="text-muted-foreground text-sm mt-1">
-              Commencez par créer des types de documents pour vos cycles
+            <p className="text-muted-foreground text-sm mt-1 max-w-md">
+              Commencez par créer des types de documents pour vos cycles.
+              Chaque document sera automatiquement attribué aux étudiants du cycle correspondant.
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
-          {Object.entries(groupedByCycle).map(([cycleName, docs]) => (
-            <Card key={cycleName}>
+          {groupedByCycle.map(({ cycleName, cycleId, duration, docs }) => (
+            <Card key={cycleId}>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base">{cycleName}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">{cycleName}</CardTitle>
+                    {duration && (
+                      <Badge variant="outline" className="ml-2">
+                        {duration} ans
+                      </Badge>
+                    )}
+                  </div>
                   <Badge variant="secondary">{docs.length} document(s)</Badge>
                 </div>
               </CardHeader>
@@ -295,8 +368,8 @@ export function DocumentTypesManagement({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Document</TableHead>
-                      <TableHead>Niveau</TableHead>
-                      <TableHead>Requis</TableHead>
+                      <TableHead>Niveau minimum</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -307,15 +380,19 @@ export function DocumentTypesManagement({
                           <div>
                             <p className="font-medium">{doc.name}</p>
                             {doc.description && (
-                              <p className="text-sm text-muted-foreground">{doc.description}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-1">
+                                {doc.description}
+                              </p>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
                           {doc.year_level ? (
-                            <Badge variant="outline">Année {doc.year_level}+</Badge>
+                            <Badge variant="outline">
+                              {doc.year_level === 1 ? "1ère" : `${doc.year_level}ème`} année+
+                            </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm">Tous</span>
+                            <span className="text-muted-foreground text-sm">Tous les niveaux</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -324,7 +401,7 @@ export function DocumentTypesManagement({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             {canEdit && (
                               <Button
                                 variant="ghost"
@@ -360,7 +437,7 @@ export function DocumentTypesManagement({
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
         title="Supprimer ce type de document ?"
-        description="Cette action est irréversible. Les données de suivi existantes seront conservées."
+        description="Cette action désactivera ce type de document. Les données de suivi existantes seront conservées."
         onConfirm={handleDelete}
       />
     </div>
