@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileStack, Users, Settings } from "lucide-react";
+import { Users, Settings } from "lucide-react";
 import { DocumentTypesManagement } from "./administrative-documents/DocumentTypesManagement";
 import { StudentDocumentsTracking } from "./administrative-documents/StudentDocumentsTracking";
 
