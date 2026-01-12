@@ -14,7 +14,9 @@ export interface AdministrativeDocumentType {
   created_at: string;
   updated_at: string;
   cycles?: {
+    id: string;
     name: string;
+    duration_years?: number;
   };
 }
 
@@ -41,12 +43,16 @@ export interface StudentWithDocuments {
   class_id: string;
   class_name: string;
   cycle_id?: string;
+  cycle_name?: string;
   year_level?: number;
   documents: {
     documentTypeId: string;
+    documentName: string;
     status: 'missing' | 'acquired' | 'pending';
     acquiredAt?: string;
     notes?: string;
+    is_required: boolean;
+    doc_year_level?: number;
   }[];
   totalRequired: number;
   totalAcquired: number;
@@ -56,8 +62,8 @@ export interface StudentWithDocuments {
 export const useAdministrativeDocuments = (schoolId: string | undefined) => {
   const queryClient = useQueryClient();
 
-  // Fetch document types
-  const { data: documentTypes, isLoading: loadingTypes } = useQuery({
+  // Fetch document types with cycle info
+  const { data: documentTypes, isLoading: loadingTypes, refetch: refetchTypes } = useQuery({
     queryKey: ["administrative-document-types", schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -66,7 +72,7 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
         .from("administrative_document_types")
         .select(`
           *,
-          cycles (name)
+          cycles (id, name, duration_years)
         `)
         .eq("school_id", schoolId)
         .eq("is_active", true)
@@ -95,14 +101,15 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
           school_id: schoolId,
           ...data,
         })
-        .select(`*, cycles (name)`)
+        .select(`*, cycles (id, name, duration_years)`)
         .single();
 
       if (error) throw error;
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["administrative-document-types"] });
+      queryClient.invalidateQueries({ queryKey: ["administrative-document-types", schoolId] });
+      queryClient.invalidateQueries({ queryKey: ["students-with-documents", schoolId] });
       toast.success("Type de document créé avec succès");
     },
     onError: (error) => {
@@ -118,14 +125,15 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
         .from("administrative_document_types")
         .update(data)
         .eq("id", id)
-        .select(`*, cycles (name)`)
+        .select(`*, cycles (id, name, duration_years)`)
         .single();
 
       if (error) throw error;
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["administrative-document-types"] });
+      queryClient.invalidateQueries({ queryKey: ["administrative-document-types", schoolId] });
+      queryClient.invalidateQueries({ queryKey: ["students-with-documents", schoolId] });
       toast.success("Type de document mis à jour");
     },
     onError: (error) => {
@@ -145,7 +153,8 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["administrative-document-types"] });
+      queryClient.invalidateQueries({ queryKey: ["administrative-document-types", schoolId] });
+      queryClient.invalidateQueries({ queryKey: ["students-with-documents", schoolId] });
       toast.success("Type de document supprimé");
     },
     onError: (error) => {
@@ -181,7 +190,7 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students-with-documents"] });
+      queryClient.invalidateQueries({ queryKey: ["students-with-documents", schoolId] });
       toast.success("Document mis à jour");
     },
     onError: (error) => {
@@ -216,7 +225,7 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students-with-documents"] });
+      queryClient.invalidateQueries({ queryKey: ["students-with-documents", schoolId] });
       toast.success("Documents mis à jour");
     },
     onError: (error) => {
@@ -228,6 +237,7 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
   return {
     documentTypes: documentTypes || [],
     loadingTypes,
+    refetchTypes,
     createDocumentType,
     updateDocumentType,
     deleteDocumentType,
@@ -247,12 +257,18 @@ export const useStudentsWithDocuments = (
     queryFn: async (): Promise<StudentWithDocuments[]> => {
       if (!schoolId) return [];
 
-      // 1. Fetch all students with their class info - using separate queries to avoid column conflicts
-      const { data: studentSchoolData, error: ssError } = await supabase
+      // 1. Fetch all students enrolled in this school with their class info
+      let studentSchoolQuery = supabase
         .from("student_school")
         .select("student_id, class_id")
         .eq("school_id", schoolId)
         .eq("is_active", true);
+
+      if (classId) {
+        studentSchoolQuery = studentSchoolQuery.eq("class_id", classId);
+      }
+
+      const { data: studentSchoolData, error: ssError } = await studentSchoolQuery;
 
       if (ssError) {
         console.error("Error fetching student_school:", ssError);
@@ -263,18 +279,9 @@ export const useStudentsWithDocuments = (
         return [];
       }
 
-      // Filter by classId if provided
-      const filteredSSData = classId 
-        ? studentSchoolData.filter(ss => ss.class_id === classId)
-        : studentSchoolData;
-
-      if (filteredSSData.length === 0) {
-        return [];
-      }
-
       // Get unique student IDs and class IDs
-      const studentIds = [...new Set(filteredSSData.map(ss => ss.student_id))];
-      const classIds = [...new Set(filteredSSData.map(ss => ss.class_id))];
+      const studentIds = [...new Set(studentSchoolData.map(ss => ss.student_id))];
+      const classIds = [...new Set(studentSchoolData.map(ss => ss.class_id).filter(Boolean))];
 
       // 2. Fetch students data
       const { data: studentsData, error: studentsError } = await supabase
@@ -288,18 +295,32 @@ export const useStudentsWithDocuments = (
         throw studentsError;
       }
 
-      // 3. Fetch classes data
+      // 3. Fetch classes data WITH cycle_id and year_level
       const { data: classesData, error: classesError } = await supabase
         .from("classes")
         .select("id, name, cycle_id, year_level")
-        .in("id", classIds);
+        .in("id", classIds)
+        .eq("archived", false);
 
       if (classesError) {
         console.error("Error fetching classes:", classesError);
         throw classesError;
       }
 
-      // 4. Fetch all document types for this school
+      // 4. Get cycle info for classes that have cycle_id
+      const cycleIds = [...new Set((classesData || []).map(c => c.cycle_id).filter(Boolean))];
+      let cyclesMap = new Map<string, { name: string; duration_years?: number }>();
+      
+      if (cycleIds.length > 0) {
+        const { data: cyclesData } = await supabase
+          .from("cycles")
+          .select("id, name, duration_years")
+          .in("id", cycleIds);
+        
+        cyclesMap = new Map((cyclesData || []).map(c => [c.id, { name: c.name, duration_years: c.duration_years }]));
+      }
+
+      // 5. Fetch all document types for this school
       const { data: docTypes, error: docTypesError } = await supabase
         .from("administrative_document_types")
         .select("*")
@@ -311,11 +332,12 @@ export const useStudentsWithDocuments = (
         throw docTypesError;
       }
 
-      // 5. Fetch all student documents
+      // 6. Fetch all student documents for this school
       const { data: studentDocs, error: studentDocsError } = await supabase
         .from("student_administrative_documents")
         .select("*")
-        .eq("school_id", schoolId);
+        .eq("school_id", schoolId)
+        .in("student_id", studentIds);
 
       if (studentDocsError) {
         console.error("Error fetching student docs:", studentDocsError);
@@ -326,28 +348,35 @@ export const useStudentsWithDocuments = (
       const studentsMap = new Map(studentsData?.map(s => [s.id, s]) || []);
       const classesMap = new Map(classesData?.map(c => [c.id, c]) || []);
 
-      // 6. Map and calculate - group by student, using first class found
+      // Build student -> class mapping (one class per student for simplicity)
       const studentClassMap = new Map<string, string>();
-      filteredSSData.forEach(ss => {
-        if (!studentClassMap.has(ss.student_id)) {
+      studentSchoolData.forEach(ss => {
+        if (!studentClassMap.has(ss.student_id) && ss.class_id) {
           studentClassMap.set(ss.student_id, ss.class_id);
         }
       });
 
       const result: StudentWithDocuments[] = [];
       
-      studentClassMap.forEach((classId, studentId) => {
+      studentClassMap.forEach((classIdVal, studentId) => {
         const student = studentsMap.get(studentId);
-        const classInfo = classesMap.get(classId);
+        const classInfo = classesMap.get(classIdVal);
         
         if (!student || !classInfo) return;
 
+        const cycleInfo = classInfo.cycle_id ? cyclesMap.get(classInfo.cycle_id) : null;
+        const studentYearLevel = classInfo.year_level || 1;
+
         // Find applicable document types for this student's class
+        // A document applies if:
+        // 1. It's for the same cycle as the student's class
+        // 2. If the document has a year_level, the student's year_level must be >= that level
         const applicableDocTypes = (docTypes || []).filter((dt: any) => {
           // Must match cycle
-          if (dt.cycle_id !== classInfo.cycle_id) return false;
-          // If year_level is specified, student's class must be >= that level
-          if (dt.year_level && classInfo.year_level && classInfo.year_level < dt.year_level) {
+          if (!classInfo.cycle_id || dt.cycle_id !== classInfo.cycle_id) return false;
+          
+          // If document specifies a year_level, student must be at or above that level
+          if (dt.year_level && studentYearLevel < dt.year_level) {
             return false;
           }
           return true;
@@ -358,20 +387,23 @@ export const useStudentsWithDocuments = (
           (sd: any) => sd.student_id === student.id
         );
 
-        // Map documents
+        // Map documents with full info
         const documents = applicableDocTypes.map((dt: any) => {
           const record = studentDocRecords.find((sd: any) => sd.document_type_id === dt.id);
           return {
             documentTypeId: dt.id,
+            documentName: dt.name,
             status: (record?.status || 'missing') as 'missing' | 'acquired' | 'pending',
             acquiredAt: record?.acquired_at,
             notes: record?.notes,
+            is_required: dt.is_required,
+            doc_year_level: dt.year_level,
           };
         });
 
         const totalRequired = applicableDocTypes.filter((dt: any) => dt.is_required).length;
         const totalAcquired = documents.filter(d => d.status === 'acquired').length;
-        const missingCount = documents.filter(d => d.status === 'missing').length;
+        const missingCount = documents.filter(d => d.status === 'missing' || d.status === 'pending').length;
 
         result.push({
           id: student.id,
@@ -379,15 +411,24 @@ export const useStudentsWithDocuments = (
           lastname: student.lastname,
           email: student.email,
           cin_number: student.cin_number,
-          class_id: classId,
+          phone: student.phone,
+          class_id: classIdVal,
           class_name: classInfo.name,
-          cycle_id: classInfo.cycle_id,
-          year_level: classInfo.year_level,
+          cycle_id: classInfo.cycle_id || undefined,
+          cycle_name: cycleInfo?.name,
+          year_level: studentYearLevel,
           documents,
           totalRequired,
           totalAcquired,
           missingCount,
         });
+      });
+
+      // Sort by lastname, firstname
+      result.sort((a, b) => {
+        const lastNameCompare = a.lastname.localeCompare(b.lastname);
+        if (lastNameCompare !== 0) return lastNameCompare;
+        return a.firstname.localeCompare(b.firstname);
       });
 
       // Filter by missing if requested
@@ -396,6 +437,33 @@ export const useStudentsWithDocuments = (
       }
 
       return result;
+    },
+    enabled: !!schoolId,
+  });
+};
+
+// Hook to get classes with cycle info for filtering
+export const useClassesWithCycles = (schoolId: string | undefined) => {
+  return useQuery({
+    queryKey: ["classes-with-cycles", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+
+      const { data, error } = await supabase
+        .from("classes")
+        .select(`
+          id,
+          name,
+          cycle_id,
+          year_level,
+          cycles (id, name, duration_years)
+        `)
+        .eq("school_id", schoolId)
+        .eq("archived", false)
+        .order("name");
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!schoolId,
   });
