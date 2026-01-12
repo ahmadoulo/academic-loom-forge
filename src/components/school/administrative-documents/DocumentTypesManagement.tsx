@@ -218,14 +218,14 @@ export function DocumentTypesManagement({
                 <div className="space-y-2">
                   <Label htmlFor="year_level">Niveau d'année (optionnel)</Label>
                   <Select
-                    value={formData.year_level}
-                    onValueChange={(v) => setFormData(p => ({ ...p, year_level: v }))}
+                    value={formData.year_level || "all"}
+                    onValueChange={(v) => setFormData(p => ({ ...p, year_level: v === "all" ? "" : v }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Tous les niveaux" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous les niveaux</SelectItem>
+                      <SelectItem value="all">Tous les niveaux</SelectItem>
                       <SelectItem value="1">1ère année</SelectItem>
                       <SelectItem value="2">2ème année</SelectItem>
                       <SelectItem value="3">3ème année</SelectItem>

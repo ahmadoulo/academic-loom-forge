@@ -247,60 +247,101 @@ export const useStudentsWithDocuments = (
     queryFn: async (): Promise<StudentWithDocuments[]> => {
       if (!schoolId) return [];
 
-      // 1. Fetch all students with their class info
-      let studentQuery = supabase
+      // 1. Fetch all students with their class info - using separate queries to avoid column conflicts
+      const { data: studentSchoolData, error: ssError } = await supabase
         .from("student_school")
-        .select(`
-          student_id,
-          class_id,
-          students!inner (
-            id,
-            firstname,
-            lastname,
-            email,
-            cin_number,
-            archived
-          ),
-          classes!inner (
-            id,
-            name,
-            cycle_id,
-            year_level
-          )
-        `)
+        .select("student_id, class_id")
         .eq("school_id", schoolId)
-        .eq("is_active", true)
-        .eq("students.archived", false);
+        .eq("is_active", true);
 
-      if (classId) {
-        studentQuery = studentQuery.eq("class_id", classId);
+      if (ssError) {
+        console.error("Error fetching student_school:", ssError);
+        throw ssError;
       }
 
-      const { data: studentsData, error: studentsError } = await studentQuery;
-      if (studentsError) throw studentsError;
+      if (!studentSchoolData || studentSchoolData.length === 0) {
+        return [];
+      }
 
-      // 2. Fetch all document types for this school
+      // Filter by classId if provided
+      const filteredSSData = classId 
+        ? studentSchoolData.filter(ss => ss.class_id === classId)
+        : studentSchoolData;
+
+      if (filteredSSData.length === 0) {
+        return [];
+      }
+
+      // Get unique student IDs and class IDs
+      const studentIds = [...new Set(filteredSSData.map(ss => ss.student_id))];
+      const classIds = [...new Set(filteredSSData.map(ss => ss.class_id))];
+
+      // 2. Fetch students data
+      const { data: studentsData, error: studentsError } = await supabase
+        .from("students")
+        .select("id, firstname, lastname, email, cin_number, archived")
+        .in("id", studentIds)
+        .eq("archived", false);
+
+      if (studentsError) {
+        console.error("Error fetching students:", studentsError);
+        throw studentsError;
+      }
+
+      // 3. Fetch classes data
+      const { data: classesData, error: classesError } = await supabase
+        .from("classes")
+        .select("id, name, cycle_id, year_level")
+        .in("id", classIds);
+
+      if (classesError) {
+        console.error("Error fetching classes:", classesError);
+        throw classesError;
+      }
+
+      // 4. Fetch all document types for this school
       const { data: docTypes, error: docTypesError } = await supabase
         .from("administrative_document_types")
         .select("*")
         .eq("school_id", schoolId)
         .eq("is_active", true);
 
-      if (docTypesError) throw docTypesError;
+      if (docTypesError) {
+        console.error("Error fetching doc types:", docTypesError);
+        throw docTypesError;
+      }
 
-      // 3. Fetch all student documents
+      // 5. Fetch all student documents
       const { data: studentDocs, error: studentDocsError } = await supabase
         .from("student_administrative_documents")
         .select("*")
         .eq("school_id", schoolId);
 
-      if (studentDocsError) throw studentDocsError;
+      if (studentDocsError) {
+        console.error("Error fetching student docs:", studentDocsError);
+        throw studentDocsError;
+      }
 
-      // 4. Map and calculate
-      const result: StudentWithDocuments[] = (studentsData || []).map((item: any) => {
-        const student = item.students;
-        const classInfo = item.classes;
+      // Create lookup maps
+      const studentsMap = new Map(studentsData?.map(s => [s.id, s]) || []);
+      const classesMap = new Map(classesData?.map(c => [c.id, c]) || []);
+
+      // 6. Map and calculate - group by student, using first class found
+      const studentClassMap = new Map<string, string>();
+      filteredSSData.forEach(ss => {
+        if (!studentClassMap.has(ss.student_id)) {
+          studentClassMap.set(ss.student_id, ss.class_id);
+        }
+      });
+
+      const result: StudentWithDocuments[] = [];
+      
+      studentClassMap.forEach((classId, studentId) => {
+        const student = studentsMap.get(studentId);
+        const classInfo = classesMap.get(classId);
         
+        if (!student || !classInfo) return;
+
         // Find applicable document types for this student's class
         const applicableDocTypes = (docTypes || []).filter((dt: any) => {
           // Must match cycle
@@ -332,13 +373,13 @@ export const useStudentsWithDocuments = (
         const totalAcquired = documents.filter(d => d.status === 'acquired').length;
         const missingCount = documents.filter(d => d.status === 'missing').length;
 
-        return {
+        result.push({
           id: student.id,
           firstname: student.firstname,
           lastname: student.lastname,
           email: student.email,
           cin_number: student.cin_number,
-          class_id: item.class_id,
+          class_id: classId,
           class_name: classInfo.name,
           cycle_id: classInfo.cycle_id,
           year_level: classInfo.year_level,
@@ -346,7 +387,7 @@ export const useStudentsWithDocuments = (
           totalRequired,
           totalAcquired,
           missingCount,
-        };
+        });
       });
 
       // Filter by missing if requested

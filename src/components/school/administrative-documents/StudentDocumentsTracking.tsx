@@ -162,14 +162,14 @@ export function StudentDocumentsTracking({
               </div>
             </div>
             <Select
-              value={selectedClassId}
-              onValueChange={setSelectedClassId}
+              value={selectedClassId || "all"}
+              onValueChange={(v) => setSelectedClassId(v === "all" ? "" : v)}
             >
               <SelectTrigger className="w-full md:w-[250px]">
                 <SelectValue placeholder="Toutes les classes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les classes</SelectItem>
+                <SelectItem value="all">Toutes les classes</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {cls.name}
