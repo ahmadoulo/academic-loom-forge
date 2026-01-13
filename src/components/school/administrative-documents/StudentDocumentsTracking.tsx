@@ -32,6 +32,8 @@ import {
   Eye,
   GraduationCap,
   RefreshCw,
+  Calendar,
+  History,
 } from "lucide-react";
 import {
   useAdministrativeDocuments,
@@ -40,6 +42,7 @@ import {
   StudentWithDocuments,
 } from "@/hooks/useAdministrativeDocuments";
 import { StudentDocumentDialog } from "./StudentDocumentDialog";
+import { useAcademicYear } from "@/hooks/useAcademicYear";
 
 interface StudentDocumentsTrackingProps {
   schoolId: string;
@@ -50,12 +53,23 @@ export function StudentDocumentsTracking({
   schoolId,
   canEdit = true,
 }: StudentDocumentsTrackingProps) {
+  const { currentYear, availableYears } = useAcademicYear();
+  
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [showMissingOnly, setShowMissingOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentWithDocuments | null>(null);
+  const [includeAllYears, setIncludeAllYears] = useState(false);
+  const [selectedYearId, setSelectedYearId] = useState<string | undefined>(undefined);
 
-  const { data: classes, isLoading: loadingClasses } = useClassesWithCycles(schoolId);
+  // Use current year by default, or allow viewing all years
+  const effectiveYearId = includeAllYears ? undefined : (selectedYearId || currentYear?.id);
+
+  const { data: classes, isLoading: loadingClasses } = useClassesWithCycles(
+    schoolId, 
+    effectiveYearId,
+    includeAllYears
+  );
   const { documentTypes, loadingTypes, refetchTypes } = useAdministrativeDocuments(schoolId);
   const { 
     data: students, 
@@ -64,7 +78,8 @@ export function StudentDocumentsTracking({
   } = useStudentsWithDocuments(
     schoolId,
     selectedClassId || undefined,
-    showMissingOnly
+    showMissingOnly,
+    effectiveYearId
   );
 
   // Filter students by search
@@ -116,10 +131,34 @@ export function StudentDocumentsTracking({
     refetchTypes();
   };
 
+  const handleYearChange = (value: string) => {
+    if (value === "all") {
+      setIncludeAllYears(true);
+      setSelectedYearId(undefined);
+    } else {
+      setIncludeAllYears(false);
+      setSelectedYearId(value);
+    }
+    // Reset class selection when year changes
+    setSelectedClassId("");
+  };
+
   // Filter classes that have a cycle assigned (only those can have document types)
   const classesWithCycles = useMemo(() => {
-    return (classes || []).filter(c => c.cycle_id);
+    return (classes || []).filter((c: any) => c.cycle_id);
   }, [classes]);
+
+  // Group classes by year for display when showing all years
+  const getClassDisplayName = (cls: any) => {
+    if (!includeAllYears) {
+      return cls.name;
+    }
+    const yearName = cls.school_years?.name || "Sans année";
+    return `${cls.name} (${yearName})`;
+  };
+
+  // Get the display value for year selector
+  const yearSelectorValue = includeAllYears ? "all" : (selectedYearId || currentYear?.id || "");
 
   return (
     <div className="space-y-6">
@@ -196,61 +235,114 @@ export function StudentDocumentsTracking({
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un étudiant (nom, email, CIN)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+          <div className="flex flex-col gap-4">
+            {/* Row 1: Year selector and search */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un étudiant (nom, email, CIN)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </div>
-            </div>
-            <Select
-              value={selectedClassId || "all"}
-              onValueChange={(v) => setSelectedClassId(v === "all" ? "" : v)}
-            >
-              <SelectTrigger className="w-full md:w-[280px]">
-                <SelectValue placeholder="Toutes les classes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les classes</SelectItem>
-                {classesWithCycles.map((cls: any) => (
-                  <SelectItem key={cls.id} value={cls.id}>
+              <Select
+                value={yearSelectorValue}
+                onValueChange={handleYearChange}
+              >
+                <SelectTrigger className="w-full md:w-[280px]">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Année scolaire" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {currentYear && (
+                    <SelectItem value={currentYear.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{currentYear.name}</span>
+                        <Badge variant="secondary" className="text-xs">Actuelle</Badge>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {availableYears
+                    .filter(y => y.id !== currentYear?.id)
+                    .map((year) => (
+                      <SelectItem key={year.id} value={year.id}>
+                        <span>{year.name}</span>
+                      </SelectItem>
+                    ))}
+                  <SelectItem value="all">
                     <div className="flex items-center gap-2">
-                      <span>{cls.name}</span>
-                      {cls.year_level && (
-                        <span className="text-xs text-muted-foreground">
-                          (Année {cls.year_level})
-                        </span>
-                      )}
+                      <History className="h-3.5 w-3.5" />
+                      <span>Toutes les années</span>
                     </div>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-background">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="missing-only" className="text-sm cursor-pointer whitespace-nowrap">
-                Manquants seulement
-              </Label>
-              <Switch
-                id="missing-only"
-                checked={showMissingOnly}
-                onCheckedChange={setShowMissingOnly}
-              />
+                </SelectContent>
+              </Select>
             </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+
+            {/* Row 2: Class filter, missing only toggle, refresh */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <Select
+                value={selectedClassId || "all"}
+                onValueChange={(v) => setSelectedClassId(v === "all" ? "" : v)}
+              >
+                <SelectTrigger className="w-full md:w-[320px]">
+                  <SelectValue placeholder="Toutes les classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les classes</SelectItem>
+                  {classesWithCycles.map((cls: any) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{getClassDisplayName(cls)}</span>
+                        {cls.year_level && (
+                          <span className="text-xs text-muted-foreground">
+                            Année {cls.year_level}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-background">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="missing-only" className="text-sm cursor-pointer whitespace-nowrap">
+                  Manquants seulement
+                </Label>
+                <Switch
+                  id="missing-only"
+                  checked={showMissingOnly}
+                  onCheckedChange={setShowMissingOnly}
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
+
+          {/* Year indicator banner */}
+          {includeAllYears && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-dashed">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <History className="h-4 w-4" />
+                <span>
+                  Affichage de toutes les années scolaires. Les classes sont annotées avec leur année pour éviter les confusions.
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
