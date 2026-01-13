@@ -79,7 +79,8 @@ export function StudentDocumentsTracking({
     schoolId,
     selectedClassId || undefined,
     showMissingOnly,
-    effectiveYearId
+    effectiveYearId,
+    includeAllYears
   );
 
   // Filter students by search
@@ -398,7 +399,14 @@ export function StudentDocumentsTracking({
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <Badge variant="outline">{student.class_name}</Badge>
+                        <Badge variant="outline">
+                          {student.class_name}
+                          {includeAllYears && student.school_year_name ? (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              ({student.school_year_name})
+                            </span>
+                          ) : null}
+                        </Badge>
                         {student.cycle_name && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <GraduationCap className="h-3 w-3" />
