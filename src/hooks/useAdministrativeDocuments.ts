@@ -250,19 +250,25 @@ export const useAdministrativeDocuments = (schoolId: string | undefined) => {
 export const useStudentsWithDocuments = (
   schoolId: string | undefined, 
   classId?: string,
-  showMissingOnly?: boolean
+  showMissingOnly?: boolean,
+  schoolYearId?: string
 ) => {
   return useQuery({
-    queryKey: ["students-with-documents", schoolId, classId, showMissingOnly],
+    queryKey: ["students-with-documents", schoolId, classId, showMissingOnly, schoolYearId],
     queryFn: async (): Promise<StudentWithDocuments[]> => {
       if (!schoolId) return [];
 
       // 1. Fetch all students enrolled in this school with their class info
       let studentSchoolQuery = supabase
         .from("student_school")
-        .select("student_id, class_id")
+        .select("student_id, class_id, school_year_id")
         .eq("school_id", schoolId)
         .eq("is_active", true);
+
+      // Filter by school year if provided
+      if (schoolYearId) {
+        studentSchoolQuery = studentSchoolQuery.eq("school_year_id", schoolYearId);
+      }
 
       if (classId) {
         studentSchoolQuery = studentSchoolQuery.eq("class_id", classId);
@@ -442,24 +448,32 @@ export const useStudentsWithDocuments = (
 };
 
 // Hook to get classes with cycle info for filtering
-export const useClassesWithCycles = (schoolId: string | undefined) => {
+export const useClassesWithCycles = (schoolId: string | undefined, schoolYearId?: string | null, includeAllYears?: boolean) => {
   return useQuery({
-    queryKey: ["classes-with-cycles", schoolId],
+    queryKey: ["classes-with-cycles", schoolId, schoolYearId, includeAllYears],
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("classes")
         .select(`
           id,
           name,
           cycle_id,
           year_level,
-          cycles (id, name, duration_years)
+          school_year_id,
+          cycles (id, name, duration_years),
+          school_years:school_year_id (id, name, is_current)
         `)
         .eq("school_id", schoolId)
-        .eq("archived", false)
-        .order("name");
+        .eq("archived", false);
+
+      // Filter by school year unless including all years
+      if (!includeAllYears && schoolYearId) {
+        query = query.eq("school_year_id", schoolYearId);
+      }
+
+      const { data, error } = await query.order("name");
 
       if (error) throw error;
       return data || [];
