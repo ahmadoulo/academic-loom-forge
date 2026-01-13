@@ -411,7 +411,6 @@ export const useStudentsWithDocuments = (
           lastname: student.lastname,
           email: student.email,
           cin_number: student.cin_number,
-          phone: student.phone,
           class_id: classIdVal,
           class_name: classInfo.name,
           cycle_id: classInfo.cycle_id || undefined,

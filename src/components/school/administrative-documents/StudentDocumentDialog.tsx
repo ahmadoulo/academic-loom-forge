@@ -192,12 +192,6 @@ export function StudentDocumentDialog({
               <span>{student.email}</span>
             </div>
           )}
-          {student.phone && (
-            <div className="flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5" />
-              <span>{student.phone}</span>
-            </div>
-          )}
         </div>
 
         <Separator />
