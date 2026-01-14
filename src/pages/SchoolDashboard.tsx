@@ -32,8 +32,10 @@ import {
   SchoolInsightsGrid,
   SchoolQuickActions,
   SchoolActivityFeed,
-  SchoolAttendanceInsights
+  SchoolAttendanceInsights,
+  AdministrativeDocumentsWidget
 } from "@/components/school/dashboard";
+import { useAdministrativeDocumentsStats } from "@/hooks/useAdministrativeDocumentsStats";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { SchoolSettings } from "@/components/settings/SchoolSettings";
 import { SchoolSettingsPage } from "@/components/settings/SchoolSettingsPage";
@@ -202,6 +204,7 @@ const SchoolDashboard = () => {
   } = useSchoolAnalytics(school?.id);
   const { requests: documentRequests, loading: documentRequestsLoading } = useDocumentRequests(school?.id);
   const { admissions } = useAdmissions(school?.id);
+  const { data: adminDocsStats, isLoading: adminDocsLoading } = useAdministrativeDocumentsStats(school?.id, displayYearId);
 
   const { canAccessSection, hasPermission, loading: permissionsLoading } = useUserPermissions(school?.id);
 
@@ -697,7 +700,12 @@ const SchoolDashboard = () => {
                     classroomWidget={<ClassroomAvailabilityWidget schoolId={school.id} />}
                   />
 
-                  {/* Analytics Charts */}
+                  {/* Administrative Documents Widget */}
+                  <AdministrativeDocumentsWidget
+                    data={adminDocsStats || []}
+                    loading={adminDocsLoading}
+                    onViewDetails={() => setActiveTab('documents')}
+                  />
                   <AnalyticsDashboard 
                     schoolId={school.id}
                     performanceBySubject={performanceBySubject}

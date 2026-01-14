@@ -22,6 +22,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Search,
   Loader2,
   Users,
@@ -34,7 +40,11 @@ import {
   RefreshCw,
   Calendar,
   History,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   useAdministrativeDocuments,
   useStudentsWithDocuments,
@@ -43,6 +53,10 @@ import {
 } from "@/hooks/useAdministrativeDocuments";
 import { StudentDocumentDialog } from "./StudentDocumentDialog";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
+import { useSchools } from "@/hooks/useSchools";
+import { exportMissingDocumentsToPdf, MissingDocumentExportData } from "@/utils/administrativeDocumentsPdfExport";
+import { exportMissingDocumentsToExcel, MissingDocumentExcelData } from "@/utils/administrativeDocumentsExcelExport";
+import { imageUrlToBase64 } from "@/utils/imageToBase64";
 
 interface StudentDocumentsTrackingProps {
   schoolId: string;
@@ -160,6 +174,118 @@ export function StudentDocumentsTracking({
 
   // Get the display value for year selector
   const yearSelectorValue = includeAllYears ? "all" : (selectedYearId || currentYear?.id || "");
+
+  // Get school info for export
+  const { getSchoolById } = useSchools();
+  const [school, setSchool] = useState<any>(null);
+  
+  // Fetch school data for exports
+  useMemo(() => {
+    const fetchSchool = async () => {
+      if (schoolId) {
+        try {
+          const schoolData = await getSchoolById(schoolId);
+          setSchool(schoolData);
+        } catch (e) {
+          console.error("Error fetching school for export:", e);
+        }
+      }
+    };
+    fetchSchool();
+  }, [schoolId, getSchoolById]);
+
+  // Get selected class name for exports
+  const getExportClassName = () => {
+    if (!selectedClassId) {
+      return "Toutes les classes";
+    }
+    const selectedClass = classesWithCycles.find((c: any) => c.id === selectedClassId);
+    return selectedClass ? getClassDisplayName(selectedClass) : "Toutes les classes";
+  };
+
+  // Get academic year name for exports
+  const getExportYearName = () => {
+    if (includeAllYears) {
+      return "Toutes les années";
+    }
+    const yearId = selectedYearId || currentYear?.id;
+    const year = availableYears.find(y => y.id === yearId);
+    return year?.name || currentYear?.name || "Année inconnue";
+  };
+
+  // Prepare export data from filtered students (only those with missing docs)
+  const prepareExportStudents = () => {
+    return filteredStudents
+      .filter(s => s.missingCount > 0)
+      .map(s => ({
+        fullName: `${s.lastname} ${s.firstname}`,
+        className: includeAllYears && s.school_year_name 
+          ? `${s.class_name} (${s.school_year_name})`
+          : s.class_name,
+        cycleName: s.cycle_name,
+        yearLevel: s.year_level,
+        missingDocuments: s.documents
+          .filter(d => d.status !== 'acquired' && d.is_required)
+          .map(d => d.documentName),
+        missingCount: s.missingCount,
+        totalRequired: s.totalRequired,
+        totalAcquired: s.totalAcquired,
+      }));
+  };
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      let logoBase64: string | undefined;
+      if (school?.logo_url) {
+        try {
+          logoBase64 = await imageUrlToBase64(school.logo_url);
+        } catch (e) {
+          console.error("Could not load logo for PDF:", e);
+        }
+      }
+
+      const exportData: MissingDocumentExportData = {
+        schoolName: school?.name || "École",
+        schoolLogoBase64: logoBase64,
+        academicYear: getExportYearName(),
+        className: getExportClassName(),
+        students: prepareExportStudents(),
+        generatedAt: new Date(),
+      };
+
+      await exportMissingDocumentsToPdf(exportData);
+      toast.success("Export PDF généré avec succès");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Erreur lors de l'export PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = () => {
+    setIsExporting(true);
+    try {
+      const exportData: MissingDocumentExcelData = {
+        schoolName: school?.name || "École",
+        academicYear: getExportYearName(),
+        className: getExportClassName(),
+        students: prepareExportStudents(),
+        generatedAt: new Date(),
+      };
+
+      exportMissingDocumentsToExcel(exportData);
+      toast.success("Export Excel généré avec succès");
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Erreur lors de l'export Excel");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -330,6 +456,34 @@ export function StudentDocumentsTracking({
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
+
+              {/* Export Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="gap-2"
+                    disabled={isExporting || filteredStudents.filter(s => s.missingCount > 0).length === 0}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">Exporter</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportPdf} className="gap-2 cursor-pointer">
+                    <FileText className="h-4 w-4 text-destructive" />
+                    Exporter en PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                    Exporter en Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
