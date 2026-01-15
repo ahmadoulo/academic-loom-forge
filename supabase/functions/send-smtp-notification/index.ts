@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.10";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,6 +150,8 @@ serve(async (req: Request): Promise<Response> => {
     const smtpFromName = Deno.env.get("SMTP_FROM_NAME") || schoolName;
     const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
 
+    console.log("SMTP Config:", { host: smtpHost, port: smtpPort, secure: smtpSecure, from: smtpFromAddress });
+
     if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
       console.error("Missing SMTP configuration");
       return new Response(
@@ -175,18 +177,34 @@ serve(async (req: Request): Promise<Response> => {
       schoolLogo = schoolData.logo_url;
     }
 
-    // Initialize SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: smtpSecure,
-        auth: {
-          username: smtpUsername,
-          password: smtpPassword,
-        },
+    // Create transporter with nodemailer
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure, // true for 465, false for other ports
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
+      },
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certificates
       },
     });
+
+    // Verify connection
+    try {
+      await transporter.verify();
+      console.log("SMTP connection verified successfully");
+    } catch (verifyError) {
+      console.error("SMTP verification failed:", verifyError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to connect to SMTP server", 
+          details: verifyError.message 
+        }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const results: { email: string; success: boolean; error?: string }[] = [];
 
@@ -202,29 +220,31 @@ serve(async (req: Request): Promise<Response> => {
           recipient.missingDocuments
         );
 
-        await client.send({
-          from: `${smtpFromName} <${smtpFromAddress}>`,
+        const mailOptions = {
+          from: `"${smtpFromName}" <${smtpFromAddress}>`,
           to: recipient.email,
           subject: `📋 Rappel - Documents Administratifs Manquants - ${schoolName}`,
-          content: "Veuillez activer l'affichage HTML pour voir ce message.",
+          text: "Veuillez activer l'affichage HTML pour voir ce message.",
           html: htmlContent,
-        });
+        };
 
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent successfully to ${recipient.email}, messageId: ${info.messageId}`);
         results.push({ email: recipient.email, success: true });
-        console.log(`Email sent successfully to ${recipient.email}`);
       } catch (error) {
         console.error(`Failed to send email to ${recipient.email}:`, error);
         results.push({ email: recipient.email, success: false, error: error.message });
       }
     }
 
-    await client.close();
+    // Close the transporter
+    transporter.close();
 
     // Log notifications to database for each successful send
     const successfulResults = results.filter(r => r.success);
     
     if (successfulResults.length > 0) {
-      const notificationLogs = successfulResults.map((r, idx) => {
+      const notificationLogs = successfulResults.map((r) => {
         const recipient = recipients.find(rec => rec.email === r.email);
         return {
           school_id: schoolId,
@@ -241,11 +261,12 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const successCount = successfulResults.length;
+    const failedCount = results.filter(r => !r.success).length;
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: `${successCount} email(s) envoyé(s) sur ${recipients.length}`,
+        success: successCount > 0,
+        message: `${successCount} email(s) envoyé(s) sur ${recipients.length}${failedCount > 0 ? `, ${failedCount} échec(s)` : ''}`,
         results,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
