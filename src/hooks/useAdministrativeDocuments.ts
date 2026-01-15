@@ -39,6 +39,7 @@ export interface StudentWithDocuments {
   firstname: string;
   lastname: string;
   email?: string;
+  tutor_email?: string;
   cin_number?: string;
   class_id: string;
   class_name: string;
@@ -310,10 +311,10 @@ export const useStudentsWithDocuments = (
       const studentIds = [...new Set(studentSchoolData.map(ss => ss.student_id))];
       const classIds = [...new Set(studentSchoolData.map(ss => ss.class_id).filter(Boolean))];
 
-      // 2. Fetch students data
+      // 2. Fetch students data (include tutor_email for notifications)
       const { data: studentsData, error: studentsError } = await supabase
         .from("students")
-        .select("id, firstname, lastname, email, cin_number, archived")
+        .select("id, firstname, lastname, email, tutor_email, cin_number, archived")
         .in("id", studentIds)
         .eq("archived", false);
 
@@ -439,6 +440,7 @@ export const useStudentsWithDocuments = (
           firstname: student.firstname,
           lastname: student.lastname,
           email: student.email,
+          tutor_email: (student as any).tutor_email,
           cin_number: student.cin_number,
           class_id: classIdVal,
           class_name: classInfo.name,
