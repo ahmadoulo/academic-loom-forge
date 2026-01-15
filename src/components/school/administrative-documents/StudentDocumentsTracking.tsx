@@ -43,6 +43,8 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Mail,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -52,6 +54,7 @@ import {
   StudentWithDocuments,
 } from "@/hooks/useAdministrativeDocuments";
 import { StudentDocumentDialog } from "./StudentDocumentDialog";
+import { AdminDocNotificationDialog } from "./AdminDocNotificationDialog";
 import { useAcademicYear } from "@/hooks/useAcademicYear";
 import { useSchools } from "@/hooks/useSchools";
 import { exportMissingDocumentsToPdf, MissingDocumentExportData } from "@/utils/administrativeDocumentsPdfExport";
@@ -234,6 +237,25 @@ export function StudentDocumentsTracking({
   };
 
   const [isExporting, setIsExporting] = useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+
+  // Prepare students with missing docs for notification
+  const studentsForNotification = useMemo(() => {
+    return filteredStudents
+      .filter(s => s.missingCount > 0)
+      .map(s => ({
+        id: s.id,
+        fullName: `${s.lastname} ${s.firstname}`,
+        email: s.email,
+        tutorEmail: s.tutor_email,
+        className: includeAllYears && s.school_year_name
+          ? `${s.class_name} (${s.school_year_name})`
+          : s.class_name,
+        missingDocuments: s.documents
+          .filter(d => d.status !== 'acquired' && d.is_required)
+          .map(d => d.documentName),
+      }));
+  }, [filteredStudents, includeAllYears]);
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -484,6 +506,22 @@ export function StudentDocumentsTracking({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Notification Button */}
+              <Button
+                variant="default"
+                className="gap-2"
+                onClick={() => setShowNotificationDialog(true)}
+                disabled={studentsForNotification.length === 0}
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Envoyer rappel</span>
+                {studentsForNotification.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {studentsForNotification.length}
+                  </Badge>
+                )}
+              </Button>
             </div>
           </div>
 
@@ -621,6 +659,16 @@ export function StudentDocumentsTracking({
           onClose={() => setSelectedStudent(null)}
         />
       )}
+
+      {/* Notification Dialog */}
+      <AdminDocNotificationDialog
+        open={showNotificationDialog}
+        onOpenChange={setShowNotificationDialog}
+        students={studentsForNotification}
+        schoolId={schoolId}
+        schoolName={school?.name || "École"}
+        className={getExportClassName()}
+      />
     </div>
   );
 }
