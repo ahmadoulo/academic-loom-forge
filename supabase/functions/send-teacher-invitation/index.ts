@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import nodemailer from "npm:nodemailer@6.9.10";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +23,7 @@ Deno.serve(async (req) => {
       throw new Error('accountId ou email requis');
     }
 
-    // Récupérer le compte professeur (système: app_users)
+    // Recuperer le compte professeur (systeme: app_users)
     let query = supabaseClient
       .from('app_users')
       .select('id, email, school_id, teacher_id, first_name, last_name, schools!app_users_school_id_fkey(name, identifier), teachers(firstname, lastname)');
@@ -39,11 +40,11 @@ Deno.serve(async (req) => {
     const { data: account, error: accountError } = await query.single();
 
     if (accountError || !account) {
-      console.error('Compte non trouvé:', accountError);
-      throw new Error('Compte professeur non trouvé');
+      console.error('Compte non trouve:', accountError);
+      throw new Error('Compte professeur non trouve');
     }
 
-    // Générer un nouveau token à chaque envoi d'invitation
+    // Generer un nouveau token a chaque envoi d'invitation
     const invitationToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
       .eq('id', account.id);
 
     if (updateError) {
-      console.error('Erreur mise à jour token:', updateError);
+      console.error('Erreur mise a jour token:', updateError);
       throw updateError;
     }
 
@@ -86,68 +87,127 @@ Deno.serve(async (req) => {
 
     const firstName = account.teachers?.firstname || account.first_name || '';
     const lastName = account.teachers?.lastname || account.last_name || '';
-    const schoolName = account.schools?.name || 'votre école';
+    const schoolName = account.schools?.name || 'votre ecole';
     const schoolIdentifier = account.schools?.identifier || '';
 
+    // Get SMTP configuration
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
+    const smtpUsername = Deno.env.get("SMTP_USERNAME");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpFromAddress = Deno.env.get("SMTP_FROM_ADDRESS");
+    const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
+
+    if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
+      console.warn('SMTP configuration incomplete');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          warning: "Email non envoye (configuration SMTP requise)",
+          invitationUrl,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #333;">Bienvenue ${firstName} ${lastName} !</h1>
-        <p>Votre compte professeur a été créé pour l'établissement <strong>${schoolName}</strong>.</p>
-        ${schoolIdentifier ? `<p><strong>Identifiant de l'école :</strong> ${schoolIdentifier}</p>` : ''}
-        <p>Pour activer votre compte et définir votre mot de passe, cliquez sur le bouton ci-dessous :</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${invitationUrl}" style="display: inline-block; padding: 14px 28px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
-            Activer mon compte
-          </a>
-        </p>
-        <p style="color: #666; font-size: 14px;">Ce lien est valable pendant 7 jours.</p>
-        <p>Si vous n'avez pas demandé cette invitation, ignorez simplement cet email.</p>
-        <br>
-        <p>Cordialement,<br>L'équipe ${schoolName}</p>
-      </div>
+      <!DOCTYPE html>
+      <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Activez votre compte</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+          <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8fafc; padding: 40px 20px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                  
+                  <tr>
+                    <td style="padding: 32px 32px 24px; text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                      <h2 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 600; letter-spacing: 0.5px;">Plateforme Scolaire ${schoolName}</h2>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding: 32px;">
+                      <h1 style="margin: 0 0 24px; color: #1e293b; font-size: 24px; font-weight: 700; line-height: 1.3;">Bienvenue ${firstName} ${lastName} !</h1>
+                      
+                      <p style="margin: 0 0 16px; color: #475569; font-size: 15px; line-height: 1.7;">
+                        Votre compte professeur a ete cree pour l'etablissement <strong>${schoolName}</strong>.
+                      </p>
+                      
+                      ${schoolIdentifier ? `
+                        <p style="margin: 0 0 16px; color: #475569; font-size: 15px; line-height: 1.7;">
+                          <strong>Identifiant de l'ecole :</strong> ${schoolIdentifier}
+                        </p>
+                      ` : ''}
+                      
+                      <p style="margin: 0 0 24px; color: #475569; font-size: 15px; line-height: 1.7;">
+                        Pour activer votre compte et definir votre mot de passe, cliquez sur le bouton ci-dessous :
+                      </p>
+                      
+                      <div style="text-align: center; margin: 32px 0;">
+                        <a href="${invitationUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                          Activer mon compte
+                        </a>
+                      </div>
+                      
+                      <p style="margin: 0 0 16px; color: #64748b; font-size: 14px; line-height: 1.7;">
+                        Ce lien est valable pendant 7 jours.
+                      </p>
+                      
+                      <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.7;">
+                        Si vous n'avez pas demande cette invitation, ignorez simplement cet email.
+                      </p>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding: 24px 32px; background-color: #f1f5f9; text-align: center; border-top: 1px solid #e2e8f0;">
+                      <p style="margin: 0; color: #64748b; font-size: 14px;">
+                        Cordialement,<br>
+                        <strong>L'equipe ${schoolName}</strong>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
     `;
 
-    // Envoyer l'email via Resend
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      console.warn('RESEND_API_KEY non configurée');
-      return new Response(
-        JSON.stringify({
-          success: true,
-          warning: "Email non envoyé (configuration requise)",
-          invitationUrl,
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    // Create transporter with nodemailer
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
       },
-      body: JSON.stringify({
-        from: 'EduVate <noreply@ndiambour-it.com>',
-        to: [account.email],
-        subject: `Activez votre compte professeur - ${schoolName}`,
-        html: emailHtml,
-      }),
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
-    const resendData = await resendResponse.json();
-
-    if (!resendResponse.ok) {
-      console.error('Erreur Resend:', resendData);
+    try {
+      await transporter.verify();
+      console.log("SMTP connection verified successfully");
+    } catch (verifyError) {
+      console.error("SMTP verification failed:", verifyError);
       return new Response(
         JSON.stringify({
           success: true,
-          warning: "Mode test email: vérifiez la configuration de l'envoi.",
+          warning: "Connexion SMTP echouee",
           invitationUrl,
-          error: resendData,
+          error: verifyError.message,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -156,15 +216,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Email envoyé avec succès:', resendData);
+    try {
+      const mailOptions = {
+        from: `"${schoolName}" <${smtpFromAddress}>`,
+        to: account.email,
+        subject: `Activez votre compte professeur - ${schoolName}`,
+        text: `Bienvenue ${firstName} ${lastName}! Cliquez sur ce lien pour activer votre compte: ${invitationUrl}`,
+        html: emailHtml,
+      };
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Invitation envoyée' }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Email envoye avec succes:', info.messageId);
+      transporter.close();
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Invitation envoyee' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    } catch (emailError: any) {
+      console.error('Erreur envoi email:', emailError);
+      transporter.close();
+      return new Response(
+        JSON.stringify({
+          success: true,
+          warning: "Mode test email: verifiez la configuration de l'envoi.",
+          invitationUrl,
+          error: emailError.message,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
   } catch (error) {
     console.error('Erreur dans send-teacher-invitation:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';

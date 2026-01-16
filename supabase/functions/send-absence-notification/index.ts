@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import nodemailer from "npm:nodemailer@6.9.10";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,16 +57,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (schoolError || !schoolData) {
       console.error('School not found:', schoolError);
-      throw new Error('École non trouvée');
+      throw new Error('Ecole non trouvee');
     }
 
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configurée');
+    const schoolName = schoolData.name || 'Ecole';
+
+    // Get SMTP configuration
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
+    const smtpUsername = Deno.env.get("SMTP_USERNAME");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpFromAddress = Deno.env.get("SMTP_FROM_ADDRESS");
+    const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
+
+    if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
+      console.error("Missing SMTP configuration");
+      throw new Error("Configuration SMTP incomplete");
     }
 
     const createEmailTemplate = (schoolData: any, studentName: string, subjectName: string, sessionDate: string, startTime: string, endTime: string, className: string) => {
-      const schoolName = schoolData?.name || 'École';
       const schoolAddress = schoolData?.address || '';
       const schoolPhone = schoolData?.phone || '';
       const schoolWebsite = schoolData?.website || '';
@@ -104,7 +114,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                       <td style="padding: 0 32px 32px;">
                         <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 4px solid #ef4444; padding: 24px; border-radius: 8px;">
                           <p style="margin: 0 0 16px; color: #1e293b; font-size: 15px; line-height: 1.7;">
-                            Nous vous informons que <strong>${studentName}</strong> a été marqué(e) absent(e) à la séance suivante :
+                            Nous vous informons que <strong>${studentName}</strong> a ete marque(e) absent(e) a la seance suivante :
                           </p>
                           <div style="background-color: white; padding: 20px; border-radius: 8px; margin-top: 16px;">
                             <table style="width: 100%; border-collapse: collapse;">
@@ -113,7 +123,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                                 <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${className}</td>
                               </tr>
                               <tr>
-                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Matière:</td>
+                                <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Matiere:</td>
                                 <td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${subjectName}</td>
                               </tr>
                               <tr>
@@ -156,7 +166,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
                         <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 20px 0 0; padding-top: 16px;">
                           <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">
-                            © ${new Date().getFullYear()} ${schoolName}. Tous droits réservés.
+                            ${new Date().getFullYear()} ${schoolName}. Tous droits reserves.
                           </p>
                         </div>
                       </td>
@@ -170,36 +180,48 @@ Deno.serve(async (req: Request): Promise<Response> => {
       `;
     };
 
+    // Create transporter with nodemailer
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    // Verify connection
+    try {
+      await transporter.verify();
+      console.log("SMTP connection verified successfully");
+    } catch (verifyError) {
+      console.error("SMTP verification failed:", verifyError);
+      throw new Error(`Connexion SMTP echouee: ${verifyError.message}`);
+    }
+
     const results = [];
     const recipients: string[] = [];
+    const htmlContent = createEmailTemplate(schoolData, studentName, subjectName, sessionDate, startTime, endTime, className);
 
     // Send to student
     if (studentEmail) {
       recipients.push(studentEmail);
       try {
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: `${schoolData.name} <noreply@ndiambour-it.com>`,
-            to: [studentEmail],
-            subject: 'Notification d\'Absence',
-            html: createEmailTemplate(schoolData, studentName, subjectName, sessionDate, startTime, endTime, className),
-          }),
-        });
+        const mailOptions = {
+          from: `"${schoolName}" <${smtpFromAddress}>`,
+          to: studentEmail,
+          subject: `Notification d'Absence - ${schoolName}`,
+          text: `Notification d'absence pour ${studentName} - Matiere: ${subjectName}, Date: ${sessionDate}, Horaire: ${startTime} - ${endTime}`,
+          html: htmlContent,
+        };
 
-        if (!response.ok) {
-          const error = await response.json();
-          console.error(`Failed to send email to student:`, error);
-          results.push({ email: studentEmail, success: false, error: error.message });
-        } else {
-          const emailResponse = await response.json();
-          console.log(`Email sent to student:`, emailResponse);
-          results.push({ email: studentEmail, success: true });
-        }
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to student: ${info.messageId}`);
+        results.push({ email: studentEmail, success: true });
       } catch (error: any) {
         console.error(`Error sending to student:`, error);
         results.push({ email: studentEmail, success: false, error: error.message });
@@ -210,39 +232,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (tutorEmail) {
       recipients.push(tutorEmail);
       try {
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: `${schoolData.name} <noreply@ndiambour-it.com>`,
-            to: [tutorEmail],
-            subject: 'Notification d\'Absence de votre enfant',
-            html: createEmailTemplate(schoolData, studentName, subjectName, sessionDate, startTime, endTime, className),
-          }),
-        });
+        const mailOptions = {
+          from: `"${schoolName}" <${smtpFromAddress}>`,
+          to: tutorEmail,
+          subject: `Notification d'Absence de votre enfant - ${schoolName}`,
+          text: `Notification d'absence pour ${studentName} - Matiere: ${subjectName}, Date: ${sessionDate}, Horaire: ${startTime} - ${endTime}`,
+          html: htmlContent,
+        };
 
-        if (!response.ok) {
-          const error = await response.json();
-          console.error(`Failed to send email to tutor:`, error);
-          results.push({ email: tutorEmail, success: false, error: error.message });
-        } else {
-          const emailResponse = await response.json();
-          console.log(`Email sent to tutor:`, emailResponse);
-          results.push({ email: tutorEmail, success: true });
-        }
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to tutor: ${info.messageId}`);
+        results.push({ email: tutorEmail, success: true });
       } catch (error: any) {
         console.error(`Error sending to tutor:`, error);
         results.push({ email: tutorEmail, success: false, error: error.message });
       }
     }
 
+    // Close transporter
+    transporter.close();
+
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
 
-    console.log(`✅ Sent ${successful} absence notification(s) to ${recipients.join(', ')}, ${failed} failed`);
+    console.log(`Sent ${successful} absence notification(s) to ${recipients.join(', ')}, ${failed} failed`);
 
     return new Response(
       JSON.stringify({ success: true, results, sent: successful, failed }),

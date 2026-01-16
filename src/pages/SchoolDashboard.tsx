@@ -704,7 +704,7 @@ const SchoolDashboard = () => {
                   <AdministrativeDocumentsWidget
                     data={adminDocsStats || []}
                     loading={adminDocsLoading}
-                    onViewDetails={() => setActiveTab('documents')}
+                    onViewDetails={() => setActiveTab('administrative-documents')}
                   />
                   <AnalyticsDashboard 
                     schoolId={school.id}

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import nodemailer from "npm:nodemailer@6.9.10";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,20 +51,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (schoolError || !schoolData) {
       console.error('School not found:', schoolError);
-      throw new Error('École non trouvée');
+      throw new Error('Ecole non trouvee');
     }
 
-    console.log(`Sending from school: ${schoolData.name}`);
+    const schoolName = schoolData.name || 'Ecole';
+    console.log(`Sending from school: ${schoolName}`);
 
-    // Get Resend API key
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY non configurée');
+    // Get SMTP configuration
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
+    const smtpUsername = Deno.env.get("SMTP_USERNAME");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpFromAddress = Deno.env.get("SMTP_FROM_ADDRESS");
+    const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
+
+    if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
+      console.error("Missing SMTP configuration");
+      throw new Error("Configuration SMTP incomplete");
     }
 
     // Create beautiful email template
     const createEmailTemplate = (schoolData: any, subject: string, message: string) => {
-      const schoolName = schoolData?.name || 'École';
       const schoolAddress = schoolData?.address || '';
       const schoolPhone = schoolData?.phone || '';
       const schoolWebsite = schoolData?.website || '';
@@ -132,7 +140,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
                         <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 20px 0 0; padding-top: 16px;">
                           <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">
-                            © ${new Date().getFullYear()} ${schoolName}. Tous droits réservés.
+                            ${new Date().getFullYear()} ${schoolName}. Tous droits reserves.
                           </p>
                         </div>
                       </td>
@@ -146,67 +154,80 @@ Deno.serve(async (req: Request): Promise<Response> => {
       `;
     };
 
+    // Create transporter with nodemailer
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    // Verify connection
+    try {
+      await transporter.verify();
+      console.log("SMTP connection verified successfully");
+    } catch (verifyError) {
+      console.error("SMTP verification failed:", verifyError);
+      throw new Error(`Connexion SMTP echouee: ${verifyError.message}`);
+    }
+
     // Send emails and collect results
     const results = [];
     const notificationRecords = [];
 
     for (const recipient of recipients) {
       try {
-        const emailPayload: any = {
-          from: `${schoolData.name} <noreply@ndiambour-it.com>`,
-          to: [recipient.email],
+        const mailOptions: any = {
+          from: `"${schoolName}" <${smtpFromAddress}>`,
+          to: recipient.email,
           subject: subject,
+          text: message,
           html: createEmailTemplate(schoolData, subject, message),
         };
 
         // Add PDF attachment if provided
         if (pdfAttachment) {
-          emailPayload.attachments = [{
+          mailOptions.attachments = [{
             filename: pdfAttachment.filename,
             content: pdfAttachment.content,
+            encoding: 'base64',
           }];
         }
 
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailPayload),
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent to ${recipient.email}: ${info.messageId}`);
+        
+        results.push({ 
+          email: recipient.email, 
+          success: true,
+          id: info.messageId
         });
 
-        if (!response.ok) {
-          const error = await response.json();
-          console.error(`Failed to send email to ${recipient.email}:`, error);
-          results.push({ email: recipient.email, success: false, error: error.message });
-        } else {
-          const emailResponse = await response.json();
-          console.log(`Email sent to ${recipient.email}:`, emailResponse);
-          
-          results.push({ 
-            email: recipient.email, 
-            success: true,
-            id: emailResponse.id
-          });
-
-          // Store notification record
-          notificationRecords.push({
-            school_id: schoolId,
-            recipient_type: recipientType,
-            recipient_email: recipient.email,
-            recipient_name: recipient.name,
-            subject: subject,
-            message: message,
-            class_id: classId || null,
-            sent_by: sentBy || null
-          });
-        }
+        // Store notification record
+        notificationRecords.push({
+          school_id: schoolId,
+          recipient_type: recipientType,
+          recipient_email: recipient.email,
+          recipient_name: recipient.name,
+          subject: subject,
+          message: message,
+          class_id: classId || null,
+          sent_by: sentBy || null
+        });
       } catch (error: any) {
         console.error(`Error sending to ${recipient.email}:`, error);
         results.push({ email: recipient.email, success: false, error: error.message });
       }
     }
+
+    // Close transporter
+    transporter.close();
 
     // Save all notification records to database
     if (notificationRecords.length > 0) {
