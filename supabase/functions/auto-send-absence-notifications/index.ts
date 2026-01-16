@@ -177,13 +177,13 @@ Deno.serve(async (req) => {
       let successCount = 0;
 
       // Send notifications for each absent student
-      // Add delay to respect Resend rate limit (2 requests/second = 500ms minimum)
+      // Add delay between emails to avoid overwhelming SMTP server
       for (let i = 0; i < absentStudents.length; i++) {
         const student = absentStudents[i];
         
-        // Wait 600ms between emails to respect rate limit (except for first email)
+        // Wait 300ms between emails to avoid overwhelming SMTP server (except for first email)
         if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 600));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
         if (!student.email && !student.tutor_email) {
           console.log(`⚠️ No email for student ${student.firstname} ${student.lastname}`);

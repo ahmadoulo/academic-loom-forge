@@ -93,7 +93,7 @@ Cela garantit qu'**aucune notification n'est envoyée en double** pour la même 
 
 ### Les notifications ne sont pas envoyées
 
-1. Vérifiez que la clé API Resend est configurée (`RESEND_API_KEY`)
+1. Vérifiez que la configuration SMTP est correcte (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`)
 2. Vérifiez les logs de l'Edge Function dans la console
 3. Assurez-vous que les étudiants ont des emails configurés
 4. Vérifiez que tous les étudiants sont marqués (présent/absent)
