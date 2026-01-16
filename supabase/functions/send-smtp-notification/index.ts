@@ -66,7 +66,7 @@ const createEmailTemplate = (
               <tr>
                 <td style="padding: 32px;">
                   <h2 style="color: #1e293b; font-size: 20px; margin: 0 0 24px 0; font-weight: 600;">
-                    📋 Rappel - Documents Administratifs Manquants
+                    Rappel - Documents Administratifs Manquants
                   </h2>
                   
                   <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
@@ -79,7 +79,7 @@ const createEmailTemplate = (
 
                   <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
                     <p style="color: #92400e; font-size: 14px; margin: 0; font-weight: 500;">
-                      ⚠️ Veuillez fournir les documents suivants dans les plus brefs délais :
+                      Veuillez fournir les documents suivants dans les plus brefs delais :
                     </p>
                   </div>
 
@@ -93,11 +93,11 @@ const createEmailTemplate = (
                   </div>
 
                   <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                    Nous vous prions de bien vouloir transmettre ces documents à l'administration de l'établissement ou de les déposer directement au secrétariat.
+                    Nous vous prions de bien vouloir transmettre ces documents a l'administration de l'etablissement ou de les deposer directement au secretariat.
                   </p>
 
                   <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0;">
-                    Pour toute question, n'hésitez pas à nous contacter.
+                    Pour toute question, n'hesitez pas a nous contacter.
                   </p>
                 </td>
               </tr>
@@ -112,7 +112,7 @@ const createEmailTemplate = (
                     L'Administration de ${schoolName}
                   </p>
                   <p style="color: #94a3b8; font-size: 12px; margin: 16px 0 0 0;">
-                    Ce message a été envoyé automatiquement. Merci de ne pas y répondre directement.
+                    Ce message a ete envoye automatiquement. Merci de ne pas y repondre directement.
                   </p>
                 </td>
               </tr>
@@ -147,10 +147,12 @@ serve(async (req: Request): Promise<Response> => {
     const smtpUsername = Deno.env.get("SMTP_USERNAME");
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
     const smtpFromAddress = Deno.env.get("SMTP_FROM_ADDRESS");
-    const smtpFromName = Deno.env.get("SMTP_FROM_NAME") || schoolName;
     const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
 
-    console.log("SMTP Config:", { host: smtpHost, port: smtpPort, secure: smtpSecure, from: smtpFromAddress });
+    // SMTP_FROM_NAME is dynamic: use school name
+    const smtpFromName = schoolName;
+
+    console.log("SMTP Config:", { host: smtpHost, port: smtpPort, secure: smtpSecure, from: smtpFromAddress, fromName: smtpFromName });
 
     if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
       console.error("Missing SMTP configuration");
@@ -181,13 +183,13 @@ serve(async (req: Request): Promise<Response> => {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpSecure, // true for 465, false for other ports
+      secure: smtpSecure,
       auth: {
         user: smtpUsername,
         pass: smtpPassword,
       },
       tls: {
-        rejectUnauthorized: false, // Allow self-signed certificates
+        rejectUnauthorized: false,
       },
     });
 
@@ -223,7 +225,7 @@ serve(async (req: Request): Promise<Response> => {
         const mailOptions = {
           from: `"${smtpFromName}" <${smtpFromAddress}>`,
           to: recipient.email,
-          subject: `📋 Rappel - Documents Administratifs Manquants - ${schoolName}`,
+          subject: `Rappel - Documents Administratifs Manquants - ${schoolName}`,
           text: "Veuillez activer l'affichage HTML pour voir ce message.",
           html: htmlContent,
         };
@@ -266,7 +268,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         success: successCount > 0,
-        message: `${successCount} email(s) envoyé(s) sur ${recipients.length}${failedCount > 0 ? `, ${failedCount} échec(s)` : ''}`,
+        message: `${successCount} email(s) envoye(s) sur ${recipients.length}${failedCount > 0 ? `, ${failedCount} echec(s)` : ''}`,
         results,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
