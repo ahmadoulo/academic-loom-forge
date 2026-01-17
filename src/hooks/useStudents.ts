@@ -339,7 +339,7 @@ export const useStudents = (schoolId?: string, classId?: string) => {
           } else {
             errors++;
           }
-          console.warn(`Erreur pour ${studentData.firstname} ${studentData.lastname}:`, message);
+          // Error logged silently for import
         }
       }
       

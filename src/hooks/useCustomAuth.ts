@@ -67,7 +67,6 @@ export const useCustomAuth = () => {
   const loginWithCredentials = async ({ email, password }: LoginCredentials) => {
     try {
       setLoading(true);
-      console.log('🔐 Tentative de connexion pour:', email);
 
       // Use the authenticate-user edge function
       const { data, error } = await supabase.functions.invoke('authenticate-user', {
@@ -75,18 +74,14 @@ export const useCustomAuth = () => {
       });
 
       if (error) {
-        console.error('❌ Erreur d\'authentification:', error);
         toast.error('Email ou mot de passe incorrect');
         throw error;
       }
 
       if (data.error) {
-        console.error('❌ Erreur retournée:', data.error);
         toast.error(data.error);
         throw new Error(data.error);
       }
-
-      console.log('✅ Authentification réussie:', data);
 
       const userData: UserCredential = {
         id: data.user.id,
@@ -125,7 +120,6 @@ export const useCustomAuth = () => {
       
       return userData;
     } catch (error) {
-      console.error('❌ Erreur lors de la connexion:', error);
       throw error;
     } finally {
       setLoading(false);

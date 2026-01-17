@@ -88,9 +88,7 @@ export const StudentImport = ({ onImportComplete, classes }: StudentImportProps)
           className.toLowerCase().includes(cls.name.toLowerCase())
         );
 
-        if (!matchingClass && className) {
-          console.warn(`Classe non trouvée pour: ${className}`);
-        }
+        // Class not found - silent handling
 
         return {
           firstname: firstName.toString().trim(),

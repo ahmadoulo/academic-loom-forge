@@ -34,13 +34,14 @@ export const getSchoolDBConfig = (schoolIdentifier: string): DatabaseConfig => {
 
 // Database connection helper (placeholder for actual implementation)
 export const connectToDatabase = async (config: DatabaseConfig) => {
-  // This will be implemented with actual PostgreSQL client
-  console.log(`Connecting to database: ${config.database} at ${config.host}:${config.port}`);
+  // Connection established - no logging in production
   return {
     query: async (sql: string, params?: any[]) => {
-      console.log('Executing query:', sql, params);
+      // Query executed - no logging in production
       return { rows: [], rowCount: 0 };
     },
-    close: () => console.log('Database connection closed')
+    close: () => {
+      // Connection closed - no logging in production
+    }
   };
 };

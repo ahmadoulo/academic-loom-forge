@@ -216,6 +216,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "app_user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "app_user_roles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
@@ -227,6 +234,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1566,6 +1580,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "grades_bonus_given_by_fkey"
+            columns: ["bonus_given_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "grades_school_semester_id_fkey"
             columns: ["school_semester_id"]
             isOneToOne: false
@@ -2430,6 +2451,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "school_textbook_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "school_textbook_notes_target_teacher_id_fkey"
             columns: ["target_teacher_id"]
             isOneToOne: false
@@ -2596,6 +2624,13 @@ export type Database = {
             referencedRelation: "app_users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schools_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_administrative_documents: {
@@ -2665,6 +2700,13 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_administrative_documents_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3280,6 +3322,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_school_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_school_roles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
@@ -3298,6 +3347,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_school_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3365,7 +3421,73 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      app_users_public: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string | null
+          is_active: boolean | null
+          last_name: string | null
+          phone: string | null
+          school_id: string | null
+          student_id: string | null
+          teacher_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          school_id?: string | null
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          school_id?: string | null
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_users_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_transition_semesters: { Args: never; Returns: undefined }
@@ -3426,6 +3548,10 @@ export type Database = {
         Returns: undefined
       }
       set_next_school_year: { Args: { year_id: string }; Returns: undefined }
+      user_belongs_to_school: {
+        Args: { check_school_id: string }
+        Returns: boolean
+      }
       user_has_school_permission: {
         Args: { _permission_key: string; _school_id: string; _user_id: string }
         Returns: boolean
