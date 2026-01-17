@@ -183,41 +183,24 @@ export const useStudentAccounts = (schoolId?: string) => {
 
   const sendInvitation = async (studentId: string, email: string) => {
     try {
-      // D'abord créer ou récupérer le compte
-      let accountId: string | null = null;
-      
-      const { data: existingAccount } = await supabase
-        .from('app_users')
-        .select('id')
-        .eq('student_id', studentId)
-        .eq('school_id', schoolId)
-        .maybeSingle();
+      // Récupérer l'identifiant de l'école
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('identifier')
+        .eq('id', schoolId)
+        .single();
 
-      if (!existingAccount) {
-        // Create account - this will also generate invitation token
-        accountId = await createStudentAccount(studentId, email);
-        if (!accountId) {
-          // Fetch the newly created account
-          const { data: newAccount } = await supabase
-            .from('app_users')
-            .select('id')
-            .eq('student_id', studentId)
-            .eq('school_id', schoolId)
-            .maybeSingle();
-          
-          if (!newAccount) {
-            throw new Error('Impossible de créer le compte');
-          }
-          accountId = newAccount.id;
-        }
-      } else {
-        accountId = existingAccount.id;
+      if (schoolError || !school) {
+        throw new Error('École non trouvée');
       }
 
-      // Envoyer l'invitation avec l'accountId et l'URL de l'application
-      const appUrl = window.location.origin;
-      const { data, error } = await supabase.functions.invoke('send-student-invitation', {
-        body: { accountId, email, appUrl }
+      // Utiliser verify-student-account qui va créer le compte et envoyer l'invitation
+      const { data, error } = await supabase.functions.invoke('verify-student-account', {
+        body: { 
+          email: email.trim().toLowerCase(),
+          schoolIdentifier: school.identifier,
+          appUrl: window.location.origin,
+        }
       });
 
       if (error) {
@@ -225,8 +208,8 @@ export const useStudentAccounts = (schoolId?: string) => {
         throw new Error('Erreur lors de l\'envoi de l\'invitation');
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (!data?.success) {
+        throw new Error(data?.message || 'Erreur lors de la vérification');
       }
 
       toast.success(data?.warning ? 'Compte créé (vérifiez la configuration email)' : 'Invitation envoyée avec succès');
