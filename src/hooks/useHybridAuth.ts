@@ -17,8 +17,6 @@ export const useHybridAuth = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('DEBUG: Utilisateur Supabase trouvé:', session.user.email);
-        
         // Récupérer le profil depuis app_users
         const { data: profile } = await supabase
           .from('app_users')
@@ -27,8 +25,6 @@ export const useHybridAuth = () => {
           .single();
           
         if (profile) {
-          console.log('DEBUG: Profil app_users trouvé:', profile);
-          
           const roles = profile.app_user_roles as { role: string }[] | null;
           const primaryRole = roles && roles.length > 0 ? roles[0].role : 'school_admin';
           
@@ -52,7 +48,6 @@ export const useHybridAuth = () => {
       // 2. Vérifier le système custom si pas d'auth Supabase
       const storedUser = localStorage.getItem('customAuthUser');
       if (storedUser) {
-        console.log('DEBUG: Utilisateur custom trouvé dans localStorage');
         const customUser = JSON.parse(storedUser);
         const customUserWithType = {
           ...customUser,
@@ -62,11 +57,9 @@ export const useHybridAuth = () => {
         return customUserWithType;
       }
       
-      console.log('DEBUG: Aucun utilisateur trouvé');
       setUser(null);
       return null;
     } catch (error) {
-      console.error('Erreur lors de la vérification d\'auth:', error);
       setUser(null);
       return null;
     } finally {
@@ -78,8 +71,6 @@ export const useHybridAuth = () => {
     try {
       setLoading(true);
       
-      console.log('DEBUG: Tentative de connexion avec:', email);
-      
       // 1. Essayer d'abord l'auth Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -87,8 +78,6 @@ export const useHybridAuth = () => {
       });
 
       if (data.user && !error) {
-        console.log('DEBUG: Connexion Supabase réussie');
-        
         // Récupérer le profil depuis app_users
         const { data: profile } = await supabase
           .from('app_users')
@@ -113,17 +102,14 @@ export const useHybridAuth = () => {
           
           setUser(supabaseUser);
           localStorage.setItem('hybridAuthUser', JSON.stringify(supabaseUser));
-          toast.success('Connexion réussie (Supabase)');
+          toast.success('Connexion réussie');
           return supabaseUser;
         }
       }
       
-      console.log('DEBUG: Échec Supabase, tentative système custom');
-      
       // 2. Si échec Supabase, essayer le système custom
       const customResult = await customAuth.loginWithCredentials({ email, password });
       if (customResult) {
-        console.log('DEBUG: Connexion custom réussie');
         const customUserWithType = {
           ...customResult,
           auth_type: 'custom'
@@ -134,7 +120,6 @@ export const useHybridAuth = () => {
       
       throw new Error('Identifiants incorrects');
     } catch (error) {
-      console.error('Erreur de connexion:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -143,8 +128,6 @@ export const useHybridAuth = () => {
 
   const logout = async () => {
     try {
-      console.log('DEBUG: Déconnexion en cours...');
-      
       // Déconnexion Supabase
       await supabase.auth.signOut();
       
@@ -158,7 +141,7 @@ export const useHybridAuth = () => {
       toast.success('Déconnexion réussie');
       window.location.href = '/auth';
     } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
+      // Silent error handling
     }
   };
 
@@ -167,8 +150,6 @@ export const useHybridAuth = () => {
     
     // Écouter les changements d'auth Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('DEBUG: Changement auth Supabase:', event, session?.user?.email);
-      
       if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('hybridAuthUser');

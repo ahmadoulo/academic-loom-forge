@@ -96,7 +96,7 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
         .select('user_id, role')
         .in('user_id', userIds);
       
-      if (rolesError) console.warn('Error fetching roles:', rolesError);
+      // Silent error handling for roles fetch
       
       // Fetch school-specific roles
       const { data: schoolRolesData, error: schoolRolesError } = await supabase
@@ -105,7 +105,7 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
         .eq('school_id', schoolId)
         .in('user_id', userIds);
       
-      if (schoolRolesError) console.warn('Error fetching school roles:', schoolRolesError);
+      // Silent error handling for school roles fetch
       
       // Combine the data
       const combinedUsers: AppUser[] = usersData.map(user => ({

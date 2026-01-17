@@ -41,7 +41,6 @@ export default function AccountActivation() {
       });
 
       if (error) {
-        console.error('Erreur edge function:', error);
         setStatus('error');
         setMessage('Une erreur est survenue. Veuillez réessayer.');
         return;
@@ -50,9 +49,7 @@ export default function AccountActivation() {
       if (data.success) {
         setStatus('success');
         setMessage(data.message || 'Email d\'activation envoyé ! Vérifiez votre boîte de réception.');
-        if (data.warning) {
-          console.warn('Warning:', data.warning);
-        }
+        // Warning handled silently
       } else {
         setStatus('error');
         setMessage(data.message || 'Erreur lors de la vérification');
@@ -64,7 +61,7 @@ export default function AccountActivation() {
         }
       }
     } catch (err) {
-      console.error('Erreur:', err);
+      setStatus('error');
       setStatus('error');
       setMessage('Une erreur inattendue est survenue');
     } finally {
