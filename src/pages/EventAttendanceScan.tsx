@@ -85,56 +85,21 @@ export default function EventAttendanceScan() {
       }
 
       try {
-        // Fetch session
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('event_attendance_sessions' as any)
-          .select('*')
-          .eq('session_code', sessionCode)
-          .eq('is_active', true)
-          .single();
+        const { data, error: fnError } = await supabase.functions.invoke(
+          "get-event-attendance-scan-context",
+          { body: { sessionCode } }
+        );
 
-        if (sessionError || !sessionData) {
-          setError("Session invalide ou expirée");
+        if (fnError) throw fnError;
+        if (!data?.success) {
+          setError(data?.message || "Session invalide ou expirée");
           setLoading(false);
           return;
         }
 
-        const typedSession = sessionData as unknown as SessionInfo;
-
-        if (new Date(typedSession.expires_at) < new Date()) {
-          setError("La session a expiré");
-          setLoading(false);
-          return;
-        }
-
-        setSession(typedSession);
-
-        // Fetch event
-        const { data: eventData, error: eventError } = await supabase
-          .from('events' as any)
-          .select('*')
-          .eq('id', typedSession.event_id)
-          .single();
-
-        if (eventError || !eventData) {
-          setError("Événement non trouvé");
-          setLoading(false);
-          return;
-        }
-
-        setEvent(eventData as unknown as EventInfo);
-
-        // Fetch school
-        const { data: schoolData } = await supabase
-          .from('schools')
-          .select('id, name, logo_url')
-          .eq('id', typedSession.school_id)
-          .single();
-
-        if (schoolData) {
-          setSchool(schoolData);
-        }
-
+        setSession(data.session as SessionInfo);
+        setEvent(data.event as EventInfo);
+        setSchool(data.school as SchoolInfo);
         setLoading(false);
       } catch (err) {
         console.error('Error validating session:', err);
@@ -156,28 +121,17 @@ export default function EventAttendanceScan() {
         throw new Error("École non trouvée");
       }
 
-      // Find student by email in student_school linked to this school
-      const { data: studentSchoolData, error: studentSchoolError } = await supabase
-        .from('student_school')
-        .select(`
-          student_id,
-          students!inner(id, firstname, lastname, email)
-        `)
-        .eq('school_id', school.id)
-        .eq('is_active', true);
+      const email = studentEmail.toLowerCase().trim();
+      const { data, error: fnError } = await supabase.functions.invoke("find-student-by-email", {
+        body: { schoolId: school.id, email },
+      });
 
-      if (studentSchoolError) throw studentSchoolError;
-
-      // Find student with matching email
-      const studentRecord = studentSchoolData?.find((ss: any) => 
-        ss.students?.email?.toLowerCase().trim() === studentEmail.toLowerCase().trim()
-      );
-
-      if (!studentRecord) {
-        throw new Error("Email d'étudiant non trouvé dans cette école");
+      if (fnError) throw fnError;
+      if (!data?.success) {
+        throw new Error(data?.message || "Email d'étudiant non trouvé dans cette école");
       }
 
-      const student = studentRecord.students as unknown as StudentInfo;
+      const student = data.student as StudentInfo;
       setAuthenticatedStudent(student);
       setIsAuthenticated(true);
 
