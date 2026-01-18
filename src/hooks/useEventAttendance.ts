@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,72 +31,86 @@ interface EventAttendanceSession {
   created_at: string;
 }
 
+const SESSION_KEYS = ["app_session_token", "sessionToken"]; // supports both auth hooks
+const getSessionToken = () => {
+  for (const key of SESSION_KEYS) {
+    const token = localStorage.getItem(key);
+    if (token) return token;
+  }
+  return null;
+};
+
 export const useEventAttendance = (eventId?: string, schoolId?: string) => {
   const [attendance, setAttendance] = useState<EventAttendanceRecord[]>([]);
   const [sessions, setSessions] = useState<EventAttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     if (!eventId) return;
-    
+
+    const sessionToken = getSessionToken();
+    if (!sessionToken) {
+      // Not authenticated: do not fetch attendance (admin-only)
+      setAttendance([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('event_attendance' as any)
-        .select(`
-          *,
-          students(id, firstname, lastname, email)
-        `)
-        .eq('event_id', eventId)
-        .order('marked_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke("get-event-attendance", {
+        body: { sessionToken, eventId },
+      });
 
       if (error) throw error;
-      setAttendance((data || []) as unknown as EventAttendanceRecord[]);
+      if (!data?.success) throw new Error(data?.message || "Accès refusé");
+
+      setAttendance((data.attendance || []) as EventAttendanceRecord[]);
     } catch (err) {
-      console.error('Error fetching event attendance:', err);
+      // Intentionally quiet: a non-admin might hit this if UI is cached
+      console.error("Error fetching event attendance:", err);
+      setAttendance([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId]);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!eventId) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('event_attendance_sessions' as any)
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSessions((data || []) as unknown as EventAttendanceSession[]);
-    } catch (err) {
-      console.error('Error fetching event sessions:', err);
+    const sessionToken = getSessionToken();
+    if (!sessionToken) {
+      setSessions([]);
+      return;
     }
-  };
 
-  const createSession = async (eventId: string, schoolId: string, expirationMinutes: number = 120) => {
     try {
-      const sessionCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + expirationMinutes);
-
-      const { data, error } = await supabase
-        .from('event_attendance_sessions' as any)
-        .insert({
-          event_id: eventId,
-          school_id: schoolId,
-          session_code: sessionCode,
-          expires_at: expiresAt.toISOString(),
-          is_active: true
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke("get-event-attendance-sessions", {
+        body: { sessionToken, eventId },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "Accès refusé");
+
+      setSessions((data.sessions || []) as EventAttendanceSession[]);
+    } catch (err) {
+      console.error("Error fetching event sessions:", err);
+      setSessions([]);
+    }
+  }, [eventId]);
+
+  const createSession = async (eventIdArg: string, schoolIdArg: string, expirationMinutes: number = 120) => {
+    try {
+      const sessionToken = getSessionToken();
+      if (!sessionToken) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase.functions.invoke("create-event-attendance-session", {
+        body: { sessionToken, eventId: eventIdArg, schoolId: schoolIdArg, expirationMinutes },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "Erreur lors de la création de la session");
 
       toast({
         title: "Session créée",
@@ -104,9 +118,9 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
       });
 
       await fetchSessions();
-      return { data: data as unknown as EventAttendanceSession, error: null };
+      return { data: data.session as EventAttendanceSession, error: null };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création de la session';
+      const errorMessage = err instanceof Error ? err.message : "Erreur lors de la création de la session";
       toast({
         title: "Erreur",
         description: errorMessage,
@@ -118,12 +132,15 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
 
   const deactivateSession = async (sessionId: string) => {
     try {
-      const { error } = await supabase
-        .from('event_attendance_sessions' as any)
-        .update({ is_active: false })
-        .eq('id', sessionId);
+      const sessionToken = getSessionToken();
+      if (!sessionToken) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase.functions.invoke("deactivate-event-attendance-session", {
+        body: { sessionToken, sessionId },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "Erreur lors de la fermeture de la session");
 
       toast({
         title: "Session fermée",
@@ -132,7 +149,7 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
 
       await fetchSessions();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la fermeture de la session';
+      const errorMessage = err instanceof Error ? err.message : "Erreur lors de la fermeture de la session";
       toast({
         title: "Erreur",
         description: errorMessage,
@@ -141,7 +158,7 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
     }
   };
 
-  const markAttendance = async (data: {
+  const markAttendance = async (payload: {
     sessionCode: string;
     participantName: string;
     participantEmail?: string;
@@ -149,75 +166,30 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
     studentId?: string;
   }) => {
     try {
-      // Validate session
-      const { data: session, error: sessionError } = await supabase
-        .from('event_attendance_sessions' as any)
-        .select('*')
-        .eq('session_code', data.sessionCode)
-        .eq('is_active', true)
-        .single();
+      const { data, error } = await supabase.functions.invoke("mark-event-attendance", {
+        body: {
+          sessionCode: payload.sessionCode,
+          participantName: payload.participantName,
+          participantEmail: payload.participantEmail || null,
+          participantPhone: payload.participantPhone || null,
+          studentId: payload.studentId || null,
+        },
+      });
 
-      if (sessionError || !session) {
-        throw new Error('Code QR invalide ou session expirée');
-      }
-
-      const sessionData = session as unknown as EventAttendanceSession;
-
-      if (new Date(sessionData.expires_at) < new Date()) {
-        throw new Error('La session a expiré');
-      }
-
-      // Check if already marked - prioritize student_id check
-      if (data.studentId) {
-        const { data: existingByStudent } = await supabase
-          .from('event_attendance' as any)
-          .select('id')
-          .eq('event_id', sessionData.event_id)
-          .eq('student_id', data.studentId)
-          .maybeSingle();
-
-        if (existingByStudent) {
-          throw new Error('Vous avez déjà marqué votre présence pour cet événement');
-        }
-      } else if (data.participantEmail) {
-        const { data: existingByEmail } = await supabase
-          .from('event_attendance' as any)
-          .select('id')
-          .eq('event_id', sessionData.event_id)
-          .eq('participant_email', data.participantEmail)
-          .maybeSingle();
-
-        if (existingByEmail) {
-          throw new Error('Vous avez déjà marqué votre présence pour cet événement');
-        }
-      }
-
-      // Insert attendance record
-      const { data: insertedData, error: insertError } = await supabase
-        .from('event_attendance' as any)
-        .insert({
-          event_id: sessionData.event_id,
-          session_id: sessionData.id,
-          school_id: sessionData.school_id,
-          participant_name: data.participantName,
-          participant_email: data.participantEmail || null,
-          participant_phone: data.participantPhone || null,
-          student_id: data.studentId || null,
-          method: 'qr_scan'
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "Erreur lors de la validation");
 
       toast({
         title: "Présence enregistrée",
         description: "Votre présence a été marquée avec succès",
       });
 
-      return { data: insertedData, error: null };
+      // Best-effort refresh for admins watching the list
+      await fetchAttendance();
+
+      return { data: data.attendance ?? null, error: null };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la validation';
+      const errorMessage = err instanceof Error ? err.message : "Erreur lors de la validation";
       toast({
         title: "Erreur",
         description: errorMessage,
@@ -229,12 +201,15 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
 
   const deleteAttendance = async (attendanceId: string) => {
     try {
-      const { error } = await supabase
-        .from('event_attendance' as any)
-        .delete()
-        .eq('id', attendanceId);
+      const sessionToken = getSessionToken();
+      if (!sessionToken) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase.functions.invoke("delete-event-attendance", {
+        body: { sessionToken, attendanceId },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || "Impossible de supprimer la présence");
 
       toast({
         title: "Présence supprimée",
@@ -245,56 +220,30 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
     } catch (err) {
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer la présence",
+        description: err instanceof Error ? err.message : "Impossible de supprimer la présence",
         variant: "destructive",
       });
     }
   };
 
   useEffect(() => {
-    if (eventId) {
-      fetchAttendance();
-      fetchSessions();
+    if (!eventId) return;
 
-      // Setup realtime subscription
-      const attendanceChannel = supabase
-        .channel(`event-attendance-${eventId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'event_attendance',
-            filter: `event_id=eq.${eventId}`
-          },
-          () => {
-            fetchAttendance();
-          }
-        )
-        .subscribe();
+    let interval: number | undefined;
 
-      const sessionsChannel = supabase
-        .channel(`event-sessions-${eventId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'event_attendance_sessions',
-            filter: `event_id=eq.${eventId}`
-          },
-          () => {
-            fetchSessions();
-          }
-        )
-        .subscribe();
+    const run = async () => {
+      await Promise.all([fetchAttendance(), fetchSessions()]);
+    };
 
-      return () => {
-        supabase.removeChannel(attendanceChannel);
-        supabase.removeChannel(sessionsChannel);
-      };
-    }
-  }, [eventId]);
+    run();
+
+    // Polling (realtime is disabled by RLS for non-service clients)
+    interval = window.setInterval(run, 5000);
+
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
+  }, [eventId, fetchAttendance, fetchSessions]);
 
   return {
     attendance,
@@ -304,6 +253,6 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
     deactivateSession,
     markAttendance,
     deleteAttendance,
-    refetch: fetchAttendance
+    refetch: fetchAttendance,
   };
 };
