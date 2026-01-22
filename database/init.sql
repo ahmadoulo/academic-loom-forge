@@ -1234,11 +1234,18 @@ CREATE POLICY "schools_anon_read" ON public.schools FOR SELECT TO anon USING (tr
 CREATE POLICY "schools_service_all" ON public.schools FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === APP_USERS ===
-CREATE POLICY "app_users_anon_read" ON public.app_users FOR SELECT TO anon USING (true);
+-- CRITICAL: Never expose password_hash/session_token/etc to the browser.
+-- The frontend must read user identity via Edge Functions and the safe view app_users_public.
+CREATE POLICY "app_users_no_direct_select" ON public.app_users
+  FOR SELECT TO anon, authenticated
+  USING (false);
 CREATE POLICY "app_users_service_all" ON public.app_users FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === APP_USER_ROLES ===
-CREATE POLICY "app_user_roles_anon_read" ON public.app_user_roles FOR SELECT TO anon USING (true);
+-- CRITICAL: Roles are sensitive. Do not expose full role mapping to the browser.
+CREATE POLICY "app_user_roles_no_direct_select" ON public.app_user_roles
+  FOR SELECT TO anon, authenticated
+  USING (false);
 CREATE POLICY "app_user_roles_service_all" ON public.app_user_roles FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === SUBSCRIPTION_PLANS ===
@@ -1481,15 +1488,45 @@ GRANT SELECT ON public.app_users_public TO authenticated;
 -- GRANT PERMISSIONS
 -- ============================================================
 
+-- ============================================================
+-- IMPORTANT ABOUT 42501 (permission denied)
+-- ============================================================
+-- RLS is evaluated *after* standard GRANT privileges.
+-- When we DROP/CREATE schema, previous grants are lost.
+-- These GRANTs are required so PostgREST can read tables.
+-- Write operations are intentionally NOT granted to anon/authenticated
+-- because this project uses custom auth and mutations must go through
+-- Edge Functions (service_role).
+
+-- Frontend read access (PostgREST)
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+
+-- Backend functions (service_role) full access
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+-- Ensure future tables keep the same privilege model
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
 -- Grant usage on all sequences
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO service_role;
+
 -- Grant execute on all functions
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO service_role;
 
 -- ============================================================
 -- END OF INIT.SQL
