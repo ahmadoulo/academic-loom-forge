@@ -1234,18 +1234,17 @@ CREATE POLICY "schools_anon_read" ON public.schools FOR SELECT TO anon USING (tr
 CREATE POLICY "schools_service_all" ON public.schools FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === APP_USERS ===
--- CRITICAL: Never expose password_hash/session_token/etc to the browser.
--- The frontend must read user identity via Edge Functions and the safe view app_users_public.
-CREATE POLICY "app_users_no_direct_select" ON public.app_users
-  FOR SELECT TO anon, authenticated
-  USING (false);
+-- NOTE: We allow SELECT from anon/authenticated on app_users so PostgREST joins work
+-- (e.g. schools.owner_id -> app_users). We will protect sensitive fields via
+-- column-level privileges (see GRANTS section).
+CREATE POLICY "app_users_anon_read" ON public.app_users FOR SELECT TO anon USING (true);
+CREATE POLICY "app_users_auth_read" ON public.app_users FOR SELECT TO authenticated USING (true);
 CREATE POLICY "app_users_service_all" ON public.app_users FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === APP_USER_ROLES ===
--- CRITICAL: Roles are sensitive. Do not expose full role mapping to the browser.
-CREATE POLICY "app_user_roles_no_direct_select" ON public.app_user_roles
-  FOR SELECT TO anon, authenticated
-  USING (false);
+-- NOTE: Some screens may need to read roles. We keep it read-only for anon/authenticated.
+CREATE POLICY "app_user_roles_anon_read" ON public.app_user_roles FOR SELECT TO anon USING (true);
+CREATE POLICY "app_user_roles_auth_read" ON public.app_user_roles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "app_user_roles_service_all" ON public.app_user_roles FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- === SUBSCRIPTION_PLANS ===
@@ -1509,6 +1508,72 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+-- ============================================================
+-- COLUMN-LEVEL SECURITY (prevent leaking sensitive auth fields)
+-- ============================================================
+-- Even if RLS allows a row, the browser would be able to read every column it has
+-- SELECT privilege on. We therefore restrict app_users and other auth-adjacent tables.
+
+-- app_users: remove blanket privileges then allow only safe columns
+REVOKE ALL ON TABLE public.app_users FROM anon;
+REVOKE ALL ON TABLE public.app_users FROM authenticated;
+
+GRANT SELECT (
+  id,
+  email,
+  first_name,
+  last_name,
+  phone,
+  avatar_url,
+  school_id,
+  teacher_id,
+  student_id,
+  is_active,
+  last_login,
+  created_at,
+  updated_at
+) ON public.app_users TO anon;
+
+GRANT SELECT (
+  id,
+  email,
+  first_name,
+  last_name,
+  phone,
+  avatar_url,
+  school_id,
+  teacher_id,
+  student_id,
+  is_active,
+  last_login,
+  created_at,
+  updated_at
+) ON public.app_users TO authenticated;
+
+-- app_user_roles: allow read-only access (no grants for write)
+-- If you want to fully hide roles from the browser later, switch UI to rely only
+-- on backend functions for role/permission checks and REVOKE this too.
+REVOKE ALL ON TABLE public.app_user_roles FROM anon;
+REVOKE ALL ON TABLE public.app_user_roles FROM authenticated;
+
+GRANT SELECT (
+  id,
+  user_id,
+  role,
+  school_id,
+  granted_by,
+  created_at
+) ON public.app_user_roles TO anon;
+
+GRANT SELECT (
+  id,
+  user_id,
+  role,
+  school_id,
+  granted_by,
+  created_at
+) ON public.app_user_roles TO authenticated;
 
 -- Grant usage on all sequences
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon;
