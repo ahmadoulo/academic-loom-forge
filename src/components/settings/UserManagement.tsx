@@ -63,7 +63,20 @@ export function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("list-app-users", { body: {} });
+      const sessionToken =
+        localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+
+      if (!sessionToken) {
+        throw new Error("Session manquante");
+      }
+
+      const { data, error } = await supabase.functions.invoke("list-app-users", {
+        body: {
+          sessionToken,
+          // Optional: scope for school admins
+          schoolId: primaryRole === "school_admin" ? primarySchoolId ?? undefined : undefined,
+        },
+      });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Erreur lors du chargement");
       setRows((data.users || []) as AppUserRow[]);
