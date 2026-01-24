@@ -60,10 +60,13 @@ CREATE TYPE public.subscription_status_type AS ENUM (
 );
 
 CREATE TYPE public.subscription_duration_type AS ENUM (
-  'monthly',
-  'quarterly',
-  'semi_annual',
-  'annual'
+  -- Must match frontend values used in SubscriptionForm/EditSubscriptionDialog
+  -- (src/components/admin/SubscriptionForm.tsx)
+  '1_month',
+  '3_months',
+  '6_months',
+  '1_year',
+  '2_years'
 );
 
 CREATE TYPE public.payment_method_type AS ENUM (
@@ -1334,9 +1337,9 @@ BEGIN
     trial_end_date
   ) VALUES (
     NEW.id,
-    'starter',
+    'basic',
     'trial',
-    'monthly',
+    '1_month',
     CURRENT_DATE,
     (CURRENT_DATE + INTERVAL '30 days')::date,
     true,
