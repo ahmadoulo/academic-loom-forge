@@ -183,31 +183,24 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
           throw new Error('Aucune année scolaire active');
         }
 
-        // Get school_id from class if not provided
-        let schoolId = attendanceData.school_id;
-        if (!schoolId) {
-          const { data: classData } = await supabase
-            .from('classes')
-            .select('school_id')
-            .eq('id', attendanceData.class_id)
-            .single();
-          schoolId = classData?.school_id;
-        }
-
-        if (!schoolId) {
-          throw new Error('Impossible de déterminer l\'école');
-        }
+        // Prepare insert data - the database trigger will auto-fill school_id from class_id if not provided
+        const insertData = {
+          student_id: attendanceData.student_id,
+          class_id: attendanceData.class_id,
+          teacher_id: attendanceData.teacher_id,
+          date: currentDate,
+          school_year_id: currentYearId,
+          status: attendanceData.status,
+          method: attendanceData.method || 'manual',
+          marked_at: new Date().toISOString(),
+          subject_id: attendanceData.subject_id || null,
+          assignment_id: attendanceData.assignment_id || null,
+          school_id: attendanceData.school_id || null // Will be auto-filled by trigger if null
+        };
 
         const insertResult = await supabase
           .from('attendance')
-          .insert([{
-            ...attendanceData,
-            school_id: schoolId,
-            date: currentDate,
-            school_year_id: currentYearId,
-            method: attendanceData.method || 'manual',
-            marked_at: new Date().toISOString()
-          }])
+          .insert([insertData])
           .select();
         
         data = insertResult.data;

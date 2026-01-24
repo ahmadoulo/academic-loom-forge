@@ -486,6 +486,7 @@ export type Database = {
           justification_submitted_at: string | null
           marked_at: string | null
           method: string
+          school_id: string | null
           school_year_id: string
           status: string
           student_id: string
@@ -509,6 +510,7 @@ export type Database = {
           justification_submitted_at?: string | null
           marked_at?: string | null
           method?: string
+          school_id?: string | null
           school_year_id: string
           status?: string
           student_id: string
@@ -532,6 +534,7 @@ export type Database = {
           justification_submitted_at?: string | null
           marked_at?: string | null
           method?: string
+          school_id?: string | null
           school_year_id?: string
           status?: string
           student_id?: string
@@ -545,6 +548,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
           {

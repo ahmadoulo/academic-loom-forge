@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ExternalLink, 
@@ -220,7 +220,10 @@ export function AttachmentDisplay({ links, attachments }: AttachmentDisplayProps
 
       {/* Lightbox Modal */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none" aria-describedby={undefined}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Aperçu de l'image</DialogTitle>
+          </DialogHeader>
           <div className="relative w-full h-[90vh] flex items-center justify-center">
             {/* Close button */}
             <Button
