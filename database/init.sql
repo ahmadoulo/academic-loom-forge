@@ -1168,30 +1168,30 @@ FROM public.app_users;
 -- INDEXES (performance)
 -- ============================================================
 
-CREATE INDEX idx_app_users_email ON public.app_users(email);
-CREATE INDEX idx_app_users_session_token ON public.app_users(session_token);
-CREATE INDEX idx_app_users_school_id ON public.app_users(school_id);
-CREATE INDEX idx_app_user_roles_user_id ON public.app_user_roles(user_id);
-CREATE INDEX idx_app_user_roles_role ON public.app_user_roles(role);
-CREATE INDEX idx_app_user_roles_school_id ON public.app_user_roles(school_id);
-CREATE INDEX idx_teachers_school_id ON public.teachers(school_id);
-CREATE INDEX idx_classes_school_id ON public.classes(school_id);
-CREATE INDEX idx_subjects_school_id ON public.subjects(school_id);
-CREATE INDEX idx_assignments_school_id ON public.assignments(school_id);
-CREATE INDEX idx_assignments_teacher_id ON public.assignments(teacher_id);
-CREATE INDEX idx_assignments_class_id ON public.assignments(class_id);
-CREATE INDEX idx_assignments_session_date ON public.assignments(session_date);
-CREATE INDEX idx_attendance_student_id ON public.attendance(student_id);
-CREATE INDEX idx_attendance_date ON public.attendance(date);
-CREATE INDEX idx_grades_student_id ON public.grades(student_id);
-CREATE INDEX idx_grades_subject_id ON public.grades(subject_id);
-CREATE INDEX idx_grades_school_year_id ON public.grades(school_year_id);
-CREATE INDEX idx_subscriptions_school_id ON public.subscriptions(school_id);
-CREATE INDEX idx_school_years_school_id ON public.school_years(school_id);
-CREATE INDEX idx_school_semester_school_id ON public.school_semester(school_id);
-CREATE INDEX idx_student_school_lookup ON public.student_school(student_id, school_year_id, school_id, is_active);
-CREATE INDEX idx_event_attendance_event_id ON public.event_attendance(event_id);
-CREATE INDEX idx_event_attendance_sessions_event_id ON public.event_attendance_sessions(event_id);
+CREATE INDEX IF NOT EXISTS idx_app_users_email ON public.app_users(email);
+CREATE INDEX IF NOT EXISTS idx_app_users_session_token ON public.app_users(session_token);
+CREATE INDEX IF NOT EXISTS idx_app_users_school_id ON public.app_users(school_id);
+CREATE INDEX IF NOT EXISTS idx_app_user_roles_user_id ON public.app_user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_app_user_roles_role ON public.app_user_roles(role);
+CREATE INDEX IF NOT EXISTS idx_app_user_roles_school_id ON public.app_user_roles(school_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_school_id ON public.teachers(school_id);
+CREATE INDEX IF NOT EXISTS idx_classes_school_id ON public.classes(school_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_school_id ON public.subjects(school_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_school_id ON public.assignments(school_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_teacher_id ON public.assignments(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_class_id ON public.assignments(class_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_session_date ON public.assignments(session_date);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON public.attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON public.attendance(date);
+CREATE INDEX IF NOT EXISTS idx_grades_student_id ON public.grades(student_id);
+CREATE INDEX IF NOT EXISTS idx_grades_subject_id ON public.grades(subject_id);
+CREATE INDEX IF NOT EXISTS idx_grades_school_year_id ON public.grades(school_year_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_school_id ON public.subscriptions(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_years_school_id ON public.school_years(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_semester_school_id ON public.school_semester(school_id);
+CREATE INDEX IF NOT EXISTS idx_student_school_lookup ON public.student_school(student_id, school_year_id, school_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_event_id ON public.event_attendance(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_sessions_event_id ON public.event_attendance_sessions(event_id);
 
 -- ============================================================
 -- FUNCTIONS
