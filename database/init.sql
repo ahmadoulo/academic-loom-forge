@@ -174,7 +174,9 @@ CREATE TABLE public.subscriptions (
   custom_teacher_limit INTEGER,
   created_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- The frontend often does .eq('school_id', ...).single(); enforce 1 row per school.
+  UNIQUE (school_id)
 );
 
 -- 6. SCHOOL_YEARS
@@ -233,6 +235,7 @@ CREATE TABLE public.options (
   cycle_id UUID NOT NULL REFERENCES public.cycles(id) ON DELETE CASCADE,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  code TEXT,
   description TEXT,
   start_year INTEGER DEFAULT 1,
   is_active BOOLEAN NOT NULL DEFAULT true,
@@ -945,6 +948,8 @@ CREATE TABLE public.school_roles (
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
+  color TEXT NOT NULL DEFAULT 'blue',
+  is_system BOOLEAN NOT NULL DEFAULT false,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -1200,6 +1205,73 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- Set current semester (only one actual per school)
+-- Needed by src/hooks/useSchoolSemesters.ts -> supabase.rpc('set_current_semester', { semester_id })
+CREATE OR REPLACE FUNCTION public.set_current_semester(semester_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_school_id UUID;
+BEGIN
+  SELECT school_id INTO v_school_id
+  FROM school_semester
+  WHERE id = semester_id;
+
+  -- Reset all semesters for that school
+  UPDATE school_semester
+  SET is_actual = false,
+      is_next = false
+  WHERE school_id = v_school_id;
+
+  -- Set requested semester as current
+  UPDATE school_semester
+  SET is_actual = true,
+      is_next = false
+  WHERE id = semester_id;
+END;
+$$;
+
+-- Create default subscription for each new school
+-- Prevents PGRST116 when frontend expects a single subscription row per school.
+CREATE OR REPLACE FUNCTION public.create_default_subscription_for_school()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.subscriptions (
+    school_id,
+    plan_type,
+    status,
+    duration,
+    start_date,
+    end_date,
+    is_trial,
+    trial_end_date
+  ) VALUES (
+    NEW.id,
+    'starter',
+    'trial',
+    'monthly',
+    CURRENT_DATE,
+    (CURRENT_DATE + INTERVAL '30 days')::date,
+    true,
+    (CURRENT_DATE + INTERVAL '30 days')::date
+  )
+  ON CONFLICT (school_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
+-- RPC/function permissions for PostgREST
+GRANT EXECUTE ON FUNCTION public.set_current_semester(UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_transition_semesters() TO anon, authenticated;
+
 -- Generate random password
 CREATE OR REPLACE FUNCTION public.generate_random_password(length INTEGER DEFAULT 12)
 RETURNS TEXT AS $$
@@ -1259,6 +1331,14 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 -- ============================================================
 
 CREATE TRIGGER update_schools_updated_at BEFORE UPDATE ON public.schools FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Ensure each school has a subscription row for frontend .single() queries
+DROP TRIGGER IF EXISTS create_default_subscription_after_school_insert ON public.schools;
+CREATE TRIGGER create_default_subscription_after_school_insert
+AFTER INSERT ON public.schools
+FOR EACH ROW
+EXECUTE FUNCTION public.create_default_subscription_for_school();
+
 CREATE TRIGGER update_app_users_updated_at BEFORE UPDATE ON public.app_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_subscription_plans_updated_at BEFORE UPDATE ON public.subscription_plans FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
