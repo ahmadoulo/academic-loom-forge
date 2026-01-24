@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
   Video, 
@@ -267,7 +267,10 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1400px] p-0 gap-0 bg-black border-0 overflow-hidden [&>button]:hidden">
+      <DialogContent className="max-w-[95vw] w-[1400px] p-0 gap-0 bg-black border-0 overflow-hidden [&>button]:hidden" aria-describedby={undefined}>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{camera.name}</DialogTitle>
+        </DialogHeader>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-3">

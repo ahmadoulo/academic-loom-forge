@@ -516,6 +516,34 @@ ALTER TABLE public.attendance DROP CONSTRAINT IF EXISTS attendance_teacher_id_fk
 ALTER TABLE public.attendance ADD CONSTRAINT attendance_teacher_id_fkey
   FOREIGN KEY (teacher_id) REFERENCES public.teachers(id) ON DELETE CASCADE;
 
+-- Add FK constraint for school_id
+ALTER TABLE public.attendance DROP CONSTRAINT IF EXISTS attendance_school_id_fkey;
+ALTER TABLE public.attendance ADD CONSTRAINT attendance_school_id_fkey
+  FOREIGN KEY (school_id) REFERENCES public.schools(id) ON DELETE CASCADE;
+
+-- Update existing attendance records to set school_id from classes
+UPDATE public.attendance a
+SET school_id = c.school_id
+FROM public.classes c
+WHERE a.class_id = c.id AND a.school_id IS NULL;
+
+-- Create trigger function to auto-fill school_id from class
+CREATE OR REPLACE FUNCTION public.set_attendance_school_id()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.school_id IS NULL AND NEW.class_id IS NOT NULL THEN
+    SELECT school_id INTO NEW.school_id FROM public.classes WHERE id = NEW.class_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+-- Create trigger for auto-fill school_id
+DROP TRIGGER IF EXISTS trigger_set_attendance_school_id ON public.attendance;
+CREATE TRIGGER trigger_set_attendance_school_id
+  BEFORE INSERT ON public.attendance
+  FOR EACH ROW EXECUTE FUNCTION public.set_attendance_school_id();
+
 -- 21. ATTENDANCE_SESSIONS
 CREATE TABLE IF NOT EXISTS public.attendance_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
