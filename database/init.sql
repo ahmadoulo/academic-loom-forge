@@ -109,6 +109,7 @@ CREATE TABLE public.app_users (
   school_id UUID REFERENCES public.schools(id) ON DELETE SET NULL,
   teacher_id UUID,
   student_id UUID,
+  email_verified BOOLEAN NOT NULL DEFAULT false,
   is_active BOOLEAN NOT NULL DEFAULT true,
   session_token TEXT,
   session_expires_at TIMESTAMPTZ,
@@ -176,6 +177,7 @@ CREATE TABLE public.school_years (
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   is_current BOOLEAN DEFAULT false,
+  is_next BOOLEAN DEFAULT false,
   archived BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -202,13 +204,20 @@ CREATE TABLE public.cycles (
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
+  level TEXT,
+  duration_years INTEGER,
+  calculation_system TEXT NOT NULL DEFAULT 'coefficient',
+  is_active BOOLEAN NOT NULL DEFAULT true,
   order_index INTEGER DEFAULT 0,
-  years_count INTEGER DEFAULT 1,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.cycles
+  ADD CONSTRAINT cycles_calculation_system_check
+  CHECK (calculation_system IN ('credit', 'coefficient'));
 
 -- 9. OPTIONS
 CREATE TABLE public.options (
@@ -218,6 +227,7 @@ CREATE TABLE public.options (
   name TEXT NOT NULL,
   description TEXT,
   start_year INTEGER DEFAULT 1,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -233,6 +243,8 @@ CREATE TABLE public.classes (
   school_year_id UUID REFERENCES public.school_years(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   year_level INTEGER DEFAULT 1,
+  is_specialization BOOLEAN NOT NULL DEFAULT false,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   capacity INTEGER DEFAULT 30,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
@@ -247,6 +259,7 @@ CREATE TABLE public.students (
   firstname TEXT NOT NULL,
   lastname TEXT NOT NULL,
   email TEXT,
+  cin_number TEXT,
   gender TEXT,
   birth_date DATE,
   birth_place TEXT,
@@ -254,10 +267,13 @@ CREATE TABLE public.students (
   address TEXT,
   city TEXT,
   mobile TEXT,
+  student_phone TEXT,
   parent_name TEXT,
   parent_phone TEXT,
   parent_email TEXT,
   parent_profession TEXT,
+  tutor_name TEXT,
+  tutor_email TEXT,
   status TEXT DEFAULT 'active',
   photo_url TEXT,
   matricule TEXT,
@@ -318,17 +334,24 @@ CREATE TABLE public.teacher_classes (
 -- 15. SUBJECTS
 CREATE TABLE public.subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   teacher_id UUID REFERENCES public.teachers(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   code TEXT,
   coefficient NUMERIC DEFAULT 1,
+  coefficient_type TEXT NOT NULL DEFAULT 'coefficient',
   color TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.subjects
+  ADD CONSTRAINT subjects_coefficient_type_check
+  CHECK (coefficient_type IN ('credit', 'coefficient'));
 
 -- 16. CLASS_SUBJECTS (subjects assigned to classes)
 CREATE TABLE public.class_subjects (
