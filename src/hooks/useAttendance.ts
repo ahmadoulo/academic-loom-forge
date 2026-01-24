@@ -45,6 +45,7 @@ interface CreateAttendanceData {
   student_id: string;
   class_id: string;
   teacher_id: string;
+  school_id?: string; // Optional - will be fetched from class if not provided
   assignment_id?: string;
   subject_id?: string;
   status: 'present' | 'absent';
@@ -182,10 +183,26 @@ export const useAttendance = (classId?: string, teacherId?: string, date?: strin
           throw new Error('Aucune année scolaire active');
         }
 
+        // Get school_id from class if not provided
+        let schoolId = attendanceData.school_id;
+        if (!schoolId) {
+          const { data: classData } = await supabase
+            .from('classes')
+            .select('school_id')
+            .eq('id', attendanceData.class_id)
+            .single();
+          schoolId = classData?.school_id;
+        }
+
+        if (!schoolId) {
+          throw new Error('Impossible de déterminer l\'école');
+        }
+
         const insertResult = await supabase
           .from('attendance')
           .insert([{
             ...attendanceData,
+            school_id: schoolId,
             date: currentDate,
             school_year_id: currentYearId,
             method: attendanceData.method || 'manual',

@@ -270,15 +270,17 @@ export function EventsSection({
                       onSessionCreated={(session) => setActiveSession({ event, session })}
                     />
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setViewingAttendance({ event })}
-                    className="flex-1 gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Voir présences
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setViewingAttendance({ event })}
+                      className="flex-1 gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Voir présences
+                    </Button>
+                  )}
                 </div>
               )}
               
