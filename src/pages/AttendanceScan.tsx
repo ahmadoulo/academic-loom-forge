@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { QrCode, CheckCircle, AlertCircle, UserCheck } from "lucide-react";
+import { QrCode, CheckCircle, AlertCircle, UserCheck, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAttendance } from "@/hooks/useAttendance";
-import { useStudents } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const AttendanceScan = () => {
   const { sessionCode } = useParams();
@@ -16,14 +16,16 @@ const AttendanceScan = () => {
   const { toast } = useToast();
   
   const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
   const { scanQRCode } = useAttendance();
-  const { students, loading: studentsLoading } = useStudents(undefined, undefined);
 
   useEffect(() => {
     if (!sessionCode) {
@@ -37,30 +39,38 @@ const AttendanceScan = () => {
     setError(null);
 
     try {
-      // Attendre que les étudiants soient chargés
-      if (studentsLoading) {
-        throw new Error("Chargement des données en cours...");
+      // Appel à l'edge function d'authentification
+      const { data, error: authError } = await supabase.functions.invoke('authenticate-user', {
+        body: {
+          email: studentEmail.toLowerCase().trim(),
+          password: password
+        }
+      });
+
+      if (authError) {
+        throw new Error("Erreur de connexion au serveur");
       }
 
-      console.log("Looking for student with email:", studentEmail);
-      console.log("Available students:", students);
-      
-      // Trouver l'étudiant par email
-      const student = students.find(s => 
-        s.email?.toLowerCase().trim() === studentEmail.toLowerCase().trim()
-      );
-
-      if (!student) {
-        throw new Error("Email d'étudiant non trouvé");
+      if (!data?.success) {
+        throw new Error(data?.error || "Email ou mot de passe incorrect");
       }
 
-      // Authentification simple (dans un vrai système, vous utiliseriez une vraie authentification)
-      setStudentId(student.id);
+      // Vérifier que l'utilisateur a un student_id lié
+      if (!data.user?.student_id) {
+        throw new Error("Ce compte n'est pas associé à un profil étudiant");
+      }
+
+      // Stocker le token de session
+      localStorage.setItem("session_token", data.sessionToken);
+      localStorage.setItem("session_expires_at", data.sessionExpiresAt);
+
+      setStudentId(data.user.student_id);
+      setStudentName(`${data.user.first_name} ${data.user.last_name}`);
       setIsAuthenticated(true);
       
       toast({
         title: "Authentification réussie",
-        description: `Bienvenue ${student.firstname} ${student.lastname}`,
+        description: `Bienvenue ${data.user.first_name} ${data.user.last_name}`,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur d'authentification");
@@ -128,7 +138,7 @@ const AttendanceScan = () => {
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {!isAuthenticated 
-              ? "Authentifiez-vous pour marquer votre présence" 
+              ? "Connectez-vous avec votre compte étudiant" 
               : "Cliquez sur le bouton pour confirmer votre présence"
             }
           </p>
@@ -144,7 +154,7 @@ const AttendanceScan = () => {
           {!isAuthenticated ? (
             <form onSubmit={handleAuthentication} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email étudiant</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -152,15 +162,51 @@ const AttendanceScan = () => {
                   value={studentEmail}
                   onChange={(e) => setStudentEmail(e.target.value)}
                   required
+                  disabled={loading}
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Votre mot de passe"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
               
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={loading || !studentEmail.trim()}
+                disabled={loading || !studentEmail.trim() || !password.trim()}
               >
-                {loading ? "Authentification..." : "S'authentifier"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connexion...
+                  </>
+                ) : (
+                  "Se connecter"
+                )}
               </Button>
             </form>
           ) : (
@@ -168,7 +214,7 @@ const AttendanceScan = () => {
               <Alert>
                 <UserCheck className="h-4 w-4" />
                 <AlertDescription>
-                  Authentification réussie! Cliquez sur le bouton ci-dessous pour marquer votre présence.
+                  Connecté en tant que <strong>{studentName}</strong>. Cliquez ci-dessous pour marquer votre présence.
                 </AlertDescription>
               </Alert>
               
@@ -177,7 +223,14 @@ const AttendanceScan = () => {
                 className="w-full"
                 disabled={loading}
               >
-                {loading ? "Marquage en cours..." : "Marquer ma présence"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Marquage en cours...
+                  </>
+                ) : (
+                  "Marquer ma présence"
+                )}
               </Button>
             </div>
           )}
