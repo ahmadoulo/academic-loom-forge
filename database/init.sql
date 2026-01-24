@@ -264,30 +264,18 @@ CREATE TABLE public.classes (
 );
 
 -- 11. STUDENTS
+-- Columns must match types.ts: id, firstname, lastname, email, cin_number, birth_date, parent_phone, student_phone, tutor_name, tutor_email, archived, archived_at, created_at, updated_at
 CREATE TABLE public.students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   firstname TEXT NOT NULL,
   lastname TEXT NOT NULL,
   email TEXT,
-  cin_number TEXT,
-  gender TEXT,
+  cin_number TEXT NOT NULL DEFAULT '',
   birth_date DATE,
-  birth_place TEXT,
-  nationality TEXT DEFAULT 'Marocaine',
-  address TEXT,
-  city TEXT,
-  mobile TEXT,
-  student_phone TEXT,
-  parent_name TEXT,
   parent_phone TEXT,
-  parent_email TEXT,
-  parent_profession TEXT,
+  student_phone TEXT,
   tutor_name TEXT,
   tutor_email TEXT,
-  status TEXT DEFAULT 'active',
-  photo_url TEXT,
-  matricule TEXT,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -295,15 +283,15 @@ CREATE TABLE public.students (
 );
 
 -- 12. STUDENT_SCHOOL (student enrollment per year)
+-- Columns must match types.ts: id, student_id, school_id, class_id, school_year_id, is_active, enrolled_at, created_at, updated_at
 CREATE TABLE public.student_school (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
+  class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   school_year_id UUID NOT NULL REFERENCES public.school_years(id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT true,
-  enrollment_date DATE DEFAULT CURRENT_DATE,
-  status TEXT DEFAULT 'active',
+  enrolled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(student_id, school_id, school_year_id)
@@ -335,15 +323,14 @@ CREATE TABLE public.teachers (
 );
 
 -- 14. TEACHER_CLASSES (teacher-class assignments)
+-- Columns must match types.ts: id, teacher_id, class_id, created_at, updated_at
 CREATE TABLE public.teacher_classes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID NOT NULL,
   class_id UUID NOT NULL,
-  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  school_year_id UUID REFERENCES public.school_years(id) ON DELETE SET NULL,
-  is_primary BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(teacher_id, class_id, school_year_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(teacher_id, class_id)
 );
 
 -- IMPORTANT: The app explicitly references these FK names in selects
@@ -365,38 +352,47 @@ ALTER TABLE public.teacher_classes
   FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
 
 -- 15. SUBJECTS
+-- Columns must match types.ts: id, class_id, name, coefficient, coefficient_type, archived, archived_at, school_id, teacher_id, created_at, updated_at
 CREATE TABLE public.subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
-  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  teacher_id UUID REFERENCES public.teachers(id) ON DELETE SET NULL,
+  class_id UUID NOT NULL,
   name TEXT NOT NULL,
-  code TEXT,
-  coefficient NUMERIC DEFAULT 1,
+  coefficient NUMERIC NOT NULL DEFAULT 1,
   coefficient_type TEXT NOT NULL DEFAULT 'coefficient',
-  color TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT true,
   archived BOOLEAN DEFAULT false,
   archived_at TIMESTAMPTZ,
+  school_id UUID,
+  teacher_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- FK constraints with names expected by PostgREST (from types.ts)
 ALTER TABLE public.subjects
-  ADD CONSTRAINT subjects_coefficient_type_check
-  CHECK (coefficient_type IN ('credit', 'coefficient'));
+  DROP CONSTRAINT IF EXISTS subjects_class_id_fkey;
+ALTER TABLE public.subjects
+  ADD CONSTRAINT subjects_class_id_fkey
+  FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+ALTER TABLE public.subjects
+  DROP CONSTRAINT IF EXISTS fk_subjects_school_id;
+ALTER TABLE public.subjects
+  ADD CONSTRAINT fk_subjects_school_id
+  FOREIGN KEY (school_id) REFERENCES public.schools(id) ON DELETE SET NULL;
+
+ALTER TABLE public.subjects
+  DROP CONSTRAINT IF EXISTS subjects_teacher_id_fkey;
+ALTER TABLE public.subjects
+  ADD CONSTRAINT subjects_teacher_id_fkey
+  FOREIGN KEY (teacher_id) REFERENCES public.teachers(id) ON DELETE SET NULL;
 
 -- 16. CLASS_SUBJECTS (subjects assigned to classes)
+-- Columns must match types.ts: id, class_id, subject_id, created_at
 CREATE TABLE public.class_subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
-  teacher_id UUID REFERENCES public.teachers(id) ON DELETE SET NULL,
-  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  hours_per_week NUMERIC DEFAULT 2,
-  coefficient NUMERIC DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(class_id, subject_id)
 );
 
@@ -598,31 +594,71 @@ CREATE TABLE public.events (
 );
 
 -- 24. EVENT_ATTENDANCE_SESSIONS
+-- Columns must match types.ts: id, event_id, school_id, session_code, expires_at, is_active, created_at, updated_at
 CREATE TABLE public.event_attendance_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   session_code TEXT NOT NULL UNIQUE,
   expires_at TIMESTAMPTZ NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
-  created_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Add FK names expected by PostgREST
+ALTER TABLE public.event_attendance_sessions
+  DROP CONSTRAINT IF EXISTS event_attendance_sessions_event_id_fkey;
+ALTER TABLE public.event_attendance_sessions
+  ADD CONSTRAINT event_attendance_sessions_event_id_fkey
+  FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE public.event_attendance_sessions
+  DROP CONSTRAINT IF EXISTS event_attendance_sessions_school_id_fkey;
+ALTER TABLE public.event_attendance_sessions
+  ADD CONSTRAINT event_attendance_sessions_school_id_fkey
+  FOREIGN KEY (school_id) REFERENCES public.schools(id) ON DELETE CASCADE;
+
 -- 25. EVENT_ATTENDANCE
+-- Columns must match types.ts: id, event_id, session_id, school_id, participant_name, participant_email, participant_phone, student_id, marked_at, method, created_at
 CREATE TABLE public.event_attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
-  session_id UUID REFERENCES public.event_attendance_sessions(id) ON DELETE SET NULL,
+  session_id UUID NOT NULL REFERENCES public.event_attendance_sessions(id) ON DELETE CASCADE,
+  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+  participant_name TEXT NOT NULL,
+  participant_email TEXT,
+  participant_phone TEXT,
   student_id UUID REFERENCES public.students(id) ON DELETE SET NULL,
-  attendee_name TEXT,
-  attendee_email TEXT,
-  attendee_phone TEXT,
-  attendee_type TEXT DEFAULT 'student',
-  check_in_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-  notes TEXT,
+  marked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  method TEXT NOT NULL DEFAULT 'qr_scan',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Add FK names expected by PostgREST
+ALTER TABLE public.event_attendance
+  DROP CONSTRAINT IF EXISTS event_attendance_event_id_fkey;
+ALTER TABLE public.event_attendance
+  ADD CONSTRAINT event_attendance_event_id_fkey
+  FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+ALTER TABLE public.event_attendance
+  DROP CONSTRAINT IF EXISTS event_attendance_session_id_fkey;
+ALTER TABLE public.event_attendance
+  ADD CONSTRAINT event_attendance_session_id_fkey
+  FOREIGN KEY (session_id) REFERENCES public.event_attendance_sessions(id) ON DELETE CASCADE;
+
+ALTER TABLE public.event_attendance
+  DROP CONSTRAINT IF EXISTS event_attendance_school_id_fkey;
+ALTER TABLE public.event_attendance
+  ADD CONSTRAINT event_attendance_school_id_fkey
+  FOREIGN KEY (school_id) REFERENCES public.schools(id) ON DELETE CASCADE;
+
+ALTER TABLE public.event_attendance
+  DROP CONSTRAINT IF EXISTS event_attendance_student_id_fkey;
+ALTER TABLE public.event_attendance
+  ADD CONSTRAINT event_attendance_student_id_fkey
+  FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE SET NULL;
 
 -- 26. ANNOUNCEMENTS
 CREATE TABLE public.announcements (
@@ -700,7 +736,19 @@ CREATE TABLE public.document_requests (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 31. ADMINISTRATIVE_DOCUMENT_TYPES
+-- 30b. DOCUMENT_REQUEST_TRACKING
+-- Columns must match types.ts: id, request_id, school_id, student_id, status, comment, updated_by, created_at
+CREATE TABLE public.document_request_tracking (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES public.document_requests(id) ON DELETE CASCADE,
+  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  comment TEXT,
+  updated_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE public.administrative_document_types (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
@@ -715,20 +763,20 @@ CREATE TABLE public.administrative_document_types (
 );
 
 -- 32. STUDENT_ADMINISTRATIVE_DOCUMENTS
+-- Columns must match types.ts: id, student_id, document_type_id, school_id, status, acquired_at, file_path, notes, verified_by, created_at, updated_at
 CREATE TABLE public.student_administrative_documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   document_type_id UUID NOT NULL REFERENCES public.administrative_document_types(id) ON DELETE CASCADE,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  school_year_id UUID NOT NULL REFERENCES public.school_years(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'missing',
-  submitted_at TIMESTAMPTZ,
-  verified_at TIMESTAMPTZ,
-  verified_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
+  acquired_at TIMESTAMPTZ,
+  file_path TEXT,
   notes TEXT,
+  verified_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(student_id, document_type_id, school_year_id)
+  UNIQUE(student_id, document_type_id)
 );
 
 -- 33. SCHOOL_ADMISSION
@@ -868,7 +916,17 @@ CREATE TABLE public.exam_questions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 41. EXAM_QUESTION_CHOICES
+-- 41. EXAM_ANSWERS
+-- Columns must match types.ts: id, question_id, answer_text, is_correct, created_at
+CREATE TABLE public.exam_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question_id UUID NOT NULL REFERENCES public.exam_questions(id) ON DELETE CASCADE,
+  answer_text TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 42. EXAM_QUESTION_CHOICES (keep for backward compatibility)
 CREATE TABLE public.exam_question_choices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   question_id UUID NOT NULL REFERENCES public.exam_questions(id) ON DELETE CASCADE,
@@ -899,15 +957,14 @@ CREATE TABLE public.online_exams (
 );
 
 -- 43. ONLINE_EXAM_QUESTIONS
+-- Columns must match types.ts: id, exam_id, question_text, points, question_order, created_at
 CREATE TABLE public.online_exam_questions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   exam_id UUID NOT NULL REFERENCES public.online_exams(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,
-  question_type TEXT NOT NULL DEFAULT 'multiple_choice',
   points NUMERIC NOT NULL DEFAULT 1,
-  order_index INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  question_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- 44. ONLINE_EXAM_ANSWERS
@@ -976,18 +1033,17 @@ CREATE TABLE public.user_school_roles (
   UNIQUE(user_id, school_role_id)
 );
 
--- 50. YEAR_TRANSITION_PREPARATIONS
-CREATE TABLE public.year_transition_preparations (
+-- 50. YEAR_PREPARATIONS
+-- Columns must match types.ts: id, school_id, from_year_id, to_year_id, status, classes_created_at, mapping_completed_at, students_promoted_at, created_at, updated_at
+CREATE TABLE public.year_preparations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   from_year_id UUID NOT NULL REFERENCES public.school_years(id) ON DELETE CASCADE,
   to_year_id UUID NOT NULL REFERENCES public.school_years(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'draft',
-  prepared_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
-  approved_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
-  approved_at TIMESTAMPTZ,
-  executed_at TIMESTAMPTZ,
-  notes TEXT,
+  classes_created_at TIMESTAMPTZ,
+  mapping_completed_at TIMESTAMPTZ,
+  students_promoted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -995,7 +1051,7 @@ CREATE TABLE public.year_transition_preparations (
 -- 51. CLASS_TRANSITIONS
 CREATE TABLE public.class_transitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  preparation_id UUID NOT NULL REFERENCES public.year_transition_preparations(id) ON DELETE CASCADE,
+  preparation_id UUID NOT NULL REFERENCES public.year_preparations(id) ON DELETE CASCADE,
   from_class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   to_class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -1004,7 +1060,7 @@ CREATE TABLE public.class_transitions (
 -- 52. STUDENT_TRANSITIONS
 CREATE TABLE public.student_transitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  preparation_id UUID NOT NULL REFERENCES public.year_transition_preparations(id) ON DELETE CASCADE,
+  preparation_id UUID NOT NULL REFERENCES public.year_preparations(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   from_class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   to_class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
@@ -1087,6 +1143,28 @@ CREATE TABLE public.notification_preferences (
 );
 
 -- ============================================================
+-- VIEWS
+-- ============================================================
+
+-- app_users_public view (used for embedded joins from various tables)
+-- This view exposes non-sensitive user information for PostgREST joins
+CREATE OR REPLACE VIEW public.app_users_public AS
+SELECT
+  id,
+  email,
+  first_name,
+  last_name,
+  phone,
+  avatar_url,
+  school_id,
+  teacher_id,
+  student_id,
+  is_active,
+  created_at,
+  updated_at
+FROM public.app_users;
+
+-- ============================================================
 -- INDEXES (performance)
 -- ============================================================
 
@@ -1096,7 +1174,6 @@ CREATE INDEX idx_app_users_school_id ON public.app_users(school_id);
 CREATE INDEX idx_app_user_roles_user_id ON public.app_user_roles(user_id);
 CREATE INDEX idx_app_user_roles_role ON public.app_user_roles(role);
 CREATE INDEX idx_app_user_roles_school_id ON public.app_user_roles(school_id);
-CREATE INDEX idx_students_school_id ON public.students(school_id);
 CREATE INDEX idx_teachers_school_id ON public.teachers(school_id);
 CREATE INDEX idx_classes_school_id ON public.classes(school_id);
 CREATE INDEX idx_subjects_school_id ON public.subjects(school_id);
@@ -1112,6 +1189,9 @@ CREATE INDEX idx_grades_school_year_id ON public.grades(school_year_id);
 CREATE INDEX idx_subscriptions_school_id ON public.subscriptions(school_id);
 CREATE INDEX idx_school_years_school_id ON public.school_years(school_id);
 CREATE INDEX idx_school_semester_school_id ON public.school_semester(school_id);
+CREATE INDEX idx_student_school_lookup ON public.student_school(student_id, school_year_id, school_id, is_active);
+CREATE INDEX idx_event_attendance_event_id ON public.event_attendance(event_id);
+CREATE INDEX idx_event_attendance_sessions_event_id ON public.event_attendance_sessions(event_id);
 
 -- ============================================================
 -- FUNCTIONS
@@ -1375,7 +1455,7 @@ CREATE TRIGGER update_exam_documents_updated_at BEFORE UPDATE ON public.exam_doc
 CREATE TRIGGER update_exam_questions_updated_at BEFORE UPDATE ON public.exam_questions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_online_exams_updated_at BEFORE UPDATE ON public.online_exams FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_school_roles_updated_at BEFORE UPDATE ON public.school_roles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_year_transition_preparations_updated_at BEFORE UPDATE ON public.year_transition_preparations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_year_preparations_updated_at BEFORE UPDATE ON public.year_preparations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_school_fee_config_updated_at BEFORE UPDATE ON public.school_fee_config FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_school_fees_updated_at BEFORE UPDATE ON public.school_fees FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON public.notification_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1424,7 +1504,9 @@ ALTER TABLE public.school_textbook_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_textbook_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exam_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exam_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exam_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exam_question_choices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_request_tracking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.online_exams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.online_exam_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.online_exam_answers ENABLE ROW LEVEL SECURITY;
@@ -1433,7 +1515,7 @@ ALTER TABLE public.student_exam_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_role_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_school_roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.year_transition_preparations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.year_preparations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.class_transitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_transitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_fee_config ENABLE ROW LEVEL SECURITY;
@@ -1541,6 +1623,9 @@ CREATE POLICY "Allow all on document_templates" ON public.document_templates FOR
 -- DOCUMENT_REQUESTS
 CREATE POLICY "Allow all on document_requests" ON public.document_requests FOR ALL USING (true) WITH CHECK (true);
 
+-- DOCUMENT_REQUEST_TRACKING
+CREATE POLICY "Allow all on document_request_tracking" ON public.document_request_tracking FOR ALL USING (true) WITH CHECK (true);
+
 -- ADMINISTRATIVE_DOCUMENT_TYPES
 CREATE POLICY "Allow all on administrative_document_types" ON public.administrative_document_types FOR ALL USING (true) WITH CHECK (true);
 
@@ -1574,6 +1659,9 @@ CREATE POLICY "Allow all on exam_questions" ON public.exam_questions FOR ALL USI
 -- EXAM_QUESTION_CHOICES
 CREATE POLICY "Allow all on exam_question_choices" ON public.exam_question_choices FOR ALL USING (true) WITH CHECK (true);
 
+-- EXAM_ANSWERS
+CREATE POLICY "Allow all on exam_answers" ON public.exam_answers FOR ALL USING (true) WITH CHECK (true);
+
 -- ONLINE_EXAMS
 CREATE POLICY "Allow all on online_exams" ON public.online_exams FOR ALL USING (true) WITH CHECK (true);
 
@@ -1598,8 +1686,8 @@ CREATE POLICY "Allow all on school_role_permissions" ON public.school_role_permi
 -- USER_SCHOOL_ROLES
 CREATE POLICY "Allow all on user_school_roles" ON public.user_school_roles FOR ALL USING (true) WITH CHECK (true);
 
--- YEAR_TRANSITION_PREPARATIONS
-CREATE POLICY "Allow all on year_transition_preparations" ON public.year_transition_preparations FOR ALL USING (true) WITH CHECK (true);
+-- YEAR_PREPARATIONS
+CREATE POLICY "Allow all on year_preparations" ON public.year_preparations FOR ALL USING (true) WITH CHECK (true);
 
 -- CLASS_TRANSITIONS
 CREATE POLICY "Allow all on class_transitions" ON public.class_transitions FOR ALL USING (true) WITH CHECK (true);
@@ -1622,25 +1710,6 @@ CREATE POLICY "Allow all on teacher_school" ON public.teacher_school FOR ALL USI
 -- NOTIFICATION_PREFERENCES
 CREATE POLICY "Allow all on notification_preferences" ON public.notification_preferences FOR ALL USING (true) WITH CHECK (true);
 
--- ============================================================
--- PUBLIC VIEW FOR APP_USERS (safe fields only)
--- ============================================================
-
-CREATE OR REPLACE VIEW public.app_users_public AS
-SELECT 
-  id,
-  email,
-  first_name,
-  last_name,
-  phone,
-  avatar_url,
-  school_id,
-  teacher_id,
-  student_id,
-  is_active,
-  created_at,
-  updated_at
-FROM public.app_users;
 
 -- ============================================================
 -- GRANT PERMISSIONS
