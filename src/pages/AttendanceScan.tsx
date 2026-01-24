@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { QrCode, CheckCircle, AlertCircle, UserCheck, Loader2, Eye, EyeOff } fro
 import { useAttendance } from "@/hooks/useAttendance";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+const SESSION_KEY = "app_session_token";
+const LEGACY_SESSION_KEY = "session_token";
 
 const AttendanceScan = () => {
   const { sessionCode } = useParams();
@@ -33,36 +36,78 @@ const AttendanceScan = () => {
     }
   }, [sessionCode]);
 
+  const tryRestoreStudentSession = useCallback(async () => {
+    // If already authenticated in this page, nothing to do.
+    if (isAuthenticated) return;
+
+    const sessionToken =
+      localStorage.getItem(SESSION_KEY) || localStorage.getItem(LEGACY_SESSION_KEY);
+
+    if (!sessionToken) return;
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("validate-session", {
+        body: { sessionToken },
+      });
+
+      if (fnError || !data?.valid) {
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+        return;
+      }
+
+      // Persist refreshed token (and migrate legacy key).
+      if (data.sessionToken) {
+        localStorage.setItem(SESSION_KEY, data.sessionToken);
+      }
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+
+      if (!data.user?.student_id) {
+        // Not a student session → do not auto-authenticate here.
+        return;
+      }
+
+      setStudentId(data.user.student_id);
+      setStudentName(`${data.user.first_name} ${data.user.last_name}`);
+      setIsAuthenticated(true);
+    } catch {
+      // Silent fail: user will authenticate manually.
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    void tryRestoreStudentSession();
+  }, [tryRestoreStudentSession]);
+
   const handleAuthentication = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Appel à l'edge function d'authentification
-      const { data, error: authError } = await supabase.functions.invoke('authenticate-user', {
+      // Même logique que la page d'auth officielle
+      const { data, error: authError } = await supabase.functions.invoke("authenticate-user", {
         body: {
           email: studentEmail.toLowerCase().trim(),
           password: password
         }
       });
 
-      if (authError) {
-        throw new Error("Erreur de connexion au serveur");
-      }
-
-      if (!data?.success) {
-        throw new Error(data?.error || "Email ou mot de passe incorrect");
-      }
+      if (authError) throw authError;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.user) throw new Error("Email ou mot de passe incorrect");
 
       // Vérifier que l'utilisateur a un student_id lié
       if (!data.user?.student_id) {
         throw new Error("Ce compte n'est pas associé à un profil étudiant");
       }
 
-      // Stocker le token de session
-      localStorage.setItem("session_token", data.sessionToken);
-      localStorage.setItem("session_expires_at", data.sessionExpiresAt);
+      // Stocker le token de session (clé standard de l'app)
+      if (data.sessionToken) {
+        localStorage.setItem(SESSION_KEY, data.sessionToken);
+      }
+      // Nettoyer l'ancienne clé si elle existe
+      localStorage.removeItem(LEGACY_SESSION_KEY);
 
       setStudentId(data.user.student_id);
       setStudentName(`${data.user.first_name} ${data.user.last_name}`);
