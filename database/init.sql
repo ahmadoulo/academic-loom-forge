@@ -120,6 +120,14 @@ CREATE TABLE public.app_users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- IMPORTANT: PostgREST embedded joins in the app rely on the FK name below
+-- (see src/hooks/useSchools.ts: owner:app_users!schools_owner_id_fkey(...))
+ALTER TABLE public.schools
+  DROP CONSTRAINT IF EXISTS schools_owner_id_fkey;
+ALTER TABLE public.schools
+  ADD CONSTRAINT schools_owner_id_fkey
+  FOREIGN KEY (owner_id) REFERENCES public.app_users(id) ON DELETE SET NULL;
+
 -- 3. APP_USER_ROLES (role assignments)
 CREATE TABLE public.app_user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -290,12 +298,16 @@ CREATE TABLE public.student_school (
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
   school_year_id UUID NOT NULL REFERENCES public.school_years(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   enrollment_date DATE DEFAULT CURRENT_DATE,
   status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(student_id, school_id, school_year_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_student_school_lookup
+  ON public.student_school(student_id, school_year_id, school_id, is_active);
 
 -- 13. TEACHERS
 CREATE TABLE public.teachers (
@@ -322,14 +334,32 @@ CREATE TABLE public.teachers (
 -- 14. TEACHER_CLASSES (teacher-class assignments)
 CREATE TABLE public.teacher_classes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  teacher_id UUID NOT NULL REFERENCES public.teachers(id) ON DELETE CASCADE,
-  class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL,
+  class_id UUID NOT NULL,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   school_year_id UUID REFERENCES public.school_years(id) ON DELETE SET NULL,
   is_primary BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(teacher_id, class_id, school_year_id)
 );
+
+-- IMPORTANT: The app explicitly references these FK names in selects
+-- (see src/hooks/useTeacherClasses.ts: classes!fk_teacher_classes_class_id(...))
+ALTER TABLE public.teacher_classes
+  DROP CONSTRAINT IF EXISTS fk_teacher_classes_teacher_id;
+ALTER TABLE public.teacher_classes
+  DROP CONSTRAINT IF EXISTS teacher_classes_teacher_id_fkey;
+ALTER TABLE public.teacher_classes
+  ADD CONSTRAINT fk_teacher_classes_teacher_id
+  FOREIGN KEY (teacher_id) REFERENCES public.teachers(id) ON DELETE CASCADE;
+
+ALTER TABLE public.teacher_classes
+  DROP CONSTRAINT IF EXISTS fk_teacher_classes_class_id;
+ALTER TABLE public.teacher_classes
+  DROP CONSTRAINT IF EXISTS teacher_classes_class_id_fkey;
+ALTER TABLE public.teacher_classes
+  ADD CONSTRAINT fk_teacher_classes_class_id
+  FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
 
 -- 15. SUBJECTS
 CREATE TABLE public.subjects (
@@ -429,22 +459,85 @@ CREATE TABLE public.classroom_assignments (
 -- 20. ATTENDANCE
 CREATE TABLE public.attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
-  class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL,
+  class_id UUID NOT NULL,
+  teacher_id UUID NOT NULL,
+  subject_id UUID,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-  assignment_id UUID REFERENCES public.assignments(id) ON DELETE SET NULL,
-  date DATE NOT NULL,
+  school_year_id UUID NOT NULL,
+  assignment_id UUID,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
   status TEXT NOT NULL DEFAULT 'present',
-  check_in_time TIMESTAMPTZ,
+  marked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  method TEXT NOT NULL DEFAULT 'manual',
   notes TEXT,
   marked_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
+  is_justified BOOLEAN DEFAULT false,
+  justification_comment TEXT,
+  justification_file_path TEXT,
+  justification_submitted_at TIMESTAMPTZ,
+  justification_status TEXT DEFAULT 'pending',
+  justification_reviewed_at TIMESTAMPTZ,
+  justification_reviewed_by UUID,
+  justification_rejection_reason TEXT,
+
+  -- Backward-compat columns (some older code/exports may still read these)
   justified BOOLEAN DEFAULT false,
   justification_reason TEXT,
   justified_at TIMESTAMPTZ,
   justified_by UUID REFERENCES public.app_users(id) ON DELETE SET NULL,
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure allowed values for status/method are not enforced here (app is evolving)
+
+-- IMPORTANT: PostgREST embedded joins rely on FK names matching types.ts
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_student_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_student_id_fkey
+  FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS fk_attendance_class_id;
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_class_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT fk_attendance_class_id
+  FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_subject_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_subject_id_fkey
+  FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE SET NULL;
+
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_assignment_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_assignment_id_fkey
+  FOREIGN KEY (assignment_id) REFERENCES public.assignments(id) ON DELETE SET NULL;
+
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_school_year_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_school_year_id_fkey
+  FOREIGN KEY (school_year_id) REFERENCES public.school_years(id) ON DELETE SET NULL;
+
+-- Optional (not used by embedded joins but keeps referential integrity)
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_teacher_id_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_teacher_id_fkey
+  FOREIGN KEY (teacher_id) REFERENCES public.teachers(id) ON DELETE CASCADE;
+
+ALTER TABLE public.attendance
+  DROP CONSTRAINT IF EXISTS attendance_justification_reviewed_by_fkey;
+ALTER TABLE public.attendance
+  ADD CONSTRAINT attendance_justification_reviewed_by_fkey
+  FOREIGN KEY (justification_reviewed_by) REFERENCES public.app_users(id) ON DELETE SET NULL;
 
 -- 21. ATTENDANCE_SESSIONS (QR code sessions)
 CREATE TABLE public.attendance_sessions (
