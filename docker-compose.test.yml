@@ -1,0 +1,127 @@
+# Docker Compose for Testing
+# Usage:
+#   Run all tests:     docker compose -f docker-compose.test.yml up --build
+#   Unit tests only:   docker compose -f docker-compose.test.yml up unit-tests --build
+#   E2E tests only:    docker compose -f docker-compose.test.yml up e2e-tests --build
+#   Coverage report:   docker compose -f docker-compose.test.yml up coverage --build
+#   Stop:              docker compose -f docker-compose.test.yml down
+
+name: eduvate-tests
+
+services:
+  # ============================================
+  # PostgreSQL Database for Tests
+  # ============================================
+  test-db:
+    container_name: eduvate-test-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: eduvate_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_test
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/seed-data.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - test-network
+
+  # ============================================
+  # Unit & Integration Tests
+  # ============================================
+  unit-tests:
+    container_name: eduvate-unit-tests
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: unit-tests
+    environment:
+      - NODE_ENV=test
+      - VITE_SUPABASE_URL=http://test-db:5432
+      - VITE_SUPABASE_PUBLISHABLE_KEY=test-key
+    volumes:
+      - ./coverage:/app/coverage
+    depends_on:
+      test-db:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  # ============================================
+  # E2E Tests with Playwright
+  # ============================================
+  e2e-tests:
+    container_name: eduvate-e2e-tests
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: e2e-tests
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - VITE_SUPABASE_URL=http://test-db:5432
+      - VITE_SUPABASE_PUBLISHABLE_KEY=test-key
+      - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+    depends_on:
+      test-db:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  # ============================================
+  # Coverage Report Generation
+  # ============================================
+  coverage:
+    container_name: eduvate-coverage
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: coverage
+    environment:
+      - NODE_ENV=test
+      - VITE_SUPABASE_URL=http://test-db:5432
+      - VITE_SUPABASE_PUBLISHABLE_KEY=test-key
+    volumes:
+      - ./coverage:/app/coverage
+    depends_on:
+      test-db:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  # ============================================
+  # All Tests (Full Suite)
+  # ============================================
+  all-tests:
+    container_name: eduvate-all-tests
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: all-tests
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - VITE_SUPABASE_URL=http://test-db:5432
+      - VITE_SUPABASE_PUBLISHABLE_KEY=test-key
+      - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    volumes:
+      - ./coverage:/app/coverage
+      - ./playwright-report:/app/playwright-report
+    depends_on:
+      test-db:
+        condition: service_healthy
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
