@@ -35,58 +35,78 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA public;
 -- ENUM TYPES
 -- ============================================================
 
-CREATE TYPE public.app_role AS ENUM (
-  'global_admin',
-  'school_admin', 
-  'school_staff',
-  'teacher',
-  'student',
-  'parent',
-  'admission',
-  'accountant',
-  'secretary'
-);
+DO $$ BEGIN
+  CREATE TYPE public.app_role AS ENUM (
+    'global_admin',
+    'school_admin', 
+    'school_staff',
+    'teacher',
+    'student',
+    'parent',
+    'admission',
+    'accountant',
+    'secretary'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE public.subscription_plan_type AS ENUM (
-  'starter',
-  'basic',
-  'standard',
-  'premium',
-  'enterprise'
-);
+DO $$ BEGIN
+  CREATE TYPE public.subscription_plan_type AS ENUM (
+    'starter',
+    'basic',
+    'standard',
+    'premium',
+    'enterprise'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE public.subscription_status_type AS ENUM (
-  'trial',
-  'active',
-  'expired',
-  'cancelled',
-  'suspended'
-);
+DO $$ BEGIN
+  CREATE TYPE public.subscription_status_type AS ENUM (
+    'trial',
+    'active',
+    'expired',
+    'cancelled',
+    'suspended'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE public.subscription_duration_type AS ENUM (
-  -- Must match frontend values used in SubscriptionForm/EditSubscriptionDialog
-  -- (src/components/admin/SubscriptionForm.tsx)
-  '1_month',
-  '3_months',
-  '6_months',
-  '1_year',
-  '2_years'
-);
+DO $$ BEGIN
+  CREATE TYPE public.subscription_duration_type AS ENUM (
+    -- Must match frontend values used in SubscriptionForm/EditSubscriptionDialog
+    -- (src/components/admin/SubscriptionForm.tsx)
+    '1_month',
+    '3_months',
+    '6_months',
+    '1_year',
+    '2_years'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE public.payment_method_type AS ENUM (
-  'bank_transfer',
-  'cash',
-  'check',
-  'card',
-  'other'
-);
+DO $$ BEGIN
+  CREATE TYPE public.payment_method_type AS ENUM (
+    'bank_transfer',
+    'cash',
+    'check',
+    'card',
+    'other'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================================
 -- TABLES (56 tables)
 -- ============================================================
 
 -- 1. SCHOOLS (core entity)
-CREATE TABLE public.schools (
+CREATE TABLE IF NOT EXISTS public.schools (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   identifier TEXT NOT NULL UNIQUE,
@@ -105,7 +125,7 @@ CREATE TABLE public.schools (
 );
 
 -- 2. APP_USERS (custom auth - NOT Supabase Auth)
-CREATE TABLE public.app_users (
+CREATE TABLE IF NOT EXISTS public.app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT,
@@ -136,7 +156,7 @@ ALTER TABLE public.schools
   FOREIGN KEY (owner_id) REFERENCES public.app_users(id) ON DELETE SET NULL;
 
 -- 3. APP_USER_ROLES (role assignments)
-CREATE TABLE public.app_user_roles (
+CREATE TABLE IF NOT EXISTS public.app_user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.app_users(id) ON DELETE CASCADE,
   role public.app_role NOT NULL,
