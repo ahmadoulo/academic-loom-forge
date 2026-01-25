@@ -104,16 +104,24 @@ export function SchoolDetailsDialog({ schoolId, open, onOpenChange }: SchoolDeta
     }
     
     try {
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: owner.id, requestedBy: 'admin', newPassword }
+        body: { sessionToken, userId: owner.id, newPassword }
       });
       
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       toast.success('Mot de passe modifié avec succès');
       setNewPassword("");
       setShowPasswordDialog(false);
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors du changement de mot de passe');
     }
   };

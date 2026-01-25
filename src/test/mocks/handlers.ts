@@ -138,6 +138,44 @@ export const handlers = [
     });
   }),
 
+  // reset-user-password Edge Function
+  http.post(`${SUPABASE_URL}/functions/v1/reset-user-password`, async ({ request }) => {
+    const body = await request.json() as { sessionToken?: string; userId: string; newPassword?: string };
+    const { sessionToken, userId, newPassword } = body;
+
+    // Validate session token is required
+    if (!sessionToken) {
+      return HttpResponse.json(
+        { error: "Session token requis" },
+        { status: 401 }
+      );
+    }
+
+    // Validate session token
+    if (!sessionToken.startsWith("mock-session-token-")) {
+      return HttpResponse.json(
+        { error: "Session invalide" },
+        { status: 401 }
+      );
+    }
+
+    if (!userId) {
+      return HttpResponse.json(
+        { error: "ID utilisateur requis" },
+        { status: 400 }
+      );
+    }
+
+    // Generate or use provided password
+    const password = newPassword || "NewP@ssw0rd123!";
+
+    return HttpResponse.json({
+      success: true,
+      newPassword: password,
+      message: "Mot de passe réinitialisé avec succès",
+    });
+  }),
+
   // Mock Supabase REST API - grades
   http.get(`${SUPABASE_URL}/rest/v1/grades*`, () => {
     return HttpResponse.json([

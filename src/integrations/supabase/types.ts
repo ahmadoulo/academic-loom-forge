@@ -3444,7 +3444,6 @@ export type Database = {
           school_id: string | null
           student_id: string | null
           teacher_id: string | null
-          updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -3458,7 +3457,6 @@ export type Database = {
           school_id?: string | null
           student_id?: string | null
           teacher_id?: string | null
-          updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -3472,7 +3470,6 @@ export type Database = {
           school_id?: string | null
           student_id?: string | null
           teacher_id?: string | null
-          updated_at?: string | null
         }
         Relationships: [
           {

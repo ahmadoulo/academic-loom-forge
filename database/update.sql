@@ -1668,7 +1668,14 @@ GRANT SELECT ON public.app_users_public TO anon, authenticated, service_role;
 -- APPLY STRICT RLS POLICIES
 -- ============================================================
 
--- APP_USERS (protect password hashes)
+-- APP_USERS (protect password hashes - drop all permissive policies first)
+DROP POLICY IF EXISTS "Anon access for edge functions" ON public.app_users;
+DROP POLICY IF EXISTS "Allow all" ON public.app_users;
+DROP POLICY IF EXISTS "Allow all access" ON public.app_users;
+DROP POLICY IF EXISTS "Public read access" ON public.app_users;
+DROP POLICY IF EXISTS "app_users_select_own" ON public.app_users;
+DROP POLICY IF EXISTS "app_users_update_own" ON public.app_users;
+
 DROP POLICY IF EXISTS "service_role_full_access" ON public.app_users;
 CREATE POLICY "service_role_full_access" ON public.app_users FOR ALL TO service_role USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "anon_no_direct_access" ON public.app_users;
@@ -1773,6 +1780,54 @@ DROP POLICY IF EXISTS "students_view_own_fees" ON public.school_fees;
 CREATE POLICY "students_view_own_fees" ON public.school_fees FOR SELECT TO anon, authenticated
   USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = school_fees.student_id AND u.is_active = true));
 
+-- SCHOOL_ADMISSION (SECURE: public insert, admin-only read - no data harvesting)
+DROP POLICY IF EXISTS "service_role_school_admission" ON public.school_admission;
+CREATE POLICY "service_role_school_admission" ON public.school_admission FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Drop old permissive policies
+DROP POLICY IF EXISTS "school_members_view_admissions" ON public.school_admission;
+DROP POLICY IF EXISTS "public_insert_admissions" ON public.school_admission;
+DROP POLICY IF EXISTS "admins_manage_admissions" ON public.school_admission;
+DROP POLICY IF EXISTS "Allow all" ON public.school_admission;
+DROP POLICY IF EXISTS "Allow all access" ON public.school_admission;
+DROP POLICY IF EXISTS "Public read access" ON public.school_admission;
+
+-- Allow public INSERT for admission form submissions
+DROP POLICY IF EXISTS "public_can_submit_admission" ON public.school_admission;
+CREATE POLICY "public_can_submit_admission" ON public.school_admission
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+-- Only school admins and global admins can SELECT (no anon read!)
+DROP POLICY IF EXISTS "admins_can_read_admissions" ON public.school_admission;
+CREATE POLICY "admins_can_read_admissions" ON public.school_admission
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
+
+-- Only admins can UPDATE
+DROP POLICY IF EXISTS "admins_can_update_admissions" ON public.school_admission;
+CREATE POLICY "admins_can_update_admissions" ON public.school_admission
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
+
+-- Only admins can DELETE
+DROP POLICY IF EXISTS "admins_can_delete_admissions" ON public.school_admission;
+CREATE POLICY "admins_can_delete_admissions" ON public.school_admission
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
+
 -- ============================================================
 -- School-isolated tables: Apply standard pattern
 -- ============================================================
@@ -1786,7 +1841,7 @@ DECLARE
     'classrooms', 'assignments', 'classroom_assignments', 'attendance_sessions', 'attendance',
     'events', 'event_attendance_sessions', 'event_attendance', 'announcements', 'school_notifications',
     'absence_notifications_log', 'document_templates', 'document_requests', 'document_request_tracking',
-    'administrative_document_types', 'student_administrative_documents', 'school_admission',
+    'administrative_document_types', 'student_administrative_documents',
     'bulletin_settings', 'school_textbooks', 'school_textbook_entries', 'school_textbook_notes',
     'exam_documents', 'exam_questions', 'exam_question_choices', 'online_exams', 'online_exam_questions',
     'student_exam_attempts', 'student_exam_responses', 'school_roles', 'school_role_permissions',

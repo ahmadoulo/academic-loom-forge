@@ -56,8 +56,15 @@ export const useSchoolOwners = () => {
     try {
       setLoading(true);
       
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: ownerId, newPassword }
+        body: { sessionToken, userId: ownerId, newPassword }
       });
 
       if (error) throw error;
