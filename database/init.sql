@@ -1616,17 +1616,27 @@ GRANT EXECUTE ON FUNCTION public.user_in_school(UUID, UUID) TO anon, authenticat
 -- ============================================================
 -- SECURE PUBLIC VIEW FOR APP_USERS
 -- ============================================================
+-- This view hides sensitive PII (email, phone, password_hash, tokens)
+-- Only authenticated users can access it
 
--- Create secure view that hides sensitive columns
+-- Create secure view with minimal non-sensitive data
 CREATE VIEW public.app_users_public
 WITH (security_invoker = on)
 AS SELECT 
-  id, email, first_name, last_name, phone, avatar_url,
-  school_id, teacher_id, student_id, is_active,
-  created_at, updated_at
+  id, 
+  first_name, 
+  last_name, 
+  avatar_url,
+  school_id, 
+  teacher_id, 
+  student_id, 
+  is_active,
+  created_at
 FROM public.app_users;
 
-GRANT SELECT ON public.app_users_public TO anon, authenticated, service_role;
+-- IMPORTANT: No anon access to prevent PII exposure
+REVOKE ALL ON public.app_users_public FROM anon, authenticated;
+GRANT SELECT ON public.app_users_public TO authenticated, service_role;
 
 -- ============================================================
 -- CRITICAL TABLE POLICIES

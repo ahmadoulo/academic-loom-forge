@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
-import bcrypt from 'bcryptjs';
 
 export default function SetPassword() {
   const navigate = useNavigate();
@@ -33,34 +32,31 @@ export default function SetPassword() {
 
     try {
       const cleanToken = token.trim();
+      console.log('🔍 Validating token via edge function...');
 
-      // Token stored on app_users for both invitation + password reset
-      const { data: account, error } = await supabase
-        .from('app_users')
-        .select('id, invitation_expires_at, password_hash')
-        .eq('invitation_token', cleanToken)
-        .maybeSingle();
+      // Use edge function to validate token (bypasses RLS restrictions)
+      const { data, error } = await supabase.functions.invoke('validate-invitation-token', {
+        body: { token: cleanToken }
+      });
 
-      if (error || !account) {
-        toast.error("Lien invalide ou expiré");
+      console.log('📥 Token validation response:', { data, error });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        toast.error("Erreur de validation du lien");
         navigate('/auth');
         return;
       }
 
-      if (!account.invitation_expires_at) {
-        toast.error("Lien invalide ou expiré");
+      if (!data?.valid) {
+        console.log('❌ Token invalid:', data?.error);
+        toast.error(data?.error || "Lien invalide ou expiré");
         navigate('/auth');
         return;
       }
 
-      const expiresAt = new Date(account.invitation_expires_at);
-      if (new Date() > expiresAt) {
-        toast.error("Lien expiré. Demandez un nouveau lien.");
-        navigate('/auth');
-        return;
-      }
-
-      setMode(account.password_hash ? 'reset' : 'activation');
+      console.log('✅ Token is valid, mode:', data.mode);
+      setMode(data.mode === 'reset' ? 'reset' : 'activation');
       setValidating(false);
     } catch (err) {
       console.error('Token validation error:', err);
