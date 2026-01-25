@@ -1174,21 +1174,21 @@ CREATE TABLE public.notification_preferences (
 -- ============================================================
 
 -- app_users_public view (used for embedded joins from various tables)
--- This view exposes non-sensitive user information for PostgREST joins
-CREATE OR REPLACE VIEW public.app_users_public AS
+-- SECURITY: must NOT expose password hashes, tokens, or PII (email/phone)
+DROP VIEW IF EXISTS public.app_users_public CASCADE;
+CREATE VIEW public.app_users_public
+WITH (security_invoker = on)
+AS
 SELECT
   id,
-  email,
   first_name,
   last_name,
-  phone,
   avatar_url,
   school_id,
+  is_active,
   teacher_id,
   student_id,
-  is_active,
-  created_at,
-  updated_at
+  created_at
 FROM public.app_users;
 
 -- ============================================================
@@ -1639,20 +1639,7 @@ GRANT EXECUTE ON FUNCTION public.user_in_school(UUID, UUID) TO anon, authenticat
 -- This view hides sensitive PII (email, phone, password_hash, tokens)
 -- Only authenticated users can access it
 
--- Create secure view with minimal non-sensitive data
-CREATE VIEW public.app_users_public
-WITH (security_invoker = on)
-AS SELECT 
-  id, 
-  first_name, 
-  last_name, 
-  avatar_url,
-  school_id, 
-  teacher_id, 
-  student_id, 
-  is_active,
-  created_at
-FROM public.app_users;
+-- View is created in the VIEWS section above.
 
 -- IMPORTANT: No anon access to prevent PII exposure
 REVOKE ALL ON public.app_users_public FROM anon, authenticated;

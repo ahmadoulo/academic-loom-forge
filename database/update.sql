@@ -1138,21 +1138,8 @@ CREATE TABLE IF NOT EXISTS public.notification_preferences (
 -- VIEWS
 -- ============================================================
 
-CREATE OR REPLACE VIEW public.app_users_public AS
-SELECT
-  id,
-  email,
-  first_name,
-  last_name,
-  phone,
-  avatar_url,
-  school_id,
-  teacher_id,
-  student_id,
-  is_active,
-  created_at,
-  updated_at
-FROM public.app_users;
+-- NOTE: app_users_public is (re)created later in this file as a secure, non-PII view.
+-- Keeping only one definition avoids Postgres errors when OR REPLACE would imply renaming columns.
 
 -- ============================================================
 -- INDEXES
