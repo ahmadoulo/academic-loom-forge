@@ -70,7 +70,7 @@ export const useSubscriptions = () => {
 
   const calculateEndDate = (startDate: string, duration: string): string => {
     const start = new Date(startDate);
-    let end = new Date(start);
+    const end = new Date(start);
 
     switch (duration) {
       case '1_month':

@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -12,9 +12,8 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 
 COPY package*.json ./
-COPY bun.lockb ./
 
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 COPY . .
 

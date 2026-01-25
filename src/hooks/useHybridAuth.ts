@@ -119,8 +119,6 @@ export const useHybridAuth = () => {
       }
       
       throw new Error('Identifiants incorrects');
-    } catch (error) {
-      throw error;
     } finally {
       setLoading(false);
     }

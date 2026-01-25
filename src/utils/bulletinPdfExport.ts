@@ -349,7 +349,7 @@ export const generateLMDBulletinInDoc = async (
       }
     });
     
-    let tableEndY = (doc as any).lastAutoTable.finalY;
+    const tableEndY = (doc as any).lastAutoTable.finalY;
     
     // Ligne de moyenne semestrielle avec crédits
     const avgRowY = tableEndY;
