@@ -2,6 +2,10 @@ import "@testing-library/jest-dom";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { server } from "./mocks/server";
 
+// Mock Supabase environment variables for tests
+vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co');
+vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxOTAwMDAwMDAwfQ.test');
+
 // Setup MSW server for API mocking
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
