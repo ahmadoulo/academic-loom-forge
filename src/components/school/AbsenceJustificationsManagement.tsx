@@ -62,7 +62,8 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
     try {
       setLoading(true);
       
-      // Include classes relation directly in the query
+      // Query attendance with student and class info
+      // Note: students table doesn't have class_id - the class info is stored directly on attendance
       let query = supabase
         .from("attendance")
         .select(`
@@ -74,9 +75,9 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
           justification_comment,
           justification_file_path,
           justification_submitted_at,
-          students!inner(id, firstname, lastname, class_id),
-          subjects(id, name),
           class_id,
+          students!inner(id, firstname, lastname),
+          subjects(id, name),
           classes:class_id(id, name)
         `)
         .not("justification_submitted_at", "is", null)
