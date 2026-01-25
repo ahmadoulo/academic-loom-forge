@@ -2112,21 +2112,42 @@ CREATE POLICY "admins_manage_student_docs" ON public.student_administrative_docu
   USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = student_administrative_documents.school_id OR r.role = 'global_admin')))
   WITH CHECK (true);
 
--- SCHOOL_ADMISSION (public insert for admission forms)
+-- SCHOOL_ADMISSION (SECURE: public insert, admin-only read)
+-- Service role full access
 CREATE POLICY "service_role_school_admission" ON public.school_admission
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "school_members_view_admissions" ON public.school_admission
-  FOR SELECT TO anon, authenticated
-  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_admission.school_id OR r.role = 'global_admin'));
-
-CREATE POLICY "public_insert_admissions" ON public.school_admission
+-- Allow public INSERT for admission form submissions
+CREATE POLICY "public_can_submit_admission" ON public.school_admission
   FOR INSERT TO anon, authenticated WITH CHECK (true);
 
-CREATE POLICY "admins_manage_admissions" ON public.school_admission
-  FOR ALL TO anon, authenticated
-  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'admission') AND (r.school_id = school_admission.school_id OR r.role = 'global_admin')))
-  WITH CHECK (true);
+-- Only school admins and global admins can SELECT (no anon read!)
+CREATE POLICY "admins_can_read_admissions" ON public.school_admission
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
+
+-- Only admins can UPDATE
+CREATE POLICY "admins_can_update_admissions" ON public.school_admission
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
+
+-- Only admins can DELETE
+CREATE POLICY "admins_can_delete_admissions" ON public.school_admission
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin')
+    OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('school_admin', 'admission') AND r.school_id = school_admission.school_id)
+  );
 
 -- BULLETIN_SETTINGS
 CREATE POLICY "service_role_bulletin_settings" ON public.bulletin_settings

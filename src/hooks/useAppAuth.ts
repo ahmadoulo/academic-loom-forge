@@ -193,10 +193,17 @@ export function useAppAuth() {
   }, []);
 
   // Reset password (for admins)
-  const resetPassword = useCallback(async (userId: string, requestedBy: string) => {
+  const resetPassword = useCallback(async (userId: string, _requestedBy: string) => {
     try {
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return null;
+      }
+      
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId, requestedBy }
+        body: { sessionToken, userId }
       });
 
       if (error) {

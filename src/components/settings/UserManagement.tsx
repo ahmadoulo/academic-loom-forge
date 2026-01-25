@@ -205,8 +205,18 @@ export function UserManagement() {
     
     try {
       setIsResettingPassword(true);
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error("Session expirée, veuillez vous reconnecter");
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke("reset-user-password", {
-        body: { userId: resetPasswordUser.id, requestedBy: user?.id || "admin" },
+        body: { 
+          sessionToken,
+          userId: resetPasswordUser.id 
+        },
       });
 
       if (error) throw error;
