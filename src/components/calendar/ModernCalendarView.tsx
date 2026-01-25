@@ -232,14 +232,30 @@ export function ModernCalendarView({
     ghost.style.top = `${y}px`;
     ghost.style.minWidth = '120px';
     ghost.style.maxWidth = '200px';
-    ghost.innerHTML = `
-      <div class="flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-        </svg>
-        <span class="font-medium text-sm truncate">${event.title}</span>
-      </div>
-    `;
+    // Create content safely using DOM methods to prevent XSS
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'flex items-center gap-2';
+    
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'w-4 h-4');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('d', 'M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4');
+    svg.appendChild(path);
+    contentDiv.appendChild(svg);
+    
+    const span = document.createElement('span');
+    span.className = 'font-medium text-sm truncate';
+    span.textContent = event.title; // Use textContent instead of innerHTML for XSS prevention
+    contentDiv.appendChild(span);
+    
+    ghost.appendChild(contentDiv);
     document.body.appendChild(ghost);
     dragGhostRef.current = ghost;
   }, []);

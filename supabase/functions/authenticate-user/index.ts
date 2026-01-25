@@ -1,4 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { 
+  validateEmail, 
+  verifyPasswordSecure, 
+  hashPasswordSecure,
+  checkRateLimit 
+} from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,39 +21,11 @@ interface UserRole {
   school_id: string | null;
 }
 
-// Hash password using SHA-256 (Web Crypto API - Deno compatible)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Verify password against stored hash
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  // First try SHA-256 hash comparison
-  const passwordHash = await hashPassword(password);
-  if (passwordHash === storedHash) {
-    return true;
-  }
-  
-  // Fallback: check if stored hash is bcrypt format (starts with $2)
-  if (storedHash.startsWith('$2')) {
-    console.log('Detected bcrypt hash, needs migration');
-    return false;
-  }
-  
-  // For development/testing: allow plain text comparison
-  if (storedHash === password) {
-    return true;
-  }
-  
-  return false;
-}
+// Rate limit: 5 attempts per 15 minutes per email
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -55,17 +33,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const { email, password }: AuthRequest = await req.json();
 
-    if (!email || !password) {
-      console.error('Missing email or password');
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
       return new Response(
-        JSON.stringify({ error: 'Email et mot de passe requis' }),
+        JSON.stringify({ error: emailValidation.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Authentication attempt for: ${email}`);
+    if (!password) {
+      return new Response(
+        JSON.stringify({ error: 'Mot de passe requis' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Create Supabase client with service role
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(`login:${normalizedEmail}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
+    if (!rateLimit.allowed) {
+      const waitMinutes = Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 60000);
+      return new Response(
+        JSON.stringify({ 
+          error: `Trop de tentatives. Réessayez dans ${waitMinutes} minute(s).` 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authentication attempt for: ${normalizedEmail}`);
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -73,55 +72,51 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Fetch user by email
     const { data: user, error: userError } = await supabase
       .from('app_users')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
+      .select('id, email, password_hash, first_name, last_name, phone, avatar_url, school_id, teacher_id, student_id, is_active')
+      .eq('email', normalizedEmail)
       .single();
 
     if (userError || !user) {
-      console.error('User not found:', email);
+      console.error('User not found:', normalizedEmail);
       return new Response(
         JSON.stringify({ error: 'Email ou mot de passe incorrect' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if user is active
     if (!user.is_active) {
-      console.error('User account is inactive:', email);
       return new Response(
         JSON.stringify({ error: 'Compte inactif. Veuillez contacter l\'administrateur.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if password hash exists
     if (!user.password_hash) {
-      console.error('No password set for user:', email);
       return new Response(
         JSON.stringify({ error: 'Compte en attente d\'activation. Vérifiez votre email.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password_hash);
+    // Verify password with bcrypt (with SHA-256 fallback for migration)
+    const passwordResult = await verifyPasswordSecure(password, user.password_hash);
 
-    if (!isValidPassword) {
-      console.error('Invalid password for user:', email);
+    if (!passwordResult.valid) {
+      console.error('Invalid password for user:', normalizedEmail);
       return new Response(
         JSON.stringify({ error: 'Email ou mot de passe incorrect' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // If password was validated but hash is old format, update it
-    if (!user.password_hash.startsWith('$2') && user.password_hash !== await hashPassword(password)) {
-      const newHash = await hashPassword(password);
+    // Migrate password hash if using old SHA-256
+    if (passwordResult.needsMigration) {
+      console.log('Migrating password hash to bcrypt for:', normalizedEmail);
+      const newHash = await hashPasswordSecure(password);
       await supabase
         .from('app_users')
         .update({ password_hash: newHash })
         .eq('id', user.id);
-      console.log('Password hash migrated to SHA-256');
     }
 
     // Generate session token
@@ -147,21 +142,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // Fetch user roles
-    const { data: roles, error: rolesError } = await supabase
+    const { data: roles } = await supabase
       .from('app_user_roles')
       .select('role, school_id')
       .eq('user_id', user.id);
 
-    if (rolesError) {
-      console.error('Failed to fetch roles:', rolesError);
-    }
-
-    // Determine primary role for redirection
+    // Determine primary role
     const userRoles: UserRole[] = roles || [];
     let primaryRole = 'student';
     let primarySchoolId = user.school_id;
 
-    // Priority: global_admin > admin > school_admin > school_staff > teacher > student
     const rolePriority = ['global_admin', 'admin', 'school_admin', 'school_staff', 'teacher', 'student'];
     for (const role of rolePriority) {
       const foundRole = userRoles.find(r => r.role === role);
@@ -174,7 +164,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Fetch school identifier if there's a school_id
+    // Fetch school identifier
     let primarySchoolIdentifier: string | null = null;
     if (primarySchoolId) {
       const { data: school } = await supabase
@@ -188,9 +178,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`User ${email} authenticated successfully with role: ${primaryRole}, school identifier: ${primarySchoolIdentifier}`);
+    console.log(`User ${normalizedEmail} authenticated successfully with role: ${primaryRole}`);
 
-    // Return user data (without sensitive fields)
     return new Response(
       JSON.stringify({
         user: {

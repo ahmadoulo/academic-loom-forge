@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { validatePassword, hashPasswordSecure, checkRateLimit } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,17 +11,11 @@ interface SetPasswordRequest {
   password: string;
 }
 
-// Hash password using SHA-256 (Deno compatible)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// Rate limit: 5 attempts per hour per token
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,24 +23,33 @@ Deno.serve(async (req) => {
   try {
     const { token, password }: SetPasswordRequest = await req.json();
 
-    if (!token || !password) {
+    if (!token) {
       return new Response(
-        JSON.stringify({ error: 'Token et mot de passe requis' }),
+        JSON.stringify({ error: 'Token requis' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate password strength
-    if (password.length < 8) {
+    // Rate limiting
+    const rateLimit = checkRateLimit(`set-password:${token}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!rateLimit.allowed) {
       return new Response(
-        JSON.stringify({ error: 'Le mot de passe doit contenir au moins 8 caractères' }),
+        JSON.stringify({ error: 'Trop de tentatives. Réessayez plus tard.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate password complexity
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: passwordValidation.errors.join('. ') }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('Setting password with invitation token');
 
-    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -61,22 +65,22 @@ Deno.serve(async (req) => {
       console.error('Invalid token', userError);
       return new Response(
         JSON.stringify({ error: "Token invalide ou expiré" }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Check if token is expired
-    if (new Date(user.invitation_expires_at) < new Date()) {
+    if (user.invitation_expires_at && new Date(user.invitation_expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ error: "Token invalide ou expiré" }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Hash password (SHA-256)
-    const passwordHash = await hashPassword(password);
+    // Hash password with bcrypt
+    const passwordHash = await hashPasswordSecure(password);
 
-    // Update user: works for BOTH activation (inactive account) and reset (active account)
+    // Update user
     const { error: updateError } = await supabase
       .from('app_users')
       .update({
@@ -94,7 +98,7 @@ Deno.serve(async (req) => {
       console.error('Failed to set password:', updateError);
       return new Response(
         JSON.stringify({ error: 'Erreur lors de la définition du mot de passe' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
