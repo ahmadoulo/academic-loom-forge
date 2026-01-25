@@ -1,13 +1,17 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import {
+  corsHeaders,
+  handleCors,
+  validateSession,
+  isGlobalAdmin,
+  isSchoolAdmin,
+  errorResponse,
+} from "../_shared/auth.ts";
 
 interface ResetPasswordRequest {
+  sessionToken: string; // Required for authentication
   userId: string;
-  requestedBy: string; // ID of the admin requesting the reset
+  newPassword?: string; // If not provided, generate random password
 }
 
 // Hash password using SHA-256 (Deno compatible)
@@ -19,134 +23,100 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function generatePassword(length: number = 12): string {
+// Generate a random password
+function generateRandomPassword(length: number = 12): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  let password = '';
+  let result = '';
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
   for (let i = 0; i < length; i++) {
-    password += chars[array[i] % chars.length];
+    result += chars[array[i] % chars.length];
   }
-  return password;
+  return result;
 }
 
-Deno.serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    const { userId, requestedBy }: ResetPasswordRequest = await req.json();
+    const body: ResetPasswordRequest = await req.json();
+    const { sessionToken, userId, newPassword } = body;
 
-    if (!userId || !requestedBy) {
-      return new Response(
-        JSON.stringify({ error: 'userId et requestedBy sont requis' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ============================================================
+    // SECURITY: Validate session - only admins can reset passwords
+    // ============================================================
+    const session = await validateSession(sessionToken, {
+      requiredRoles: ['global_admin', 'school_admin'],
+    });
+
+    if (!session.valid) {
+      console.error('Session validation failed:', session.error);
+      return errorResponse(session.error || 'Non autorisé', session.status || 401);
     }
 
-    console.log(`Password reset requested for user: ${userId} by: ${requestedBy}`);
+    if (!userId) {
+      return errorResponse('ID utilisateur requis', 400);
+    }
 
-    // Create Supabase client with service role
+    console.log(`Admin ${session.userId} resetting password for user ${userId}`);
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify the requesting user has permission
-    const { data: requester } = await supabase
-      .from('app_users')
-      .select('id, school_id')
-      .eq('id', requestedBy)
-      .single();
-
-    if (!requester) {
-      return new Response(
-        JSON.stringify({ error: 'Utilisateur non autorisé' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch requester's roles
-    const { data: requesterRoles } = await supabase
-      .from('app_user_roles')
-      .select('role, school_id')
-      .eq('user_id', requestedBy);
-
-    const isGlobalAdmin = requesterRoles?.some(r => r.role === 'global_admin' || r.role === 'admin');
-    const isSchoolAdmin = requesterRoles?.some(r => r.role === 'school_admin');
-
-    if (!isGlobalAdmin && !isSchoolAdmin) {
-      return new Response(
-        JSON.stringify({ error: 'Permissions insuffisantes' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch target user
-    const { data: targetUser, error: targetError } = await supabase
+    // Get target user to check permissions
+    const { data: targetUser, error: userError } = await supabase
       .from('app_users')
       .select('id, email, school_id')
       .eq('id', userId)
       .single();
 
-    if (targetError || !targetUser) {
-      return new Response(
-        JSON.stringify({ error: 'Utilisateur non trouvé' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (userError || !targetUser) {
+      return errorResponse('Utilisateur non trouvé', 404);
     }
 
-    // School admins can only reset passwords for users in their school
-    if (isSchoolAdmin && !isGlobalAdmin) {
-      const adminSchoolId = requesterRoles?.find(r => r.role === 'school_admin')?.school_id;
-      if (targetUser.school_id !== adminSchoolId) {
-        return new Response(
-          JSON.stringify({ error: 'Vous ne pouvez réinitialiser que les mots de passe de votre école' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    // Check if admin has permission to reset this user's password
+    if (!isGlobalAdmin(session.roles || [])) {
+      if (targetUser.school_id && !isSchoolAdmin(session.roles || [], targetUser.school_id)) {
+        return errorResponse('Vous ne pouvez réinitialiser que les mots de passe des utilisateurs de vos écoles', 403);
       }
     }
 
-    // Generate new password
-    const newPassword = generatePassword();
-    const passwordHash = await hashPassword(newPassword);
+    // Generate or use provided password
+    const password = newPassword || generateRandomPassword();
+    const passwordHash = await hashPassword(password);
 
-    // Update user password and invalidate sessions
+    // Update password and invalidate current session
     const { error: updateError } = await supabase
       .from('app_users')
       .update({
         password_hash: passwordHash,
         session_token: null,
         session_expires_at: null,
-        is_active: true // Ensure account is active after reset
+        is_active: true, // Ensure account is active after reset
       })
       .eq('id', userId);
 
     if (updateError) {
-      console.error('Failed to update password:', updateError);
-      return new Response(
-        JSON.stringify({ error: 'Erreur lors de la réinitialisation' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('Failed to reset password:', updateError);
+      return errorResponse('Erreur lors de la réinitialisation du mot de passe', 500);
     }
 
-    console.log(`Password reset successful for user: ${targetUser.email}`);
+    console.log(`Password reset successfully for user ${targetUser.email} by admin ${session.email}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        newPassword, // Return password to be copied to clipboard
-        message: 'Mot de passe réinitialisé avec succès'
+        newPassword: password, // Return password to be copied to clipboard
+        message: 'Mot de passe réinitialisé avec succès',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Reset password error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Erreur serveur' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return errorResponse('Erreur serveur', 500);
   }
 });

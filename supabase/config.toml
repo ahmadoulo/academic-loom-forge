@@ -1,24 +1,31 @@
 project_id = "nqsvluszgpqnoqybzpvk"
 
-[functions.auto-send-absence-notifications]
-verify_jwt = false
+# ============================================================
+# EDGE FUNCTIONS CONFIGURATION
+# ============================================================
+# 
+# SECURITY ARCHITECTURE:
+# - All edge functions use verify_jwt = false because we use custom
+#   session-based authentication (app_users.session_token)
+# - JWT verification is disabled because we don't use Supabase Auth
+# - Session validation is done INSIDE each function using our shared auth module
+# - Functions are categorized by their security requirements below
+#
+# PUBLIC FUNCTIONS (no session required):
+# - authenticate-user: Login endpoint
+# - request-password-reset: Password reset request
+# - setup-password: Account activation
+# - verify-student-account / verify-teacher-account: Account verification
+#
+# PROTECTED FUNCTIONS (session token required):
+# - All other functions validate sessionToken in request body
+# ============================================================
 
-[functions.auto-transition-semesters]
-verify_jwt = false
-
+# --- PUBLIC FUNCTIONS (Authentication entry points) ---
 [functions.authenticate-user]
 verify_jwt = false
 
-[functions.validate-session]
-verify_jwt = false
-
-[functions.create-user-account]
-verify_jwt = false
-
-[functions.reset-user-password]
-verify_jwt = false
-
-[functions.set-user-password]
+[functions.request-password-reset]
 verify_jwt = false
 
 [functions.setup-password]
@@ -27,32 +34,79 @@ verify_jwt = false
 [functions.verify-student-account]
 verify_jwt = false
 
-[functions.send-student-invitation]
-verify_jwt = false
-
 [functions.verify-teacher-account]
 verify_jwt = false
 
-[functions.send-teacher-invitation]
-verify_jwt = false
+# --- PROTECTED FUNCTIONS (Require valid session token) ---
 
-[functions.request-password-reset]
+# User Management (requires admin roles)
+[functions.create-user-account]
 verify_jwt = false
 
 [functions.list-app-users]
 verify_jwt = false
 
-[functions.get-user-permissions]
+[functions.reset-user-password]
 verify_jwt = false
 
-[functions.send-absence-notification]
-verify_jwt = false
-
-[functions.send-notification]
+[functions.set-user-password]
 verify_jwt = false
 
 [functions.change-password]
 verify_jwt = false
 
+[functions.get-user-permissions]
+verify_jwt = false
+
+# Invitation Functions (requires admin roles)
+[functions.send-student-invitation]
+verify_jwt = false
+
+[functions.send-teacher-invitation]
+verify_jwt = false
+
+# Session Validation
+[functions.validate-session]
+verify_jwt = false
+
+# Notifications (requires school membership)
+[functions.send-notification]
+verify_jwt = false
+
 [functions.send-smtp-notification]
+verify_jwt = false
+
+[functions.send-absence-notification]
+verify_jwt = false
+
+# Automated Functions (called by cron/system)
+[functions.auto-send-absence-notifications]
+verify_jwt = false
+
+[functions.auto-transition-semesters]
+verify_jwt = false
+
+# Event Attendance (requires school membership)
+[functions.create-event-attendance-session]
+verify_jwt = false
+
+[functions.get-event-attendance-sessions]
+verify_jwt = false
+
+[functions.get-event-attendance]
+verify_jwt = false
+
+[functions.mark-event-attendance]
+verify_jwt = false
+
+[functions.get-event-attendance-scan-context]
+verify_jwt = false
+
+[functions.deactivate-event-attendance-session]
+verify_jwt = false
+
+[functions.delete-event-attendance]
+verify_jwt = false
+
+[functions.find-student-by-email]
 verify_jwt = false
