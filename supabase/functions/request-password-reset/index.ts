@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.10";
+import { validateEmail, checkRateLimit } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,8 +12,11 @@ interface RequestBody {
   appUrl?: string;
 }
 
+// Rate limit: 3 requests per hour per email
+const MAX_REQUESTS = 3;
+const WINDOW_MS = 60 * 60 * 1000;
+
 Deno.serve(async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,17 +24,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const { email, appUrl }: RequestBody = await req.json();
 
-    if (!email) {
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
       return new Response(
-        JSON.stringify({ success: false, error: "Email requis" }),
+        JSON.stringify({ success: false, error: emailValidation.error }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limiting - return success to prevent email enumeration
+    const rateLimit = checkRateLimit(`reset:${normalizedEmail}`, MAX_REQUESTS, WINDOW_MS);
+    if (!rateLimit.allowed) {
+      console.log("request-password-reset: Rate limit exceeded for:", normalizedEmail);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Si cet email existe, un lien de réinitialisation a été envoyé." 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log("request-password-reset: Processing for email:", normalizedEmail);
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -52,25 +71,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    if (!user) {
-      console.log("request-password-reset: User not found:", normalizedEmail);
+    // Always return success to prevent email enumeration
+    if (!user || !user.is_active) {
+      console.log("request-password-reset: User not found or inactive:", normalizedEmail);
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: "not_found",
-          message: "Aucun compte trouvé avec cette adresse email. Veuillez contacter votre administration."
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!user.is_active) {
-      console.log("request-password-reset: User inactive:", normalizedEmail);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "inactive",
-          message: "Votre compte est inactif. Veuillez contacter votre administration."
+          success: true, 
+          message: "Si cet email existe, un lien de réinitialisation a été envoyé." 
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -239,7 +246,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: "Un email de reinitialisation a ete envoye a votre adresse." 
+          message: "Un email de réinitialisation a été envoyé à votre adresse." 
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

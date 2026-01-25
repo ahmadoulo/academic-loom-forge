@@ -1,24 +1,24 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { 
+  validatePassword, 
+  hashPasswordSecure, 
+  verifyPasswordSecure,
+  validateSession,
+  checkRateLimit 
+} from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
-// SHA-256 hashing function compatible with Edge Functions
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
-}
+// Rate limit: 3 attempts per hour per user
+const MAX_ATTEMPTS = 3;
+const WINDOW_MS = 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -31,10 +31,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate password strength
-    if (newPassword.length < 6) {
+    // Validate session
+    const session = await validateSession(sessionToken);
+    if (!session.valid || session.userId !== userId) {
       return new Response(
-        JSON.stringify({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' }),
+        JSON.stringify({ error: session.error || 'Session invalide' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(`change-password:${userId}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Trop de tentatives. Réessayez dans une heure.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate new password complexity
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: passwordValidation.errors.join('. ') }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -43,10 +62,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify session token
+    // Get current password hash
     const { data: sessionUser, error: sessionError } = await supabase
       .from('app_users')
-      .select('id, session_token, session_expires_at, password_hash')
+      .select('id, password_hash')
       .eq('id', userId)
       .single();
 
@@ -57,32 +76,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify session is valid
-    if (sessionUser.session_token !== sessionToken) {
-      return new Response(
-        JSON.stringify({ error: 'Session invalide' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (sessionUser.session_expires_at && new Date(sessionUser.session_expires_at) < new Date()) {
-      return new Response(
-        JSON.stringify({ error: 'Session expirée' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Verify current password
-    const currentPasswordHash = await hashPassword(currentPassword);
-    if (sessionUser.password_hash !== currentPasswordHash) {
+    const currentPasswordResult = await verifyPasswordSecure(currentPassword, sessionUser.password_hash);
+    if (!currentPasswordResult.valid) {
       return new Response(
         JSON.stringify({ error: 'Mot de passe actuel incorrect' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Hash new password
-    const newPasswordHash = await hashPassword(newPassword);
+    // Hash new password with bcrypt
+    const newPasswordHash = await hashPasswordSecure(newPassword);
 
     // Update password
     const { error: updateError } = await supabase
@@ -115,4 +119,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-})
+});
