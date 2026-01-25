@@ -1,40 +1,53 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { 
+  validatePassword, 
+  hashPasswordSecure, 
+  checkRateLimit,
+  corsHeaders 
+} from "../_shared/auth.ts";
 
 interface SetPasswordRequest {
   token: string;
-  passwordHash: string;
+  password: string; // Now accepts plain password, not pre-hashed
 }
+
+// Rate limit: 5 attempts per hour per token
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { token, passwordHash }: SetPasswordRequest = await req.json();
+    const { token, password }: SetPasswordRequest = await req.json();
 
-    console.log('🔐 Set password request received');
-    console.log('🔍 Token length:', token?.length);
-    console.log('🔍 Password hash length:', passwordHash?.length);
+    console.log('🔐 Set student password request received');
 
-    if (!token || !passwordHash) {
-      console.error('❌ Missing token or password hash');
+    if (!token || !password) {
+      console.error('❌ Missing token or password');
       return new Response(
         JSON.stringify({ error: 'Token et mot de passe requis' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Vérifier que le hash bcrypt est valide (commence par $2a$, $2b$ ou $2y$)
-    if (!passwordHash.match(/^\$2[aby]\$\d{2}\$/)) {
-      console.error('❌ Invalid bcrypt hash format');
+    // Rate limiting per token
+    const rateLimit = checkRateLimit(`set-student-password:${token}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!rateLimit.allowed) {
       return new Response(
-        JSON.stringify({ error: 'Format de hash invalide' }),
+        JSON.stringify({ error: 'Trop de tentatives. Réessayez plus tard.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate password complexity on server
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      console.error('❌ Password validation failed:', passwordValidation.errors);
+      return new Response(
+        JSON.stringify({ error: passwordValidation.errors.join('. ') }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -67,7 +80,6 @@ Deno.serve(async (req) => {
       accountId: account?.id,
       isActive: account?.is_active,
       hasPassword: !!account?.password_hash,
-      hasExpiration: !!account?.invitation_expires_at,
       fetchError 
     });
 
@@ -108,12 +120,6 @@ Deno.serve(async (req) => {
     const expiresAt = new Date(account.invitation_expires_at);
     const now = new Date();
 
-    console.log('📅 Expiration check:', { 
-      expiresAt: expiresAt.toISOString(), 
-      now: now.toISOString(), 
-      isExpired: now > expiresAt
-    });
-
     if (now > expiresAt) {
       console.error('❌ Token expired');
       return new Response(
@@ -122,8 +128,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Le mot de passe est déjà hashé côté client avec bcrypt (12 rounds)
-    console.log('💾 Updating account with bcrypt hash...');
+    // Hash password server-side with bcrypt
+    console.log('💾 Hashing password with bcrypt...');
+    const passwordHash = await hashPasswordSecure(password);
+
+    console.log('💾 Updating account...');
     const { error: updateError } = await supabaseAdmin
       .from('student_accounts')
       .update({
@@ -138,29 +147,6 @@ Deno.serve(async (req) => {
       console.error('❌ Update error:', updateError);
       return new Response(
         JSON.stringify({ error: `Erreur lors de la mise à jour: ${updateError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Vérifier que la mise à jour a bien été effectuée
-    console.log('🔍 Verifying update...');
-    const { data: verifyAccount, error: verifyError } = await supabaseAdmin
-      .from('student_accounts')
-      .select('id, email, is_active, password_hash')
-      .eq('id', account.id)
-      .maybeSingle();
-
-    console.log('✅ Verification result:', {
-      found: !!verifyAccount,
-      isActive: verifyAccount?.is_active,
-      hasPassword: !!verifyAccount?.password_hash,
-      verifyError
-    });
-
-    if (!verifyAccount || !verifyAccount.is_active || !verifyAccount.password_hash) {
-      console.error('❌ Update verification failed');
-      return new Response(
-        JSON.stringify({ error: 'Erreur lors de la vérification de la mise à jour' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

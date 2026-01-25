@@ -6,10 +6,13 @@ import {
   isGlobalAdmin,
   isSchoolAdmin,
   errorResponse,
+  validatePassword,
+  hashPasswordSecure,
+  validateEmail,
 } from "../_shared/auth.ts";
 
 interface CreateUserRequest {
-  sessionToken: string; // Required for authentication
+  sessionToken: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -22,15 +25,6 @@ interface CreateUserRequest {
 
 // Roles that require a school_id
 const SCHOOL_BOUND_ROLES = ["school_admin", "school_staff", "teacher", "student", "admission", "accountant", "secretary"];
-
-// Hash password using SHA-256 (Deno compatible)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -85,12 +79,23 @@ Deno.serve(async (req) => {
       return errorResponse('Email, prénom, nom et rôle sont requis', 400);
     }
 
+    // Validate email format
+    if (!validateEmail(email)) {
+      return errorResponse('Format d\'email invalide', 400);
+    }
+
     if (SCHOOL_BOUND_ROLES.includes(role) && !schoolId) {
       return errorResponse('school_id est requis pour ce rôle', 400);
     }
 
     if (!password) {
       return errorResponse('Mot de passe requis pour créer un compte', 400);
+    }
+
+    // Validate password complexity
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return errorResponse(passwordValidation.errors.join('. '), 400);
     }
 
     // ============================================================
@@ -116,8 +121,8 @@ Deno.serve(async (req) => {
       return errorResponse('Un compte existe déjà avec cet email', 409);
     }
 
-    // Hash password
-    const passwordHash = await hashPassword(password);
+    // Hash password with bcrypt (secure)
+    const passwordHash = await hashPasswordSecure(password);
     const userSchoolId = SCHOOL_BOUND_ROLES.includes(role) ? (schoolId || null) : null;
 
     // Create user
