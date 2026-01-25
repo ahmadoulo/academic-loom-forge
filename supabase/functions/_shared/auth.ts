@@ -1,5 +1,36 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+// NOTE: The Deno Edge Runtime used by Lovable Cloud does not provide the `Worker`
+// global required by `deno.land/x/bcrypt`. We use `bcryptjs` (pure JS) instead.
+import bcrypt from "npm:bcryptjs@2.4.3";
+
+function bcryptGenSalt(rounds: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    bcrypt.genSalt(rounds, (err: Error | null, salt?: string) => {
+      if (err) return reject(err);
+      if (!salt) return reject(new Error("Failed to generate salt"));
+      resolve(salt);
+    });
+  });
+}
+
+function bcryptHash(password: string, salt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    bcrypt.hash(password, salt, (err: Error | null, hash?: string) => {
+      if (err) return reject(err);
+      if (!hash) return reject(new Error("Failed to hash password"));
+      resolve(hash);
+    });
+  });
+}
+
+function bcryptCompare(password: string, hash: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    bcrypt.compare(password, hash, (err: Error | null, same?: boolean) => {
+      if (err) return reject(err);
+      resolve(Boolean(same));
+    });
+  });
+}
 
 // ============================================================
 // SHARED AUTHENTICATION MODULE FOR EDGE FUNCTIONS
@@ -147,8 +178,8 @@ export function validatePassword(password: string): { valid: boolean; errors: st
  * Hash password using bcrypt with secure salt
  */
 export async function hashPasswordSecure(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(12);
-  return await bcrypt.hash(password, salt);
+  const salt = await bcryptGenSalt(12);
+  return await bcryptHash(password, salt);
 }
 
 /**
@@ -158,7 +189,7 @@ export async function verifyPasswordSecure(password: string, storedHash: string)
   // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
   if (storedHash.startsWith('$2')) {
     try {
-      const valid = await bcrypt.compare(password, storedHash);
+      const valid = await bcryptCompare(password, storedHash);
       return { valid, needsMigration: false };
     } catch (e) {
       console.error('bcrypt compare error:', e);
