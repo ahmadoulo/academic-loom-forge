@@ -3,6 +3,29 @@ import { render } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import AuthPage from "@/pages/AuthPage";
 
+// Mock the useAuth hook from AuthContext
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: null,
+    roles: [],
+    primaryRole: null,
+    primarySchoolId: null,
+    primarySchoolIdentifier: null,
+    loading: false,
+    initialized: true,
+    isAuthenticated: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    createUser: vi.fn(),
+    resetPassword: vi.fn(),
+    setPassword: vi.fn(),
+    hasRole: vi.fn(() => false),
+    getRedirectPath: vi.fn(() => "/"),
+    validateSession: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Mock the auth hooks
 vi.mock("@/hooks/useHybridAuth", () => ({
   useHybridAuth: () => ({
