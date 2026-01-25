@@ -332,6 +332,13 @@ export function checkRateLimit(key: string, maxAttempts: number, windowMs: numbe
   return { allowed: true, remaining: maxAttempts - record.count, resetAt: new Date(record.resetAt) };
 }
 
+/**
+ * Reset rate limit for a key (call on successful login)
+ */
+export function resetRateLimit(key: string): void {
+  rateLimitStore.delete(key);
+}
+
 // Cleanup old rate limit entries periodically
 setInterval(() => {
   const now = Date.now();
