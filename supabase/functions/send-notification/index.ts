@@ -1,11 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.10";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import {
+  corsHeaders,
+  handleCors,
+  validateSession,
+  errorResponse,
+} from "../_shared/auth.ts";
 
 interface NotificationRecipient {
   email: string;
@@ -13,13 +13,13 @@ interface NotificationRecipient {
 }
 
 interface NotificationRequest {
+  sessionToken: string; // Required for authentication
   recipients: NotificationRecipient[];
   subject: string;
   message: string;
   schoolId: string;
   recipientType: string;
   classId?: string;
-  sentBy?: string;
   pdfAttachment?: {
     filename: string;
     content: string; // base64
@@ -27,14 +27,39 @@ interface NotificationRequest {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    const { recipients, subject, message, schoolId, recipientType, classId, sentBy, pdfAttachment }: NotificationRequest = await req.json();
+    const body: NotificationRequest = await req.json();
+    const { sessionToken, recipients, subject, message, schoolId, recipientType, classId, pdfAttachment } = body;
 
-    console.log(`Sending notification to ${recipients.length} recipient(s)`);
+    // ============================================================
+    // SECURITY: Validate session and check permissions
+    // ============================================================
+    const session = await validateSession(sessionToken, {
+      requiredRoles: ['global_admin', 'school_admin', 'school_staff', 'teacher'],
+      requiredSchoolId: schoolId,
+    });
+
+    if (!session.valid) {
+      console.error('Session validation failed:', session.error);
+      return errorResponse(session.error || 'Non autorisé', session.status || 401);
+    }
+
+    console.log(`User ${session.userId} sending notification to ${recipients.length} recipient(s)`);
+
+    // ============================================================
+    // VALIDATION
+    // ============================================================
+    if (!recipients || recipients.length === 0) {
+      return errorResponse('Aucun destinataire spécifié', 400);
+    }
+
+    if (!subject || !message || !schoolId) {
+      return errorResponse('Sujet, message et école sont requis', 400);
+    }
 
     // Initialize Supabase client
     const supabaseAdmin = createClient(
@@ -51,10 +76,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (schoolError || !schoolData) {
       console.error('School not found:', schoolError);
-      throw new Error('Ecole non trouvee');
+      return errorResponse('École non trouvée', 404);
     }
 
-    const schoolName = schoolData.name || 'Ecole';
+    const schoolName = schoolData.name || 'École';
     console.log(`Sending from school: ${schoolName}`);
 
     // Get SMTP configuration
@@ -67,7 +92,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
       console.error("Missing SMTP configuration");
-      throw new Error("Configuration SMTP incomplete");
+      return errorResponse("Configuration SMTP incomplete", 500);
     }
 
     // Create beautiful email template
@@ -119,28 +144,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
                         <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 18px; font-weight: 700;">${schoolName}</h3>
                         
                         <div style="margin: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px;">
-                          ${schoolAddress ? `
-                            <p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
-                              ${schoolAddress}
-                            </p>
-                          ` : ''}
-                          
-                          ${schoolPhone ? `
-                            <p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px;">
-                              ${schoolPhone}
-                            </p>
-                          ` : ''}
-                          
-                          ${schoolWebsite ? `
-                            <p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px;">
-                              <a href="${schoolWebsite}" style="color: #60a5fa; text-decoration: none;">${schoolWebsite}</a>
-                            </p>
-                          ` : ''}
+                          ${schoolAddress ? `<p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">${schoolAddress}</p>` : ''}
+                          ${schoolPhone ? `<p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px;">${schoolPhone}</p>` : ''}
+                          ${schoolWebsite ? `<p style="margin: 0 0 8px; color: #cbd5e1; font-size: 13px;"><a href="${schoolWebsite}" style="color: #60a5fa; text-decoration: none;">${schoolWebsite}</a></p>` : ''}
                         </div>
 
                         <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 20px 0 0; padding-top: 16px;">
                           <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">
-                            ${new Date().getFullYear()} ${schoolName}. Tous droits reserves.
+                            ${new Date().getFullYear()} ${schoolName}. Tous droits réservés.
                           </p>
                         </div>
                       </td>
@@ -174,7 +185,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       console.log("SMTP connection verified successfully");
     } catch (verifyError) {
       console.error("SMTP verification failed:", verifyError);
-      throw new Error(`Connexion SMTP echouee: ${verifyError.message}`);
+      return errorResponse(`Connexion SMTP échouée: ${verifyError.message}`, 500);
     }
 
     // Send emails and collect results
@@ -191,7 +202,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
           html: createEmailTemplate(schoolData, subject, message),
         };
 
-        // Add PDF attachment if provided
         if (pdfAttachment) {
           mailOptions.attachments = [{
             filename: pdfAttachment.filename,
@@ -209,7 +219,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
           id: info.messageId
         });
 
-        // Store notification record
         notificationRecords.push({
           school_id: schoolId,
           recipient_type: recipientType,
@@ -218,7 +227,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           subject: subject,
           message: message,
           class_id: classId || null,
-          sent_by: sentBy || null
+          sent_by: session.userId
         });
       } catch (error: any) {
         console.error(`Error sending to ${recipient.email}:`, error);
@@ -226,7 +235,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Close transporter
     transporter.close();
 
     // Save all notification records to database
@@ -237,8 +245,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       
       if (insertError) {
         console.error('Error saving notification records:', insertError);
-      } else {
-        console.log(`Saved ${notificationRecords.length} notification records`);
       }
     }
 
@@ -251,20 +257,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
       JSON.stringify({ success: true, results, sent: successful, failed }),
       {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   } catch (error: any) {
     console.error("Error in send-notification function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return errorResponse(error.message || 'Erreur serveur', 500);
   }
 });

@@ -158,8 +158,9 @@ export function useAppAuth() {
   // Create user (for admins)
   const createUser = useCallback(async (userData: CreateUserData, createdBy: string) => {
     try {
+      const sessionToken = localStorage.getItem(SESSION_KEY);
       const { data, error } = await supabase.functions.invoke('create-user-account', {
-        body: { ...userData, createdBy }
+        body: { ...userData, createdBy, sessionToken }
       });
 
       if (error) {

@@ -213,6 +213,7 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
         schoolId: schoolId,
         password: generatedPassword,
         createdBy: currentUser?.id,
+        sessionToken: localStorage.getItem('app_session_token'),
       };
 
       // Add school role ID only for staff
