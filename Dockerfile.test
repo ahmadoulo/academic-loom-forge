@@ -21,8 +21,8 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 COPY package*.json ./
 COPY bun.lockb ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (use npm install to avoid lockfile mismatch failures in CI)
+RUN npm install --no-audit --no-fund
 
 # Copy source code
 COPY . .
