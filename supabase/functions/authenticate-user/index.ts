@@ -3,7 +3,8 @@ import {
   validateEmail, 
   verifyPasswordSecure, 
   hashPasswordSecure,
-  checkRateLimit 
+  checkRateLimit,
+  resetRateLimit
 } from "../_shared/auth.ts";
 
 const corsHeaders = {
@@ -108,6 +109,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Reset rate limit on successful login
+    resetRateLimit(`login:${normalizedEmail}`);
 
     // Migrate password hash if using old SHA-256
     if (passwordResult.needsMigration) {

@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { validateEmail, validatePassword, hashPasswordSecure, validateSession } from "../_shared/auth.ts";
+import { validateEmail, validatePasswordBasic, hashPasswordSecure, validateSession } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate password complexity
-    const passwordValidation = validatePassword(password);
+    // Validate password (basic rules for initial setup)
+    const passwordValidation = validatePasswordBasic(password);
     if (!passwordValidation.valid) {
       return new Response(
         JSON.stringify({ error: passwordValidation.errors.join('. ') }),
@@ -70,6 +70,13 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Erreur lors de la mise à jour' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!data || data.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Utilisateur introuvable' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
