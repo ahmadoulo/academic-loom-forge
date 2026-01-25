@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, Calendar, CheckCircle, XCircle, Clock, FileText, Eye, Loader2, ExternalLink } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Clock, FileText, Eye, Loader2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -62,6 +62,7 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
     try {
       setLoading(true);
       
+      // Include classes relation directly in the query
       let query = supabase
         .from("attendance")
         .select(`
@@ -73,22 +74,20 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
           justification_comment,
           justification_file_path,
           justification_submitted_at,
-          students!inner(id, firstname, lastname),
+          students!inner(id, firstname, lastname, class_id),
           subjects(id, name),
-          class_id
+          class_id,
+          classes:class_id(id, name)
         `)
         .not("justification_submitted_at", "is", null)
         .order("justification_submitted_at", { ascending: false });
 
       // Filter by status based on active tab
       if (activeTab === "pending") {
-        // Pending: status is still 'absent' and justification_status is 'pending'
         query = query.eq("status", "absent").eq("justification_status", "pending");
       } else if (activeTab === "approved") {
-        // Approved: status changed to 'justified' 
         query = query.eq("status", "justified");
       } else if (activeTab === "rejected") {
-        // Rejected: status is still 'absent' and justification_status is 'rejected'
         query = query.eq("status", "absent").eq("justification_status", "rejected");
       }
 
@@ -96,25 +95,13 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
 
       if (error) throw error;
 
-      // Get class info for each record
       let filteredData = data || [];
       
       if (selectedClass !== "all") {
         filteredData = filteredData.filter((item: any) => item.class_id === selectedClass);
       }
 
-      // Get class names
-      const enrichedData = await Promise.all(
-        filteredData.map(async (item: any) => {
-          const classData = classes.find(c => c.id === item.class_id);
-          return {
-            ...item,
-            classes: classData ? { id: classData.id, name: classData.name } : null,
-          };
-        })
-      );
-
-      setJustifications(enrichedData as unknown as JustificationRequest[]);
+      setJustifications(filteredData as unknown as JustificationRequest[]);
     } catch (error) {
       console.error("Error fetching justifications:", error);
       toast.error("Erreur lors du chargement des justificatifs");
@@ -123,17 +110,31 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
     }
   };
 
-  const handleViewFile = async (filePath: string) => {
+  const handleDownloadFile = async (filePath: string) => {
     try {
       const { data, error } = await supabase.storage
         .from("school-document")
-        .createSignedUrl(filePath, 3600); // 1 hour validity
+        .download(filePath);
 
       if (error) throw error;
-      window.open(data.signedUrl, "_blank");
+
+      // Extract filename from path
+      const fileName = filePath.split('/').pop() || 'document';
+      
+      // Create download link
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Téléchargement démarré");
     } catch (error) {
-      console.error("Error getting file URL:", error);
-      toast.error("Erreur lors de l'ouverture du fichier");
+      console.error("Error downloading file:", error);
+      toast.error("Erreur lors du téléchargement du fichier");
     }
   };
 
@@ -330,6 +331,9 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Détails du justificatif</DialogTitle>
+            <DialogDescription>
+              Consultez les informations du justificatif soumis par l'étudiant
+            </DialogDescription>
           </DialogHeader>
           {selectedRequest && (
             <div className="space-y-4 py-4">
@@ -354,7 +358,7 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
 
               <div>
                 <Label className="text-muted-foreground">Commentaire de l'étudiant</Label>
-                <p className="mt-1 p-3 bg-muted rounded-lg text-sm">{selectedRequest.justification_comment}</p>
+                <p className="mt-1 p-3 bg-muted rounded-lg text-sm">{selectedRequest.justification_comment || "Aucun commentaire"}</p>
               </div>
 
               {selectedRequest.justification_file_path && (
@@ -363,10 +367,10 @@ export function AbsenceJustificationsManagement({ schoolId }: AbsenceJustificati
                   <Button
                     variant="outline"
                     className="mt-1 w-full"
-                    onClick={() => handleViewFile(selectedRequest.justification_file_path!)}
+                    onClick={() => handleDownloadFile(selectedRequest.justification_file_path!)}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ouvrir le document
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger le document
                   </Button>
                 </div>
               )}
