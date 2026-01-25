@@ -32,14 +32,14 @@ COPY . .
 # ============================================
 FROM base AS unit-tests
 
-CMD ["npm", "run", "test:run"]
+CMD ["npx", "vitest", "run"]
 
 # ============================================
 # Integration Tests Stage
 # ============================================
 FROM base AS integration-tests
 
-CMD ["npm", "run", "test:run", "--", "--testPathPattern=integration"]
+CMD ["npx", "vitest", "run", "src/test/integration"]
 
 # ============================================
 # E2E Tests Stage
@@ -49,14 +49,14 @@ FROM base AS e2e-tests
 # Build the application first
 RUN npm run build
 
-CMD ["npm", "run", "test:e2e"]
+CMD ["npx", "playwright", "test"]
 
 # ============================================
 # Coverage Stage
 # ============================================
 FROM base AS coverage
 
-CMD ["npm", "run", "test:coverage"]
+CMD ["npx", "vitest", "run", "--coverage"]
 
 # ============================================
 # All Tests Stage (default)
@@ -65,4 +65,4 @@ FROM base AS all-tests
 
 RUN npm run build
 
-CMD ["sh", "-c", "npm run test:run && npm run test:e2e"]
+CMD ["sh", "-c", "npx vitest run && npx playwright test"]

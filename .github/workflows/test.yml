@@ -32,10 +32,10 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run Vitest tests
-        run: npm run test:run
+        run: npx vitest run
 
       - name: Generate coverage report
-        run: npm run test:coverage
+        run: npx vitest run --coverage
         
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -96,7 +96,7 @@ jobs:
         run: npm run build
 
       - name: Run Playwright tests
-        run: npm run test:e2e
+        run: npx playwright test
         env:
           CI: true
 
