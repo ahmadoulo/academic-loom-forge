@@ -125,9 +125,9 @@ describe("Email Validation", () => {
 describe("Password Validation", () => {
   it("accepts strong passwords", () => {
     const strongPasswords = [
-      "ValidP@ssw0rd!",
-      "MySecure#Pass123",
-      "C0mpl3x!Password",
+      "ValidP@ssw0rd!2024",
+      "MySecure#Key123!",
+      "C0mpl3x!Secure99",
     ];
 
     strongPasswords.forEach((password) => {
