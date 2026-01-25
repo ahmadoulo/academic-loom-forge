@@ -1,0 +1,68 @@
+# Dockerfile for running tests in isolated container
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# Install dependencies for Playwright
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    curl
+
+# Set Playwright to use system Chromium
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Copy package files
+COPY package*.json ./
+COPY bun.lockb ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# ============================================
+# Unit Tests Stage
+# ============================================
+FROM base AS unit-tests
+
+CMD ["npm", "run", "test:run"]
+
+# ============================================
+# Integration Tests Stage
+# ============================================
+FROM base AS integration-tests
+
+CMD ["npm", "run", "test:run", "--", "--testPathPattern=integration"]
+
+# ============================================
+# E2E Tests Stage
+# ============================================
+FROM base AS e2e-tests
+
+# Build the application first
+RUN npm run build
+
+CMD ["npm", "run", "test:e2e"]
+
+# ============================================
+# Coverage Stage
+# ============================================
+FROM base AS coverage
+
+CMD ["npm", "run", "test:coverage"]
+
+# ============================================
+# All Tests Stage (default)
+# ============================================
+FROM base AS all-tests
+
+RUN npm run build
+
+CMD ["sh", "-c", "npm run test:run && npm run test:e2e"]
