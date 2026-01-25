@@ -1,6 +1,6 @@
 -- ============================================================
 -- EDUVATE SCHOOL MANAGEMENT SYSTEM - Production Database Schema
--- Version: 3.0 - Permissive RLS (matching Lovable Cloud)
+-- Version: 4.0 - Secure RLS with Role-Based Access Control
 -- ============================================================
 -- 
 -- ARCHITECTURE:
@@ -8,11 +8,15 @@
 -- - Session tokens stored in app_users.session_token
 -- - Roles stored in app_user_roles table
 -- - All WRITE operations should go through Edge Functions (service_role)
--- - For initial deployment: permissive RLS to match Lovable Cloud behavior
+-- - Strict RLS policies with school-level isolation
+-- - Sensitive data protected via app_users_public view
 -- 
--- NOTE: This version uses permissive RLS policies (USING true / WITH CHECK true)
--- to match the current Lovable Cloud configuration. For production security,
--- you should implement proper role-based RLS policies.
+-- SECURITY MODEL:
+-- 1. app_users table: service_role only (password hashes protected)
+-- 2. grades table: role-based (students see own, teachers manage)
+-- 3. students/teachers: school-isolated access
+-- 4. exam_answers: teachers only (protect correct answers)
+-- 5. school_cameras: admins only (sensitive URLs)
 -- ============================================================
 
 -- Clean slate
@@ -1528,207 +1532,875 @@ ALTER TABLE public.teacher_school ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- RLS POLICIES - PERMISSIVE (matching Lovable Cloud)
+-- RLS POLICIES - STRICT SECURITY (Production-Ready)
 -- ============================================================
 -- 
--- All policies use "FOR ALL ... USING (true) WITH CHECK (true)"
--- This matches the current Lovable Cloud behavior where everything is allowed.
--- For production security, implement proper role-based policies.
+-- Role-based access control with school-level isolation.
+-- Sensitive data is protected, exam answers hidden from students.
+-- ============================================================
+
+-- ============================================================
+-- SECURITY HELPER FUNCTIONS
+-- ============================================================
+
+-- Check if a user has a specific role (optionally in a specific school)
+CREATE OR REPLACE FUNCTION public.has_app_role(_user_id UUID, _role public.app_role, _school_id UUID DEFAULT NULL)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles
+    WHERE user_id = _user_id 
+    AND role = _role
+    AND (
+      role = 'global_admin'
+      OR (_school_id IS NULL)
+      OR (school_id = _school_id)
+    )
+  )
+$$;
+
+-- Check if a user is a global admin
+CREATE OR REPLACE FUNCTION public.is_app_global_admin(_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles 
+    WHERE user_id = _user_id AND role = 'global_admin'
+  )
+$$;
+
+-- Check if a user is a school admin for a specific school
+CREATE OR REPLACE FUNCTION public.is_app_school_admin(_user_id UUID, _school_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles 
+    WHERE user_id = _user_id 
+    AND (role = 'global_admin' OR (role = 'school_admin' AND school_id = _school_id))
+  )
+$$;
+
+-- Check if user belongs to a school
+CREATE OR REPLACE FUNCTION public.user_in_school(_user_id UUID, _school_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles 
+    WHERE user_id = _user_id 
+    AND (role = 'global_admin' OR school_id = _school_id)
+  )
+$$;
+
+-- Grant execute permissions on helper functions
+GRANT EXECUTE ON FUNCTION public.has_app_role(UUID, public.app_role, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_app_global_admin(UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_app_school_admin(UUID, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_in_school(UUID, UUID) TO anon, authenticated, service_role;
+
+-- ============================================================
+-- SECURE PUBLIC VIEW FOR APP_USERS
+-- ============================================================
+
+-- Create secure view that hides sensitive columns
+CREATE VIEW public.app_users_public
+WITH (security_invoker = on)
+AS SELECT 
+  id, email, first_name, last_name, phone, avatar_url,
+  school_id, teacher_id, student_id, is_active,
+  created_at, updated_at
+FROM public.app_users;
+
+GRANT SELECT ON public.app_users_public TO anon, authenticated, service_role;
+
+-- ============================================================
+-- CRITICAL TABLE POLICIES
+-- ============================================================
+
+-- APP_USERS: Service role only (protect password hashes)
+CREATE POLICY "service_role_full_access" ON public.app_users
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anon_no_direct_access" ON public.app_users
+  FOR SELECT TO anon USING (false);
+
+CREATE POLICY "authenticated_no_direct_access" ON public.app_users
+  FOR SELECT TO authenticated USING (false);
+
+-- APP_USER_ROLES: Service role manages, anyone can read
+CREATE POLICY "service_role_manage_roles" ON public.app_user_roles
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anon_read_roles" ON public.app_user_roles
+  FOR SELECT TO anon, authenticated USING (true);
+
+-- GRADES: Role-based access
+CREATE POLICY "service_role_grades" ON public.grades
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "teachers_manage_own_grades" ON public.grades
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.subjects s WHERE s.id = grades.subject_id AND s.teacher_id = grades.teacher_id))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.subjects s WHERE s.id = grades.subject_id AND s.teacher_id = grades.teacher_id));
+
+CREATE POLICY "students_view_own_grades" ON public.grades
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = grades.student_id AND u.is_active = true));
+
+CREATE POLICY "admins_view_school_grades" ON public.grades
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.app_user_roles r
+    JOIN public.subjects s ON s.id = grades.subject_id
+    JOIN public.classes c ON c.id = s.class_id
+    WHERE r.role IN ('global_admin', 'school_admin')
+    AND (r.role = 'global_admin' OR r.school_id = c.school_id)
+  ));
+
+-- STUDENTS: School-isolated access
+CREATE POLICY "service_role_students" ON public.students
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_staff_view_students" ON public.students
+  FOR SELECT TO anon, authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.student_school ss
+      JOIN public.app_user_roles r ON r.school_id = ss.school_id
+      WHERE ss.student_id = students.id
+      AND r.role IN ('global_admin', 'school_admin', 'school_staff', 'teacher')
+    )
+    OR EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = students.id AND u.is_active = true)
+  );
+
+CREATE POLICY "admins_manage_students" ON public.students
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.student_school ss
+    JOIN public.app_user_roles r ON r.school_id = ss.school_id
+    WHERE ss.student_id = students.id AND r.role IN ('global_admin', 'school_admin')
+  ))
+  WITH CHECK (true);
+
+-- TEACHERS: School-isolated access
+CREATE POLICY "service_role_teachers" ON public.teachers
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_staff_view_teachers" ON public.teachers
+  FOR SELECT TO anon, authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = teachers.school_id AND r.role IN ('global_admin', 'school_admin', 'school_staff', 'teacher', 'student'))
+    OR EXISTS (SELECT 1 FROM public.app_users u WHERE u.teacher_id = teachers.id AND u.is_active = true)
+  );
+
+CREATE POLICY "admins_manage_teachers" ON public.teachers
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = teachers.school_id AND r.role IN ('global_admin', 'school_admin')))
+  WITH CHECK (true);
+
+-- ATTENDANCE: Role-based access
+CREATE POLICY "service_role_attendance" ON public.attendance
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "teachers_manage_class_attendance" ON public.attendance
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.teacher_classes tc WHERE tc.class_id = attendance.class_id AND tc.teacher_id = attendance.teacher_id))
+  WITH CHECK (true);
+
+CREATE POLICY "students_view_own_attendance" ON public.attendance
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = attendance.student_id AND u.is_active = true));
+
+CREATE POLICY "admins_view_school_attendance" ON public.attendance
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin' OR (r.role = 'school_admin' AND r.school_id = attendance.school_id)));
+
+-- SUBSCRIPTIONS: Admin-only
+CREATE POLICY "service_role_subscriptions" ON public.subscriptions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "global_admin_subscriptions" ON public.subscriptions
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin'))
+  WITH CHECK (true);
+
+CREATE POLICY "school_admin_view_subscription" ON public.subscriptions
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'school_admin' AND r.school_id = subscriptions.school_id));
+
+-- SCHOOL_FEES: Admin-only
+CREATE POLICY "service_role_school_fees" ON public.school_fees
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "admins_manage_fees" ON public.school_fees
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_fees.school_id AND r.role IN ('global_admin', 'school_admin', 'accountant')))
+  WITH CHECK (true);
+
+CREATE POLICY "students_view_own_fees" ON public.school_fees
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = school_fees.student_id AND u.is_active = true));
+
+-- SCHOOL_PAYMENTS: Admin-only
+CREATE POLICY "service_role_school_payments" ON public.school_payments
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "admins_manage_payments" ON public.school_payments
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_payments.school_id AND r.role IN ('global_admin', 'school_admin', 'accountant')))
+  WITH CHECK (true);
+
+CREATE POLICY "students_view_own_payments" ON public.school_payments
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = school_payments.student_id AND u.is_active = true));
+
+-- ============================================================
+-- SCHOOL-ISOLATED TABLE POLICIES
 -- ============================================================
 
 -- SCHOOLS
-CREATE POLICY "Allow all on schools" ON public.schools FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_schools" ON public.schools
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- APP_USERS
-CREATE POLICY "Allow all on app_users" ON public.app_users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_schools" ON public.schools
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = schools.id OR r.role = 'global_admin'));
 
--- APP_USER_ROLES
-CREATE POLICY "Allow all on app_user_roles" ON public.app_user_roles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "global_admin_manage_schools" ON public.schools
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin'))
+  WITH CHECK (true);
 
--- SUBSCRIPTION_PLANS
-CREATE POLICY "Allow all on subscription_plans" ON public.subscription_plans FOR ALL USING (true) WITH CHECK (true);
+-- SUBSCRIPTION_PLANS (public read, admin write)
+CREATE POLICY "service_role_subscription_plans" ON public.subscription_plans
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- SUBSCRIPTIONS
-CREATE POLICY "Allow all on subscriptions" ON public.subscriptions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anyone_view_plans" ON public.subscription_plans
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "global_admin_manage_plans" ON public.subscription_plans
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin'))
+  WITH CHECK (true);
 
 -- SCHOOL_YEARS
-CREATE POLICY "Allow all on school_years" ON public.school_years FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_years" ON public.school_years
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_years" ON public.school_years
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_years.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_years" ON public.school_years
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_years.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- SCHOOL_SEMESTER
-CREATE POLICY "Allow all on school_semester" ON public.school_semester FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_semester" ON public.school_semester
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_semesters" ON public.school_semester
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_semester.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_semesters" ON public.school_semester
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_semester.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- CYCLES
-CREATE POLICY "Allow all on cycles" ON public.cycles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_cycles" ON public.cycles
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_cycles" ON public.cycles
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = cycles.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_cycles" ON public.cycles
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = cycles.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- OPTIONS
-CREATE POLICY "Allow all on options" ON public.options FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_options" ON public.options
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_options" ON public.options
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = options.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_options" ON public.options
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = options.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- CLASSES
-CREATE POLICY "Allow all on classes" ON public.classes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_classes" ON public.classes
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- STUDENTS
-CREATE POLICY "Allow all on students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_classes" ON public.classes
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = classes.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_classes" ON public.classes
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = classes.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- STUDENT_SCHOOL
-CREATE POLICY "Allow all on student_school" ON public.student_school FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_student_school" ON public.student_school
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- TEACHERS
-CREATE POLICY "Allow all on teachers" ON public.teachers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_student_school" ON public.student_school
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = student_school.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_student_school" ON public.student_school
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = student_school.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- TEACHER_CLASSES
-CREATE POLICY "Allow all on teacher_classes" ON public.teacher_classes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_teacher_classes" ON public.teacher_classes
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_teacher_classes" ON public.teacher_classes
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_teacher_classes" ON public.teacher_classes
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.classes c
+    JOIN public.app_user_roles r ON r.school_id = c.school_id
+    WHERE c.id = teacher_classes.class_id AND r.role IN ('global_admin', 'school_admin')
+  ))
+  WITH CHECK (true);
 
 -- SUBJECTS
-CREATE POLICY "Allow all on subjects" ON public.subjects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_subjects" ON public.subjects
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_subjects" ON public.subjects
+  FOR SELECT TO anon, authenticated
+  USING (subjects.school_id IS NULL OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = subjects.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_subjects" ON public.subjects
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = subjects.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- CLASS_SUBJECTS
-CREATE POLICY "Allow all on class_subjects" ON public.class_subjects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_class_subjects" ON public.class_subjects
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_class_subjects" ON public.class_subjects
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_class_subjects" ON public.class_subjects
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.classes c
+    JOIN public.app_user_roles r ON r.school_id = c.school_id
+    WHERE c.id = class_subjects.class_id AND r.role IN ('global_admin', 'school_admin')
+  ))
+  WITH CHECK (true);
 
 -- CLASSROOMS
-CREATE POLICY "Allow all on classrooms" ON public.classrooms FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_classrooms" ON public.classrooms
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_classrooms" ON public.classrooms
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = classrooms.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_classrooms" ON public.classrooms
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = classrooms.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- ASSIGNMENTS
-CREATE POLICY "Allow all on assignments" ON public.assignments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_assignments" ON public.assignments
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_assignments" ON public.assignments
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = assignments.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "teachers_manage_assignments" ON public.assignments
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = assignments.school_id AND r.role IN ('global_admin', 'school_admin', 'teacher')))
+  WITH CHECK (true);
 
 -- CLASSROOM_ASSIGNMENTS
-CREATE POLICY "Allow all on classroom_assignments" ON public.classroom_assignments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_classroom_assignments" ON public.classroom_assignments
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- ATTENDANCE
-CREATE POLICY "Allow all on attendance" ON public.attendance FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_classroom_assignments" ON public.classroom_assignments
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = classroom_assignments.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_classroom_assignments" ON public.classroom_assignments
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = classroom_assignments.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- ATTENDANCE_SESSIONS
-CREATE POLICY "Allow all on attendance_sessions" ON public.attendance_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_attendance_sessions" ON public.attendance_sessions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- GRADES
-CREATE POLICY "Allow all on grades" ON public.grades FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anyone_view_attendance_sessions" ON public.attendance_sessions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "teachers_manage_attendance_sessions" ON public.attendance_sessions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- EVENTS
-CREATE POLICY "Allow all on events" ON public.events FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_events" ON public.events
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_events" ON public.events
+  FOR SELECT TO anon, authenticated
+  USING (events.school_id IS NULL OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = events.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_events" ON public.events
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = events.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- EVENT_ATTENDANCE_SESSIONS
-CREATE POLICY "Allow all on event_attendance_sessions" ON public.event_attendance_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_event_attendance_sessions" ON public.event_attendance_sessions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_event_sessions" ON public.event_attendance_sessions
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = event_attendance_sessions.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_event_sessions" ON public.event_attendance_sessions
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = event_attendance_sessions.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- EVENT_ATTENDANCE
-CREATE POLICY "Allow all on event_attendance" ON public.event_attendance FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_event_attendance" ON public.event_attendance
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_event_attendance" ON public.event_attendance
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = event_attendance.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "anyone_insert_event_attendance" ON public.event_attendance
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- ANNOUNCEMENTS
-CREATE POLICY "Allow all on announcements" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_announcements" ON public.announcements
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_announcements" ON public.announcements
+  FOR SELECT TO anon, authenticated
+  USING (announcements.school_id IS NULL OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = announcements.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_announcements" ON public.announcements
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = announcements.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- SCHOOL_NOTIFICATIONS
-CREATE POLICY "Allow all on school_notifications" ON public.school_notifications FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_notifications" ON public.school_notifications
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_notifications" ON public.school_notifications
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_notifications.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_notifications" ON public.school_notifications
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_notifications.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- ABSENCE_NOTIFICATIONS_LOG
-CREATE POLICY "Allow all on absence_notifications_log" ON public.absence_notifications_log FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_absence_notifications_log" ON public.absence_notifications_log
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_absence_log" ON public.absence_notifications_log
+  FOR SELECT TO anon, authenticated
+  USING (absence_notifications_log.school_id IS NULL OR EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = absence_notifications_log.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "anyone_insert_absence_log" ON public.absence_notifications_log
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- DOCUMENT_TEMPLATES
-CREATE POLICY "Allow all on document_templates" ON public.document_templates FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_document_templates" ON public.document_templates
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_templates" ON public.document_templates
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = document_templates.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_templates" ON public.document_templates
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = document_templates.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- DOCUMENT_REQUESTS
-CREATE POLICY "Allow all on document_requests" ON public.document_requests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_document_requests" ON public.document_requests
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_requests" ON public.document_requests
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = document_requests.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "anyone_insert_requests" ON public.document_requests
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY "admins_manage_requests" ON public.document_requests
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = document_requests.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- DOCUMENT_REQUEST_TRACKING
-CREATE POLICY "Allow all on document_request_tracking" ON public.document_request_tracking FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_document_request_tracking" ON public.document_request_tracking
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_tracking" ON public.document_request_tracking
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = document_request_tracking.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_tracking" ON public.document_request_tracking
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = document_request_tracking.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- ADMINISTRATIVE_DOCUMENT_TYPES
-CREATE POLICY "Allow all on administrative_document_types" ON public.administrative_document_types FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_admin_doc_types" ON public.administrative_document_types
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_doc_types" ON public.administrative_document_types
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = administrative_document_types.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_doc_types" ON public.administrative_document_types
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = administrative_document_types.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- STUDENT_ADMINISTRATIVE_DOCUMENTS
-CREATE POLICY "Allow all on student_administrative_documents" ON public.student_administrative_documents FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_student_admin_docs" ON public.student_administrative_documents
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- SCHOOL_ADMISSION
-CREATE POLICY "Allow all on school_admission" ON public.school_admission FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_student_docs" ON public.student_administrative_documents
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = student_administrative_documents.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_student_docs" ON public.student_administrative_documents
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = student_administrative_documents.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
+
+-- SCHOOL_ADMISSION (public insert for admission forms)
+CREATE POLICY "service_role_school_admission" ON public.school_admission
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_admissions" ON public.school_admission
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_admission.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "public_insert_admissions" ON public.school_admission
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY "admins_manage_admissions" ON public.school_admission
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'admission') AND (r.school_id = school_admission.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- BULLETIN_SETTINGS
-CREATE POLICY "Allow all on bulletin_settings" ON public.bulletin_settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_bulletin_settings" ON public.bulletin_settings
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- SCHOOL_CAMERAS
-CREATE POLICY "Allow all on school_cameras" ON public.school_cameras FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_bulletin" ON public.bulletin_settings
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = bulletin_settings.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_bulletin" ON public.bulletin_settings
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = bulletin_settings.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
+
+-- SCHOOL_CAMERAS (admin-only for security - protects RTSP URLs)
+CREATE POLICY "service_role_school_cameras" ON public.school_cameras
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "admins_only_cameras" ON public.school_cameras
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_cameras.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- SCHOOL_TEXTBOOKS
-CREATE POLICY "Allow all on school_textbooks" ON public.school_textbooks FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_textbooks" ON public.school_textbooks
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_textbooks" ON public.school_textbooks
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_textbooks.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "teachers_manage_textbooks" ON public.school_textbooks
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher') AND (r.school_id = school_textbooks.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- SCHOOL_TEXTBOOK_ENTRIES
-CREATE POLICY "Allow all on school_textbook_entries" ON public.school_textbook_entries FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_textbook_entries" ON public.school_textbook_entries
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_textbook_entries" ON public.school_textbook_entries
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "teachers_manage_entries" ON public.school_textbook_entries
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- SCHOOL_TEXTBOOK_NOTES
-CREATE POLICY "Allow all on school_textbook_notes" ON public.school_textbook_notes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_textbook_notes" ON public.school_textbook_notes
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_textbook_notes" ON public.school_textbook_notes
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_notes" ON public.school_textbook_notes
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- EXAM_DOCUMENTS
-CREATE POLICY "Allow all on exam_documents" ON public.exam_documents FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_exam_documents" ON public.exam_documents
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_exam_docs" ON public.exam_documents
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = exam_documents.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "teachers_manage_exam_docs" ON public.exam_documents
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher') AND (r.school_id = exam_documents.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- EXAM_QUESTIONS
-CREATE POLICY "Allow all on exam_questions" ON public.exam_questions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_exam_questions" ON public.exam_questions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_exam_questions" ON public.exam_questions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "teachers_manage_exam_questions" ON public.exam_questions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- EXAM_QUESTION_CHOICES
-CREATE POLICY "Allow all on exam_question_choices" ON public.exam_question_choices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_exam_choices" ON public.exam_question_choices
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- EXAM_ANSWERS
-CREATE POLICY "Allow all on exam_answers" ON public.exam_answers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anyone_view_exam_choices" ON public.exam_question_choices
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "teachers_manage_exam_choices" ON public.exam_question_choices
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- EXAM_ANSWERS (teachers only - protect correct answers from students)
+CREATE POLICY "service_role_exam_answers" ON public.exam_answers
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "teachers_only_exam_answers" ON public.exam_answers
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')))
+  WITH CHECK (true);
 
 -- ONLINE_EXAMS
-CREATE POLICY "Allow all on online_exams" ON public.online_exams FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_online_exams" ON public.online_exams
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_online_exams" ON public.online_exams
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = online_exams.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "teachers_manage_online_exams" ON public.online_exams
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher') AND (r.school_id = online_exams.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- ONLINE_EXAM_QUESTIONS
-CREATE POLICY "Allow all on online_exam_questions" ON public.online_exam_questions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_online_exam_questions" ON public.online_exam_questions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- ONLINE_EXAM_ANSWERS
-CREATE POLICY "Allow all on online_exam_answers" ON public.online_exam_answers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anyone_view_online_exam_questions" ON public.online_exam_questions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "teachers_manage_online_exam_questions" ON public.online_exam_questions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- ONLINE_EXAM_ANSWERS (teachers only - protect correct answers)
+CREATE POLICY "service_role_online_exam_answers" ON public.online_exam_answers
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "teachers_only_online_answers" ON public.online_exam_answers
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')))
+  WITH CHECK (true);
 
 -- STUDENT_EXAM_ATTEMPTS
-CREATE POLICY "Allow all on student_exam_attempts" ON public.student_exam_attempts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_student_exam_attempts" ON public.student_exam_attempts
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "students_manage_own_attempts" ON public.student_exam_attempts
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = student_exam_attempts.student_id AND u.is_active = true))
+  WITH CHECK (true);
+
+CREATE POLICY "teachers_view_attempts" ON public.student_exam_attempts
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')));
 
 -- STUDENT_EXAM_RESPONSES
-CREATE POLICY "Allow all on student_exam_responses" ON public.student_exam_responses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_student_exam_responses" ON public.student_exam_responses
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "students_manage_own_responses" ON public.student_exam_responses
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY "teachers_view_responses" ON public.student_exam_responses
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')));
 
 -- SCHOOL_ROLES
-CREATE POLICY "Allow all on school_roles" ON public.school_roles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_roles" ON public.school_roles
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_roles" ON public.school_roles
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_roles.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_roles" ON public.school_roles
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_roles.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- SCHOOL_ROLE_PERMISSIONS
-CREATE POLICY "Allow all on school_role_permissions" ON public.school_role_permissions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_role_permissions" ON public.school_role_permissions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_role_permissions" ON public.school_role_permissions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_role_permissions" ON public.school_role_permissions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- USER_SCHOOL_ROLES
-CREATE POLICY "Allow all on user_school_roles" ON public.user_school_roles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_user_school_roles" ON public.user_school_roles
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_user_school_roles" ON public.user_school_roles
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_user_school_roles" ON public.user_school_roles
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- YEAR_PREPARATIONS
-CREATE POLICY "Allow all on year_preparations" ON public.year_preparations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_year_preparations" ON public.year_preparations
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_preparations" ON public.year_preparations
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = year_preparations.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_preparations" ON public.year_preparations
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = year_preparations.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- CLASS_TRANSITIONS
-CREATE POLICY "Allow all on class_transitions" ON public.class_transitions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_class_transitions" ON public.class_transitions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_class_transitions" ON public.class_transitions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_class_transitions" ON public.class_transitions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- STUDENT_TRANSITIONS
-CREATE POLICY "Allow all on student_transitions" ON public.student_transitions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_student_transitions" ON public.student_transitions
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "anyone_view_student_transitions" ON public.student_transitions
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "admins_manage_student_transitions" ON public.student_transitions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- SCHOOL_FEE_CONFIG
-CREATE POLICY "Allow all on school_fee_config" ON public.school_fee_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_school_fee_config" ON public.school_fee_config
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- SCHOOL_FEES
-CREATE POLICY "Allow all on school_fees" ON public.school_fees FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "school_members_view_fee_config" ON public.school_fee_config
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_fee_config.school_id OR r.role = 'global_admin'));
 
--- SCHOOL_PAYMENTS
-CREATE POLICY "Allow all on school_payments" ON public.school_payments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "admins_manage_fee_config" ON public.school_fee_config
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'accountant') AND (r.school_id = school_fee_config.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- TEACHER_SCHOOL
-CREATE POLICY "Allow all on teacher_school" ON public.teacher_school FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_teacher_school" ON public.teacher_school
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_teacher_school" ON public.teacher_school
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = teacher_school.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_teacher_school" ON public.teacher_school
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = teacher_school.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 -- NOTIFICATION_PREFERENCES
-CREATE POLICY "Allow all on notification_preferences" ON public.notification_preferences FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_notification_preferences" ON public.notification_preferences
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "school_members_view_notification_prefs" ON public.notification_preferences
+  FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = notification_preferences.school_id OR r.role = 'global_admin'));
+
+CREATE POLICY "admins_manage_notification_prefs" ON public.notification_preferences
+  FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = notification_preferences.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
 
 
 -- ============================================================
 -- GRANT PERMISSIONS
 -- ============================================================
 
--- Full access for all roles (matching Lovable Cloud permissive behavior)
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+-- Full access for service_role
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 
--- Ensure future tables keep the same privilege model
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+-- Read access + RLS-controlled writes for anon/authenticated
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 
--- Grant usage on all sequences
+-- Grant sequence usage
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;

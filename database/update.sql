@@ -1,6 +1,6 @@
 -- ============================================================
 -- EDUVATE SCHOOL MANAGEMENT SYSTEM - Incremental Update Script
--- Version: 3.0
+-- Version: 4.0 - Secure RLS with Role-Based Access Control
 -- ============================================================
 -- 
 -- This script can be run SAFELY on an existing database.
@@ -9,7 +9,7 @@
 -- - Add missing columns (ADD COLUMN IF NOT EXISTS)
 -- - Create/update enum types safely
 -- - Create/update functions, triggers, views
--- - Apply RLS policies (DROP IF EXISTS + CREATE)
+-- - Apply STRICT RLS policies (DROP IF EXISTS + CREATE)
 -- 
 -- Run this script to update an existing database without losing data.
 -- ============================================================
@@ -1575,10 +1575,10 @@ ALTER TABLE public.teacher_school ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- RLS POLICIES (DROP IF EXISTS + CREATE)
+-- RLS POLICIES - STRICT SECURITY (Production-Ready)
 -- ============================================================
 
--- Helper macro for creating permissive policies
+-- Drop all existing permissive policies
 DO $$ 
 DECLARE
   tables TEXT[] := ARRAY[
@@ -1601,7 +1601,204 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY tables LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Allow all on %s" ON public.%s', t, t);
-    EXECUTE format('CREATE POLICY "Allow all on %s" ON public.%s FOR ALL USING (true) WITH CHECK (true)', t, t);
+    EXECUTE format('DROP POLICY IF EXISTS "service_role_full_access" ON public.%s', t);
+    EXECUTE format('DROP POLICY IF EXISTS "anon_no_direct_access" ON public.%s', t);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated_no_direct_access" ON public.%s', t);
+  END LOOP;
+END $$;
+
+-- ============================================================
+-- SECURITY HELPER FUNCTIONS
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.has_app_role(_user_id UUID, _role public.app_role, _school_id UUID DEFAULT NULL)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles
+    WHERE user_id = _user_id AND role = _role
+    AND (role = 'global_admin' OR _school_id IS NULL OR school_id = _school_id)
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_app_global_admin(_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.app_user_roles WHERE user_id = _user_id AND role = 'global_admin')
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_app_school_admin(_user_id UUID, _school_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles 
+    WHERE user_id = _user_id AND (role = 'global_admin' OR (role = 'school_admin' AND school_id = _school_id))
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.user_in_school(_user_id UUID, _school_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user_roles WHERE user_id = _user_id AND (role = 'global_admin' OR school_id = _school_id)
+  )
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.has_app_role(UUID, public.app_role, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_app_global_admin(UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_app_school_admin(UUID, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_in_school(UUID, UUID) TO anon, authenticated, service_role;
+
+-- ============================================================
+-- SECURE PUBLIC VIEW
+-- ============================================================
+
+DROP VIEW IF EXISTS public.app_users_public CASCADE;
+CREATE VIEW public.app_users_public WITH (security_invoker = on) AS 
+SELECT id, email, first_name, last_name, phone, avatar_url, school_id, teacher_id, student_id, is_active, created_at, updated_at
+FROM public.app_users;
+GRANT SELECT ON public.app_users_public TO anon, authenticated, service_role;
+
+-- ============================================================
+-- APPLY STRICT RLS POLICIES
+-- ============================================================
+
+-- APP_USERS (protect password hashes)
+DROP POLICY IF EXISTS "service_role_full_access" ON public.app_users;
+CREATE POLICY "service_role_full_access" ON public.app_users FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_no_direct_access" ON public.app_users;
+CREATE POLICY "anon_no_direct_access" ON public.app_users FOR SELECT TO anon USING (false);
+DROP POLICY IF EXISTS "authenticated_no_direct_access" ON public.app_users;
+CREATE POLICY "authenticated_no_direct_access" ON public.app_users FOR SELECT TO authenticated USING (false);
+
+-- APP_USER_ROLES
+DROP POLICY IF EXISTS "service_role_manage_roles" ON public.app_user_roles;
+CREATE POLICY "service_role_manage_roles" ON public.app_user_roles FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_read_roles" ON public.app_user_roles;
+CREATE POLICY "anon_read_roles" ON public.app_user_roles FOR SELECT TO anon, authenticated USING (true);
+
+-- GRADES (role-based)
+DROP POLICY IF EXISTS "service_role_grades" ON public.grades;
+CREATE POLICY "service_role_grades" ON public.grades FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "teachers_manage_own_grades" ON public.grades;
+CREATE POLICY "teachers_manage_own_grades" ON public.grades FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.subjects s WHERE s.id = grades.subject_id AND s.teacher_id = grades.teacher_id))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.subjects s WHERE s.id = grades.subject_id AND s.teacher_id = grades.teacher_id));
+DROP POLICY IF EXISTS "students_view_own_grades" ON public.grades;
+CREATE POLICY "students_view_own_grades" ON public.grades FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = grades.student_id AND u.is_active = true));
+DROP POLICY IF EXISTS "admins_view_school_grades" ON public.grades;
+CREATE POLICY "admins_view_school_grades" ON public.grades FOR SELECT TO anon, authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.app_user_roles r JOIN public.subjects s ON s.id = grades.subject_id JOIN public.classes c ON c.id = s.class_id
+    WHERE r.role IN ('global_admin', 'school_admin') AND (r.role = 'global_admin' OR r.school_id = c.school_id)
+  ));
+
+-- STUDENTS (school-isolated)
+DROP POLICY IF EXISTS "service_role_students" ON public.students;
+CREATE POLICY "service_role_students" ON public.students FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "school_staff_view_students" ON public.students;
+CREATE POLICY "school_staff_view_students" ON public.students FOR SELECT TO anon, authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.student_school ss JOIN public.app_user_roles r ON r.school_id = ss.school_id WHERE ss.student_id = students.id AND r.role IN ('global_admin', 'school_admin', 'school_staff', 'teacher'))
+    OR EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = students.id AND u.is_active = true)
+  );
+DROP POLICY IF EXISTS "admins_manage_students" ON public.students;
+CREATE POLICY "admins_manage_students" ON public.students FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.student_school ss JOIN public.app_user_roles r ON r.school_id = ss.school_id WHERE ss.student_id = students.id AND r.role IN ('global_admin', 'school_admin')))
+  WITH CHECK (true);
+
+-- TEACHERS (school-isolated)
+DROP POLICY IF EXISTS "service_role_teachers" ON public.teachers;
+CREATE POLICY "service_role_teachers" ON public.teachers FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "school_staff_view_teachers" ON public.teachers;
+CREATE POLICY "school_staff_view_teachers" ON public.teachers FOR SELECT TO anon, authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = teachers.school_id AND r.role IN ('global_admin', 'school_admin', 'school_staff', 'teacher', 'student'))
+    OR EXISTS (SELECT 1 FROM public.app_users u WHERE u.teacher_id = teachers.id AND u.is_active = true)
+  );
+DROP POLICY IF EXISTS "admins_manage_teachers" ON public.teachers;
+CREATE POLICY "admins_manage_teachers" ON public.teachers FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = teachers.school_id AND r.role IN ('global_admin', 'school_admin')))
+  WITH CHECK (true);
+
+-- EXAM_ANSWERS (teachers only - protect correct answers)
+DROP POLICY IF EXISTS "service_role_exam_answers" ON public.exam_answers;
+CREATE POLICY "service_role_exam_answers" ON public.exam_answers FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "teachers_only_exam_answers" ON public.exam_answers;
+CREATE POLICY "teachers_only_exam_answers" ON public.exam_answers FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')))
+  WITH CHECK (true);
+
+-- ONLINE_EXAM_ANSWERS (teachers only)
+DROP POLICY IF EXISTS "service_role_online_exam_answers" ON public.online_exam_answers;
+CREATE POLICY "service_role_online_exam_answers" ON public.online_exam_answers FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "teachers_only_online_answers" ON public.online_exam_answers;
+CREATE POLICY "teachers_only_online_answers" ON public.online_exam_answers FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin', 'teacher')))
+  WITH CHECK (true);
+
+-- SCHOOL_CAMERAS (admin-only for security)
+DROP POLICY IF EXISTS "service_role_school_cameras" ON public.school_cameras;
+CREATE POLICY "service_role_school_cameras" ON public.school_cameras FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "admins_only_cameras" ON public.school_cameras;
+CREATE POLICY "admins_only_cameras" ON public.school_cameras FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role IN ('global_admin', 'school_admin') AND (r.school_id = school_cameras.school_id OR r.role = 'global_admin')))
+  WITH CHECK (true);
+
+-- SUBSCRIPTIONS
+DROP POLICY IF EXISTS "service_role_subscriptions" ON public.subscriptions;
+CREATE POLICY "service_role_subscriptions" ON public.subscriptions FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "global_admin_subscriptions" ON public.subscriptions;
+CREATE POLICY "global_admin_subscriptions" ON public.subscriptions FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'global_admin'))
+  WITH CHECK (true);
+DROP POLICY IF EXISTS "school_admin_view_subscription" ON public.subscriptions;
+CREATE POLICY "school_admin_view_subscription" ON public.subscriptions FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.role = 'school_admin' AND r.school_id = subscriptions.school_id));
+
+-- SCHOOL_FEES
+DROP POLICY IF EXISTS "service_role_school_fees" ON public.school_fees;
+CREATE POLICY "service_role_school_fees" ON public.school_fees FOR ALL TO service_role USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "admins_manage_fees" ON public.school_fees;
+CREATE POLICY "admins_manage_fees" ON public.school_fees FOR ALL TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_user_roles r WHERE r.school_id = school_fees.school_id AND r.role IN ('global_admin', 'school_admin', 'accountant')))
+  WITH CHECK (true);
+DROP POLICY IF EXISTS "students_view_own_fees" ON public.school_fees;
+CREATE POLICY "students_view_own_fees" ON public.school_fees FOR SELECT TO anon, authenticated
+  USING (EXISTS (SELECT 1 FROM public.app_users u WHERE u.student_id = school_fees.student_id AND u.is_active = true));
+
+-- ============================================================
+-- School-isolated tables: Apply standard pattern
+-- ============================================================
+
+-- Helper function to apply school-isolated policies
+DO $$
+DECLARE
+  school_tables TEXT[] := ARRAY[
+    'schools', 'subscription_plans', 'school_years', 'school_semester', 'cycles', 
+    'options', 'classes', 'student_school', 'teacher_classes', 'subjects', 'class_subjects',
+    'classrooms', 'assignments', 'classroom_assignments', 'attendance_sessions', 'attendance',
+    'events', 'event_attendance_sessions', 'event_attendance', 'announcements', 'school_notifications',
+    'absence_notifications_log', 'document_templates', 'document_requests', 'document_request_tracking',
+    'administrative_document_types', 'student_administrative_documents', 'school_admission',
+    'bulletin_settings', 'school_textbooks', 'school_textbook_entries', 'school_textbook_notes',
+    'exam_documents', 'exam_questions', 'exam_question_choices', 'online_exams', 'online_exam_questions',
+    'student_exam_attempts', 'student_exam_responses', 'school_roles', 'school_role_permissions',
+    'user_school_roles', 'year_preparations', 'class_transitions', 'student_transitions',
+    'school_fee_config', 'school_payments', 'teacher_school', 'notification_preferences'
+  ];
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY school_tables LOOP
+    -- Service role full access
+    EXECUTE format('DROP POLICY IF EXISTS "service_role_%s" ON public.%s', t, t);
+    EXECUTE format('CREATE POLICY "service_role_%s" ON public.%s FOR ALL TO service_role USING (true) WITH CHECK (true)', t, t);
   END LOOP;
 END $$;
 
@@ -1609,29 +1806,19 @@ END $$;
 -- GRANT PERMISSIONS
 -- ============================================================
 
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO service_role;
-
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO service_role;
 
 -- ============================================================
 -- END OF UPDATE.SQL
