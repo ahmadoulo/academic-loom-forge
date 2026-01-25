@@ -56,7 +56,9 @@ const validatePassword = (password: string): { valid: boolean; errors: string[] 
     errors.push("Le mot de passe doit contenir au moins un chiffre");
   }
 
-  if (!/[!@#$%^&*(),.?":{}|<>\-_=+\[\]\\;'\/~`]/.test(password)) {
+  // Check for special characters (broad set)
+  const specialCharRegex = /[^a-zA-Z0-9]/;
+  if (!specialCharRegex.test(password)) {
     errors.push("Le mot de passe doit contenir au moins un caractère spécial");
   }
 
