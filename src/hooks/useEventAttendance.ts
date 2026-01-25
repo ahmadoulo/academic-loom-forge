@@ -229,8 +229,6 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
   useEffect(() => {
     if (!eventId) return;
 
-    let interval: number | undefined;
-
     const run = async () => {
       await Promise.all([fetchAttendance(), fetchSessions()]);
     };
@@ -238,7 +236,7 @@ export const useEventAttendance = (eventId?: string, schoolId?: string) => {
     run();
 
     // Polling (realtime is disabled by RLS for non-service clients)
-    interval = window.setInterval(run, 5000);
+    const interval = window.setInterval(run, 5000);
 
     return () => {
       if (interval) window.clearInterval(interval);

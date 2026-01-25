@@ -92,7 +92,7 @@ const PASSWORD_REQUIREMENTS = {
   hasUppercase: /[A-Z]/,
   hasLowercase: /[a-z]/,
   hasNumber: /[0-9]/,
-  hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]/,
+  hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\/~`]/,
 };
 
 // Common weak passwords to reject

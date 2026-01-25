@@ -119,8 +119,6 @@ export const useCustomAuth = () => {
       }, 500);
       
       return userData;
-    } catch (error) {
-      throw error;
     } finally {
       setLoading(false);
     }
