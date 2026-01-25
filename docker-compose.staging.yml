@@ -1,0 +1,28 @@
+# Eduvate Staging - Configuration pour production avec Supabase Lovable
+# Usage:
+#   Start:    docker compose -f docker-compose.staging.yml up -d --build
+#   Stop:     docker compose -f docker-compose.staging.yml down
+#   Logs:     docker compose -f docker-compose.staging.yml logs -f
+#   Rebuild:  docker compose -f docker-compose.staging.yml down && docker compose -f docker-compose.staging.yml build --no-cache && docker compose -f docker-compose.staging.yml up -d
+
+name: eduvate-frontend
+
+services:
+  # Frontend Application
+  frontend-app:
+    container_name: eduvate-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:80"
+    networks:
+      - eduvate-network
+
+networks:
+  eduvate-network:
+    driver: bridge
