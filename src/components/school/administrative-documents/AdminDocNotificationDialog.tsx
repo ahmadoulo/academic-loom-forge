@@ -132,8 +132,16 @@ export const AdminDocNotificationDialog: React.FC<AdminDocNotificationDialogProp
         }
       }
 
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('send-smtp-notification', {
         body: {
+          sessionToken,
           recipients,
           schoolId,
           schoolName,

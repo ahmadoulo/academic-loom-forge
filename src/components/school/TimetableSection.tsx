@@ -169,8 +169,16 @@ ${schoolName}`;
       // Send notification with PDF attachment
       const { data: { user } } = await supabase.auth.getUser();
       
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
+          sessionToken,
           recipients,
           subject: `Emploi du temps - ${selectedClass.name}`,
           message,
