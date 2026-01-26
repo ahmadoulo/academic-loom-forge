@@ -149,9 +149,17 @@ export const useStudentAccounts = (schoolId?: string) => {
 
       if (studentError) throw studentError;
 
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       // Créer le compte via l'Edge Function
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
+          sessionToken,
           email,
           firstName: student.firstname,
           lastName: student.lastname,

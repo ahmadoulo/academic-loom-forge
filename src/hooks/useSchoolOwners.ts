@@ -27,9 +27,17 @@ export const useSchoolOwners = () => {
     try {
       setLoading(true);
       
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       // Utiliser l'Edge Function pour créer le compte
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
+          sessionToken,
           email: ownerData.email,
           password: ownerData.password,
           firstName: ownerData.first_name,

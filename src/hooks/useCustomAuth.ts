@@ -38,9 +38,17 @@ export const useCustomAuth = () => {
     try {
       setLoading(true);
       
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        throw new Error('Session expirée');
+      }
+      
       // Use the create-user-account edge function
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
+          sessionToken,
           email: userData.email,
           firstName: userData.first_name,
           lastName: userData.last_name,

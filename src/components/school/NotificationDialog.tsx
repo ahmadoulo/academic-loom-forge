@@ -55,8 +55,16 @@ export function NotificationDialog({
         name: r.name || `${r.firstname} ${r.lastname}`
       }));
 
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
+          sessionToken,
           recipients: recipientsList,
           subject: subject.trim(),
           message: message.trim(),

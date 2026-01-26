@@ -87,6 +87,13 @@ export const useTeacherAccounts = (schoolId?: string) => {
 
   const sendInvitation = async (teacherId: string, email: string) => {
     try {
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+      
       // Récupérer l'identifiant de l'école
       const { data: school, error: schoolError } = await supabase
         .from('schools')
@@ -101,6 +108,7 @@ export const useTeacherAccounts = (schoolId?: string) => {
       // Utiliser verify-teacher-account qui va créer le compte et envoyer l'invitation
       const { data, error } = await supabase.functions.invoke('verify-teacher-account', {
         body: { 
+          sessionToken,
           email: email.trim().toLowerCase(),
           schoolIdentifier: school.identifier,
           appUrl: window.location.origin,

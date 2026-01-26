@@ -142,8 +142,16 @@ export function SessionAttendanceManager({
         }
 
         try {
+          const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+          
+          if (!sessionToken) {
+            console.error('Session token missing for student:', student.id);
+            continue;
+          }
+          
           const response = await supabase.functions.invoke('send-absence-notification', {
             body: {
+              sessionToken,
               studentId: student.id,
               studentName: `${student.firstname} ${student.lastname}`,
               studentEmail: student.email || '',

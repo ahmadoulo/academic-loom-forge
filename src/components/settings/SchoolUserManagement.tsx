@@ -263,8 +263,20 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
     
     setIsResettingPassword(true);
     try {
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        setIsResettingPassword(false);
+        setResetPasswordDialogOpen(false);
+        return;
+      }
+      
+      // Generate new password
+      const newPassword = generatePassword();
+      
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: resetPasswordUser.id, requestedBy: currentUser.id }
+        body: { sessionToken, userId: resetPasswordUser.id, newPassword }
       });
       
       if (error) throw error;
