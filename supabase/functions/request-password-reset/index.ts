@@ -133,6 +133,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const schoolName = (user.schools as any)?.name || "votre etablissement";
     const schoolIdentifier = (user.schools as any)?.identifier || "";
 
+    // Simple password reset email without school info
     const emailHtml = `
       <!DOCTYPE html>
       <html lang="fr">
@@ -157,19 +158,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
                     <td style="padding: 32px 32px 0;">
                       <h1 style="margin: 0 0 16px; color: #1e293b; font-size: 24px; font-weight: 700; line-height: 1.3;">Reinitialisation de mot de passe</h1>
                       <p style="margin: 0 0 16px; color: #475569; font-size: 15px; line-height: 1.6;">Bonjour ${user.first_name} ${user.last_name},</p>
-                      <p style="margin: 0 0 16px; color: #475569; font-size: 15px; line-height: 1.6;">
+                      <p style="margin: 0 0 24px; color: #475569; font-size: 15px; line-height: 1.6;">
                         Vous avez demande la reinitialisation de votre mot de passe pour votre compte.
                       </p>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td style="padding: 0 32px 24px;">
-                      <div style="background: #f1f5f9; padding: 16px; border-radius: 8px;">
-                        <p style="margin: 0 0 8px; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase;">Etablissement</p>
-                        <p style="margin: 0; color: #1e293b; font-size: 15px; font-weight: 500;">${schoolName}</p>
-                        ${schoolIdentifier ? `<p style="margin: 8px 0 0; color: #64748b; font-size: 13px;">Identifiant: ${schoolIdentifier}</p>` : ""}
-                      </div>
                     </td>
                   </tr>
 

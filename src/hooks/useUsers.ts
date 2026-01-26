@@ -190,21 +190,18 @@ export const useUsers = (schoolId?: string) => {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Supprimer les rôles d'abord
-      const { error: rolesError } = await supabase
-        .from('app_user_roles')
-        .delete()
-        .eq('user_id', userId);
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        throw new Error("Session expirée");
+      }
 
-      if (rolesError) throw rolesError;
+      const { data, error } = await supabase.functions.invoke("delete-user-account", {
+        body: { sessionToken, userId },
+      });
 
-      // Supprimer l'utilisateur
-      const { error: userError } = await supabase
-        .from('app_users')
-        .delete()
-        .eq('id', userId);
-
-      if (userError) throw userError;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erreur lors de la suppression");
 
       setUsers(prev => prev.filter(user => user.id !== userId));
       toast.success('Utilisateur supprimé avec succès');

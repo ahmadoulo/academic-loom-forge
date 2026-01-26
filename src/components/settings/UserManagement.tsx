@@ -242,13 +242,24 @@ export function UserManagement() {
 
   const deleteUser = async (userId: string) => {
     try {
-      await supabase.from("app_user_roles").delete().eq("user_id", userId);
-      const { error } = await supabase.from("app_users").delete().eq("id", userId);
+      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      
+      if (!sessionToken) {
+        toast.error("Session expirée, veuillez vous reconnecter");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("delete-user-account", {
+        body: { sessionToken, userId },
+      });
+
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erreur lors de la suppression");
+
       toast.success("Utilisateur supprimé");
       fetchUsers();
-    } catch {
-      toast.error("Erreur lors de la suppression de l'utilisateur");
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur lors de la suppression de l'utilisateur");
     }
   };
 
