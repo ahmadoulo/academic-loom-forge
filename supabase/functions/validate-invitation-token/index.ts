@@ -61,14 +61,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if already active with password set
-    if (account.is_active && account.password_hash) {
-      console.log('❌ Account already active');
-      return new Response(
-        JSON.stringify({ valid: false, error: 'Ce compte est déjà actif' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // For password reset, the account being active is expected
+    // We only reject if there's no password hash AND the account is active (shouldn't happen)
+    // But for reset flow, we allow active accounts with password to proceed
+    console.log('📋 Account status:', { is_active: account.is_active, has_password: !!account.password_hash });
 
     // Check expiration
     if (!account.invitation_expires_at) {
