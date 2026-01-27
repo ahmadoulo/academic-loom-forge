@@ -9,7 +9,7 @@ import {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-forwarded-for, x-real-ip',
 };
 
 interface AuthRequest {
@@ -25,6 +25,19 @@ interface UserRole {
 // Rate limit: 5 attempts per 15 minutes per email
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+// Helper to extract client IP from headers
+function getClientIP(req: Request): string {
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim();
+  }
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  return 'Inconnue';
+}
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -183,6 +196,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     console.log(`User ${normalizedEmail} authenticated successfully with role: ${primaryRole}`);
+
+    // Get client IP for login notification
+    const clientIP = getClientIP(req);
+    
+    // Send login notification email asynchronously (don't wait for it)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
+    
+    // Fire and forget - don't block login for email sending
+    fetch(`${supabaseUrl}/functions/v1/send-login-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        ipAddress: clientIP,
+      }),
+    }).catch((err) => {
+      console.error('Failed to send login notification:', err);
+    });
 
     return new Response(
       JSON.stringify({
