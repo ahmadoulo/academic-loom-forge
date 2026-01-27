@@ -83,7 +83,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let query = supabase
       .from("app_users")
       .select(
-        "id, email, first_name, last_name, school_id, is_active, created_at, app_user_roles!app_user_roles_user_id_fkey(role, school_id)"
+        "id, email, first_name, last_name, school_id, is_active, created_at, last_login, app_user_roles!app_user_roles_user_id_fkey(role, school_id)"
       )
       .order("created_at", { ascending: false });
 
