@@ -113,3 +113,9 @@ verify_jwt = false
 
 [functions.find-student-by-email]
 verify_jwt = false
+
+[functions.delete-user-account]
+verify_jwt = false
+
+[functions.send-login-notification]
+verify_jwt = false
