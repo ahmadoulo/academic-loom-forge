@@ -14,7 +14,10 @@ import { toast } from "sonner";
 import { useSchools } from "@/hooks/useSchools";
 import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import { Check, Copy, Edit, Eye, EyeOff, Filter, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
+import { Check, Clock, Copy, Edit, Eye, EyeOff, Filter, Key, Mail, MoreVertical, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
+import { generateSecurePassword } from "@/utils/passwordUtils";
+import { format, formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 
 type UserRole = "global_admin" | "school_admin";
 
@@ -25,6 +28,7 @@ interface AppUserRow {
   last_name: string;
   school_id: string | null;
   is_active: boolean;
+  last_login: string | null;
   app_user_roles: { role: string; school_id: string | null }[];
 }
 
@@ -136,11 +140,9 @@ export function UserManagement() {
   }, [rows, searchTerm, roleFilter, schoolFilter]);
 
   const generateNewPassword = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
-    for (let i = 0; i < 12; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    setGeneratedPassword(result);
-    return result;
+    const password = generateSecurePassword(16);
+    setGeneratedPassword(password);
+    return password;
   };
 
   const copyToClipboard = async (text: string) => {
@@ -535,7 +537,8 @@ export function UserManagement() {
                   <TableHead className="min-w-[200px]">Utilisateur</TableHead>
                   <TableHead className="hidden sm:table-cell">Rôle</TableHead>
                   <TableHead className="hidden md:table-cell">École</TableHead>
-                  <TableHead className="hidden lg:table-cell">Statut</TableHead>
+                  <TableHead className="hidden lg:table-cell">Dernière connexion</TableHead>
+                  <TableHead className="hidden xl:table-cell">Statut</TableHead>
                   <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
@@ -562,6 +565,18 @@ export function UserManagement() {
                       <div className="text-sm truncate max-w-[150px]">{getSchoolName(u.school_id)}</div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
+                      {u.last_login ? (
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span title={format(new Date(u.last_login), "PPPp", { locale: fr })}>
+                            {formatDistanceToNow(new Date(u.last_login), { addSuffix: true, locale: fr })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Jamais connecté</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       <Badge variant={u.is_active ? "default" : "secondary"}>{u.is_active ? "Actif" : "Inactif"}</Badge>
                     </TableCell>
                     <TableCell>
