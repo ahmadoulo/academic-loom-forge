@@ -217,19 +217,15 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
         requestBody.schoolRoleId = newUser.school_role_id;
       }
 
-      console.log('Creating user with:', requestBody);
-
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: requestBody
       });
 
       if (error) {
-        console.error('Edge function error:', error);
         throw new Error(error.message || 'Erreur lors de la création');
       }
       
       if (data?.error) {
-        console.error('API error:', data.error);
         throw new Error(data.error);
       }
 
@@ -240,7 +236,6 @@ export function SchoolUserManagement({ schoolId, canEdit = true }: SchoolUserMan
       setShowPassword(false);
       fetchUsers();
     } catch (error: any) {
-      console.error('Create user error:', error);
       toast.error(error.message || 'Erreur lors de la création');
     } finally {
       setIsCreating(false);

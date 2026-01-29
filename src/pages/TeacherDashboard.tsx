@@ -790,9 +790,6 @@ const TeacherDashboard = () => {
   const { teachers } = useTeachers();
   const currentTeacher = teachers.find(t => t.id === teacherId);
 
-  console.log('[TeacherDashboard] Mounting with teacherId:', teacherId, 'currentTeacher:', currentTeacher);
-  console.log('[TeacherDashboard] schoolId for SemesterProvider:', currentTeacher?.school_id);
-
   return (
     <SemesterProvider schoolId={currentTeacher?.school_id}>
       <TeacherDashboardContent teacherId={teacherId} />

@@ -324,12 +324,10 @@ export const useExamDocuments = (teacherId?: string, schoolId?: string) => {
       }
       return data;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exam-documents"] });
-      console.log("Exam reviewed successfully:", data);
     },
     onError: (error: any) => {
-      console.error("Error reviewing exam:", error);
       toast.error(`Erreur lors de la validation: ${error.message || "Erreur inconnue"}`);
     },
   });

@@ -31,14 +31,6 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
   const displayYearId = getYearForDisplay();
   const [selectedSemester, setSelectedSemester] = useState<string>("");
   const { grades, loading: gradesLoading } = useGrades(undefined, student?.id, undefined, displayYearId, selectedSemester && selectedSemester !== "all" ? selectedSemester : undefined);
-  
-  console.log('DEBUG StudentGradesSection:', { 
-    studentId, 
-    student, 
-    classId: student?.class_id,
-    gradesCount: grades?.length,
-    grades: grades
-  });
 
   // Charger TOUS les semestres de l'école (pas filtrés par année)
   const { semesters } = useSchoolSemesters(student?.school_id, undefined);
@@ -66,10 +58,8 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
           .select('*')
           .eq('class_id', student.class_id);
           
-        console.log('DEBUG: Matières de la classe:', classSubjects);
         setAllSubjects(classSubjects || []);
       } catch (error) {
-        console.error('Erreur chargement matières:', error);
       } finally {
         setLoading(false);
       }
@@ -94,7 +84,7 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     };
   });
 
-  console.log('DEBUG: SubjectGrades calculées:', subjectGrades);
+  
 
   // Calculer la moyenne générale
   const overallAverage = grades.length > 0 
@@ -112,9 +102,6 @@ export const StudentsGradesSection = ({ studentId }: StudentsGradesSectionProps)
     }
     
     try {
-      console.log('DEBUG: Génération PDF - Données étudiant:', student);
-      console.log('DEBUG: Génération PDF - Notes par matière:', subjectGrades);
-      console.log('DEBUG: Génération PDF - Moyenne générale:', overallAverage);
       
       // Importer et appeler la fonction de génération PDF
       const { generateStudentBulletin } = await import("@/utils/bulletinPdfExport");

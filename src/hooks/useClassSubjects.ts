@@ -28,7 +28,6 @@ export const useClassSubjects = (classId?: string) => {
 
     try {
       setLoading(true);
-      console.log('DEBUG: Chargement des matières pour la classe:', classId);
       
       const { data, error } = await supabase
         .from('class_subjects')
@@ -43,14 +42,11 @@ export const useClassSubjects = (classId?: string) => {
         `)
         .eq('class_id', classId);
 
-      console.log('DEBUG: Réponse class_subjects:', { data, error });
-
       if (error) throw error;
       setClassSubjects(data || []);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des matières';
       setError(message);
-      console.error('Erreur chargement matières:', err);
       toast({
         title: "Erreur",
         description: message,

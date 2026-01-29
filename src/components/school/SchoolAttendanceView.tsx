@@ -151,7 +151,6 @@ export function SchoolAttendanceView({ schoolId }: SchoolAttendanceViewProps) {
 
       for (const student of absentStudents) {
         if (!student.email && !student.tutor_email) {
-          console.log(`Skipping ${student.firstname} ${student.lastname} - no email`);
           continue;
         }
 

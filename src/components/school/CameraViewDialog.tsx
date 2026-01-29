@@ -57,8 +57,6 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
   // Stop stream function - properly cleanup HLS and video
   const stopStream = useCallback(() => {
-    console.log("Stopping stream...");
-    
     // Destroy HLS instance
     if (hlsRef.current) {
       try {
@@ -66,7 +64,7 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
         hlsRef.current.detachMedia();
         hlsRef.current.destroy();
       } catch (e) {
-        console.error("Error destroying HLS:", e);
+        // Silent error handling
       }
       hlsRef.current = null;
     }
@@ -78,7 +76,7 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
         videoRef.current.removeAttribute('src');
         videoRef.current.load();
       } catch (e) {
-        console.error("Error cleaning video:", e);
+        // Silent error handling
       }
     }
     
@@ -117,11 +115,8 @@ export function CameraViewDialog({ camera, open, onOpenChange }: CameraViewDialo
 
   const startStream = useCallback(() => {
     if (!camera || !videoRef.current) {
-      console.log("Cannot start stream: missing camera or video ref");
       return;
     }
-    
-    console.log("Starting stream for:", camera.name);
     
     // Ensure previous stream is stopped
     stopStream();

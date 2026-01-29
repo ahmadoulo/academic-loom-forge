@@ -79,7 +79,6 @@ const AuthPage = () => {
   useEffect(() => {
     if (initialized && isAuthenticated && user) {
       const redirectPath = getRedirectPath();
-      console.log('User authenticated, redirecting to:', redirectPath);
       navigate(redirectPath, { replace: true });
     }
   }, [initialized, isAuthenticated, user, navigate, getRedirectPath]);
@@ -126,10 +125,6 @@ const AuthPage = () => {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
-      
-      if (success) {
-        console.log('Login successful, waiting for redirect...');
-      }
     } finally {
       setIsSubmitting(false);
     }
