@@ -461,6 +461,29 @@ const AuthPage = () => {
                           )}
                         </Button>
                       </motion.div>
+
+                      {/* Activate account section */}
+                      <motion.div 
+                        className="pt-6 mt-6 border-t border-border"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 }}
+                      >
+                        <div className="text-center space-y-3">
+                          <p className="text-sm text-muted-foreground">
+                            Première connexion ?
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-11 rounded-xl"
+                            onClick={() => navigate('/activate-account')}
+                          >
+                            <Users className="mr-2 h-4 w-4" />
+                            Activer mon compte
+                          </Button>
+                        </div>
+                      </motion.div>
                     </form>
                   </CardContent>
                 </Card>
