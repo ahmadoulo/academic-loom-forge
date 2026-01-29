@@ -199,7 +199,7 @@ export const useAssignments = (options?: UseAssignmentsOptions | string) => {
           assignmentData.recurrence_day
         );
 
-        console.log(`Generating ${recurringDates.length} recurring sessions`);
+        
 
         // Create the parent assignment first
         const parentData = {

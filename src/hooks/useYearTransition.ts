@@ -191,7 +191,7 @@ export const useYearTransition = (schoolId: string) => {
         }
       });
 
-      console.log('Class mapping:', Object.fromEntries(classMapping));
+      
 
       // Récupérer toutes les matières des anciennes classes
       const oldClassIds = oldClasses.map(c => c.id);
@@ -204,7 +204,6 @@ export const useYearTransition = (schoolId: string) => {
       if (subjectsError) throw subjectsError;
 
       if (oldSubjects && oldSubjects.length > 0) {
-        console.log('Subjects à dupliquer:', oldSubjects);
 
         // Créer les nouvelles matières SANS classe assignée (l'admin devra les assigner manuellement)
         const newSubjects = oldSubjects.map((subject: any) => ({
@@ -222,7 +221,7 @@ export const useYearTransition = (schoolId: string) => {
 
         if (createSubjectsError) throw createSubjectsError;
 
-        console.log('Subjects dupliqués sans classe:', createdSubjects);
+        
 
         // NE PAS créer les entrées class_subjects automatiquement
         // L'admin devra assigner manuellement les matières aux classes
@@ -230,7 +229,7 @@ export const useYearTransition = (schoolId: string) => {
 
       // NE PAS dupliquer les assignations teacher_classes automatiquement
       // L'admin devra assigner manuellement les professeurs aux nouvelles classes
-      console.log('Les assignations professeur-classes ne sont pas dupliquées automatiquement');
+      
 
       toast.success('Matières et assignations dupliquées avec succès');
     } catch (error: any) {

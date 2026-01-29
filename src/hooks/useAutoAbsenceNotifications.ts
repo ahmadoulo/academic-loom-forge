@@ -13,19 +13,11 @@ export function useAutoAbsenceNotifications() {
       if (!isActive) return;
 
       try {
-        console.log('🔔 Vérification automatique des notifications d\'absence...');
-        
-        const { data, error } = await supabase.functions.invoke('auto-send-absence-notifications', {
+        await supabase.functions.invoke('auto-send-absence-notifications', {
           body: {}
         });
-
-        if (error) {
-          console.error('Erreur lors de la vérification des notifications:', error);
-        } else if (data?.notificationsSent > 0) {
-          console.log(`✅ ${data.notificationsSent} notification(s) d'absence envoyée(s) automatiquement`);
-        }
       } catch (error) {
-        console.error('Erreur lors de l\'appel de la fonction:', error);
+        // Silent error handling in production
       }
     };
 

@@ -78,29 +78,23 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
       // Filter by school_id if provided
       if (schoolId) {
         logsQuery = logsQuery.eq('school_id', schoolId);
-        console.log('Filtering logs by school_id:', schoolId);
       }
       
       // Filter by teacherId through assignment relation if provided
       if (teacherId) {
         logsQuery = logsQuery.eq('assignments.teacher_id', teacherId);
-        console.log('Filtering logs by teacher_id:', teacherId);
       }
 
       const { data: logsData, error: logsError } = await logsQuery;
 
       if (logsError) {
-        console.error('Error fetching logs:', logsError);
         throw logsError;
       }
       
       if (!logsData || logsData.length === 0) {
-        console.log('No logs found');
         setLogs([]);
         return;
       }
-
-      console.log(`Raw logs found: ${logsData.length}`);
 
       // Transform the data structure
       const transformedLogs = logsData.map(log => ({
@@ -120,10 +114,8 @@ export const AbsenceNotificationHistory = ({ teacherId, schoolId }: AbsenceNotif
         }
       })) as AbsenceLog[];
 
-      console.log(`Found ${transformedLogs.length} notification logs after transformation`);
       setLogs(transformedLogs);
     } catch (error) {
-      console.error('Error fetching absence notification logs:', error);
       setLogs([]);
     } finally {
       setLoading(false);

@@ -61,10 +61,8 @@ export const StudentPromotionStep = ({
       
       // Récupérer les mappings
       const mappings = await getClassMappings(preparationId);
-      console.log('Mappings trouvés:', mappings);
       
       if (mappings.length === 0) {
-        console.log('Aucun mapping trouvé');
         setStudents([]);
         setLoadingStudents(false);
         return;
@@ -74,17 +72,12 @@ export const StudentPromotionStep = ({
       const allStudents: StudentWithTransition[] = [];
       
       for (const mapping of mappings) {
-        console.log(`Recherche des étudiants pour la classe ${mapping.from_class_id}`);
-        
         // Récupérer l'année de la classe source
         const sourceClass = allClasses?.find(c => c.id === mapping.from_class_id);
         const sourceYearId = sourceClass?.school_year_id;
         
-        console.log(`Année de la classe source: ${sourceYearId}`);
-        
         // Récupérer les étudiants avec l'année correcte
         const classStudents = await getStudentsByClass(mapping.from_class_id, sourceYearId || currentYearId);
-        console.log(`${classStudents.length} étudiants trouvés`);
         
         classStudents.forEach((enrollment: any) => {
           if (enrollment.students) {
@@ -102,12 +95,10 @@ export const StudentPromotionStep = ({
         });
       }
       
-      console.log(`Total: ${allStudents.length} étudiants à promouvoir`);
       setStudents(allStudents);
       // Sélectionner tous les étudiants par défaut
       setSelectedStudents(allStudents.map(s => s.student_id));
     } catch (error) {
-      console.error('Error loading students:', error);
       toast.error('Erreur lors du chargement des étudiants');
     } finally {
       setLoadingStudents(false);

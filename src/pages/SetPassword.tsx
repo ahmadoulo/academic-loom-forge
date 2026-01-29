@@ -42,34 +42,27 @@ export default function SetPassword() {
 
     try {
       const cleanToken = token.trim();
-      console.log('🔍 Validating token via edge function...');
 
       const { data, error } = await supabase.functions.invoke('validate-invitation-token', {
         body: { token: cleanToken }
       });
 
-      console.log('📥 Token validation response:', { data, error });
-
       if (error) {
-        console.error('❌ Edge function error:', error);
         toast.error("Erreur de validation du lien");
         navigate('/auth');
         return;
       }
 
       if (!data?.valid) {
-        console.log('❌ Token invalid:', data?.error);
         toast.error(data?.error || "Lien invalide ou expiré");
         navigate('/auth');
         return;
       }
 
-      console.log('✅ Token is valid, mode:', data.mode);
       setMode(data.mode === 'reset' ? 'reset' : 'activation');
       setUserEmail(data.email || '');
       setValidating(false);
     } catch (err) {
-      console.error('Token validation error:', err);
       toast.error('Erreur lors de la validation du lien');
       navigate('/auth');
     }
@@ -100,8 +93,6 @@ export default function SetPassword() {
     setLoading(true);
 
     try {
-      console.log('🔐 Appel de l\'edge function set-user-password...');
-      
       const { data, error } = await supabase.functions.invoke('set-user-password', {
         body: {
           token: token.trim(),
@@ -109,14 +100,7 @@ export default function SetPassword() {
         }
       });
 
-      console.log('📥 Réponse de l\'edge function:', { 
-        success: !!data?.success,
-        error,
-        data 
-      });
-
       if (error) {
-        console.error('❌ Erreur lors de l\'appel de l\'edge function:', error);
         // Parse specific error messages
         if (error.message?.includes('complexity') || error.message?.includes('password')) {
           toast.error('Le mot de passe ne respecte pas les critères de complexité', {
@@ -142,12 +126,10 @@ export default function SetPassword() {
       }
 
       if (!data?.success) {
-        console.error('❌ L\'edge function n\'a pas retourné de succès');
         toast.error('Erreur lors de la définition du mot de passe');
         return;
       }
 
-      console.log('✅ Mot de passe défini avec succès');
       toast.success('Mot de passe défini avec succès !', {
         description: 'Vous pouvez maintenant vous connecter.',
       });
@@ -156,7 +138,6 @@ export default function SetPassword() {
         navigate('/auth');
       }, 1500);
     } catch (err: any) {
-      console.error('❌ Erreur lors de la définition du mot de passe:', err);
       toast.error('Erreur lors de la définition du mot de passe', {
         description: 'Veuillez réessayer ou contacter l\'administration.',
       });

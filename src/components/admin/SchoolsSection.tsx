@@ -28,8 +28,6 @@ export function SchoolsSection() {
     e.preventDefault();
     if (!newSchool.name.trim()) return;
 
-    console.log('DEBUG: Formulaire soumis avec:', newSchool, 'Mode:', editingSchoolId ? 'édition' : 'création');
-    
     setIsSubmitting(true);
     try {
       if (editingSchoolId) {
@@ -48,8 +46,6 @@ export function SchoolsSection() {
       } else {
         // Mode création
         const identifier = newSchool.identifier.trim() || `SCH${String(schools.length + 1).padStart(3, '0')}`;
-        
-        console.log('DEBUG: Identifier généré:', identifier);
         
         await createSchool({
           name: newSchool.name,
