@@ -11,8 +11,14 @@ interface AuthContextValue {
   loading: boolean;
   initialized: boolean;
   isAuthenticated: boolean;
+  mfaRequired: boolean;
+  mfaUserId: string | null;
+  mfaPendingToken: string | null;
+  mfaUserEmail: string | null;
   login: (credentials: { email: string; password: string }) => Promise<boolean>;
   logout: () => void;
+  completeMFALogin: (authData: any) => void;
+  cancelMFA: () => void;
   createUser: (userData: CreateUserData, createdBy: string) => Promise<any>;
   resetPassword: (userId: string, requestedBy: string) => Promise<any>;
   setPassword: (token: string, password: string) => Promise<any>;

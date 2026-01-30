@@ -258,6 +258,10 @@ export type Database = {
           is_active: boolean
           last_login: string | null
           last_name: string
+          mfa_code: string | null
+          mfa_code_expires_at: string | null
+          mfa_enabled: boolean
+          mfa_type: string | null
           password_hash: string | null
           phone: string | null
           school_id: string | null
@@ -279,6 +283,10 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           last_name: string
+          mfa_code?: string | null
+          mfa_code_expires_at?: string | null
+          mfa_enabled?: boolean
+          mfa_type?: string | null
           password_hash?: string | null
           phone?: string | null
           school_id?: string | null
@@ -300,6 +308,10 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           last_name?: string
+          mfa_code?: string | null
+          mfa_code_expires_at?: string | null
+          mfa_enabled?: boolean
+          mfa_type?: string | null
           password_hash?: string | null
           phone?: string | null
           school_id?: string | null

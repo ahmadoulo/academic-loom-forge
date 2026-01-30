@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { Camera, Save, Mail, Phone, MapPin } from "lucide-react";
+import { Camera, Save, Mail, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MFASettings } from "./MFASettings";
 
 export function ProfileSettings() {
   const { profile } = useAuth();
@@ -170,6 +171,11 @@ export function ProfileSettings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* MFA Settings */}
+      {profile?.id && profile?.email && (
+        <MFASettings userId={profile.id} userEmail={profile.email} />
+      )}
 
       <Card>
         <CardHeader>

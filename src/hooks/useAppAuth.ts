@@ -13,6 +13,13 @@ import type {
 
 const SESSION_KEY = 'app_session_token';
 
+interface MFAState {
+  required: boolean;
+  userId: string | null;
+  pendingSessionToken: string | null;
+  userEmail: string | null;
+}
+
 export function useAppAuth() {
   const navigate = useNavigate();
   const [state, setState] = useState<AuthState>({
@@ -23,6 +30,13 @@ export function useAppAuth() {
     primarySchoolIdentifier: null,
     loading: true,
     initialized: false,
+  });
+
+  const [mfaState, setMfaState] = useState<MFAState>({
+    required: false,
+    userId: null,
+    pendingSessionToken: null,
+    userEmail: null,
   });
 
   // Validate session on mount
@@ -72,7 +86,6 @@ export function useAppAuth() {
         initialized: true,
       });
     } catch (error) {
-      console.error('Session validation error:', error);
       localStorage.removeItem(SESSION_KEY);
       setState(prev => ({ 
         ...prev, 
@@ -99,21 +112,28 @@ export function useAppAuth() {
       });
 
       if (error) {
-        console.error('Login error:', error);
         toast.error('Email ou mot de passe incorrect');
         return false;
       }
 
       if (data.error) {
-        // Use friendly message for common auth errors
-        const errorMessage = data.error === 'Email ou mot de passe incorrect' 
-          ? data.error 
-          : data.error;
-        toast.error(errorMessage);
+        toast.error(data.error);
         return false;
       }
 
-      // Save session token and school identifier
+      // Check if MFA is required
+      if (data.mfaRequired) {
+        setMfaState({
+          required: true,
+          userId: data.userId,
+          pendingSessionToken: data.pendingSessionToken,
+          userEmail: email,
+        });
+        toast.info(data.message || 'Code de vérification envoyé');
+        return true; // Return true to indicate login flow continues with MFA
+      }
+
+      // No MFA required - complete login
       localStorage.setItem(SESSION_KEY, data.sessionToken);
       if (data.primarySchoolIdentifier) {
         localStorage.setItem('app_school_identifier', data.primarySchoolIdentifier);
@@ -132,10 +152,45 @@ export function useAppAuth() {
       toast.success('Connexion réussie');
       return true;
     } catch (error) {
-      console.error('Login error:', error);
       toast.error('Email ou mot de passe incorrect');
       return false;
     }
+  }, []);
+
+  // Complete MFA verification
+  const completeMFALogin = useCallback((authData: any) => {
+    localStorage.setItem(SESSION_KEY, authData.sessionToken);
+    if (authData.primarySchoolIdentifier) {
+      localStorage.setItem('app_school_identifier', authData.primarySchoolIdentifier);
+    }
+
+    setState({
+      user: authData.user,
+      roles: authData.roles,
+      primaryRole: authData.primaryRole,
+      primarySchoolId: authData.primarySchoolId,
+      primarySchoolIdentifier: authData.primarySchoolIdentifier,
+      loading: false,
+      initialized: true,
+    });
+
+    // Reset MFA state
+    setMfaState({
+      required: false,
+      userId: null,
+      pendingSessionToken: null,
+      userEmail: null,
+    });
+  }, []);
+
+  // Cancel MFA
+  const cancelMFA = useCallback(() => {
+    setMfaState({
+      required: false,
+      userId: null,
+      pendingSessionToken: null,
+      userEmail: null,
+    });
   }, []);
 
   // Logout
@@ -151,6 +206,12 @@ export function useAppAuth() {
       loading: false,
       initialized: true,
     });
+    setMfaState({
+      required: false,
+      userId: null,
+      pendingSessionToken: null,
+      userEmail: null,
+    });
     navigate('/auth');
     toast.success('Déconnexion réussie');
   }, [navigate]);
@@ -164,7 +225,6 @@ export function useAppAuth() {
       });
 
       if (error) {
-        console.error('Create user error:', error);
         toast.error('Erreur lors de la création du compte');
         return null;
       }
@@ -186,7 +246,6 @@ export function useAppAuth() {
 
       return data;
     } catch (error) {
-      console.error('Create user error:', error);
       toast.error('Erreur lors de la création du compte');
       return null;
     }
@@ -207,7 +266,6 @@ export function useAppAuth() {
       });
 
       if (error) {
-        console.error('Reset password error:', error);
         toast.error('Erreur lors de la réinitialisation');
         return null;
       }
@@ -225,7 +283,6 @@ export function useAppAuth() {
 
       return data;
     } catch (error) {
-      console.error('Reset password error:', error);
       toast.error('Erreur lors de la réinitialisation');
       return null;
     }
@@ -239,7 +296,6 @@ export function useAppAuth() {
       });
 
       if (error) {
-        console.error('Set password error:', error);
         toast.error('Erreur lors de la définition du mot de passe');
         return null;
       }
@@ -252,7 +308,6 @@ export function useAppAuth() {
       toast.success(data.message);
       return data;
     } catch (error) {
-      console.error('Set password error:', error);
       toast.error('Erreur lors de la définition du mot de passe');
       return null;
     }
@@ -300,8 +355,14 @@ export function useAppAuth() {
     loading: state.loading,
     initialized: state.initialized,
     isAuthenticated: !!state.user,
+    mfaRequired: mfaState.required,
+    mfaUserId: mfaState.userId,
+    mfaPendingToken: mfaState.pendingSessionToken,
+    mfaUserEmail: mfaState.userEmail,
     login,
     logout,
+    completeMFALogin,
+    cancelMFA,
     createUser,
     resetPassword,
     setPassword,
