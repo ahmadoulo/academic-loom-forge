@@ -26,15 +26,45 @@ export function useSubscriptionLimits(schoolId: string): SubscriptionLimits {
   useEffect(() => {
     const fetchLimits = async () => {
       try {
-        // Fetch subscription
+        // Fetch subscription - get the most recent one
         const { data: subData } = await supabase
           .from('subscriptions')
-          .select('custom_student_limit, custom_teacher_limit, plan_type')
+          .select('custom_student_limit, custom_teacher_limit, plan_type, status, is_trial, end_date, trial_end_date')
           .eq('school_id', schoolId)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
         if (!subData) {
-          setLimits(prev => ({ ...prev, loading: false }));
+          // No subscription means unlimited (allow creation)
+          setLimits(prev => ({ 
+            ...prev, 
+            loading: false,
+            canAddStudent: true,
+            canAddTeacher: true 
+          }));
+          return;
+        }
+
+        // Check if subscription is valid (not expired)
+        const now = new Date();
+        const endDate = subData.is_trial || subData.status === 'trial' 
+          ? new Date(subData.trial_end_date || subData.end_date)
+          : new Date(subData.end_date);
+        
+        const isExpired = endDate < now;
+
+        // If expired, block creation
+        if (isExpired) {
+          setLimits({
+            studentLimit: 0,
+            teacherLimit: 0,
+            currentStudents: 0,
+            currentTeachers: 0,
+            canAddStudent: false,
+            canAddTeacher: false,
+            loading: false,
+          });
           return;
         }
 
@@ -43,11 +73,14 @@ export function useSubscriptionLimits(schoolId: string): SubscriptionLimits {
           .from('subscription_plans')
           .select('student_limit, teacher_limit')
           .eq('type', subData.plan_type)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
-        // Get the limit (custom or plan)
-        const studentLimit = subData.custom_student_limit || planData?.student_limit;
-        const teacherLimit = subData.custom_teacher_limit || planData?.teacher_limit;
+        // Get the limit (custom or plan) - null means unlimited
+        const studentLimit = subData.custom_student_limit ?? planData?.student_limit ?? null;
+        const teacherLimit = subData.custom_teacher_limit ?? planData?.teacher_limit ?? null;
 
         // Fetch current year
         const { data: currentYear } = await supabase
@@ -57,7 +90,16 @@ export function useSubscriptionLimits(schoolId: string): SubscriptionLimits {
           .single();
 
         if (!currentYear) {
-          setLimits(prev => ({ ...prev, loading: false }));
+          // No current year but subscription is valid - allow creation
+          setLimits({
+            studentLimit,
+            teacherLimit,
+            currentStudents: 0,
+            currentTeachers: 0,
+            canAddStudent: true,
+            canAddTeacher: true,
+            loading: false,
+          });
           return;
         }
 
@@ -76,20 +118,27 @@ export function useSubscriptionLimits(schoolId: string): SubscriptionLimits {
           .eq('school_id', schoolId)
           .eq('archived', false);
 
-        const current = {
+        // null limit means unlimited (canAdd = true)
+        const canAddStudent = studentLimit === null || (studentCount || 0) < studentLimit;
+        const canAddTeacher = teacherLimit === null || (teacherCount || 0) < teacherLimit;
+
+        setLimits({
           studentLimit,
           teacherLimit,
           currentStudents: studentCount || 0,
           currentTeachers: teacherCount || 0,
-          canAddStudent: studentLimit === null || (studentCount || 0) < studentLimit,
-          canAddTeacher: teacherLimit === null || (teacherCount || 0) < teacherLimit,
+          canAddStudent,
+          canAddTeacher,
           loading: false,
-        };
-
-        setLimits(current);
+        });
       } catch (error) {
-        console.error('Error fetching subscription limits:', error);
-        setLimits(prev => ({ ...prev, loading: false }));
+        // On error, allow creation (fail open for better UX)
+        setLimits(prev => ({ 
+          ...prev, 
+          loading: false,
+          canAddStudent: true,
+          canAddTeacher: true
+        }));
       }
     };
 
