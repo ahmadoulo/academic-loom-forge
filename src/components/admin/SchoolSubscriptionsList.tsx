@@ -43,9 +43,13 @@ export function SchoolSubscriptionsList() {
       );
     }
 
-    if (subscription.is_trial) {
-      const trialEnd = new Date(subscription.trial_end_date);
-      const daysLeft = Math.ceil((trialEnd.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const now = new Date();
+    
+    // Check trial status first
+    if (subscription.status === 'trial' || subscription.is_trial) {
+      const trialEndDate = subscription.trial_end_date || subscription.end_date;
+      const trialEnd = new Date(trialEndDate);
+      const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       
       if (daysLeft <= 0) {
         return (
@@ -56,26 +60,28 @@ export function SchoolSubscriptionsList() {
         );
       }
       return (
-        <Badge variant="secondary" className="flex items-center gap-1">
+        <Badge className="flex items-center gap-1 bg-blue-500 text-white">
           <Clock className="h-3 w-3" />
           Essai - {daysLeft}j restant{daysLeft > 1 ? 's' : ''}
         </Badge>
       );
     }
 
+    // Check active subscription
     const endDate = new Date(subscription.end_date);
-    const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (subscription.status === 'active' && daysLeft > 30) {
+    // If end date is in the future, subscription is valid
+    if (daysLeft > 30) {
       return (
         <Badge className="flex items-center gap-1 bg-success text-white">
           <CheckCircle2 className="h-3 w-3" />
           Actif
         </Badge>
       );
-    } else if (subscription.status === 'active' && daysLeft > 0) {
+    } else if (daysLeft > 0) {
       return (
-        <Badge variant="secondary" className="flex items-center gap-1">
+        <Badge variant="secondary" className="flex items-center gap-1 bg-warning text-white">
           <AlertCircle className="h-3 w-3" />
           Expire dans {daysLeft}j
         </Badge>

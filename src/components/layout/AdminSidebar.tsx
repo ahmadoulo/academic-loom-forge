@@ -59,24 +59,24 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
   const { open } = useSidebar();
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
+    <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Logo Header */}
-      <div className="p-5 border-b border-white/10">
+      <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="h-11 w-11 rounded-xl bg-white p-1.5 shadow-lg shadow-primary/20">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 p-1.5 shadow-sm">
               <img src={eduvateLogo} alt="Eduvate" className="h-full w-full object-contain" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-900" />
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-card" />
           </div>
           {(open || isMobile) && (
             <div className="flex flex-col">
-              <span className="font-bold text-lg text-white tracking-tight">
+              <span className="font-bold text-lg text-foreground tracking-tight">
                 EduVate
               </span>
               <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-amber-400" />
-                <span className="text-[10px] font-medium text-amber-400 uppercase tracking-wider">Admin Console</span>
+                <Sparkles className="h-3 w-3 text-primary" />
+                <span className="text-[10px] font-medium text-primary uppercase tracking-wider">Admin Console</span>
               </div>
             </div>
           )}
@@ -88,7 +88,7 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
         <SidebarGroup>
           {(open || isMobile) && (
             <div className="px-3 mb-3">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                 Navigation
               </span>
             </div>
@@ -105,8 +105,8 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
                       className={cn(
                         "w-full transition-all duration-200 rounded-xl",
                         isActive 
-                          ? "bg-gradient-to-r from-primary/20 to-primary/10 text-white shadow-lg shadow-primary/10" 
-                          : "text-slate-400 hover:text-white hover:bg-white/5"
+                          ? "bg-primary/10 text-primary shadow-sm" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
                       <button 
@@ -116,8 +116,8 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
                         <div className={cn(
                           "p-2 rounded-lg transition-all duration-200",
                           isActive 
-                            ? "bg-primary text-white shadow-md shadow-primary/30" 
-                            : "bg-slate-800 text-slate-400 group-hover:text-white"
+                            ? "bg-primary text-primary-foreground shadow-md" 
+                            : "bg-muted text-muted-foreground group-hover:text-foreground"
                         )}>
                           <item.icon className="h-4 w-4" />
                         </div>
@@ -125,7 +125,7 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
                           <>
                             <span className={cn(
                               "flex-1 text-sm font-medium",
-                              isActive ? "text-white" : "text-slate-300"
+                              isActive ? "text-primary" : "text-foreground"
                             )}>
                               {item.title}
                             </span>
@@ -145,7 +145,7 @@ function SidebarContentComponent({ activeTab, onTabChange, isMobile = false }: A
       </SidebarContentUI>
 
       {/* Footer with Academic Year */}
-      <div className="mt-auto p-4 border-t border-white/10">
+      <div className="mt-auto p-4 border-t border-border">
         <AcademicYearSidebarSection context="admin" />
       </div>
     </div>

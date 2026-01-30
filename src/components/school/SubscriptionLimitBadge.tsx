@@ -18,26 +18,42 @@ export function SubscriptionLimitBadge({ schoolId, type }: SubscriptionLimitBadg
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch subscription
+        // Fetch subscription - get the most recent one
         const { data: subData } = await supabase
           .from('subscriptions')
-          .select('*')
+          .select('custom_student_limit, custom_teacher_limit, plan_type, status, is_trial, end_date, trial_end_date')
           .eq('school_id', schoolId)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
         if (!subData) return;
 
+        // Check if expired
+        const now = new Date();
+        const endDate = subData.is_trial || subData.status === 'trial'
+          ? new Date(subData.trial_end_date || subData.end_date)
+          : new Date(subData.end_date);
+        
+        if (endDate < now) {
+          setData({ current: 0, limit: 0, remaining: 0 });
+          return;
+        }
+
         // Fetch plan details
         const { data: planData } = await supabase
           .from('subscription_plans')
-          .select('*')
+          .select('student_limit, teacher_limit')
           .eq('type', subData.plan_type)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
-        // Get the limit (custom or plan)
+        // Get the limit (custom or plan) - null means unlimited
         const limit = type === 'student' 
-          ? (subData.custom_student_limit || planData?.student_limit)
-          : (subData.custom_teacher_limit || planData?.teacher_limit);
+          ? (subData.custom_student_limit ?? planData?.student_limit ?? null)
+          : (subData.custom_teacher_limit ?? planData?.teacher_limit ?? null);
 
         // Fetch current count
         const { data: currentYear } = await supabase
@@ -66,11 +82,11 @@ export function SubscriptionLimitBadge({ schoolId, type }: SubscriptionLimitBadg
           current = count || 0;
         }
 
-        const remaining = limit ? limit - current : null;
+        const remaining = limit !== null ? limit - current : null;
 
         setData({ current, limit, remaining });
       } catch (error) {
-        console.error('Error fetching subscription limit:', error);
+        // Silent fail - badge just won't show
       }
     };
 
