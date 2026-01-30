@@ -119,3 +119,13 @@ verify_jwt = false
 
 [functions.send-login-notification]
 verify_jwt = false
+
+# MFA Functions
+[functions.verify-mfa-code]
+verify_jwt = false
+
+[functions.toggle-mfa]
+verify_jwt = false
+
+[functions.resend-mfa-code]
+verify_jwt = false

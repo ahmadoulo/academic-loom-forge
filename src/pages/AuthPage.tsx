@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import eduvateLogoLight from "@/assets/eduvate-logo.png";
 import eduvateIcon from "@/assets/eduvate-icon.png";
+import { MFAVerification } from "@/components/auth/MFAVerification";
 
 type ViewMode = "login" | "forgot-password";
 
@@ -73,7 +74,20 @@ const AuthPage = () => {
   const [resetMessage, setResetMessage] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
-  const { user, loading, initialized, isAuthenticated, login, getRedirectPath } = useAuth();
+  const { 
+    user, 
+    loading, 
+    initialized, 
+    isAuthenticated, 
+    login, 
+    getRedirectPath,
+    mfaRequired,
+    mfaUserId,
+    mfaPendingToken,
+    mfaUserEmail,
+    completeMFALogin,
+    cancelMFA
+  } = useAuth();
 
   // Redirect if user is already authenticated
   useEffect(() => {
@@ -121,13 +135,24 @@ const AuthPage = () => {
     
     setIsSubmitting(true);
     try {
-      const success = await login({
+      await login({
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleMFASuccess = (authData: any) => {
+    completeMFALogin(authData);
+    const redirectPath = getRedirectPath();
+    navigate(redirectPath, { replace: true });
+  };
+
+  const handleMFACancel = () => {
+    cancelMFA();
+    setFormData({ email: "", password: "" });
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -182,6 +207,85 @@ const AuthPage = () => {
     setResetStatus("idle");
     setResetMessage("");
   };
+
+  // Show MFA verification screen if required
+  if (mfaRequired && mfaUserId && mfaPendingToken && mfaUserEmail) {
+    return (
+      <div className="min-h-screen flex overflow-hidden">
+        {/* Left side - Same branding */}
+        <motion.div 
+          className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0066cc] via-[#0080ff] to-[#00a3cc]" />
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.15%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
+          </div>
+          <motion.div 
+            className="absolute top-20 right-20 w-40 h-40 bg-white/10 rounded-full blur-2xl"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 5, repeat: Infinity }}
+          />
+          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full">
+            <motion.div className="flex items-center gap-4 mb-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <motion.div className="bg-white rounded-2xl p-3 shadow-xl" whileHover={{ scale: 1.05 }} animate={floatingAnimation}>
+                <img src={eduvateLogoLight} alt="EduVate" className="h-12 w-auto" />
+              </motion.div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <h2 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-4">
+                Vérification de sécurité
+              </h2>
+              <p className="text-white/80 text-lg mb-10 max-w-md">
+                Une étape supplémentaire pour protéger votre compte.
+              </p>
+            </motion.div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/15 to-transparent" />
+        </motion.div>
+
+        {/* Right side - MFA Verification */}
+        <motion.div 
+          className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 bg-gradient-to-br from-background via-background to-muted/20 relative"
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="absolute inset-0 opacity-[0.015]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,hsl(211_100%_50%)_1px,transparent_0)] bg-[size:48px_48px]" />
+          </div>
+          <div className="w-full max-w-md relative z-10">
+            <motion.div className="lg:hidden text-center mb-8" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+              <motion.div className="flex justify-center mb-4" animate={floatingAnimation}>
+                <div className="bg-white rounded-2xl p-4 shadow-lg">
+                  <img src={eduvateLogoLight} alt="EduVate" className="h-10 w-auto" />
+                </div>
+              </motion.div>
+            </motion.div>
+            
+            <MFAVerification
+              userId={mfaUserId}
+              pendingSessionToken={mfaPendingToken}
+              userEmail={mfaUserEmail}
+              onSuccess={handleMFASuccess}
+              onCancel={handleMFACancel}
+            />
+
+            <motion.p 
+              className="text-center text-xs text-muted-foreground mt-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              © {new Date().getFullYear()} EduVate. Tous droits réservés.
+            </motion.p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex overflow-hidden">

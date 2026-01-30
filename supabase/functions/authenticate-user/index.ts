@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6.9.10";
 import {
   validateEmail,
   verifyPasswordSecure,
@@ -19,6 +20,7 @@ const corsHeaders = {
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MFA_CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
 /* -------------------------------------------------------------------------- */
 /*                               ENV / CLIENT                                 */
@@ -60,6 +62,130 @@ function getClientIP(req: Request): string {
     return realIP;
   }
   return "Inconnue";
+}
+
+function generateMFACode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function createMFAEmailTemplate(
+  firstName: string,
+  code: string,
+  expiresInMinutes: number
+): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Code de vérification</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 40px 20px;">
+            <table role="presentation" style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+              
+              <tr>
+                <td style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 32px; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">🔐 Vérification de connexion</h1>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding: 32px; text-align: center;">
+                  <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                    Bonjour <strong>${firstName}</strong>,
+                  </p>
+                  
+                  <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                    Une tentative de connexion a été détectée sur votre compte. Voici votre code de vérification :
+                  </p>
+
+                  <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px dashed #3b82f6; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                    <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #1d4ed8; font-family: monospace;">
+                      ${code}
+                    </span>
+                  </div>
+
+                  <p style="color: #64748b; font-size: 14px; margin: 0;">
+                    ⏱️ Ce code expire dans <strong>${expiresInMinutes} minutes</strong>
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="background-color: #fef3c7; padding: 16px 32px; border-top: 1px solid #fcd34d;">
+                  <p style="color: #92400e; font-size: 13px; margin: 0; text-align: center;">
+                    ⚠️ Si vous n'avez pas initié cette connexion, ignorez cet email et sécurisez votre compte.
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="background-color: #f1f5f9; padding: 24px; text-align: center;">
+                  <p style="color: #64748b; font-size: 12px; margin: 0;">
+                    EduVate - Plateforme de gestion scolaire
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+async function sendMFAEmail(
+  email: string,
+  firstName: string,
+  code: string
+): Promise<boolean> {
+  try {
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
+    const smtpUsername = Deno.env.get("SMTP_USERNAME");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpFromAddress = Deno.env.get("SMTP_FROM_ADDRESS");
+    const smtpFromName = Deno.env.get("SMTP_FROM_NAME") || "EduVate";
+    const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
+
+    if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
+      return false;
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUsername,
+        pass: smtpPassword,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    const htmlContent = createMFAEmailTemplate(firstName, code, 10);
+
+    await transporter.sendMail({
+      from: `"${smtpFromName}" <${smtpFromAddress}>`,
+      to: email,
+      subject: "🔐 Code de vérification - EduVate",
+      text: `Votre code de vérification est : ${code}. Il expire dans 10 minutes.`,
+      html: htmlContent,
+    });
+
+    transporter.close();
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -114,8 +240,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Authentication attempt for: ${normalizedEmail}`);
-
     /* ---------------------------- FETCH USER -------------------------------- */
 
     const { data: user, error: userError } = await supabase
@@ -132,7 +256,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         school_id,
         teacher_id,
         student_id,
-        is_active
+        is_active,
+        mfa_enabled,
+        mfa_type
       `
       )
       .eq("email", normalizedEmail)
@@ -185,6 +311,50 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .from("app_users")
         .update({ password_hash: newHash })
         .eq("id", user.id);
+    }
+
+    /* --------------------------- MFA CHECK ---------------------------------- */
+
+    if (user.mfa_enabled && user.mfa_type === "email") {
+      // Generate MFA code
+      const mfaCode = generateMFACode();
+      const mfaCodeExpiresAt = new Date(Date.now() + MFA_CODE_EXPIRY_MS);
+
+      // Create a pending session token
+      const pendingSessionToken = crypto.randomUUID() + "-" + crypto.randomUUID();
+      const sessionExpiresAt = new Date(Date.now() + MFA_CODE_EXPIRY_MS);
+
+      // Store MFA code and pending session
+      await supabase
+        .from("app_users")
+        .update({
+          mfa_code: mfaCode,
+          mfa_code_expires_at: mfaCodeExpiresAt.toISOString(),
+          session_token: pendingSessionToken,
+          session_expires_at: sessionExpiresAt.toISOString(),
+        })
+        .eq("id", user.id);
+
+      // Send MFA code via email
+      const emailSent = await sendMFAEmail(user.email, user.first_name, mfaCode);
+
+      if (!emailSent) {
+        return new Response(
+          JSON.stringify({ error: "Erreur lors de l'envoi du code de vérification" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Return MFA required response
+      return new Response(
+        JSON.stringify({
+          mfaRequired: true,
+          userId: user.id,
+          pendingSessionToken,
+          message: "Un code de vérification a été envoyé à votre adresse email",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     /* --------------------------- SESSION ------------------------------------ */
@@ -263,9 +433,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         lastName: user.last_name,
         ipAddress: clientIP,
       }),
-    }).catch((err) =>
-      console.error("Failed to send login notification:", err)
-    );
+    }).catch(() => {});
 
     /* ------------------------------ RESPONSE -------------------------------- */
 
@@ -293,7 +461,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Authentication error:", error);
     return new Response(
       JSON.stringify({
         error: "Erreur serveur lors de l'authentification",
