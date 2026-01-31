@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Mail, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,34 +19,15 @@ import {
 interface MFASettingsProps {
   userId: string;
   userEmail: string;
+  initialMfaEnabled?: boolean;
 }
 
-export function MFASettings({ userId, userEmail }: MFASettingsProps) {
-  const [mfaEnabled, setMfaEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+const SESSION_KEY = 'app_session_token';
+
+export function MFASettings({ userId, userEmail, initialMfaEnabled = false }: MFASettingsProps) {
+  const [mfaEnabled, setMfaEnabled] = useState(initialMfaEnabled);
   const [toggling, setToggling] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
-
-  useEffect(() => {
-    fetchMFAStatus();
-  }, [userId]);
-
-  const fetchMFAStatus = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("app_users")
-        .select("mfa_enabled")
-        .eq("id", userId)
-        .single();
-
-      if (error) throw error;
-      setMfaEnabled(data?.mfa_enabled || false);
-    } catch (err) {
-      // Silent error - default to false
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleToggle = async (enabled: boolean) => {
     if (!enabled && mfaEnabled) {
@@ -63,7 +42,7 @@ export function MFASettings({ userId, userEmail }: MFASettingsProps) {
     setToggling(true);
 
     try {
-      const sessionToken = localStorage.getItem("app_session_token") || localStorage.getItem("sessionToken");
+      const sessionToken = localStorage.getItem(SESSION_KEY) || localStorage.getItem("sessionToken");
 
       if (!sessionToken) {
         toast.error("Session expirée. Veuillez vous reconnecter.");
@@ -72,6 +51,7 @@ export function MFASettings({ userId, userEmail }: MFASettingsProps) {
 
       const { data, error } = await supabase.functions.invoke("toggle-mfa", {
         body: {
+          userId,
           sessionToken,
           enabled,
           mfaType: "email",
@@ -88,22 +68,13 @@ export function MFASettings({ userId, userEmail }: MFASettingsProps) {
       setMfaEnabled(enabled);
       toast.success(data.message);
     } catch (err) {
+      console.error("MFA toggle error:", err);
       toast.error("Erreur lors de la modification des paramètres MFA");
     } finally {
       setToggling(false);
       setShowDisableDialog(false);
     }
   };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
