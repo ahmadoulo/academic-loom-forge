@@ -22,8 +22,10 @@ import {
   Loader2,
   Check,
   Eye,
-  EyeOff
+  EyeOff,
+  Smartphone
 } from "lucide-react";
+import { MFASettings } from "@/components/settings/MFASettings";
 
 const SESSION_KEY = 'app_session_token';
 
@@ -474,6 +476,11 @@ export default function ProfilePage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* MFA Settings */}
+            {user?.id && user?.email && (
+              <MFASettings userId={user.id} userEmail={user.email} />
+            )}
           </div>
         </div>
       </main>
