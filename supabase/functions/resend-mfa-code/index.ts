@@ -3,8 +3,7 @@ import nodemailer from "npm:nodemailer@6.9.10";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -21,11 +20,7 @@ function generateMFACode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-function createMFAEmailTemplate(
-  firstName: string,
-  code: string,
-  expiresInMinutes: number
-): string {
+function createMFAEmailTemplate(firstName: string, code: string, expiresInMinutes: number): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -42,7 +37,7 @@ function createMFAEmailTemplate(
               
               <tr>
                 <td style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 32px; text-align: center;">
-                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">🔐 Vérification de connexion</h1>
+                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;"> Vérification de connexion</h1>
                 </td>
               </tr>
 
@@ -102,10 +97,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const { userId, pendingSessionToken }: ResendMFARequest = await req.json();
 
     if (!userId || !pendingSessionToken) {
-      return new Response(
-        JSON.stringify({ error: "Paramètres manquants" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Paramètres manquants" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Fetch user
@@ -116,25 +111,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Utilisateur non trouvé" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Utilisateur non trouvé" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Verify pending session
     if (user.session_token !== pendingSessionToken) {
-      return new Response(
-        JSON.stringify({ error: "Session invalide" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Session invalide" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!user.mfa_enabled) {
-      return new Response(
-        JSON.stringify({ error: "MFA non activé pour cet utilisateur" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "MFA non activé pour cet utilisateur" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Generate new MFA code
@@ -160,10 +155,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
 
     if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
-      return new Response(
-        JSON.stringify({ error: "Configuration SMTP manquante" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Configuration SMTP manquante" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const transporter = nodemailer.createTransport({
@@ -196,12 +191,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
         success: true,
         message: "Un nouveau code a été envoyé à votre adresse email",
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: "Erreur lors de l'envoi du code" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Erreur lors de l'envoi du code" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
