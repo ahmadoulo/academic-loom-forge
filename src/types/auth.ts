@@ -11,6 +11,8 @@ export interface AppUser {
   teacher_id: string | null;
   student_id: string | null;
   is_active: boolean;
+  mfa_enabled?: boolean;
+  mfa_type?: string | null;
 }
 
 export interface UserRole {

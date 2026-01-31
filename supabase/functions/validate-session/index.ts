@@ -134,7 +134,9 @@ Deno.serve(async (req) => {
           school_id: user.school_id,
           teacher_id: user.teacher_id,
           student_id: user.student_id,
-          is_active: user.is_active
+          is_active: user.is_active,
+          mfa_enabled: user.mfa_enabled || false,
+          mfa_type: user.mfa_type
         },
         roles: userRoles,
         primaryRole,

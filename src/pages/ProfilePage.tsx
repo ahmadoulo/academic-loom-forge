@@ -479,7 +479,11 @@ export default function ProfilePage() {
 
             {/* MFA Settings */}
             {user?.id && user?.email && (
-              <MFASettings userId={user.id} userEmail={user.email} />
+              <MFASettings 
+                userId={user.id} 
+                userEmail={user.email} 
+                initialMfaEnabled={user.mfa_enabled || false}
+              />
             )}
           </div>
         </div>
