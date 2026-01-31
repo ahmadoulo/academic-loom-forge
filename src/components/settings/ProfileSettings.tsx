@@ -5,20 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Camera, Save, Mail, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MFASettings } from "./MFASettings";
 
 export function ProfileSettings() {
-  const { profile } = useAuth();
+  const { user, primaryRole } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: profile?.first_name || "",
-    last_name: profile?.last_name || "",
-    email: profile?.email || "",
-    phone: "",
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
     bio: "",
   });
 
@@ -63,19 +63,19 @@ export function ProfileSettings() {
           </CardHeader>
           <CardContent className="flex flex-col items-center space-y-4">
             <Avatar className="h-32 w-32">
-              <AvatarImage src="" />
+              <AvatarImage src={user?.avatar_url || ""} />
               <AvatarFallback className="text-2xl font-bold bg-gradient-primary text-white">
-                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+                {user?.first_name?.[0]}{user?.last_name?.[0]}
               </AvatarFallback>
             </Avatar>
             <Button variant="outline" size="sm" className="flex items-center gap-2">
               <Camera className="h-4 w-4" />
               Changer la photo
             </Button>
-            {profile?.role && (
+            {primaryRole && (
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">Rôle actuel</p>
-                {getRoleBadge(profile.role)}
+                {getRoleBadge(primaryRole)}
               </div>
             )}
           </CardContent>
@@ -173,8 +173,8 @@ export function ProfileSettings() {
       </div>
 
       {/* MFA Settings */}
-      {profile?.id && profile?.email && (
-        <MFASettings userId={profile.id} userEmail={profile.email} />
+      {user?.id && user?.email && (
+        <MFASettings userId={user.id} userEmail={user.email} />
       )}
 
       <Card>
