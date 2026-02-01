@@ -347,6 +347,14 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 export function checkRateLimit(key: string, maxAttempts: number, windowMs: number): RateLimitResult {
   const now = Date.now();
+  
+  // Cleanup expired entries on each check
+  for (const [k, v] of rateLimitStore.entries()) {
+    if (v.resetAt < now) {
+      rateLimitStore.delete(k);
+    }
+  }
+  
   const record = rateLimitStore.get(key);
   
   if (!record || record.resetAt < now) {
@@ -369,16 +377,6 @@ export function checkRateLimit(key: string, maxAttempts: number, windowMs: numbe
 export function resetRateLimit(key: string): void {
   rateLimitStore.delete(key);
 }
-
-// Cleanup old rate limit entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of rateLimitStore.entries()) {
-    if (value.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 60000);
 
 /**
  * Helper to check if user has a specific role
