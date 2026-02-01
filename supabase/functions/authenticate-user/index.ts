@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import nodemailer from "npm:nodemailer@6.9.10";
 import {
   validateEmail,
   verifyPasswordSecure,
@@ -21,18 +20,6 @@ const corsHeaders = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MFA_CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
-
-/* -------------------------------------------------------------------------- */
-/*                               ENV / CLIENT                                 */
-/* -------------------------------------------------------------------------- */
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabaseAnonKey =
-  Deno.env.get("SUPABASE_ANON_KEY") ||
-  Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -155,10 +142,14 @@ async function sendMFAEmail(
     const smtpSecure = Deno.env.get("SMTP_SECURE") === "true";
 
     if (!smtpHost || !smtpUsername || !smtpPassword || !smtpFromAddress) {
+      console.error("SMTP configuration missing");
       return false;
     }
 
-    const transporter = nodemailer.createTransport({
+    // Dynamic import nodemailer inside the function to avoid boot issues
+    const nodemailer = await import("npm:nodemailer@6.9.10");
+
+    const transporter = nodemailer.default.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
@@ -184,6 +175,7 @@ async function sendMFAEmail(
     transporter.close();
     return true;
   } catch (error) {
+    console.error("Error sending MFA email:", error);
     return false;
   }
 }
@@ -198,6 +190,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Initialize Supabase client INSIDE the handler
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ error: "Configuration serveur manquante" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const { email, password }: AuthRequest = await req.json();
 
     /* ---------------------------- VALIDATION -------------------------------- */
@@ -265,6 +272,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (userError || !user) {
+      console.log("User not found for email:", normalizedEmail);
       return new Response(
         JSON.stringify({ error: "Email ou mot de passe incorrect" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -291,21 +299,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     /* -------------------------- PASSWORD CHECK ------------------------------ */
 
+    console.log("Verifying password for user:", user.id);
     const passwordResult = await verifyPasswordSecure(
       password,
       user.password_hash
     );
 
     if (!passwordResult.valid) {
+      console.log("Password verification failed for user:", user.id);
       return new Response(
         JSON.stringify({ error: "Email ou mot de passe incorrect" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log("Password verified successfully for user:", user.id);
     resetRateLimit(`login:${normalizedEmail}`);
 
     if (passwordResult.needsMigration) {
+      console.log("Migrating password hash for user:", user.id);
       const newHash = await hashPasswordSecure(password);
       await supabase
         .from("app_users")
@@ -420,22 +432,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const clientIP = getClientIP(req);
 
-    fetch(`${supabaseUrl}/functions/v1/send-login-notification`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseAnonKey}`,
-      },
-      body: JSON.stringify({
-        userId: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        ipAddress: clientIP,
-      }),
-    }).catch(() => {});
+    // Fire and forget - don't await
+    if (supabaseAnonKey) {
+      fetch(`${supabaseUrl}/functions/v1/send-login-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          ipAddress: clientIP,
+        }),
+      }).catch((e) => console.error("Failed to send login notification:", e));
+    }
 
     /* ------------------------------ RESPONSE -------------------------------- */
+
+    console.log("Login successful for user:", user.id);
 
     return new Response(
       JSON.stringify({
@@ -450,6 +467,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
           teacher_id: user.teacher_id,
           student_id: user.student_id,
           is_active: user.is_active,
+          mfa_enabled: user.mfa_enabled,
+          mfa_type: user.mfa_type,
         },
         roles: userRoles,
         primaryRole,
@@ -461,6 +480,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("Authentication error:", error);
     return new Response(
       JSON.stringify({
         error: "Erreur serveur lors de l'authentification",
