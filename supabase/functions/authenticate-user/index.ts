@@ -249,6 +249,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     /* ---------------------------- FETCH USER -------------------------------- */
 
+    // NOTE:
+    // Sur certains environnements, des emails peuvent être stockés avec une casse différente.
+    // On utilise ilike (insensible à la casse) et maybeSingle pour éviter des erreurs “0 row”.
     const { data: user, error: userError } = await supabase
       .from("app_users")
       .select(
@@ -268,11 +271,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
         mfa_type
       `
       )
-      .eq("email", normalizedEmail)
-      .single();
+      .ilike("email", normalizedEmail)
+      .maybeSingle();
 
     if (userError || !user) {
-      console.log("User not found for email:", normalizedEmail);
+      console.log("User not found for email:", normalizedEmail, "error:", userError?.message);
       return new Response(
         JSON.stringify({ error: "Email ou mot de passe incorrect" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
